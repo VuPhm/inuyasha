@@ -1,0 +1,29 @@
+# Copyrighted binaries & raw dumps (NEVER commit to Git)
+originals/
+*.apk
+*.xapk
+*.apks
+*.obb
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.ipa
+*.so
+*.dex
+*.dll
+
+# Decompiled / extracted artifacts & builds
+analysis/
+
+# OS / IDE / Build
+.DS_Store
+__pycache__/
+*.pyc
+node_modules/
+.venv/
+*.log
+server/save_state.json
+server/saves/
+server/backups/
+server/checkpoints/

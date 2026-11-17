@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InuYasha: Seek Jade — Revival PoC (R0)</title>
+  <link rel="stylesheet" href="/poc/style.css" />
+</head>
+<body>
+  <div id="game-shell">
+    <header id="hud-bar">
+      <div class="hud-left">
+        <span class="badge">SEEK JADE REVIVAL • R0 PoC</span>
+        <span id="hud-player">Not Connected</span>
+      </div>
+      <div class="hud-right">
+        <span id="hud-stats">Gold: - | Jade: - | VIT: -</span>
+        <button id="btn-audio" class="btn-mini">🔊 Audio: On</button>
+      </div>
+    </header>
+
+    <!-- Screen 1: Title / Server Select -->
+    <section id="screen-login" class="screen active">
+      <div class="login-backdrop"></div>
+      <div class="login-card">
+        <h1>InuYasha: Seek Jade</h1>
+        <p class="subtitle">EN 5.1.1 Client Assets + Local Python Server Emulator</p>
+        <div id="server-box" class="server-pill">Server: Checking ManageCenter...</div>
+        <div class="btn-row">
+          <button id="btn-connect" class="btn-primary">Connect &amp; Enter Game</button>
+        </div>
+        <pre id="rpc-log" class="rpc-mini"></pre>
+      </div>
+    </section>
+
+    <!-- Screen 2: Chapter / Home Hub -->
+    <section id="screen-home" class="screen">
+      <div class="home-backdrop"></div>
+      <div class="home-overlay">
+        <div class="panel squad-panel">
+          <h2>Active Formation (Real HeroModel)</h2>
+          <div id="squad-list" class="squad-grid"></div>
+        </div>
+        <div class="panel map-panel">
+          <h2>Chapter 1: Feudal Era (BattleNodeModel)</h2>
+          <div id="node-list" class="node-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 3: Turn-Based Chibi Battle -->
+    <section id="screen-battle" class="screen">
+      <canvas id="battle-canvas" width="1136" height="640"></canvas>
+      <div class="battle-hud-top">
+        <span id="battle-title">Stage 1-1</span>
+        <span id="battle-round">Round 1</span>
+        <button id="btn-retreat" class="btn-mini">↩ Retreat</button>
+      </div>
+      <div class="battle-hud-bottom">
+        <div id="turn-banner" class="turn-banner">Ready for combat!</div>
+        <div class="skill-actions">
+          <button id="btn-attack" class="btn-action">⚔ Normal Attack</button>
+          <button id="btn-skill" class="btn-action btn-rage" disabled>🔥 Rage Skill (100 RP)</button>
+          <button id="btn-auto" class="btn-mini">⚡ Auto: Off</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Victory Modal -->
+    <div id="victory-modal" class="modal hidden">
+      <div class="modal-card">
+        <h2 id="modal-title">Victory!</h2>
+        <p id="modal-body"></p>
+        <button id="btn-modal-ok" class="btn-primary">Return to Map</button>
+      </div>
+    </div>
+  </div>
+  <script src="/poc/app.js"></script>
+</body>
+</html>

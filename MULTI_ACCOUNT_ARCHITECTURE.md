@@ -1,7 +1,8 @@
 # INUYASHA REVIVAL — R7 MULTI-ACCOUNT & PORTABLE SERVER ARCHITECTURE
 
-**Status:** Survey & Planning Document (R6.2 Deliverable — no runtime rewrite in R6.2)  
-**Target Milestone:** Round R7 (~2 concurrent personal players on a single shared world, portable from macOS to Linux VPS / always-on PC / Docker)
+**Status:** Survey & Planning Document (R6.2 Deliverable — no runtime rewrite or voice generation in R6.2)  
+**Target Milestone:** Round R7 (~2 concurrent personal players on a single shared world, portable from macOS to Linux VPS / always-on PC / Docker), followed by Post-R7 Vietnamese Character Voice Localization  
+**Immediate Priority Order:** Pixel R6.2 Acceptance -> STABLE Promote (on approval) -> R7 Two-Player Foundation & Concurrent Online Verification -> Character Voice Localization Experiments
 
 ---
 
@@ -218,10 +219,50 @@ Transitioning cleanly without losing any STABLE (`Lv 16`) or DEV (`Lv 20 VIP 3`)
 
 ---
 
-## Recommended R7 Implementation Sequence
+## Recommended R7 Implementation Sequence & Roadmap
 
+### Immediate Priorities (Before & During R7)
+1. **Pixel R6.2 Acceptance & STABLE Promotion:** Complete on-device verification of `BossBattle` + `VIT` recovery on Pixel (`checkpoint-vn-r6.2`), then promote to STABLE upon explicit user confirmation.
+2. **R7 Foundation & Concurrent Two-Player Test:** Implement isolated multi-account state on shared `ServerId = 1` + thread safety, and verify 2 real accounts online simultaneously.
+3. **Post-R7 Priority:** Once 2-player co-existence is stable, start Vietnamese character voice-pack experiments.
+
+### Engineering Phases for R7
 1. **Step 1 (Concurrency Foundation):** Add internal `RLock` to `ResourceLedger`, per-account locks + atomic save helper, and `/health` readiness details.
 2. **Step 2 (Directory Layout & Migration Tool):** Implement `worlds/s1/accounts/<player_id>/profile.json` loader + automatic tested migration from R6.2 `OlinaHugh` saves + rollback tests.
 3. **Step 3 (Account & Session Routing):** Implement `accounts_index.json`, `Session` token validation, `ServerList_Client.ashx` user resolution, QA gating (`ServerId=2`), and recovery flow.
 4. **Step 4 (Shared World):** Extract shared `arena_ladder`, shared `LuckBoss` pool (`FriendHelp` + kill lock), and `JiFenRanking` into `world_state.json`.
 5. **Step 5 (Portable Packaging & Docker):** Env-var configuration (`INUYASHA_DATA_DIR`, `INUYASHA_ASSETS_DIR`, `INUYASHA_PUBLIC_URL`), Admin API binding separation, backup CLI, and `Dockerfile` + Linux CI/test verification.
+
+---
+
+## Cross-Version Source Governance Rule (Long-Term)
+
+> **VN (`com.cmn.inuyasha` 5.0.4.98) is the single canonical source of truth.**
+
+- **Allowed role of EN (`5.1.1`), TH (`5.1.3.6`), ZH (`5.0.0`), and TW builds:** Reference and verified fallback **only** — never mix code or data tables directly across regional builds into runtime logic or saves.
+- **Mandatory verification gate before porting any element from non-VN builds:**
+  1. **Model & Item IDs:** Verify exact existence in VN extracted tables (`server/game_data.json` / VN Lua tables) and OBB textures/UI icons (preventing R6.1 bugs like `15030101` missing from VN `TreasureDebrisModel`).
+  2. **Schema & Field Types:** Verify client Lua expectations for every field, dict/list nesting, and numeric/string flag (`Flag`, `TreasureDebrisInfo`, `HasBoss`, etc.).
+  3. **RPC Signatures & Side Effects:** Match VN client `NetworkResData` / layer handlers before wiring new modules or delta fields.
+  4. **Formulas & Config Limits:** Respect VN config caps/rates (e.g., `VitConfig.maxNum = 200` vs legacy EN `VITMaxNum = 120`, drop rates, VIP tables) and never overwrite VN formulas with unverified regional logic.
+
+---
+
+## Post-R7 Preparation — Vietnamese Character Voice Localization
+
+*(Architecture readiness only — no voice synthesis/recording or client audio changes in R6.2 or R7 core.)*
+
+### Observed Client Audio Footprint (`VN 5.0.4.98`)
+- Inspecting `analysis/vn/extracted/Android/obb/com.cmn.inuyasha/main.98.com.cmn.inuyasha.obb` shows all **655** `.mp3` audio clips live under one flat directory `res/music/`:
+  - Character dialogue / battle / skill / CG clips: `hc_*.mp3` (63), `hs_*.mp3` (46), `cg_*.mp3` (34), `Boss_*.mp3` (4), `hero_*.mp3` (4), numeric cue IDs (409)
+  - Shared BGM & SFX: `effect_*.mp3` (68), `sound_*.mp3` (20), `music_*.mp3` (7)
+
+### Decoupling Strategy (Zero Gameplay Impact)
+1. **Complete Separation from Backend & Saves:**
+   - Python server RPCs, combat simulator (`server/combat_sim.py`), `game_data.json` progression/economy tables, and `profile.json` / `world_state.json` never depend on audio clip content or language.
+   - Server `/assets/` only serves raw asset paths passively.
+2. **Layered Voice Pack (`vn` vs `jp`) by Identical Path Overlay:**
+   - Keep music/SFX (`effect_*`, `sound_*`, `music_*`) untouched in the base pack while mapping voice clips by existing filename (`res/music/<clip_id>.mp3`).
+   - Support switching between **JP original voice pack** and **VN voice pack** via an asset search-path / overlay directory (writable Android hot-update patch folder or separate optional voice-pack archive), with **automatic fallback** to the base OBB clip whenever a character line has not yet been dubbed in Vietnamese.
+3. **Externalized Asset Layout in R7 Server Packaging:**
+   - R7's `INUYASHA_ASSETS_DIR` design reserves an optional subdirectory (e.g., `<assets_dir>/voice_packs/vn/` vs `jp/` and optional future metadata manifest via `/API/ServerList_CheckResource.ashx`) so post-R7 voice drops can be delivered without changing core gameplay APKs or wiping player saves.

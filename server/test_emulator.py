@@ -1705,6 +1705,288 @@ class EmulatorProtocolTest(unittest.TestCase):
             self.assertIn("27", normal.state["chapters"])
             self.assertIn(str(first_27), normal.state["nodes"])
 
+    def test_28_r7_2_fresh_lv1_tutorial_progression(self):
+        """Test A: Fresh Lv 1 VN onboarding from NewPlayer through Guide 1 (Lv 1 -> Lv 7)."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            prof = emu.get_profile_by_name("normal")
+            self.assertEqual(prof.state["player"]["Lv"], 1)
+            self.assertEqual(prof.state["player"]["IsNewPlayer"], 1)
+            self.assertEqual(prof.state["player"]["StepCountList"], {})
+
+            # 1. Login -> NewPlayer (creates female main hero 12010004) -> duplicate NewPlayer blocked
+            login_res = emu.handle_rpc({"ModuleName": "Player", "MethodName": "Login", "Data": ["1", "tok"], "ServerId": 1})
+            self.assertEqual(login_res["Status"], 0)
+            self.assertEqual(login_res["Value"]["IsNewPlayer"], 1)
+
+            np_res = emu.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["TanThuR72", 1], "ServerId": 1})
+            self.assertEqual(np_res["Status"], 0)
+            self.assertEqual(prof.state["player"]["PlayerName"], "TanThuR72")
+            self.assertEqual(prof.state["player"]["IsNewPlayer"], 0)
+            self.assertEqual(len(prof.state["heroes"]), 1)
+            self.assertEqual(prof.state["heroes"][0]["HeroModelId"], 12010004)
+
+            dup_np = emu.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["Hijack", 0], "ServerId": 1})
+            self.assertEqual(dup_np["Status"], -1114)
+            self.assertEqual(prof.state["player"]["PlayerName"], "TanThuR72")
+
+            init_res = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [], "ServerId": 1})
+            self.assertEqual(init_res["Status"], 0)
+            self.assertEqual(len(init_res["Value"]["HeroInfo"]), 1)
+            self.assertEqual(init_res["Value"]["PlayerInfo"]["Lv"], 1)
+            self.assertEqual(init_res["Value"]["PlayerInfo"]["StepCountList"], {})
+
+            # 2. Battle 1111 (1-1) -> exact Lv 2 + starter drops + Guide 1 ordinal 1
+            f1 = emu.handle_rpc(
+                {
+                    "ModuleName": "Battle",
+                    "MethodName": "Fight",
+                    "Data": [11, 1111, 1, True, "", False],
+                    "ExtensionString": {"GuideInfo": [{"GuideId": 1, "Ordinal": 1}]},
+                    "ServerId": 1,
+                }
+            )
+            self.assertEqual(f1["Status"], 0)
+            self.assertEqual(prof.state["player"]["Lv"], 2)
+            self.assertEqual(prof.state["player"]["StepCountList"].get("1"), 1)
+
+            # 3. Free Recruit -> Ayame (12011014) -> HeroCombat slot 2 -> free repeat blocked
+            rec = emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [2, 1], "ServerId": 1})
+            self.assertEqual(rec["Status"], 0)
+            ayame = next((h for h in prof.state["heroes"] if h["HeroModelId"] == 12011014), None)
+            self.assertIsNotNone(ayame)
+            dup_rec = emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [2, 1], "ServerId": 1})
+            self.assertEqual(dup_rec["Status"], -1)
+            comb = emu.handle_rpc({"ModuleName": "Slot", "MethodName": "HeroCombat", "Data": [2, ayame["Id"]], "ServerId": 1})
+            self.assertEqual(comb["Status"], 0)
+
+            # 4. Battle 1112 (1-2) -> Lv 3 + RoadBox 111 -> DrawRoadBox -> Battle 1113 (1-3) -> Lv 4 & Forging RedDot
+            f2 = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1112, 1, True, "", False], "ServerId": 1})
+            self.assertEqual(f2["Status"], 0)
+            self.assertEqual(prof.state["player"]["Lv"], 3)
+            box = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "DrawRoadBox", "Data": [11, 111], "ServerId": 1})
+            self.assertEqual(box["Status"], 0)
+            box_dup = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "DrawRoadBox", "Data": [11, 111], "ServerId": 1})
+            self.assertEqual(box_dup["Status"], -1)
+
+            f3 = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1113, 1, True, "", False], "ServerId": 1})
+            self.assertEqual(f3["Status"], 0)
+            self.assertEqual(prof.state["player"]["Lv"], 4)
+            neck_whites = [e for e in prof.state["equips"] if e["EquipModelId"] == 13040130]
+            self.assertGreaterEqual(len(neck_whites), 5)
+            # RedDot 1400/1405 activates when >= 5 same-color equips can be composed
+            self.assertEqual(f3["Avatar"]["RedDotInfo"].get("1400"), 1)
+            self.assertEqual(f3["Avatar"]["RedDotInfo"].get("1405"), 1)
+
+            comp = emu.handle_rpc(
+                {"ModuleName": "Equip", "MethodName": "EquipCompose", "Data": [[e["Id"] for e in neck_whites[:5]]], "ServerId": 1}
+            )
+            self.assertEqual(comp["Status"], 0)
+            green_neck = next((e for e in prof.state["equips"] if e["EquipModelId"] == 13040215), None)
+            self.assertIsNotNone(green_neck)
+            self.assertEqual(comp["Avatar"]["RedDotInfo"].get("1400"), 0)
+
+            eq_comb = emu.handle_rpc(
+                {"ModuleName": "Slot", "MethodName": "OneKeyEquipCombat", "Data": [1, "", "", "", green_neck["Id"], "", ""], "ServerId": 1}
+            )
+            self.assertEqual(eq_comb["Status"], 0)
+            eq_up = emu.handle_rpc({"ModuleName": "Equip", "MethodName": "OneKeyEquipLvUp", "Data": [[green_neck["Id"]]], "ServerId": 1})
+            self.assertEqual(eq_up["Status"], 0)
+            self.assertGreater(green_neck["Lv"], 1)
+
+            # 5. Stages 1114 (Lv 5) -> 1115 (Lv 6, unlocks Ch 12) -> 1211 (Lv 6) -> 1212 (Lv 7) + Guide completion (997)
+            for nid, exp_lv in [(1114, 5), (1115, 6), (1211, 6), (1212, 7)]:
+                cid = 11 if nid < 1200 else 12
+                res = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [cid, nid, 1, True, "", False], "ServerId": 1})
+                self.assertEqual(res["Status"], 0)
+                self.assertEqual(prof.state["player"]["Lv"], exp_lv)
+            self.assertIn("12", prof.state["chapters"])
+
+            alt = emu.handle_rpc({"ModuleName": "Player", "MethodName": "AlterPlayerStepCount", "Data": [1, 997], "ServerId": 1})
+            self.assertEqual(alt["Status"], 0)
+            self.assertEqual(prof.state["player"]["StepCountList"].get("1"), 997)
+
+    def test_29_r7_2_guide_continuity_and_regression_guard(self):
+        """Test B: Partial tutorial progress persists across reload; completed guides ignore stale regression."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu1 = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            emu1.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["Relay", 0], "ServerId": 1})
+            emu1.handle_rpc(
+                {
+                    "ModuleName": "Battle",
+                    "MethodName": "Fight",
+                    "Data": [11, 1111, 1, True, "", False],
+                    "ExtensionString": {"GuideInfo": [{"GuideId": 1, "Ordinal": 10}]},
+                    "ServerId": 1,
+                }
+            )
+            # In-progress backward recovery (e.g. correctMainGuideOrdinal: 10 -> 7) is allowed
+            emu1.handle_rpc(
+                {
+                    "ModuleName": "Player",
+                    "MethodName": "AlterPlayerStepCount",
+                    "Data": [1, 7],
+                    "ServerId": 1,
+                }
+            )
+
+            # Reload from disk (simulating server restart + relogin)
+            emu2 = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+            init2 = emu2.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [], "ServerId": 1})
+            self.assertEqual(init2["Value"]["PlayerInfo"]["StepCountList"].get("1"), 7)
+
+            # Complete Guide 1 (997) and Guide 7 (max_ord=8 -> saved as 9); stale rollback (15 or 4) must be ignored
+            emu2.handle_rpc({"ModuleName": "Player", "MethodName": "AlterPlayerStepCount", "Data": [1, 997], "ServerId": 1})
+            emu2.handle_rpc({"ModuleName": "Player", "MethodName": "AlterPlayerStepCount", "Data": [7, 9], "ServerId": 1})
+            emu2.handle_rpc(
+                {
+                    "ModuleName": "Player",
+                    "MethodName": "SyncAvatar",
+                    "Data": [],
+                    "ExtensionString": {"GuideInfo": [{"GuideId": 1, "Ordinal": 15}, {"GuideId": 7, "Ordinal": 4}]},
+                    "ServerId": 1,
+                }
+            )
+            emu3 = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+            steps3 = emu3.get_profile_by_name("normal").state["player"]["StepCountList"]
+            self.assertEqual(steps3.get("1"), 997)
+            self.assertEqual(steps3.get("7"), 9)
+
+    def test_30_r7_2_step_rewards_antiduplication_and_early_rpcs(self):
+        """Test C: Verified step reward IDs, anti-duplication, non-reward 313, and Shrine/Refine/Gift/MysteryShop."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            prof = emu.get_profile_by_name("normal")
+            emu.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["RewardTest", 1], "ServerId": 1})
+
+            # Unknown event ID rejected
+            bad = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [999999], "ServerId": 1})
+            self.assertEqual(bad["Status"], -1)
+
+            # 2071 -> 5x Tamotu (12013054) -> Hero.HeroRefine
+            r2071 = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [2071], "ServerId": 1})
+            self.assertEqual(r2071["Status"], 0)
+            tamotus = [h for h in prof.state["heroes"] if h["HeroModelId"] == 12013054]
+            self.assertEqual(len(tamotus), 5)
+            # Duplicate claim rejected (-1136) even after restart
+            dup2071 = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [2071], "ServerId": 1})
+            self.assertEqual(dup2071["Status"], -1136)
+
+            hero_coin_before = prof.state["player"]["HeroCoin"]
+            ref_res = emu.handle_rpc(
+                {"ModuleName": "Hero", "MethodName": "HeroRefine", "Data": [[h["Id"] for h in tamotus]], "ServerId": 1}
+            )
+            self.assertEqual(ref_res["Status"], 0)
+            self.assertEqual(len([h for h in prof.state["heroes"] if h["HeroModelId"] == 12013054]), 0)
+            self.assertGreater(prof.state["player"]["HeroCoin"], hero_coin_before)
+
+            # 2181 -> 3x Meihaku (16040009) -> Glory.GloryLvUp (Shrine Lv 0 -> Lv 1 boosts STAMaxNum & party HP)
+            sta_max_before = prof.state["player"]["STAMaxNum"]
+            fap_before = prof.state["player"]["FAP"]
+            r2181 = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [2181], "ServerId": 1})
+            self.assertEqual(r2181["Status"], 0)
+            dip = next((g for g in prof.state["goods"] if g["GoodsModelId"] == 16040009), None)
+            self.assertIsNotNone(dip)
+            self.assertEqual(dip["Num"], 3)
+
+            g_up = emu.handle_rpc({"ModuleName": "Glory", "MethodName": "GloryLvUpForOneKey", "Data": [2], "ServerId": 1})
+            self.assertEqual(g_up["Status"], 0)
+            self.assertGreaterEqual(prof.state["glory"]["2"]["Lv"], 1)
+            self.assertEqual(prof.state["player"]["STAMaxNum"], sta_max_before)  # +1 per 10 total levels
+            self.assertGreater(prof.state["player"]["FAP"], fap_before)
+
+            # 274 (1x 16030006 VIT pill) & 313 (non-reward UI pointer -> [] then -1136 on retry)
+            r274 = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [274], "ServerId": 1})
+            self.assertEqual(r274["Status"], 0)
+            pill = next((g for g in prof.state["goods"] if g["GoodsModelId"] == 16030006), None)
+            self.assertIsNotNone(pill)
+            self.assertEqual(pill["Num"], 1)
+
+            r313 = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [313], "ServerId": 1})
+            self.assertEqual(r313["Status"], 0)
+            self.assertEqual(r313["Value"]["BaseGetGameResourceList"], [])
+            r313_dup = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [313], "ServerId": 1})
+            self.assertEqual(r313_dup["Status"], -1136)
+
+            # GiftLogin day 1 claim + anti-dup, and Day 2 denied on Day 1
+            login_info = emu.handle_rpc({"ModuleName": "GiftLogin", "MethodName": "SignInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(login_info["Status"], 0)
+            draw1 = emu.handle_rpc({"ModuleName": "GiftLogin", "MethodName": "DrawGiftBox", "Data": [1], "ServerId": 1})
+            self.assertEqual(draw1["Status"], 0)
+            draw1_dup = emu.handle_rpc({"ModuleName": "GiftLogin", "MethodName": "DrawGiftBox", "Data": [1], "ServerId": 1})
+            self.assertEqual(draw1_dup["Status"], -1)
+            draw2_early = emu.handle_rpc({"ModuleName": "GiftLogin", "MethodName": "DrawGiftBox", "Data": [2], "ServerId": 1})
+            self.assertEqual(draw2_early["Status"], -1)
+
+            # MysteryShop buy & anti-dup (IsSell 0 -> 1)
+            ms_info = emu.handle_rpc({"ModuleName": "MysteryShop", "MethodName": "GetInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(ms_info["Status"], 0)
+            items = ms_info["Value"]["MysteryShopGoodsList"]
+            self.assertGreater(len(items), 0)
+            buyable = next((it for it in items if int(it["IsSell"]) == 0), None)
+            self.assertIsNotNone(buyable)
+            prof.state["player"]["Diamond"] = 10000
+            prof.state["player"]["Gold"] = 1000000
+            prof.state["player"]["HeroCoin"] = 10000
+            ms_buy = emu.handle_rpc({"ModuleName": "MysteryShop", "MethodName": "MysteryShopBuyGoods", "Data": [buyable["Id"]], "ServerId": 1})
+            self.assertEqual(ms_buy["Status"], 0)
+            ms_buy_dup = emu.handle_rpc({"ModuleName": "MysteryShop", "MethodName": "MysteryShopBuyGoods", "Data": [buyable["Id"]], "ServerId": 1})
+            self.assertEqual(ms_buy_dup["Status"], -1)
+
+            # Persistence check after restart: 2071 still cannot be re-claimed
+            emu_reload = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+            dup_after_reload = emu_reload.handle_rpc(
+                {"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [2071], "ServerId": 1}
+            )
+            self.assertEqual(dup_after_reload["Status"], -1136)
+
+    def test_31_r7_2_existing_olinahugh_compatibility(self):
+        """Test D: Existing completed profile (OlinaHugh-style) loads cleanly without losing stats or re-triggering guide."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu1 = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            prof = emu1.get_profile_by_name("normal")
+            prof.state["player"]["PlayerName"] = "OlinaHugh"
+            prof.state["player"]["IsNewPlayer"] = 0
+            prof.state["player"]["Lv"] = 20
+            prof.state["player"]["EXP"] = int(prof.game_data["player_lv"]["20"]["EXPTotal"])
+            prof.state["player"]["Diamond"] = 4695
+            prof.state["player"]["Gold"] = 1552861
+            prof.state["player"]["StepCountList"] = {"1": 997}
+            prof.state["claimed_step_rewards"] = [1761]
+            # Remove newer R7.2 keys to simulate legacy save normalization
+            for legacy_key in ("glory", "gift_lv", "gift_login", "mystery_shop"):
+                prof.state.pop(legacy_key, None)
+            prof.save()
+
+            emu2 = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+            init = emu2.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [], "ServerId": 1})
+            self.assertEqual(init["Status"], 0)
+            p_info = init["Value"]["PlayerInfo"]
+            self.assertEqual(p_info["PlayerName"], "OlinaHugh")
+            self.assertEqual(p_info["Lv"], 20)
+            self.assertEqual(p_info["Diamond"], 4695)
+            self.assertEqual(p_info["Gold"], 1552861)
+            self.assertEqual(p_info["StepCountList"], {"1": 997})
+
+            # Previously claimed 1761 cannot be claimed again; stale guide reset to 1 is blocked
+            dup1761 = emu2.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [1761], "ServerId": 1})
+            self.assertEqual(dup1761["Status"], -1136)
+            emu2.handle_rpc({"ModuleName": "Player", "MethodName": "AlterPlayerStepCount", "Data": [1, 1], "ServerId": 1})
+            self.assertEqual(emu2.get_profile_by_name("normal").state["player"]["StepCountList"]["1"], 997)
+
+            # GiftLv backfills claimable past levels (Lv 5..20) cleanly
+            glv = emu2.handle_rpc({"ModuleName": "GiftLv", "MethodName": "LvGiftBags", "Data": [], "ServerId": 1})
+            self.assertEqual(glv["Status"], 0)
+            self.assertIn(5, glv["Value"]["Bags"])
+            draw5 = emu2.handle_rpc({"ModuleName": "GiftLv", "MethodName": "DrawGiftBags", "Data": [5], "ServerId": 1})
+            self.assertEqual(draw5["Status"], 0)
+            draw5_dup = emu2.handle_rpc({"ModuleName": "GiftLv", "MethodName": "DrawGiftBags", "Data": [5], "ServerId": 1})
+            self.assertEqual(draw5_dup["Status"], -1)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

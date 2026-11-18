@@ -29,7 +29,14 @@
     "pvp_rank_reward": 10000,
     "daydayfund_vip": 21,
     "goods_output": 245,
-    "fashion_model": 8
+    "fashion_model": 8,
+    "guide_relation": 73,
+    "glory_type": 3,
+    "glory_lv": 201,
+    "gift_login": 7,
+    "gift_lv": 20,
+    "mystery_shop_fixed": 8,
+    "mystery_shop_odds": 138
   },
   "player_config": {
     "initLv": 1,
@@ -260951,6 +260958,4225 @@
         "heroAttrStrR": "2,431,1530||2,432,10700||2,433,500",
         "stepUpUse": ""
       }
+    }
+  },
+  "guide_relation": {
+    "1": {
+      "1": {
+        "ID": 1,
+        "ordinal": 1,
+        "eventID": 101,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "2",
+        "nextID": 1,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 1,
+        "ordinal": 2,
+        "eventID": 102,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 1,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 1,
+        "ordinal": 3,
+        "eventID": 10211,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 1,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 1,
+        "ordinal": 4,
+        "eventID": 10212,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 1,
+        "recoverOrdianl": 4
+      },
+      "5": {
+        "ID": 1,
+        "ordinal": 5,
+        "eventID": 10213,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 1,
+        "recoverOrdianl": 5
+      },
+      "6": {
+        "ID": 1,
+        "ordinal": 6,
+        "eventID": 103,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 1,
+        "recoverOrdianl": 6
+      },
+      "7": {
+        "ID": 1,
+        "ordinal": 7,
+        "eventID": 1051,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 1,
+        "recoverOrdianl": 7
+      },
+      "8": {
+        "ID": 1,
+        "ordinal": 8,
+        "eventID": 1052,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "4",
+        "nextID": 1,
+        "recoverOrdianl": 8
+      },
+      "9": {
+        "ID": 1,
+        "ordinal": 9,
+        "eventID": 106,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "5",
+        "nextID": 1,
+        "recoverOrdianl": 9
+      },
+      "10": {
+        "ID": 1,
+        "ordinal": 10,
+        "eventID": 107,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "6",
+        "nextID": 1,
+        "recoverOrdianl": 10
+      },
+      "11": {
+        "ID": 1,
+        "ordinal": 11,
+        "eventID": 1071,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "7",
+        "nextID": 1,
+        "recoverOrdianl": 11
+      },
+      "12": {
+        "ID": 1,
+        "ordinal": 12,
+        "eventID": 109,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "8",
+        "nextID": 1,
+        "recoverOrdianl": 12
+      },
+      "13": {
+        "ID": 1,
+        "ordinal": 13,
+        "eventID": 110,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "9",
+        "nextID": 1,
+        "recoverOrdianl": 13
+      },
+      "14": {
+        "ID": 1,
+        "ordinal": 14,
+        "eventID": 111,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "10",
+        "nextID": 1,
+        "recoverOrdianl": 14
+      },
+      "15": {
+        "ID": 1,
+        "ordinal": 15,
+        "eventID": 116,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "14",
+        "nextID": 1,
+        "recoverOrdianl": 15
+      },
+      "16": {
+        "ID": 1,
+        "ordinal": 16,
+        "eventID": 117,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "15",
+        "nextID": 1,
+        "recoverOrdianl": 16
+      },
+      "17": {
+        "ID": 1,
+        "ordinal": 17,
+        "eventID": 118,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "16",
+        "nextID": 1,
+        "recoverOrdianl": 17
+      },
+      "18": {
+        "ID": 1,
+        "ordinal": 18,
+        "eventID": 1181,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "17",
+        "nextID": 1,
+        "recoverOrdianl": 18
+      },
+      "19": {
+        "ID": 1,
+        "ordinal": 19,
+        "eventID": 1182,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "18",
+        "nextID": 1,
+        "recoverOrdianl": 19
+      },
+      "20": {
+        "ID": 1,
+        "ordinal": 20,
+        "eventID": 119,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "19",
+        "nextID": 1,
+        "recoverOrdianl": 20
+      },
+      "21": {
+        "ID": 1,
+        "ordinal": 21,
+        "eventID": 7600,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "20",
+        "nextID": 1,
+        "recoverOrdianl": 21
+      },
+      "22": {
+        "ID": 1,
+        "ordinal": 22,
+        "eventID": 7601,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "21",
+        "nextID": 1,
+        "recoverOrdianl": 22
+      },
+      "23": {
+        "ID": 1,
+        "ordinal": 23,
+        "eventID": 7602,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "22",
+        "nextID": 1,
+        "recoverOrdianl": 23
+      },
+      "24": {
+        "ID": 1,
+        "ordinal": 24,
+        "eventID": 7603,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "23",
+        "nextID": 1,
+        "recoverOrdianl": 24
+      },
+      "25": {
+        "ID": 1,
+        "ordinal": 25,
+        "eventID": 7604,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "24",
+        "nextID": 1,
+        "recoverOrdianl": 25
+      },
+      "26": {
+        "ID": 1,
+        "ordinal": 26,
+        "eventID": 7605,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "25",
+        "nextID": 1,
+        "recoverOrdianl": 26
+      },
+      "27": {
+        "ID": 1,
+        "ordinal": 27,
+        "eventID": 7606,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "26",
+        "nextID": 1,
+        "recoverOrdianl": 27
+      },
+      "28": {
+        "ID": 1,
+        "ordinal": 28,
+        "eventID": 76061,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "27",
+        "nextID": 1,
+        "recoverOrdianl": 28
+      },
+      "29": {
+        "ID": 1,
+        "ordinal": 29,
+        "eventID": 7607,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "28",
+        "nextID": 1,
+        "recoverOrdianl": 29
+      },
+      "30": {
+        "ID": 1,
+        "ordinal": 30,
+        "eventID": 7608,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "29",
+        "nextID": 1,
+        "recoverOrdianl": 30
+      },
+      "31": {
+        "ID": 1,
+        "ordinal": 31,
+        "eventID": 7609,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "30",
+        "nextID": 1,
+        "recoverOrdianl": 31
+      },
+      "32": {
+        "ID": 1,
+        "ordinal": 32,
+        "eventID": 7610,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "31",
+        "nextID": 1,
+        "recoverOrdianl": 32
+      },
+      "33": {
+        "ID": 1,
+        "ordinal": 33,
+        "eventID": 7611,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "32",
+        "nextID": 1,
+        "recoverOrdianl": 33
+      },
+      "34": {
+        "ID": 1,
+        "ordinal": 34,
+        "eventID": 7612,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "33",
+        "nextID": 1,
+        "recoverOrdianl": 34
+      },
+      "35": {
+        "ID": 1,
+        "ordinal": 35,
+        "eventID": 7613,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "34",
+        "nextID": 1,
+        "recoverOrdianl": 35
+      },
+      "36": {
+        "ID": 1,
+        "ordinal": 36,
+        "eventID": 7614,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "35",
+        "nextID": 1,
+        "recoverOrdianl": 36
+      },
+      "37": {
+        "ID": 1,
+        "ordinal": 37,
+        "eventID": 7615,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "36",
+        "nextID": 1,
+        "recoverOrdianl": 37
+      },
+      "38": {
+        "ID": 1,
+        "ordinal": 38,
+        "eventID": 7616,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "37",
+        "nextID": 1,
+        "recoverOrdianl": 38
+      }
+    },
+    "17": {
+      "1": {
+        "ID": 17,
+        "ordinal": 1,
+        "eventID": 11860,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "7",
+        "nextID": 1,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 17,
+        "ordinal": 2,
+        "eventID": 11861,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 1,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 17,
+        "ordinal": 3,
+        "eventID": 11862,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 1,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 17,
+        "ordinal": 4,
+        "eventID": 11863,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 1,
+        "recoverOrdianl": 4
+      },
+      "5": {
+        "ID": 17,
+        "ordinal": 5,
+        "eventID": 11864,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "4",
+        "nextID": 1,
+        "recoverOrdianl": 5
+      },
+      "6": {
+        "ID": 17,
+        "ordinal": 6,
+        "eventID": 11865,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "5",
+        "nextID": 1,
+        "recoverOrdianl": 6
+      },
+      "7": {
+        "ID": 17,
+        "ordinal": 7,
+        "eventID": 11866,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "6",
+        "nextID": 1,
+        "recoverOrdianl": 7
+      },
+      "8": {
+        "ID": 17,
+        "ordinal": 8,
+        "eventID": 11867,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "7",
+        "nextID": 1,
+        "recoverOrdianl": 8
+      },
+      "9": {
+        "ID": 17,
+        "ordinal": 9,
+        "eventID": 11868,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "8",
+        "nextID": 1,
+        "recoverOrdianl": 9
+      }
+    },
+    "2": {
+      "1": {
+        "ID": 2,
+        "ordinal": 1,
+        "eventID": 162,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "8",
+        "nextID": 2,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 2,
+        "ordinal": 2,
+        "eventID": 1621,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 2,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 2,
+        "ordinal": 3,
+        "eventID": 1622,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 2,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 2,
+        "ordinal": 4,
+        "eventID": 1623,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 2,
+        "recoverOrdianl": 4
+      },
+      "5": {
+        "ID": 2,
+        "ordinal": 5,
+        "eventID": 1624,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "4",
+        "nextID": 2,
+        "recoverOrdianl": 5
+      },
+      "6": {
+        "ID": 2,
+        "ordinal": 6,
+        "eventID": 1626,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "5",
+        "nextID": 2,
+        "recoverOrdianl": 6
+      },
+      "7": {
+        "ID": 2,
+        "ordinal": 7,
+        "eventID": 16261,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "6",
+        "nextID": 2,
+        "recoverOrdianl": 7
+      },
+      "8": {
+        "ID": 2,
+        "ordinal": 8,
+        "eventID": 16262,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "7",
+        "nextID": 2,
+        "recoverOrdianl": 8
+      },
+      "9": {
+        "ID": 2,
+        "ordinal": 9,
+        "eventID": 16263,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "8",
+        "nextID": 2,
+        "recoverOrdianl": 9
+      }
+    },
+    "3": {
+      "1": {
+        "ID": 3,
+        "ordinal": 1,
+        "eventID": 1631,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "9",
+        "nextID": 3,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 3,
+        "ordinal": 2,
+        "eventID": 1632,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 3,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 3,
+        "ordinal": 3,
+        "eventID": 1633,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 3,
+        "recoverOrdianl": 3
+      }
+    },
+    "112": {
+      "1": {
+        "ID": 112,
+        "ordinal": 1,
+        "eventID": 1641,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "12",
+        "nextID": 112,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 112,
+        "ordinal": 2,
+        "eventID": 1642,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 112,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 112,
+        "ordinal": 3,
+        "eventID": 1643,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 112,
+        "recoverOrdianl": 3
+      }
+    },
+    "4": {
+      "1": {
+        "ID": 4,
+        "ordinal": 1,
+        "eventID": 174,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "14",
+        "nextID": 4,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 4,
+        "ordinal": 2,
+        "eventID": 176,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 4,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 4,
+        "ordinal": 3,
+        "eventID": 1761,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 4,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 4,
+        "ordinal": 4,
+        "eventID": 177,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 4,
+        "recoverOrdianl": 4
+      },
+      "5": {
+        "ID": 4,
+        "ordinal": 5,
+        "eventID": 178,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "4",
+        "nextID": 4,
+        "recoverOrdianl": 5
+      },
+      "6": {
+        "ID": 4,
+        "ordinal": 6,
+        "eventID": 179,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "5",
+        "nextID": 4,
+        "recoverOrdianl": 6
+      },
+      "7": {
+        "ID": 4,
+        "ordinal": 7,
+        "eventID": 1790,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "6",
+        "nextID": 4,
+        "recoverOrdianl": 7
+      },
+      "8": {
+        "ID": 4,
+        "ordinal": 8,
+        "eventID": 1791,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "7",
+        "nextID": 4,
+        "recoverOrdianl": 8
+      },
+      "9": {
+        "ID": 4,
+        "ordinal": 9,
+        "eventID": 1792,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "8",
+        "nextID": 4,
+        "recoverOrdianl": 9
+      },
+      "10": {
+        "ID": 4,
+        "ordinal": 10,
+        "eventID": 180,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "9",
+        "nextID": 4,
+        "recoverOrdianl": 10
+      },
+      "11": {
+        "ID": 4,
+        "ordinal": 11,
+        "eventID": 1801,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "10",
+        "nextID": 4,
+        "recoverOrdianl": 11
+      },
+      "12": {
+        "ID": 4,
+        "ordinal": 12,
+        "eventID": 185,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "11",
+        "nextID": 4,
+        "recoverOrdianl": 12
+      },
+      "13": {
+        "ID": 4,
+        "ordinal": 13,
+        "eventID": 187,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "12",
+        "nextID": 4,
+        "recoverOrdianl": 13
+      }
+    },
+    "6": {
+      "1": {
+        "ID": 6,
+        "ordinal": 1,
+        "eventID": 202,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "20",
+        "nextID": 6,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 6,
+        "ordinal": 2,
+        "eventID": 204,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 6,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 6,
+        "ordinal": 3,
+        "eventID": 205,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 6,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 6,
+        "ordinal": 4,
+        "eventID": 206,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "4",
+        "nextID": 0,
+        "recoverOrdianl": 4
+      }
+    },
+    "7": {
+      "1": {
+        "ID": 7,
+        "ordinal": 1,
+        "eventID": 207,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "24",
+        "nextID": 7,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 7,
+        "ordinal": 2,
+        "eventID": 208,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 7,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 7,
+        "ordinal": 3,
+        "eventID": 2071,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 7,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 7,
+        "ordinal": 4,
+        "eventID": 2081,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 7,
+        "recoverOrdianl": 4
+      },
+      "5": {
+        "ID": 7,
+        "ordinal": 5,
+        "eventID": 2082,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "4",
+        "nextID": 7,
+        "recoverOrdianl": 5
+      },
+      "6": {
+        "ID": 7,
+        "ordinal": 6,
+        "eventID": 2083,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "5",
+        "nextID": 7,
+        "recoverOrdianl": 6
+      },
+      "7": {
+        "ID": 7,
+        "ordinal": 7,
+        "eventID": 210,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "6",
+        "nextID": 7,
+        "recoverOrdianl": 7
+      },
+      "8": {
+        "ID": 7,
+        "ordinal": 8,
+        "eventID": 211,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "7",
+        "nextID": 0,
+        "recoverOrdianl": 8
+      }
+    },
+    "8": {
+      "1": {
+        "ID": 8,
+        "ordinal": 1,
+        "eventID": 212,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "18",
+        "nextID": 8,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 8,
+        "ordinal": 2,
+        "eventID": 213,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 8,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 8,
+        "ordinal": 3,
+        "eventID": 214,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 8,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 8,
+        "ordinal": 4,
+        "eventID": 215,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 8,
+        "recoverOrdianl": 4
+      }
+    },
+    "9": {
+      "1": {
+        "ID": 9,
+        "ordinal": 1,
+        "eventID": 217,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "22",
+        "nextID": 9,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 9,
+        "ordinal": 2,
+        "eventID": 218,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 9,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 9,
+        "ordinal": 3,
+        "eventID": 2181,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 9,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 9,
+        "ordinal": 4,
+        "eventID": 219,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 9,
+        "recoverOrdianl": 4
+      },
+      "5": {
+        "ID": 9,
+        "ordinal": 5,
+        "eventID": 220,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "4",
+        "nextID": 9,
+        "recoverOrdianl": 5
+      }
+    },
+    "10": {
+      "1": {
+        "ID": 10,
+        "ordinal": 1,
+        "eventID": 221,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "16",
+        "nextID": 10,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 10,
+        "ordinal": 2,
+        "eventID": 223,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 10,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 10,
+        "ordinal": 3,
+        "eventID": 2241,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 10,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 10,
+        "ordinal": 4,
+        "eventID": 2243,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 10,
+        "recoverOrdianl": 4
+      }
+    },
+    "11": {
+      "1": {
+        "ID": 11,
+        "ordinal": 1,
+        "eventID": 225,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "25",
+        "nextID": 11,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 11,
+        "ordinal": 2,
+        "eventID": 226,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 11,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 11,
+        "ordinal": 3,
+        "eventID": 227,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 0,
+        "recoverOrdianl": 3
+      }
+    },
+    "12": {
+      "1": {
+        "ID": 12,
+        "ordinal": 1,
+        "eventID": 228,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "27",
+        "nextID": 12,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 12,
+        "ordinal": 2,
+        "eventID": 229,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 12,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 12,
+        "ordinal": 3,
+        "eventID": 230,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 0,
+        "recoverOrdianl": 3
+      }
+    },
+    "13": {
+      "1": {
+        "ID": 13,
+        "ordinal": 1,
+        "eventID": 231,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "32",
+        "nextID": 13,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 13,
+        "ordinal": 2,
+        "eventID": 232,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 13,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 13,
+        "ordinal": 3,
+        "eventID": 233,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 13,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 13,
+        "ordinal": 4,
+        "eventID": 234,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 0,
+        "recoverOrdianl": 4
+      }
+    },
+    "14": {
+      "1": {
+        "ID": 14,
+        "ordinal": 1,
+        "eventID": 235,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "30",
+        "nextID": 14,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 14,
+        "ordinal": 2,
+        "eventID": 236,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 14,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 14,
+        "ordinal": 3,
+        "eventID": 237,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 14,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 14,
+        "ordinal": 4,
+        "eventID": 238,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 14,
+        "recoverOrdianl": 4
+      },
+      "5": {
+        "ID": 14,
+        "ordinal": 5,
+        "eventID": 239,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "4",
+        "nextID": 14,
+        "recoverOrdianl": 5
+      },
+      "6": {
+        "ID": 14,
+        "ordinal": 6,
+        "eventID": 240,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "5",
+        "nextID": 0,
+        "recoverOrdianl": 6
+      }
+    },
+    "15": {
+      "1": {
+        "ID": 15,
+        "ordinal": 1,
+        "eventID": 241,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "35",
+        "nextID": 15,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 15,
+        "ordinal": 2,
+        "eventID": 242,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 15,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 15,
+        "ordinal": 3,
+        "eventID": 243,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 0,
+        "recoverOrdianl": 3
+      }
+    },
+    "19": {
+      "1": {
+        "ID": 19,
+        "ordinal": 1,
+        "eventID": 271,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "15",
+        "nextID": 19,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 19,
+        "ordinal": 2,
+        "eventID": 272,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 19,
+        "recoverOrdianl": 2
+      }
+    },
+    "20": {
+      "1": {
+        "ID": 20,
+        "ordinal": 1,
+        "eventID": 281,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "28",
+        "nextID": 20,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 20,
+        "ordinal": 2,
+        "eventID": 282,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 20,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 20,
+        "ordinal": 3,
+        "eventID": 283,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 20,
+        "recoverOrdianl": 3
+      }
+    },
+    "21": {
+      "1": {
+        "ID": 21,
+        "ordinal": 1,
+        "eventID": 291,
+        "triggerTypeEnum": 80,
+        "triggerConfig": "0",
+        "nextID": 21,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 21,
+        "ordinal": 2,
+        "eventID": 292,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "1",
+        "nextID": 21,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 21,
+        "ordinal": 3,
+        "eventID": 293,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "2",
+        "nextID": 21,
+        "recoverOrdianl": 3
+      },
+      "4": {
+        "ID": 21,
+        "ordinal": 4,
+        "eventID": 294,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "3",
+        "nextID": 21,
+        "recoverOrdianl": 4
+      },
+      "5": {
+        "ID": 21,
+        "ordinal": 5,
+        "eventID": 295,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "4",
+        "nextID": 21,
+        "recoverOrdianl": 5
+      },
+      "6": {
+        "ID": 21,
+        "ordinal": 6,
+        "eventID": 296,
+        "triggerTypeEnum": 10,
+        "triggerConfig": "5",
+        "nextID": 21,
+        "recoverOrdianl": 6
+      }
+    },
+    "23": {
+      "1": {
+        "ID": 23,
+        "ordinal": 1,
+        "eventID": 311,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "26",
+        "nextID": 23,
+        "recoverOrdianl": 1
+      },
+      "2": {
+        "ID": 23,
+        "ordinal": 2,
+        "eventID": 312,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "1",
+        "nextID": 23,
+        "recoverOrdianl": 2
+      },
+      "3": {
+        "ID": 23,
+        "ordinal": 3,
+        "eventID": 313,
+        "triggerTypeEnum": 20,
+        "triggerConfig": "2",
+        "nextID": 23,
+        "recoverOrdianl": 3
+      }
+    },
+    "951": {
+      "1": {
+        "ID": 951,
+        "ordinal": 1,
+        "eventID": 910006,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1111",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "952": {
+      "1": {
+        "ID": 952,
+        "ordinal": 1,
+        "eventID": 910007,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1113",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "953": {
+      "1": {
+        "ID": 953,
+        "ordinal": 1,
+        "eventID": 910008,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1113",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "954": {
+      "1": {
+        "ID": 954,
+        "ordinal": 1,
+        "eventID": 910009,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1114",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "955": {
+      "1": {
+        "ID": 955,
+        "ordinal": 1,
+        "eventID": 910010,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1115",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "956": {
+      "1": {
+        "ID": 956,
+        "ordinal": 1,
+        "eventID": 910011,
+        "triggerTypeEnum": 30,
+        "triggerConfig": "12",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "957": {
+      "1": {
+        "ID": 957,
+        "ordinal": 1,
+        "eventID": 910012,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1211",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "958": {
+      "1": {
+        "ID": 958,
+        "ordinal": 1,
+        "eventID": 910013,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1214",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "959": {
+      "1": {
+        "ID": 959,
+        "ordinal": 1,
+        "eventID": 910014,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1214",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "960": {
+      "1": {
+        "ID": 960,
+        "ordinal": 1,
+        "eventID": 910015,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1215",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "961": {
+      "1": {
+        "ID": 961,
+        "ordinal": 1,
+        "eventID": 910016,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1216",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "962": {
+      "1": {
+        "ID": 962,
+        "ordinal": 1,
+        "eventID": 910017,
+        "triggerTypeEnum": 30,
+        "triggerConfig": "13",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "963": {
+      "1": {
+        "ID": 963,
+        "ordinal": 1,
+        "eventID": 910018,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1311",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "964": {
+      "1": {
+        "ID": 964,
+        "ordinal": 1,
+        "eventID": 910019,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1313",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "965": {
+      "1": {
+        "ID": 965,
+        "ordinal": 1,
+        "eventID": 910020,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1314",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "966": {
+      "1": {
+        "ID": 966,
+        "ordinal": 1,
+        "eventID": 910021,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1316",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "967": {
+      "1": {
+        "ID": 967,
+        "ordinal": 1,
+        "eventID": 910022,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1316",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "968": {
+      "1": {
+        "ID": 968,
+        "ordinal": 1,
+        "eventID": 910023,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1318",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "969": {
+      "1": {
+        "ID": 969,
+        "ordinal": 1,
+        "eventID": 910024,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1318",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "970": {
+      "1": {
+        "ID": 970,
+        "ordinal": 1,
+        "eventID": 910025,
+        "triggerTypeEnum": 30,
+        "triggerConfig": "14",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "971": {
+      "1": {
+        "ID": 971,
+        "ordinal": 1,
+        "eventID": 910026,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1411",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "972": {
+      "1": {
+        "ID": 972,
+        "ordinal": 1,
+        "eventID": 910027,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1413",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "973": {
+      "1": {
+        "ID": 973,
+        "ordinal": 1,
+        "eventID": 910028,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1414",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "974": {
+      "1": {
+        "ID": 974,
+        "ordinal": 1,
+        "eventID": 910029,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1414",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "975": {
+      "1": {
+        "ID": 975,
+        "ordinal": 1,
+        "eventID": 910030,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1416",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "976": {
+      "1": {
+        "ID": 976,
+        "ordinal": 1,
+        "eventID": 910031,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1419",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "977": {
+      "1": {
+        "ID": 977,
+        "ordinal": 1,
+        "eventID": 910032,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1419",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "978": {
+      "1": {
+        "ID": 978,
+        "ordinal": 1,
+        "eventID": 910033,
+        "triggerTypeEnum": 30,
+        "triggerConfig": "15",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "979": {
+      "1": {
+        "ID": 979,
+        "ordinal": 1,
+        "eventID": 910034,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1511",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "980": {
+      "1": {
+        "ID": 980,
+        "ordinal": 1,
+        "eventID": 910035,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1513",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "981": {
+      "1": {
+        "ID": 981,
+        "ordinal": 1,
+        "eventID": 910036,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1516",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "982": {
+      "1": {
+        "ID": 982,
+        "ordinal": 1,
+        "eventID": 910037,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1516",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "983": {
+      "1": {
+        "ID": 983,
+        "ordinal": 1,
+        "eventID": 910038,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1520",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "984": {
+      "1": {
+        "ID": 984,
+        "ordinal": 1,
+        "eventID": 910039,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1520",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "985": {
+      "1": {
+        "ID": 985,
+        "ordinal": 1,
+        "eventID": 910040,
+        "triggerTypeEnum": 30,
+        "triggerConfig": "16",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "986": {
+      "1": {
+        "ID": 986,
+        "ordinal": 1,
+        "eventID": 910041,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1613",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "987": {
+      "1": {
+        "ID": 987,
+        "ordinal": 1,
+        "eventID": 910042,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1613",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "988": {
+      "1": {
+        "ID": 988,
+        "ordinal": 1,
+        "eventID": 910043,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1616",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "989": {
+      "1": {
+        "ID": 989,
+        "ordinal": 1,
+        "eventID": 910044,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1616",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "990": {
+      "1": {
+        "ID": 990,
+        "ordinal": 1,
+        "eventID": 910045,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1620",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "991": {
+      "1": {
+        "ID": 991,
+        "ordinal": 1,
+        "eventID": 910046,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1620",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "992": {
+      "1": {
+        "ID": 992,
+        "ordinal": 1,
+        "eventID": 910047,
+        "triggerTypeEnum": 30,
+        "triggerConfig": "17",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "993": {
+      "1": {
+        "ID": 993,
+        "ordinal": 1,
+        "eventID": 910048,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1711",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "994": {
+      "1": {
+        "ID": 994,
+        "ordinal": 1,
+        "eventID": 910049,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1716",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "995": {
+      "1": {
+        "ID": 995,
+        "ordinal": 1,
+        "eventID": 910050,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1716",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "996": {
+      "1": {
+        "ID": 996,
+        "ordinal": 1,
+        "eventID": 910051,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1720",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "997": {
+      "1": {
+        "ID": 997,
+        "ordinal": 1,
+        "eventID": 910052,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1720",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "998": {
+      "1": {
+        "ID": 998,
+        "ordinal": 1,
+        "eventID": 910053,
+        "triggerTypeEnum": 30,
+        "triggerConfig": "18",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "999": {
+      "1": {
+        "ID": 999,
+        "ordinal": 1,
+        "eventID": 910054,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1811",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "1000": {
+      "1": {
+        "ID": 1000,
+        "ordinal": 1,
+        "eventID": 910055,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1816",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "1001": {
+      "1": {
+        "ID": 1001,
+        "ordinal": 1,
+        "eventID": 910056,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1816",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "1002": {
+      "1": {
+        "ID": 1002,
+        "ordinal": 1,
+        "eventID": 910057,
+        "triggerTypeEnum": 50,
+        "triggerConfig": "1820",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    },
+    "1003": {
+      "1": {
+        "ID": 1003,
+        "ordinal": 1,
+        "eventID": 910058,
+        "triggerTypeEnum": 60,
+        "triggerConfig": "1820",
+        "nextID": 0,
+        "recoverOrdianl": 0
+      }
+    }
+  },
+  "glory_type": {
+    "1": {
+      "ID": 1,
+      "name": "生命",
+      "pic": "rysd_009",
+      "addAttrEnumID": 432,
+      "addValue": 100
+    },
+    "2": {
+      "ID": 2,
+      "name": "攻擊",
+      "pic": "rysd_008",
+      "addAttrEnumID": 431,
+      "addValue": 15
+    },
+    "3": {
+      "ID": 3,
+      "name": "防禦",
+      "pic": "rysd_010",
+      "addAttrEnumID": 433,
+      "addValue": 5
+    }
+  },
+  "glory_lv": {
+    "0": {
+      "LV": 0,
+      "EXPTotal": 0,
+      "upOddsMin": 3200,
+      "upOddsMax": 4800
+    },
+    "1": {
+      "LV": 1,
+      "EXPTotal": 50,
+      "upOddsMin": 2799,
+      "upOddsMax": 4200
+    },
+    "2": {
+      "LV": 2,
+      "EXPTotal": 140,
+      "upOddsMin": 2400,
+      "upOddsMax": 3600
+    },
+    "3": {
+      "LV": 3,
+      "EXPTotal": 270,
+      "upOddsMin": 2000,
+      "upOddsMax": 3000
+    },
+    "4": {
+      "LV": 4,
+      "EXPTotal": 430,
+      "upOddsMin": 1600,
+      "upOddsMax": 2400
+    },
+    "5": {
+      "LV": 5,
+      "EXPTotal": 610,
+      "upOddsMin": 1200,
+      "upOddsMax": 1800
+    },
+    "6": {
+      "LV": 6,
+      "EXPTotal": 810,
+      "upOddsMin": 800,
+      "upOddsMax": 1200
+    },
+    "7": {
+      "LV": 7,
+      "EXPTotal": 1030,
+      "upOddsMin": 600,
+      "upOddsMax": 900
+    },
+    "8": {
+      "LV": 8,
+      "EXPTotal": 1280,
+      "upOddsMin": 400,
+      "upOddsMax": 600
+    },
+    "9": {
+      "LV": 9,
+      "EXPTotal": 1550,
+      "upOddsMin": 400,
+      "upOddsMax": 600
+    },
+    "10": {
+      "LV": 10,
+      "EXPTotal": 1860,
+      "upOddsMin": 400,
+      "upOddsMax": 600
+    },
+    "11": {
+      "LV": 11,
+      "EXPTotal": 2200,
+      "upOddsMin": 400,
+      "upOddsMax": 600
+    },
+    "12": {
+      "LV": 12,
+      "EXPTotal": 2570,
+      "upOddsMin": 400,
+      "upOddsMax": 600
+    },
+    "13": {
+      "LV": 13,
+      "EXPTotal": 2980,
+      "upOddsMin": 400,
+      "upOddsMax": 600
+    },
+    "14": {
+      "LV": 14,
+      "EXPTotal": 3420,
+      "upOddsMin": 400,
+      "upOddsMax": 600
+    },
+    "15": {
+      "LV": 15,
+      "EXPTotal": 3890,
+      "upOddsMin": 400,
+      "upOddsMax": 600
+    },
+    "16": {
+      "LV": 16,
+      "EXPTotal": 4400,
+      "upOddsMin": 240,
+      "upOddsMax": 360
+    },
+    "17": {
+      "LV": 17,
+      "EXPTotal": 4930,
+      "upOddsMin": 240,
+      "upOddsMax": 360
+    },
+    "18": {
+      "LV": 18,
+      "EXPTotal": 5490,
+      "upOddsMin": 240,
+      "upOddsMax": 360
+    },
+    "19": {
+      "LV": 19,
+      "EXPTotal": 6080,
+      "upOddsMin": 240,
+      "upOddsMax": 360
+    },
+    "20": {
+      "LV": 20,
+      "EXPTotal": 6700,
+      "upOddsMin": 240,
+      "upOddsMax": 360
+    },
+    "21": {
+      "LV": 21,
+      "EXPTotal": 7350,
+      "upOddsMin": 240,
+      "upOddsMax": 360
+    },
+    "22": {
+      "LV": 22,
+      "EXPTotal": 8040,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "23": {
+      "LV": 23,
+      "EXPTotal": 8750,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "24": {
+      "LV": 24,
+      "EXPTotal": 9490,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "25": {
+      "LV": 25,
+      "EXPTotal": 10270,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "26": {
+      "LV": 26,
+      "EXPTotal": 11080,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "27": {
+      "LV": 27,
+      "EXPTotal": 11920,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "28": {
+      "LV": 28,
+      "EXPTotal": 12800,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "29": {
+      "LV": 29,
+      "EXPTotal": 13710,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "30": {
+      "LV": 30,
+      "EXPTotal": 14650,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "31": {
+      "LV": 31,
+      "EXPTotal": 15620,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "32": {
+      "LV": 32,
+      "EXPTotal": 16630,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "33": {
+      "LV": 33,
+      "EXPTotal": 17670,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "34": {
+      "LV": 34,
+      "EXPTotal": 18740,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "35": {
+      "LV": 35,
+      "EXPTotal": 19840,
+      "upOddsMin": 160,
+      "upOddsMax": 240
+    },
+    "36": {
+      "LV": 36,
+      "EXPTotal": 20970,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "37": {
+      "LV": 37,
+      "EXPTotal": 22130,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "38": {
+      "LV": 38,
+      "EXPTotal": 23320,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "39": {
+      "LV": 39,
+      "EXPTotal": 24540,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "40": {
+      "LV": 40,
+      "EXPTotal": 25800,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "41": {
+      "LV": 41,
+      "EXPTotal": 27090,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "42": {
+      "LV": 42,
+      "EXPTotal": 28410,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "43": {
+      "LV": 43,
+      "EXPTotal": 29770,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "44": {
+      "LV": 44,
+      "EXPTotal": 31160,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "45": {
+      "LV": 45,
+      "EXPTotal": 32580,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "46": {
+      "LV": 46,
+      "EXPTotal": 34030,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "47": {
+      "LV": 47,
+      "EXPTotal": 35520,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "48": {
+      "LV": 48,
+      "EXPTotal": 37050,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "49": {
+      "LV": 49,
+      "EXPTotal": 38610,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "50": {
+      "LV": 50,
+      "EXPTotal": 40210,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "51": {
+      "LV": 51,
+      "EXPTotal": 41840,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "52": {
+      "LV": 52,
+      "EXPTotal": 43510,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "53": {
+      "LV": 53,
+      "EXPTotal": 45210,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "54": {
+      "LV": 54,
+      "EXPTotal": 46940,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "55": {
+      "LV": 55,
+      "EXPTotal": 48710,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "56": {
+      "LV": 56,
+      "EXPTotal": 50510,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "57": {
+      "LV": 57,
+      "EXPTotal": 52340,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "58": {
+      "LV": 58,
+      "EXPTotal": 54210,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "59": {
+      "LV": 59,
+      "EXPTotal": 56110,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "60": {
+      "LV": 60,
+      "EXPTotal": 58050,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "61": {
+      "LV": 61,
+      "EXPTotal": 60020,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "62": {
+      "LV": 62,
+      "EXPTotal": 62020,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "63": {
+      "LV": 63,
+      "EXPTotal": 64060,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "64": {
+      "LV": 64,
+      "EXPTotal": 66130,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "65": {
+      "LV": 65,
+      "EXPTotal": 68240,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "66": {
+      "LV": 66,
+      "EXPTotal": 70380,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "67": {
+      "LV": 67,
+      "EXPTotal": 72560,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "68": {
+      "LV": 68,
+      "EXPTotal": 74770,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "69": {
+      "LV": 69,
+      "EXPTotal": 77020,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "70": {
+      "LV": 70,
+      "EXPTotal": 79300,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "71": {
+      "LV": 71,
+      "EXPTotal": 81610,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "72": {
+      "LV": 72,
+      "EXPTotal": 83960,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "73": {
+      "LV": 73,
+      "EXPTotal": 86340,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "74": {
+      "LV": 74,
+      "EXPTotal": 88760,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "75": {
+      "LV": 75,
+      "EXPTotal": 91210,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "76": {
+      "LV": 76,
+      "EXPTotal": 93700,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "77": {
+      "LV": 77,
+      "EXPTotal": 96230,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "78": {
+      "LV": 78,
+      "EXPTotal": 98800,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "79": {
+      "LV": 79,
+      "EXPTotal": 101400,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "80": {
+      "LV": 80,
+      "EXPTotal": 104040,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "81": {
+      "LV": 81,
+      "EXPTotal": 106710,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "82": {
+      "LV": 82,
+      "EXPTotal": 109420,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "83": {
+      "LV": 83,
+      "EXPTotal": 112160,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "84": {
+      "LV": 84,
+      "EXPTotal": 114940,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "85": {
+      "LV": 85,
+      "EXPTotal": 117750,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "86": {
+      "LV": 86,
+      "EXPTotal": 120600,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "87": {
+      "LV": 87,
+      "EXPTotal": 123480,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "88": {
+      "LV": 88,
+      "EXPTotal": 126400,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "89": {
+      "LV": 89,
+      "EXPTotal": 129360,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "90": {
+      "LV": 90,
+      "EXPTotal": 132350,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "91": {
+      "LV": 91,
+      "EXPTotal": 135380,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "92": {
+      "LV": 92,
+      "EXPTotal": 138440,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "93": {
+      "LV": 93,
+      "EXPTotal": 141540,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "94": {
+      "LV": 94,
+      "EXPTotal": 144670,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "95": {
+      "LV": 95,
+      "EXPTotal": 147840,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "96": {
+      "LV": 96,
+      "EXPTotal": 151040,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "97": {
+      "LV": 97,
+      "EXPTotal": 154280,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "98": {
+      "LV": 98,
+      "EXPTotal": 157560,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "99": {
+      "LV": 99,
+      "EXPTotal": 160870,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "100": {
+      "LV": 100,
+      "EXPTotal": 164220,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "101": {
+      "LV": 101,
+      "EXPTotal": 167730,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "102": {
+      "LV": 102,
+      "EXPTotal": 171260,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "103": {
+      "LV": 103,
+      "EXPTotal": 174810,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "104": {
+      "LV": 104,
+      "EXPTotal": 178380,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "105": {
+      "LV": 105,
+      "EXPTotal": 181980,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "106": {
+      "LV": 106,
+      "EXPTotal": 185600,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "107": {
+      "LV": 107,
+      "EXPTotal": 189240,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "108": {
+      "LV": 108,
+      "EXPTotal": 192910,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "109": {
+      "LV": 109,
+      "EXPTotal": 196600,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "110": {
+      "LV": 110,
+      "EXPTotal": 200310,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "111": {
+      "LV": 111,
+      "EXPTotal": 204050,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "112": {
+      "LV": 112,
+      "EXPTotal": 207810,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "113": {
+      "LV": 113,
+      "EXPTotal": 211600,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "114": {
+      "LV": 114,
+      "EXPTotal": 215410,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "115": {
+      "LV": 115,
+      "EXPTotal": 219250,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "116": {
+      "LV": 116,
+      "EXPTotal": 223110,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "117": {
+      "LV": 117,
+      "EXPTotal": 227000,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "118": {
+      "LV": 118,
+      "EXPTotal": 230910,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "119": {
+      "LV": 119,
+      "EXPTotal": 234850,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "120": {
+      "LV": 120,
+      "EXPTotal": 238810,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "121": {
+      "LV": 121,
+      "EXPTotal": 242800,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "122": {
+      "LV": 122,
+      "EXPTotal": 246810,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "123": {
+      "LV": 123,
+      "EXPTotal": 250850,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "124": {
+      "LV": 124,
+      "EXPTotal": 254910,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "125": {
+      "LV": 125,
+      "EXPTotal": 259000,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "126": {
+      "LV": 126,
+      "EXPTotal": 263120,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "127": {
+      "LV": 127,
+      "EXPTotal": 267260,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "128": {
+      "LV": 128,
+      "EXPTotal": 271430,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "129": {
+      "LV": 129,
+      "EXPTotal": 275630,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "130": {
+      "LV": 130,
+      "EXPTotal": 279850,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "131": {
+      "LV": 131,
+      "EXPTotal": 284100,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "132": {
+      "LV": 132,
+      "EXPTotal": 288380,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "133": {
+      "LV": 133,
+      "EXPTotal": 292690,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "134": {
+      "LV": 134,
+      "EXPTotal": 297020,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "135": {
+      "LV": 135,
+      "EXPTotal": 301380,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "136": {
+      "LV": 136,
+      "EXPTotal": 305770,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "137": {
+      "LV": 137,
+      "EXPTotal": 310190,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "138": {
+      "LV": 138,
+      "EXPTotal": 314640,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "139": {
+      "LV": 139,
+      "EXPTotal": 319110,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "140": {
+      "LV": 140,
+      "EXPTotal": 323620,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "141": {
+      "LV": 141,
+      "EXPTotal": 328160,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "142": {
+      "LV": 142,
+      "EXPTotal": 332730,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "143": {
+      "LV": 143,
+      "EXPTotal": 337330,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "144": {
+      "LV": 144,
+      "EXPTotal": 341960,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "145": {
+      "LV": 145,
+      "EXPTotal": 346620,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "146": {
+      "LV": 146,
+      "EXPTotal": 351310,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "147": {
+      "LV": 147,
+      "EXPTotal": 356030,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "148": {
+      "LV": 148,
+      "EXPTotal": 360780,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "149": {
+      "LV": 149,
+      "EXPTotal": 365560,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "150": {
+      "LV": 150,
+      "EXPTotal": 370370,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "151": {
+      "LV": 151,
+      "EXPTotal": 375210,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "152": {
+      "LV": 152,
+      "EXPTotal": 380080,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "153": {
+      "LV": 153,
+      "EXPTotal": 384990,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "154": {
+      "LV": 154,
+      "EXPTotal": 389930,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "155": {
+      "LV": 155,
+      "EXPTotal": 394900,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "156": {
+      "LV": 156,
+      "EXPTotal": 399900,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "157": {
+      "LV": 157,
+      "EXPTotal": 404930,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "158": {
+      "LV": 158,
+      "EXPTotal": 410000,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "159": {
+      "LV": 159,
+      "EXPTotal": 415100,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "160": {
+      "LV": 160,
+      "EXPTotal": 420230,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "161": {
+      "LV": 161,
+      "EXPTotal": 425390,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "162": {
+      "LV": 162,
+      "EXPTotal": 430590,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "163": {
+      "LV": 163,
+      "EXPTotal": 435820,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "164": {
+      "LV": 164,
+      "EXPTotal": 441080,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "165": {
+      "LV": 165,
+      "EXPTotal": 446380,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "166": {
+      "LV": 166,
+      "EXPTotal": 451710,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "167": {
+      "LV": 167,
+      "EXPTotal": 457080,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "168": {
+      "LV": 168,
+      "EXPTotal": 462480,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "169": {
+      "LV": 169,
+      "EXPTotal": 467920,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "170": {
+      "LV": 170,
+      "EXPTotal": 473390,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "171": {
+      "LV": 171,
+      "EXPTotal": 478910,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "172": {
+      "LV": 172,
+      "EXPTotal": 484460,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "173": {
+      "LV": 173,
+      "EXPTotal": 490050,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "174": {
+      "LV": 174,
+      "EXPTotal": 495670,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "175": {
+      "LV": 175,
+      "EXPTotal": 501330,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "176": {
+      "LV": 176,
+      "EXPTotal": 507030,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "177": {
+      "LV": 177,
+      "EXPTotal": 512760,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "178": {
+      "LV": 178,
+      "EXPTotal": 518530,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "179": {
+      "LV": 179,
+      "EXPTotal": 524340,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "180": {
+      "LV": 180,
+      "EXPTotal": 530180,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "181": {
+      "LV": 181,
+      "EXPTotal": 536060,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "182": {
+      "LV": 182,
+      "EXPTotal": 541980,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "183": {
+      "LV": 183,
+      "EXPTotal": 547940,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "184": {
+      "LV": 184,
+      "EXPTotal": 553940,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "185": {
+      "LV": 185,
+      "EXPTotal": 559970,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "186": {
+      "LV": 186,
+      "EXPTotal": 566040,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "187": {
+      "LV": 187,
+      "EXPTotal": 572150,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "188": {
+      "LV": 188,
+      "EXPTotal": 578300,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "189": {
+      "LV": 189,
+      "EXPTotal": 584490,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "190": {
+      "LV": 190,
+      "EXPTotal": 590720,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "191": {
+      "LV": 191,
+      "EXPTotal": 596990,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "192": {
+      "LV": 192,
+      "EXPTotal": 603300,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "193": {
+      "LV": 193,
+      "EXPTotal": 609650,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "194": {
+      "LV": 194,
+      "EXPTotal": 616040,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "195": {
+      "LV": 195,
+      "EXPTotal": 622470,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "196": {
+      "LV": 196,
+      "EXPTotal": 628950,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "197": {
+      "LV": 197,
+      "EXPTotal": 635480,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "198": {
+      "LV": 198,
+      "EXPTotal": 642050,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "199": {
+      "LV": 199,
+      "EXPTotal": 648660,
+      "upOddsMin": 80,
+      "upOddsMax": 120
+    },
+    "200": {
+      "LV": 200,
+      "EXPTotal": 655310,
+      "upOddsMin": 0,
+      "upOddsMax": 0
+    }
+  },
+  "gift_login": {
+    "1": {
+      "num": 1,
+      "resourceList": "1111,0,20||1605,16050004,1||1605,16050003,1||1603,16030008,1"
+    },
+    "2": {
+      "num": 2,
+      "resourceList": "1111,0,30||1605,16050004,1||1605,16050003,1||1603,16030008,1"
+    },
+    "3": {
+      "num": 3,
+      "resourceList": "1111,0,40||1605,16050004,1||1605,16050003,2||1603,16030008,1"
+    },
+    "4": {
+      "num": 4,
+      "resourceList": "1111,0,50||1605,16050004,1||1605,16050003,2||1603,16030008,1"
+    },
+    "5": {
+      "num": 5,
+      "resourceList": "1111,0,50||1605,16050004,1||1605,16050003,2||1603,16030008,1"
+    },
+    "6": {
+      "num": 6,
+      "resourceList": "1111,0,50||1605,16050004,1||1605,16050003,3||1603,16030008,1"
+    },
+    "7": {
+      "num": 7,
+      "resourceList": "1111,0,50||1605,16050004,1||1605,16050003,4||1603,16030008,2"
+    }
+  },
+  "gift_lv": {
+    "5": {
+      "LV": 5,
+      "resourceList": "1111,0,50||1117,0,1000||1112,0,10000"
+    },
+    "10": {
+      "LV": 10,
+      "resourceList": "1111,0,80||1117,0,2000||1112,0,40000"
+    },
+    "12": {
+      "LV": 12,
+      "resourceList": "1111,0,80||1201,12013029,1||1603,16030006,1||1112,0,60000"
+    },
+    "15": {
+      "LV": 15,
+      "resourceList": "1111,0,100||1117,0,5000||1603,16030006,1||1112,0,90000"
+    },
+    "18": {
+      "LV": 18,
+      "resourceList": "1111,0,100||1117,0,10000||1603,16030006,1||1112,0,110000"
+    },
+    "20": {
+      "LV": 20,
+      "resourceList": "1111,0,100||1117,0,10000||1603,16030006,1||1112,0,140000"
+    },
+    "23": {
+      "LV": 23,
+      "resourceList": "1111,0,150||1402,14021304,1||1603,16030006,1||1112,0,160000"
+    },
+    "25": {
+      "LV": 25,
+      "resourceList": "1111,0,200||1401,14011304,1||1603,16030006,1||1112,0,190000"
+    },
+    "28": {
+      "LV": 28,
+      "resourceList": "1111,0,200||1402,14021304,1||1603,16030006,1||1112,0,210000"
+    },
+    "30": {
+      "LV": 30,
+      "resourceList": "1111,0,200||1401,14011304,1||1603,16030006,1||1112,0,240000"
+    },
+    "33": {
+      "LV": 33,
+      "resourceList": "1111,0,250||1402,14021304,2||1603,16030006,1||1112,0,260000"
+    },
+    "36": {
+      "LV": 36,
+      "resourceList": "1111,0,250||1401,14011304,2||1603,16030006,1||1112,0,290000"
+    },
+    "38": {
+      "LV": 38,
+      "resourceList": "1111,0,250||1402,14021304,2||1603,16030006,1||1112,0,310000"
+    },
+    "40": {
+      "LV": 40,
+      "resourceList": "1111,0,250||1401,14011304,2||1603,16030006,1||1112,0,340000"
+    },
+    "45": {
+      "LV": 45,
+      "resourceList": "1111,0,250||1602,16020008,5||1603,16030006,1||1112,0,360000"
+    },
+    "50": {
+      "LV": 50,
+      "resourceList": "1111,0,300||1602,16020008,5||1603,16030006,1||1112,0,440000"
+    },
+    "55": {
+      "LV": 55,
+      "resourceList": "1111,0,300||1602,16020008,5||1603,16030006,1||1112,0,500000"
+    },
+    "60": {
+      "LV": 60,
+      "resourceList": "1111,0,500||1602,16020008,5||1603,16030006,1||1112,0,560000"
+    },
+    "65": {
+      "LV": 65,
+      "resourceList": "1111,0,500||1605,16050010,5||1603,16030006,1||1112,0,620000"
+    },
+    "70": {
+      "LV": 70,
+      "resourceList": "1111,0,500||1605,16050010,5||1603,16030006,1||1112,0,750000"
+    }
+  },
+  "mystery_shop_config": {
+    "refreshUseResource": "1605,16050010,1",
+    "refreshUseDiamond": 20,
+    "freeRefreshCD": 7200,
+    "refreshNum": 8,
+    "seniorRefreshUseResource": "1605,16050010,5",
+    "seniorRefreshUseDiamond": 100,
+    "seniorRefreshTimeFirst": 0.5,
+    "seniorRefreshTimeSecond": 0.75,
+    "SVipShopSeeNeedVip": 10,
+    "SVipShopPurchaseS": 5
+  },
+  "mystery_shop_fixed": {
+    "1": {
+      "ID": 1,
+      "shopType": 0,
+      "num": 1,
+      "needLv": 1,
+      "outResource": "1605,16050001,50",
+      "useResource": "1116,0,50",
+      "odds": 1000
+    },
+    "2": {
+      "ID": 2,
+      "shopType": 0,
+      "num": 1,
+      "needLv": 20,
+      "outResource": "1605,16050001,100",
+      "useResource": "1116,0,100",
+      "odds": 1000
+    },
+    "3": {
+      "ID": 3,
+      "shopType": 0,
+      "num": 2,
+      "needLv": 200,
+      "outResource": "1605,16050065,50",
+      "useResource": "1116,0,150",
+      "odds": 1000
+    },
+    "4": {
+      "ID": 4,
+      "shopType": 1,
+      "num": 1,
+      "needLv": 1,
+      "outResource": "1605,16050001,200",
+      "useResource": "1116,0,200",
+      "odds": 1000
+    },
+    "5": {
+      "ID": 5,
+      "shopType": 1,
+      "num": 1,
+      "needLv": 20,
+      "outResource": "1605,16050001,500",
+      "useResource": "1116,0,500",
+      "odds": 1000
+    },
+    "6": {
+      "ID": 6,
+      "shopType": 1,
+      "num": 2,
+      "needLv": 48,
+      "outResource": "1605,16050065,500",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "7": {
+      "ID": 7,
+      "shopType": 1,
+      "num": 2,
+      "needLv": 49,
+      "outResource": "1605,16050065,1000",
+      "useResource": "1116,0,3000",
+      "odds": 1000
+    },
+    "8": {
+      "ID": 8,
+      "shopType": 1,
+      "num": 2,
+      "needLv": 50,
+      "outResource": "1605,16050065,1000",
+      "useResource": "1111,0,3000",
+      "odds": 500
+    }
+  },
+  "mystery_shop_odds": {
+    "1": {
+      "ID": 1,
+      "raceID": 1,
+      "outResource": "1501,15010008,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "2": {
+      "ID": 2,
+      "raceID": 2,
+      "outResource": "1501,15010016,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "3": {
+      "ID": 3,
+      "raceID": 3,
+      "outResource": "1501,15010024,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "4": {
+      "ID": 4,
+      "raceID": 1,
+      "outResource": "1501,15010027,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "5": {
+      "ID": 5,
+      "raceID": 1,
+      "outResource": "1501,15010028,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "6": {
+      "ID": 6,
+      "raceID": 1,
+      "outResource": "1501,15010029,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "7": {
+      "ID": 7,
+      "raceID": 1,
+      "outResource": "1501,15010030,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "8": {
+      "ID": 8,
+      "raceID": 1,
+      "outResource": "1501,15010031,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "9": {
+      "ID": 9,
+      "raceID": 1,
+      "outResource": "1501,15010032,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "10": {
+      "ID": 10,
+      "raceID": 1,
+      "outResource": "1501,15010033,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "11": {
+      "ID": 11,
+      "raceID": 2,
+      "outResource": "1501,15010038,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "12": {
+      "ID": 12,
+      "raceID": 2,
+      "outResource": "1501,15010040,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "13": {
+      "ID": 13,
+      "raceID": 2,
+      "outResource": "1501,15010045,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "14": {
+      "ID": 14,
+      "raceID": 2,
+      "outResource": "1501,15010046,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "15": {
+      "ID": 15,
+      "raceID": 2,
+      "outResource": "1501,15010048,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "16": {
+      "ID": 16,
+      "raceID": 2,
+      "outResource": "1501,15010049,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "17": {
+      "ID": 17,
+      "raceID": 2,
+      "outResource": "1501,15010050,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "18": {
+      "ID": 18,
+      "raceID": 3,
+      "outResource": "1501,15010053,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "19": {
+      "ID": 19,
+      "raceID": 3,
+      "outResource": "1501,15010055,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "20": {
+      "ID": 20,
+      "raceID": 3,
+      "outResource": "1501,15010058,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "21": {
+      "ID": 21,
+      "raceID": 3,
+      "outResource": "1501,15010059,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "22": {
+      "ID": 22,
+      "raceID": 3,
+      "outResource": "1501,15010060,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "23": {
+      "ID": 23,
+      "raceID": 3,
+      "outResource": "1501,15010062,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "24": {
+      "ID": 24,
+      "raceID": 3,
+      "outResource": "1501,15010063,10",
+      "useResource": "1116,0,300",
+      "odds": 11100
+    },
+    "25": {
+      "ID": 25,
+      "raceID": 1,
+      "outResource": "1501,15010004,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "26": {
+      "ID": 26,
+      "raceID": 1,
+      "outResource": "1501,15010005,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "27": {
+      "ID": 27,
+      "raceID": 1,
+      "outResource": "1501,15010006,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "28": {
+      "ID": 28,
+      "raceID": 1,
+      "outResource": "1501,15010007,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "29": {
+      "ID": 29,
+      "raceID": 2,
+      "outResource": "1501,15010012,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "30": {
+      "ID": 30,
+      "raceID": 2,
+      "outResource": "1501,15010013,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "31": {
+      "ID": 31,
+      "raceID": 2,
+      "outResource": "1501,15010014,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "32": {
+      "ID": 32,
+      "raceID": 2,
+      "outResource": "1501,15010015,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "33": {
+      "ID": 33,
+      "raceID": 3,
+      "outResource": "1501,15010020,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "34": {
+      "ID": 34,
+      "raceID": 3,
+      "outResource": "1501,15010021,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "35": {
+      "ID": 35,
+      "raceID": 3,
+      "outResource": "1501,15010022,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "36": {
+      "ID": 36,
+      "raceID": 3,
+      "outResource": "1501,15010023,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "37": {
+      "ID": 37,
+      "raceID": 1,
+      "outResource": "1501,15010025,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "38": {
+      "ID": 38,
+      "raceID": 1,
+      "outResource": "1501,15010026,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "39": {
+      "ID": 39,
+      "raceID": 1,
+      "outResource": "1501,15010034,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "40": {
+      "ID": 40,
+      "raceID": 1,
+      "outResource": "1501,15010035,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "41": {
+      "ID": 41,
+      "raceID": 1,
+      "outResource": "1501,15010036,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "42": {
+      "ID": 42,
+      "raceID": 1,
+      "outResource": "1501,15010037,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "43": {
+      "ID": 43,
+      "raceID": 2,
+      "outResource": "1501,15010039,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "44": {
+      "ID": 44,
+      "raceID": 2,
+      "outResource": "1501,15010041,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "45": {
+      "ID": 45,
+      "raceID": 2,
+      "outResource": "1501,15010042,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "46": {
+      "ID": 46,
+      "raceID": 2,
+      "outResource": "1501,15010043,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "47": {
+      "ID": 47,
+      "raceID": 2,
+      "outResource": "1501,15010044,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "48": {
+      "ID": 48,
+      "raceID": 2,
+      "outResource": "1501,15010047,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "49": {
+      "ID": 49,
+      "raceID": 3,
+      "outResource": "1501,15010051,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "50": {
+      "ID": 50,
+      "raceID": 3,
+      "outResource": "1501,15010052,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "51": {
+      "ID": 51,
+      "raceID": 3,
+      "outResource": "1501,15010054,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "52": {
+      "ID": 52,
+      "raceID": 3,
+      "outResource": "1501,15010056,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "53": {
+      "ID": 53,
+      "raceID": 3,
+      "outResource": "1501,15010057,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "54": {
+      "ID": 54,
+      "raceID": 3,
+      "outResource": "1501,15010061,10",
+      "useResource": "1116,0,300",
+      "odds": 4400
+    },
+    "55": {
+      "ID": 55,
+      "raceID": 1,
+      "outResource": "1501,15010008,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "56": {
+      "ID": 56,
+      "raceID": 2,
+      "outResource": "1501,15010016,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "57": {
+      "ID": 57,
+      "raceID": 3,
+      "outResource": "1501,15010024,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "58": {
+      "ID": 58,
+      "raceID": 1,
+      "outResource": "1501,15010027,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "59": {
+      "ID": 59,
+      "raceID": 1,
+      "outResource": "1501,15010028,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "60": {
+      "ID": 60,
+      "raceID": 1,
+      "outResource": "1501,15010029,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "61": {
+      "ID": 61,
+      "raceID": 1,
+      "outResource": "1501,15010030,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "62": {
+      "ID": 62,
+      "raceID": 1,
+      "outResource": "1501,15010031,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "63": {
+      "ID": 63,
+      "raceID": 1,
+      "outResource": "1501,15010032,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "64": {
+      "ID": 64,
+      "raceID": 1,
+      "outResource": "1501,15010033,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "65": {
+      "ID": 65,
+      "raceID": 2,
+      "outResource": "1501,15010038,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "66": {
+      "ID": 66,
+      "raceID": 2,
+      "outResource": "1501,15010040,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "67": {
+      "ID": 67,
+      "raceID": 2,
+      "outResource": "1501,15010045,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "68": {
+      "ID": 68,
+      "raceID": 2,
+      "outResource": "1501,15010046,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "69": {
+      "ID": 69,
+      "raceID": 2,
+      "outResource": "1501,15010048,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "70": {
+      "ID": 70,
+      "raceID": 2,
+      "outResource": "1501,15010049,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "71": {
+      "ID": 71,
+      "raceID": 2,
+      "outResource": "1501,15010050,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "72": {
+      "ID": 72,
+      "raceID": 3,
+      "outResource": "1501,15010053,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "73": {
+      "ID": 73,
+      "raceID": 3,
+      "outResource": "1501,15010055,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "74": {
+      "ID": 74,
+      "raceID": 3,
+      "outResource": "1501,15010058,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "75": {
+      "ID": 75,
+      "raceID": 3,
+      "outResource": "1501,15010059,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "76": {
+      "ID": 76,
+      "raceID": 3,
+      "outResource": "1501,15010060,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "77": {
+      "ID": 77,
+      "raceID": 3,
+      "outResource": "1501,15010062,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "78": {
+      "ID": 78,
+      "raceID": 3,
+      "outResource": "1501,15010063,20",
+      "useResource": "1116,0,600",
+      "odds": 3800
+    },
+    "79": {
+      "ID": 79,
+      "raceID": 1,
+      "outResource": "1501,15010004,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "80": {
+      "ID": 80,
+      "raceID": 1,
+      "outResource": "1501,15010005,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "81": {
+      "ID": 81,
+      "raceID": 1,
+      "outResource": "1501,15010006,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "82": {
+      "ID": 82,
+      "raceID": 1,
+      "outResource": "1501,15010007,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "83": {
+      "ID": 83,
+      "raceID": 2,
+      "outResource": "1501,15010012,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "84": {
+      "ID": 84,
+      "raceID": 2,
+      "outResource": "1501,15010013,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "85": {
+      "ID": 85,
+      "raceID": 2,
+      "outResource": "1501,15010014,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "86": {
+      "ID": 86,
+      "raceID": 2,
+      "outResource": "1501,15010015,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "87": {
+      "ID": 87,
+      "raceID": 3,
+      "outResource": "1501,15010020,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "88": {
+      "ID": 88,
+      "raceID": 3,
+      "outResource": "1501,15010021,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "89": {
+      "ID": 89,
+      "raceID": 3,
+      "outResource": "1501,15010022,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "90": {
+      "ID": 90,
+      "raceID": 3,
+      "outResource": "1501,15010023,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "91": {
+      "ID": 91,
+      "raceID": 1,
+      "outResource": "1501,15010025,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "92": {
+      "ID": 92,
+      "raceID": 1,
+      "outResource": "1501,15010026,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "93": {
+      "ID": 93,
+      "raceID": 1,
+      "outResource": "1501,15010034,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "94": {
+      "ID": 94,
+      "raceID": 1,
+      "outResource": "1501,15010035,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "95": {
+      "ID": 95,
+      "raceID": 1,
+      "outResource": "1501,15010036,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "96": {
+      "ID": 96,
+      "raceID": 1,
+      "outResource": "1501,15010037,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "97": {
+      "ID": 97,
+      "raceID": 2,
+      "outResource": "1501,15010039,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "98": {
+      "ID": 98,
+      "raceID": 2,
+      "outResource": "1501,15010041,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "99": {
+      "ID": 99,
+      "raceID": 2,
+      "outResource": "1501,15010042,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "100": {
+      "ID": 100,
+      "raceID": 2,
+      "outResource": "1501,15010043,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "101": {
+      "ID": 101,
+      "raceID": 2,
+      "outResource": "1501,15010044,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "102": {
+      "ID": 102,
+      "raceID": 2,
+      "outResource": "1501,15010047,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "103": {
+      "ID": 103,
+      "raceID": 3,
+      "outResource": "1501,15010051,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "104": {
+      "ID": 104,
+      "raceID": 3,
+      "outResource": "1501,15010052,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "105": {
+      "ID": 105,
+      "raceID": 3,
+      "outResource": "1501,15010054,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "106": {
+      "ID": 106,
+      "raceID": 3,
+      "outResource": "1501,15010056,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "107": {
+      "ID": 107,
+      "raceID": 3,
+      "outResource": "1501,15010057,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "108": {
+      "ID": 108,
+      "raceID": 3,
+      "outResource": "1501,15010061,30",
+      "useResource": "1116,0,900",
+      "odds": 1000
+    },
+    "109": {
+      "ID": 109,
+      "raceID": 1,
+      "outResource": "1501,15010004,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "110": {
+      "ID": 110,
+      "raceID": 1,
+      "outResource": "1501,15010005,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "111": {
+      "ID": 111,
+      "raceID": 1,
+      "outResource": "1501,15010006,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "112": {
+      "ID": 112,
+      "raceID": 1,
+      "outResource": "1501,15010007,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "113": {
+      "ID": 113,
+      "raceID": 2,
+      "outResource": "1501,15010012,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "114": {
+      "ID": 114,
+      "raceID": 2,
+      "outResource": "1501,15010013,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "115": {
+      "ID": 115,
+      "raceID": 2,
+      "outResource": "1501,15010014,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "116": {
+      "ID": 116,
+      "raceID": 2,
+      "outResource": "1501,15010015,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "117": {
+      "ID": 117,
+      "raceID": 3,
+      "outResource": "1501,15010020,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "118": {
+      "ID": 118,
+      "raceID": 3,
+      "outResource": "1501,15010021,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "119": {
+      "ID": 119,
+      "raceID": 3,
+      "outResource": "1501,15010022,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "120": {
+      "ID": 120,
+      "raceID": 3,
+      "outResource": "1501,15010023,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "121": {
+      "ID": 121,
+      "raceID": 1,
+      "outResource": "1501,15010025,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "122": {
+      "ID": 122,
+      "raceID": 1,
+      "outResource": "1501,15010026,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "123": {
+      "ID": 123,
+      "raceID": 1,
+      "outResource": "1501,15010034,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "124": {
+      "ID": 124,
+      "raceID": 1,
+      "outResource": "1501,15010035,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "125": {
+      "ID": 125,
+      "raceID": 1,
+      "outResource": "1501,15010036,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "126": {
+      "ID": 126,
+      "raceID": 1,
+      "outResource": "1501,15010037,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "127": {
+      "ID": 127,
+      "raceID": 2,
+      "outResource": "1501,15010039,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "128": {
+      "ID": 128,
+      "raceID": 2,
+      "outResource": "1501,15010041,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "129": {
+      "ID": 129,
+      "raceID": 2,
+      "outResource": "1501,15010042,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "130": {
+      "ID": 130,
+      "raceID": 2,
+      "outResource": "1501,15010043,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "131": {
+      "ID": 131,
+      "raceID": 2,
+      "outResource": "1501,15010044,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "132": {
+      "ID": 132,
+      "raceID": 2,
+      "outResource": "1501,15010047,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "133": {
+      "ID": 133,
+      "raceID": 3,
+      "outResource": "1501,15010051,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "134": {
+      "ID": 134,
+      "raceID": 3,
+      "outResource": "1501,15010052,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "135": {
+      "ID": 135,
+      "raceID": 3,
+      "outResource": "1501,15010054,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "136": {
+      "ID": 136,
+      "raceID": 3,
+      "outResource": "1501,15010056,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "137": {
+      "ID": 137,
+      "raceID": 3,
+      "outResource": "1501,15010057,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
+    },
+    "138": {
+      "ID": 138,
+      "raceID": 3,
+      "outResource": "1501,15010061,50",
+      "useResource": "1116,0,1500",
+      "odds": 1000
     }
   }
 }

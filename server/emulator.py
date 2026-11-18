@@ -457,6 +457,27 @@ class ProfileStore:
         data.setdefault("daydayfund", {"if_draw": True, "cooled_time": 0, "last_multiple": 0, "harvest_list": []})
         data.setdefault("startwork", {"claimed_days": []})
         data.setdefault("fashions", [])
+        data.setdefault(
+            "glory",
+            {
+                "1": {"TypeId": 1, "Lv": 0, "EXP": 0},
+                "2": {"TypeId": 2, "Lv": 0, "EXP": 0},
+                "3": {"TypeId": 3, "Lv": 0, "EXP": 0},
+            },
+        )
+        data.setdefault("gift_lv", {"claimed": []})
+        today_str = time.strftime("%Y-%m-%d")
+        gl_state = data.setdefault(
+            "gift_login",
+            {"login_days": 1, "last_login_date": today_str, "claimed": []},
+        )
+        gl_state.setdefault("login_days", 1)
+        gl_state.setdefault("last_login_date", today_str)
+        gl_state.setdefault("claimed", [])
+        data.setdefault(
+            "mystery_shop",
+            {"normal": None, "senior": None, "free_date": "", "free_count": 1, "gold_count": 0},
+        )
         self._sanitize_legacy_debris_and_boss_drops(data, boss_state)
         p = data.setdefault("player", {})
         p.setdefault("ChargeNum", 0)
@@ -646,7 +667,8 @@ class ProfileStore:
         p["VITMaxNum"] = vit_max
 
         raw_sta_max = p.get("STAMaxNum")
-        sta_max = max(cfg_sta_max, int(raw_sta_max)) if isinstance(raw_sta_max, (int, float)) else cfg_sta_max
+        extra_sta = self._glory_extra_sta() if hasattr(self, "state") else 0
+        sta_max = max(cfg_sta_max + extra_sta, int(raw_sta_max)) if isinstance(raw_sta_max, (int, float)) else (cfg_sta_max + extra_sta)
         p["STAMaxNum"] = sta_max
 
         if int(p.get("VIT", 0)) < vit_max:
@@ -783,9 +805,14 @@ class ProfileStore:
             if (include_player_star and hasattr(self, "state"))
             else {"HP": 0, "AP": 0, "DEF": 0}
         )
-        hp1 = hero_hp + eq_hp + set_hp + star_bonus["HP"]
-        ap1 = hero_ap + eq_ap + set_ap + star_bonus["AP"]
-        def1 = hero_def + eq_def + set_def + star_bonus["DEF"]
+        glory_bonus = (
+            self._glory_attr_bonuses()
+            if (include_player_star and hasattr(self, "state"))
+            else {"HP": 0, "AP": 0, "DEF": 0}
+        )
+        hp1 = hero_hp + eq_hp + set_hp + star_bonus["HP"] + glory_bonus["HP"]
+        ap1 = hero_ap + eq_ap + set_ap + star_bonus["AP"] + glory_bonus["AP"]
+        def1 = hero_def + eq_def + set_def + star_bonus["DEF"] + glory_bonus["DEF"]
         fsp = int(cfg.get("FSP", 500)) + step_attr["FSP"] + eq_fsp
         fap = int(hp1 + ap1 * 5 + def1 * 5)
 
@@ -848,6 +875,30 @@ class ProfileStore:
                 key = enum_map.get(enum_id)
                 if key:
                     bonuses[key] += val
+        return bonuses
+
+    def _glory_extra_sta(self) -> int:
+        """Compute bonus max STA from Glory Shrine total levels (+1 per 10 total levels)."""
+        glory = self.state.get("glory", {})
+        total_lv = sum(int(entry.get("Lv", 0)) for entry in glory.values() if isinstance(entry, dict))
+        return total_lv // 10
+
+    def _glory_attr_bonuses(self) -> dict[str, int]:
+        """Compute party-wide HP/AP/DEF bonuses from Glory Shrine levels."""
+        bonuses = {"HP": 0, "AP": 0, "DEF": 0}
+        glory = self.state.get("glory", {})
+        glory_type = self.game_data.get("glory_type", {})
+        enum_map = {431: "AP", 432: "HP", 433: "DEF"}
+        for tid_str, entry in glory.items():
+            if not isinstance(entry, dict):
+                continue
+            lv = int(entry.get("Lv", 0))
+            if lv <= 0:
+                continue
+            cfg = glory_type.get(str(tid_str), {})
+            key = enum_map.get(int(cfg.get("addAttrEnumID", 0)))
+            if key:
+                bonuses[key] += lv * int(cfg.get("addValue", 0))
         return bonuses
 
     @staticmethod
@@ -1469,6 +1520,22 @@ class ProfileStore:
         with self._lock:
             return self._handle_rpc_locked(req)
 
+    def _apply_step_count_update(self, guide_id: int, ordinal: int) -> bool:
+        """Persist a guide step update while protecting completed guides from stale regression."""
+        steps = self.state["player"].setdefault("StepCountList", {})
+        gid_str = str(guide_id)
+        existing = int(steps.get(gid_str, 0))
+        if guide_id == 1 and existing >= 900 and ordinal < 900:
+            return False
+        guide_cfg = self.game_data.get("guide_relation", {}).get(gid_str, {})
+        max_ord = len(guide_cfg) if isinstance(guide_cfg, dict) else 0
+        if max_ord > 0 and existing > max_ord and ordinal <= max_ord:
+            return False
+        if existing == ordinal:
+            return False
+        steps[gid_str] = ordinal
+        return True
+
     def _handle_rpc_locked(self, req: dict[str, Any]) -> dict[str, Any]:
         module = req.get("ModuleName", "")
         method = req.get("MethodName", "")
@@ -1478,14 +1545,15 @@ class ProfileStore:
         # Persist piggybacked ExtensionString.GuideInfo from client HttpClient.lua
         ext = req.get("ExtensionString") or {}
         if isinstance(ext, dict) and ext.get("GuideInfo"):
-            steps = self.state["player"].setdefault("StepCountList", {})
             changed = False
             for g in ext["GuideInfo"]:
                 if isinstance(g, dict) and "GuideId" in g and "Ordinal" in g:
-                    gid_str = str(g["GuideId"])
-                    ordinal = int(g["Ordinal"])
-                    if ordinal > int(steps.get(gid_str, 0)):
-                        steps[gid_str] = ordinal
+                    try:
+                        gid_int = int(g["GuideId"])
+                        ordinal = int(g["Ordinal"])
+                    except (TypeError, ValueError):
+                        continue
+                    if ordinal >= 0 and self._apply_step_count_update(gid_int, ordinal):
                         changed = True
             if changed:
                 self.save()
@@ -1509,6 +1577,7 @@ class ProfileStore:
             "HeroRecruit.Recruit": self._rpc_recruit,
             "Hero.HeroLvUp": self._rpc_hero_lv_up,
             "Hero.HeroStepUp": self._rpc_hero_step_up,
+            "Hero.HeroRefine": self._rpc_hero_refine,
             "Slot.HeroCombat": self._rpc_slot_hero_combat,
             "Slot.OneKeyEquipCombat": self._rpc_slot_one_key_equip_combat,
             "Slot.SlotFormations": self._rpc_slot_formations,
@@ -1518,6 +1587,8 @@ class ProfileStore:
             "Equip.EquipOneKeyCompose": self._rpc_equip_one_key_compose,
             "Equip.OneKeyEquipLvUp": self._rpc_one_key_equip_lv_up,
             "Equip.EquipLvUpForCount": self._rpc_equip_lv_up_for_count,
+            "Equip.EquipRefine": self._rpc_equip_refine,
+            "Treasure.TreasureRefine": self._rpc_treasure_refine,
             "Battle.GetBattleInfo": self._rpc_get_battle_info,
             "Battle.GetNodeList": self._rpc_get_node_list,
             "Battle.AllChapterInfo": self._rpc_all_chapter_info,
@@ -1598,7 +1669,19 @@ class ProfileStore:
             "OnlineReward.OnlineRewardInfo": lambda _d: {},
             "YiYuan.GetInfo": lambda _d: {},
             "TeambattleInfo.GetInviteInfo": lambda _d: {},
-            "GiftLogin.SignInfo": lambda _d: {},
+            "GiftLogin.SignInfo": self._rpc_gift_login_info,
+            "GiftLogin.DrawGiftBox": self._rpc_gift_login_draw,
+            "GiftLv.LvGiftBags": self._rpc_gift_lv_bags,
+            "GiftLv.DrawGiftBags": self._rpc_gift_lv_draw,
+            "Glory.GetGloryData": self._rpc_glory_get_data,
+            "Glory.GloryLvUp": self._rpc_glory_lv_up,
+            "Glory.GloryLvUpForOneKey": self._rpc_glory_lv_up_one_key,
+            "MysteryShop.GetInfo": self._rpc_mystery_shop_get_info,
+            "MysteryShop.RefreshtGoodsList": self._rpc_mystery_shop_refresh,
+            "MysteryShop.MysteryShopBuyGoods": self._rpc_mystery_shop_buy,
+            "MysteryShop.SeniorGetInfo": self._rpc_mystery_shop_senior_get_info,
+            "MysteryShop.SeniorRefreshtGoodsList": self._rpc_mystery_shop_senior_refresh,
+            "MysteryShop.SeniorMysteryShopBuyGoods": self._rpc_mystery_shop_senior_buy,
             "Reward.Rewars": lambda _d: [],
         }
         fn = handlers.get(key)
@@ -1641,11 +1724,23 @@ class ProfileStore:
 
     def _rpc_login(self, _data: Any) -> dict[str, Any]:
         self.state["player"]["LastLoginTime"] = int(time.time())
+        today = time.strftime("%Y-%m-%d")
+        gl = self.state.setdefault(
+            "gift_login",
+            {"login_days": 1, "last_login_date": today, "claimed": []},
+        )
+        if gl.get("last_login_date") != today:
+            gl["login_days"] = min(7, int(gl.get("login_days", 0)) + 1)
+            gl["last_login_date"] = today
         self._sync_player_recover_times()
         self.save()
         return dict(self.state["player"])
 
     def _rpc_new_player(self, data: Any) -> dict[str, Any]:
+        if int(self.state["player"].get("IsNewPlayer", 1)) == 0:
+            self._last_rpc_context["status"] = -1114  # Already created per RoleCreateScene.lua:349
+            return {"PlayerId": self.state["player"]["PlayerId"]}
+
         player_name = str(data[0])[:24] if isinstance(data, list) and len(data) >= 1 else "Adventurer"
         gender = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 1
         main_model_id = 12010001 if gender == 0 else 12010004
@@ -1661,6 +1756,15 @@ class ProfileStore:
             self.state["slots"][0]["HeroId"] = main_hero["Id"]
             self.state["slots"][0]["HeroModelId"] = main_model_id
             self._recalc_all_slots_and_fap()
+            self.ledger.record_grant_event(
+                account_id=str(self.state["player"]["PlayerId"]),
+                profile=self.profile_name,
+                resource_type=f"Hero:{main_model_id}",
+                amount=1,
+                balance_after=len(self.state["heroes"]),
+                source="new_player_main_hero",
+                idempotency_key=f"new_player:{self.profile_name}:{self.state['player']['PlayerId']}:main_hero",
+            )
 
         self.save()
         return {"PlayerId": self.state["player"]["PlayerId"]}
@@ -1727,28 +1831,42 @@ class ProfileStore:
             self.save()
         return dict(p)
 
+    STEP_REWARD_MAP: dict[int, list[tuple[int, int, int]]] = {
+        76001: [(1304, 13040130, 5)],   # 5 white necklaces if not dropped in 1-3 (BattleLayer.lua:2812)
+        1641: [(1301, 13010130, 1)],    # Starter weapon (CommonFunc.lua:2885, HomeScene.lua:1893)
+        1602: [(1111, 0, 200)],         # 200 Diamonds (GuideEventModel[1602])
+        1625: [(1605, 16050001, 100)],  # 100 Breakthrough Stones (GuideEventModel[1625])
+        1761: [(1504, 15040101, 1), (1504, 15040102, 1)],  # Lv 14 Grab mount debris (14020501)
+        1881: [(1503, 15032101, 1), (1503, 15032102, 1)],  # Backup Grab book debris (14010501)
+        2071: [(1201, 12013054, 5)],    # Lv 24 Guide 7: 5x Tamotu fodder heroes (DisassembleNewScene.lua:493)
+        2181: [(1604, 16040009, 3)],    # Lv 22 Guide 9: 3x eDiploma / Meihaku (ShrineScene.lua:605)
+        274: [(1603, 16030006, 1)],     # VIT pill Thuốc Thể Lực 2 (BattleLayer.lua:403)
+        293: [(1605, 16050016, 10)],    # Guide 21: 10x Lệnh Lính Thuê (GGZJHeroHireLayer.lua:638)
+        313: [],                        # Non-reward UI pointer in Guide 23 (ChallengeListLayer.lua:626)
+    }
+
     def _rpc_alter_step_count(self, data: Any) -> dict[str, Any]:
         if isinstance(data, list) and len(data) >= 2:
-            steps = self.state["player"].setdefault("StepCountList", {})
-            steps[str(data[0])] = int(data[1])
-            self.save()
+            try:
+                gid = int(data[0])
+                ordinal = int(data[1])
+            except (TypeError, ValueError):
+                return {}
+            if ordinal >= 0 and self._apply_step_count_update(gid, ordinal):
+                self.save()
         return {}
 
     def _rpc_get_step_count_reward(self, data: Any) -> dict[str, Any]:
         event_id = int(data[0]) if isinstance(data, list) and data else 0
+        if event_id not in self.STEP_REWARD_MAP:
+            self._last_rpc_context["status"] = -1
+            return {}
         claimed = self.state.setdefault("claimed_step_rewards", [])
         if event_id in claimed:
             self._last_rpc_context["status"] = -1136  # Already claimed per CommonFunc.lua:2899
             return {}
 
-        reward_map: dict[int, list[tuple[int, int, int]]] = {
-            76001: [(1304, 13040130, 5)],  # 5 white necklaces if not dropped in 1-3
-            1641: [(1301, 13010130, 1)],
-            1602: [(1111, 0, 200)],
-            1761: [(1504, 15040101, 1), (1504, 15040102, 1)],  # Lv 14 Grab guide starter mount fragments
-            1881: [(1503, 15032101, 1), (1503, 15032102, 1)],  # Backup Grab guide book fragments
-        }
-        tuples = reward_map.get(event_id, [])
+        tuples = self.STEP_REWARD_MAP[event_id]
         claimed.append(event_id)
         base_res = self._grant_resources_from_tuples(
             tuples,
@@ -1786,15 +1904,28 @@ class ProfileStore:
         pool_str = rec_cfg.get("outShowMain") or rec_cfg.get("outShowAll") or "12011014"
         pool = [int(x) for x in pool_str.split(",") if x.strip().isdigit()]
 
-        # Spend cost if not free
+        # Spend cost or enforce free-recruit cooldown
         if rtype == 1:
             talisman = next((g for g in self.state.get("goods", []) if g["GoodsModelId"] == 16050003), None)
             if not talisman or talisman["Num"] < 1:
                 self._last_rpc_context["status"] = -1
                 return {}
             talisman["Num"] -= 1
+            if talisman["Num"] <= 0:
+                self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != talisman["Id"]]
+            self._mark_goods_changed(16050003)
+        elif is_free == 1:
+            if rtype == 2 and rs.get("MidAlreadyUseResource", False) and now < int(rs.get("GoodReadyAt", 0)):
+                self._last_rpc_context["status"] = -1
+                return {}
+            if rtype == 3 and rs.get("HigAlreadyUseResource", False) and now < int(rs.get("ExcellentReadyAt", 0)):
+                self._last_rpc_context["status"] = -1
+                return {}
         elif is_free == 0:
             cost = 280 if rtype == 3 else (2680 if rtype == 30 else 80)
+            if int(self.state["player"].get("Diamond", 0)) < cost:
+                self._last_rpc_context["status"] = -1
+                return {}
             self.ledger.apply_player_delta(
                 self.state["player"],
                 self.profile_name,
@@ -3874,7 +4005,27 @@ class ProfileStore:
         is_workday_window = time.localtime().tm_wday in (0, 1, 2, 3)
         claimed_days = self.state.get("startwork", {}).get("claimed_days", [])
         can_startwork = is_workday_window and (today not in claimed_days)
+
+        # Equip compose red dot (ModuleSub.eEquip=1400 / eEquipCompare=1405) required by Guide 1 (BattleLayer.lua:2701)
+        equips_cfg = self.game_data.get("equips", {})
+        equipped_ids = {
+            slot[k]["Id"]
+            for slot in self.state.get("slots", [])
+            for k in ("Weapon", "Helmet", "Clothes", "Necklace")
+            if isinstance(slot.get(k), dict) and slot[k].get("Id")
+        }
+        compose_buckets: dict[int, int] = {}
+        for eq in self.state.get("equips", []):
+            if eq.get("Id") in equipped_ids:
+                continue
+            clv = int(equips_cfg.get(str(eq.get("EquipModelId", 0)), {}).get("colorLV", 0))
+            if clv in (1, 2, 3):
+                compose_buckets[clv] = compose_buckets.get(clv, 0) + 1
+        can_compose_equip = any(cnt >= 5 for cnt in compose_buckets.values())
+
         return {
+            "1400": 1 if can_compose_equip else 0,
+            "1405": 1 if can_compose_equip else 0,
             "2203": 1 if (lv >= 18 and alive_boss) else 0,
             "2205": 1 if (lv >= 18 and claimable_box) else 0,
             "2710": 1 if can_fund else 0,
@@ -5051,6 +5202,437 @@ class ProfileStore:
             tuples,
             source=f"fashion_resolve:{mid}",
             tx_prefix=f"fashion_resolve:{self.profile_name}:{entity_id}",
+        )
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    # ------------------------- R7.2: Refine, MysteryShop, Glory, GiftLv, GiftLogin -------------------------
+
+    def _rpc_hero_refine(self, data: Any) -> dict[str, Any]:
+        """Disassemble idle fodder heroes (e.g. Tamotu 12013054 from Guide 7 / 2071)."""
+        raw_ids = list(data[0]) if isinstance(data, list) and data and isinstance(data[0], list) else []
+        req_ids = [str(x) for x in raw_ids if x]
+        if not req_ids:
+            self._last_rpc_context["status"] = -1
+            return {}
+        deployed_ids = {
+            str(s.get("HeroId"))
+            for s in self.state.get("slots", [])
+            if int(s.get("HeroModelId", 0)) > 0 and s.get("HeroId")
+        }
+        heroes_by_id = {str(h["Id"]): h for h in self.state.get("heroes", [])}
+        heroes_cfg = self.game_data.get("heroes", {})
+        targets: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for hid in req_ids:
+            if hid in seen or hid in deployed_ids:
+                continue
+            h = heroes_by_id.get(hid)
+            if not h:
+                continue
+            cfg = heroes_cfg.get(str(h.get("HeroModelId", 0)), {})
+            if int(cfg.get("specialType", 0)) == 255 or not cfg.get("outputResource"):
+                continue
+            seen.add(hid)
+            targets.append(h)
+        if not targets:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        tuples: list[tuple[int, int, int]] = []
+        remove_ids = {h["Id"] for h in targets}
+        for h in targets:
+            cfg = heroes_cfg.get(str(h["HeroModelId"]), {})
+            tuples.extend(_parse_resource_str(str(cfg.get("outputResource", ""))))
+        self.state["heroes"] = [h for h in self.state.get("heroes", []) if h["Id"] not in remove_ids]
+        base_res = self._grant_resources_from_tuples(
+            tuples,
+            source="hero_refine",
+            tx_prefix=f"hero_refine:{self.profile_name}:{uuid.uuid4()}",
+        )
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _rpc_equip_refine(self, data: Any) -> dict[str, Any]:
+        """Disassemble unequipped equipment items for their config outputResource/Gold."""
+        raw_ids = list(data[0]) if isinstance(data, list) and data and isinstance(data[0], list) else []
+        req_ids = [str(x) for x in raw_ids if x]
+        equipped_ids = {
+            slot[k]["Id"]
+            for slot in self.state.get("slots", [])
+            for k in ("Weapon", "Helmet", "Clothes", "Necklace")
+            if isinstance(slot.get(k), dict) and slot[k].get("Id")
+        }
+        equips_by_id = {str(e["Id"]): e for e in self.state.get("equips", [])}
+        equips_cfg = self.game_data.get("equips", {})
+        targets = [equips_by_id[eid] for eid in dict.fromkeys(req_ids) if eid in equips_by_id and eid not in equipped_ids]
+        if not targets:
+            self._last_rpc_context["status"] = -1
+            return {}
+        tuples: list[tuple[int, int, int]] = []
+        for eq in targets:
+            cfg = equips_cfg.get(str(eq.get("EquipModelId", 0)), {})
+            tuples.extend(_parse_resource_str(str(cfg.get("outputResource", ""))))
+            if int(eq.get("Gold", 0)) > 0:
+                tuples.append((1112, 0, int(eq["Gold"])))
+        remove_ids = {e["Id"] for e in targets}
+        self.state["equips"] = [e for e in self.state.get("equips", []) if e["Id"] not in remove_ids]
+        base_res = self._grant_resources_from_tuples(
+            tuples,
+            source="equip_refine",
+            tx_prefix=f"equip_refine:{self.profile_name}:{uuid.uuid4()}",
+        )
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _rpc_treasure_refine(self, data: Any) -> dict[str, Any]:
+        """Disassemble unequipped treasures for their config outputResource."""
+        raw_ids = list(data[0]) if isinstance(data, list) and data and isinstance(data[0], list) else []
+        req_ids = [str(x) for x in raw_ids if x]
+        equipped_ids = {
+            slot[k]["Id"]
+            for slot in self.state.get("slots", [])
+            for k in ("Book", "Horse")
+            if isinstance(slot.get(k), dict) and slot[k].get("Id")
+        }
+        tr_by_id = {str(t["Id"]): t for t in self.state.get("treasures", [])}
+        tr_cfg = self.game_data.get("treasures", {})
+        targets = [tr_by_id[tid] for tid in dict.fromkeys(req_ids) if tid in tr_by_id and tid not in equipped_ids]
+        if not targets:
+            self._last_rpc_context["status"] = -1
+            return {}
+        tuples: list[tuple[int, int, int]] = []
+        for tr in targets:
+            cfg = tr_cfg.get(str(tr.get("TreasureModelId", 0)), {})
+            tuples.extend(_parse_resource_str(str(cfg.get("outputResource", ""))))
+        remove_ids = {t["Id"] for t in targets}
+        self.state["treasures"] = [t for t in self.state.get("treasures", []) if t["Id"] not in remove_ids]
+        base_res = self._grant_resources_from_tuples(
+            tuples,
+            source="treasure_refine",
+            tx_prefix=f"treasure_refine:{self.profile_name}:{uuid.uuid4()}",
+        )
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _build_mystery_shop_items(self, shop_type: int) -> list[dict[str, Any]]:
+        """Build 8 Mystery Shop entries from MysteryshopFixedRelation + MysteryshopOddsPseudoRelation."""
+        lv = int(self.state["player"].get("Lv", 1))
+        ms_cfg = self.game_data.get("mystery_shop_config", {})
+        target_len = max(1, int(ms_cfg.get("refreshNum", 8)))
+        fixed_rows = [
+            r
+            for r in sorted(self.game_data.get("mystery_shop_fixed", {}).values(), key=lambda x: int(x.get("ID", 0)))
+            if int(r.get("shopType", 0)) == shop_type and lv >= int(r.get("needLv", 1))
+        ]
+        # Prefer the lowest needLv fixed slot first (ID=1: 50x 16050001 for 50 HeroCoin) so Lv24 Guide 7 step 211 succeeds
+        odds_rows = list(self.game_data.get("mystery_shop_odds", {}).values())
+        chosen_rows: list[dict[str, Any]] = []
+        if fixed_rows:
+            chosen_rows.append(fixed_rows[0])
+        if odds_rows:
+            pool = random.sample(odds_rows, min(len(odds_rows), max(0, target_len - len(chosen_rows))))
+            chosen_rows.extend(pool)
+        out: list[dict[str, Any]] = []
+        for row in chosen_rows[:target_len]:
+            sell_parts = _parse_resource_str(str(row.get("outResource", "")))
+            buy_parts = _parse_resource_str(str(row.get("useResource", "")))
+            if not sell_parts or not buy_parts:
+                continue
+            st, sm, sn = sell_parts[0]
+            bt, bm, bn = buy_parts[0]
+            if not self._is_valid_resource(st, sm):
+                continue
+            out.append(
+                {
+                    "Id": str(uuid.uuid4()),
+                    "SellResourceTypeSub": st,
+                    "SellGoodsModelId": sm,
+                    "SellNum": sn,
+                    "BuyResourceTypeSub": bt,
+                    "BuyGoodsModelId": bm if bm > 0 and bt >= 1500 else 0,
+                    "BuyNum": bn,
+                    "IsSell": 0,  # Exchange.Enabled = 0 per MysticalStoreScene.lua:20
+                }
+            )
+        return out
+
+    def _mystery_shop_state(self, senior: bool = False) -> dict[str, Any]:
+        ms = self.state.setdefault(
+            "mystery_shop",
+            {"normal": None, "senior": None, "free_date": "", "free_count": 1, "gold_count": 0},
+        )
+        today = time.strftime("%Y-%m-%d")
+        if ms.get("free_date") != today:
+            ms["free_date"] = today
+            ms["free_count"] = 1
+            ms["gold_count"] = 0
+        key = "senior" if senior else "normal"
+        if not ms.get(key):
+            ms[key] = self._build_mystery_shop_items(1 if senior else 0)
+            self.save()
+        vip_lv = int(self.state["player"].get("Vip", 0))
+        max_refresh = 20 + vip_lv * 5
+        return {
+            "FreeCount": int(ms.get("free_count", 1)),
+            "GoldCount": int(ms.get("gold_count", 0)),
+            "RefreshMysteryShopMaxNum": max_refresh,
+            "MysteryShopGoodsList": ms[key],
+        }
+
+    def _rpc_mystery_shop_get_info(self, _data: Any) -> dict[str, Any]:
+        return self._mystery_shop_state(senior=False)
+
+    def _rpc_mystery_shop_senior_get_info(self, _data: Any) -> dict[str, Any]:
+        return self._mystery_shop_state(senior=True)
+
+    def _do_mystery_shop_refresh(self, refresh_type: int, senior: bool) -> dict[str, Any]:
+        ms_state = self._mystery_shop_state(senior=senior)
+        ms = self.state["mystery_shop"]
+        ms_cfg = self.game_data.get("mystery_shop_config", {})
+        if refresh_type == 1:
+            if int(ms.get("free_count", 0)) <= 0:
+                self._last_rpc_context["status"] = -1
+                return {}
+            ms["free_count"] = int(ms["free_count"]) - 1
+        elif refresh_type == 2:
+            res_str = str(ms_cfg.get("seniorRefreshUseResource" if senior else "refreshUseResource", "1605,16050010,1"))
+            rt, rm, rn = _parse_resource_str(res_str)[0]
+            tok = next((g for g in self.state.get("goods", []) if int(g.get("GoodsModelId", 0)) == rm), None)
+            if not tok or int(tok.get("Num", 0)) < rn:
+                self._last_rpc_context["status"] = -1
+                return {}
+            tok["Num"] = int(tok["Num"]) - rn
+            if tok["Num"] <= 0:
+                self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != tok["Id"]]
+            self._mark_goods_changed(rm)
+            ms["gold_count"] = int(ms.get("gold_count", 0)) + 1
+        else:
+            if int(ms.get("gold_count", 0)) >= int(ms_state["RefreshMysteryShopMaxNum"]):
+                self._last_rpc_context["status"] = -1
+                return {}
+            cost = int(ms_cfg.get("seniorRefreshUseDiamond" if senior else "refreshUseDiamond", 20))
+            if int(self.state["player"].get("Diamond", 0)) < cost:
+                self._last_rpc_context["status"] = -1
+                return {}
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                "Diamond",
+                -cost,
+                source=f"mystery_refresh:{'senior' if senior else 'normal'}",
+            )
+            ms["gold_count"] = int(ms.get("gold_count", 0)) + 1
+
+        ms["senior" if senior else "normal"] = self._build_mystery_shop_items(1 if senior else 0)
+        self.save()
+        return self._mystery_shop_state(senior=senior)
+
+    def _rpc_mystery_shop_refresh(self, data: Any) -> dict[str, Any]:
+        rtype = int(data[0]) if isinstance(data, list) and data else 1
+        return self._do_mystery_shop_refresh(rtype, senior=False)
+
+    def _rpc_mystery_shop_senior_refresh(self, data: Any) -> dict[str, Any]:
+        rtype = int(data[0]) if isinstance(data, list) and data else 1
+        return self._do_mystery_shop_refresh(rtype, senior=True)
+
+    def _do_mystery_shop_buy(self, goods_id: str, senior: bool) -> dict[str, Any]:
+        ms_state = self._mystery_shop_state(senior=senior)
+        item = next((x for x in ms_state["MysteryShopGoodsList"] if str(x.get("Id")) == goods_id), None)
+        if not item or int(item.get("IsSell", 0)) == 1:
+            self._last_rpc_context["status"] = -1
+            return {}
+        bt = int(item["BuyResourceTypeSub"])
+        bn = int(item["BuyNum"])
+        attr_map = {1111: "Diamond", 1112: "Gold", 1116: "HeroCoin"}
+        field = attr_map.get(bt, "HeroCoin")
+        if int(self.state["player"].get(field, 0)) < bn:
+            self._last_rpc_context["status"] = -1
+            return {}
+        if bn > 0:
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                field,
+                -bn,
+                source=f"mystery_buy:{item['SellGoodsModelId']}",
+                idempotency_key=f"mystery_cost:{self.profile_name}:{goods_id}",
+            )
+        item["IsSell"] = 1
+        base_res = self._grant_resources_from_tuples(
+            [(int(item["SellResourceTypeSub"]), int(item["SellGoodsModelId"]), int(item["SellNum"]))],
+            source=f"mystery_buy:{item['SellGoodsModelId']}",
+            tx_prefix=f"mystery_buy:{self.profile_name}:{goods_id}",
+        )
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _rpc_mystery_shop_buy(self, data: Any) -> dict[str, Any]:
+        gid = str(data[0]) if isinstance(data, list) and data else ""
+        return self._do_mystery_shop_buy(gid, senior=False)
+
+    def _rpc_mystery_shop_senior_buy(self, data: Any) -> dict[str, Any]:
+        gid = str(data[0]) if isinstance(data, list) and data else ""
+        return self._do_mystery_shop_buy(gid, senior=True)
+
+    def _glory_payload(self, active_type_id: int | None = None) -> dict[str, Any]:
+        glory = self.state.setdefault(
+            "glory",
+            {
+                "1": {"TypeId": 1, "Lv": 0, "EXP": 0},
+                "2": {"TypeId": 2, "Lv": 0, "EXP": 0},
+                "3": {"TypeId": 3, "Lv": 0, "EXP": 0},
+            },
+        )
+        glory_lv_tbl = self.game_data.get("glory_lv", {})
+        glory_list: list[dict[str, Any]] = []
+        for tid in (1, 2, 3):
+            entry = glory.setdefault(str(tid), {"TypeId": tid, "Lv": 0, "EXP": 0})
+            lv = int(entry.get("Lv", 0))
+            crit = int(glory_lv_tbl.get(str(lv), {}).get("upOddsMin", 3200))
+            glory_list.append({"TypeId": tid, "Lv": lv, "EXP": int(entry.get("EXP", 0)), "CritOdds": crit})
+        bonuses = self._glory_attr_bonuses()
+        add_attr = [
+            {"AddAttrEnumId": 432, "AddAttrNum": bonuses["HP"]},
+            {"AddAttrEnumId": 431, "AddAttrNum": bonuses["AP"]},
+            {"AddAttrEnumId": 433, "AddAttrNum": bonuses["DEF"]},
+        ]
+        extra_sta = self._glory_extra_sta()
+        if active_type_id is not None:
+            active_item = next(g for g in glory_list if g["TypeId"] == active_type_id)
+            return {
+                **active_item,
+                "AddAttrInfo": add_attr,
+                "ExtraSTA": extra_sta,
+            }
+        return {
+            "GloryInfo": glory_list,
+            "AddAttrInfo": add_attr,
+            "ExtraSTA": extra_sta,
+        }
+
+    def _apply_glory_diploma(self, type_id: int, goods_item: dict[str, Any]) -> None:
+        glory = self.state.setdefault("glory", {})
+        entry = glory.setdefault(str(type_id), {"TypeId": type_id, "Lv": 0, "EXP": 0})
+        g_cfg = self.game_data.get("goods_model", {}).get(str(goods_item["GoodsModelId"]), {})
+        exp_gain = max(1, int(g_cfg.get("outputNum", 10)))
+        entry["EXP"] = int(entry.get("EXP", 0)) + exp_gain
+        glory_lv_tbl = self.game_data.get("glory_lv", {})
+        cur_lv = int(entry.get("Lv", 0))
+        while str(cur_lv + 1) in glory_lv_tbl and entry["EXP"] >= int(glory_lv_tbl[str(cur_lv + 1)].get("EXPTotal", 0)):
+            cur_lv += 1
+        entry["Lv"] = cur_lv
+        goods_item["Num"] = int(goods_item["Num"]) - 1
+        gid = int(goods_item["GoodsModelId"])
+        if goods_item["Num"] <= 0:
+            self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != goods_item["Id"]]
+        self._mark_goods_changed(gid)
+
+    def _rpc_glory_get_data(self, _data: Any) -> dict[str, Any]:
+        return self._glory_payload()
+
+    def _rpc_glory_lv_up(self, data: Any) -> dict[str, Any]:
+        type_id = int(data[0]) if isinstance(data, list) and len(data) >= 1 else 2
+        gid = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 0
+        entity_id = str(data[2]) if isinstance(data, list) and len(data) >= 3 else ""
+        if type_id not in (1, 2, 3):
+            self._last_rpc_context["status"] = -1
+            return {}
+        item = next(
+            (
+                g
+                for g in self.state.get("goods", [])
+                if (entity_id and g["Id"] == entity_id or int(g.get("GoodsModelId", 0)) == gid)
+                and int(g.get("GoodsModelId", 0)) // 10000 == 1604
+                and int(g.get("Num", 0)) >= 1
+            ),
+            None,
+        )
+        if not item:
+            self._last_rpc_context["status"] = -1
+            return {}
+        self._apply_glory_diploma(type_id, item)
+        self._sync_player_recover_times()
+        self._recalc_all_slots_and_fap()
+        self._last_rpc_context["slots_changed"] = True
+        self.save()
+        return self._glory_payload(active_type_id=type_id)
+
+    def _rpc_glory_lv_up_one_key(self, data: Any) -> dict[str, Any]:
+        type_id = int(data[0]) if isinstance(data, list) and len(data) >= 1 else 2
+        if type_id not in (1, 2, 3):
+            self._last_rpc_context["status"] = -1
+            return {}
+        diplomas = [
+            g
+            for g in list(self.state.get("goods", []))
+            if int(g.get("GoodsModelId", 0)) // 10000 == 1604 and int(g.get("Num", 0)) > 0
+        ]
+        if not diplomas:
+            self._last_rpc_context["status"] = -1
+            return {}
+        for item in diplomas:
+            while int(item.get("Num", 0)) > 0:
+                self._apply_glory_diploma(type_id, item)
+        self._sync_player_recover_times()
+        self._recalc_all_slots_and_fap()
+        self._last_rpc_context["slots_changed"] = True
+        self.save()
+        return self._glory_payload(active_type_id=type_id)
+
+    def _rpc_gift_lv_bags(self, _data: Any) -> dict[str, Any]:
+        """Return claimable level gift IDs per LevelGiftLayer.lua:112-119."""
+        lv = int(self.state["player"].get("Lv", 1))
+        claimed = set(int(x) for x in self.state.setdefault("gift_lv", {"claimed": []}).get("claimed", []))
+        gift_tbl = self.game_data.get("gift_lv", {})
+        claimable = sorted(int(k) for k in gift_tbl if lv >= int(k) and int(k) not in claimed)
+        return {"Bags": claimable}
+
+    def _rpc_gift_lv_draw(self, data: Any) -> dict[str, Any]:
+        target_lv = int(data[0]) if isinstance(data, list) and data else 0
+        player_lv = int(self.state["player"].get("Lv", 1))
+        row = self.game_data.get("gift_lv", {}).get(str(target_lv))
+        gl_state = self.state.setdefault("gift_lv", {"claimed": []})
+        claimed = gl_state.setdefault("claimed", [])
+        if not row or player_lv < target_lv or target_lv in claimed:
+            self._last_rpc_context["status"] = -1
+            return {}
+        claimed.append(target_lv)
+        base_res = self._grant_resources_from_tuples(
+            _parse_resource_str(str(row.get("resourceList", ""))),
+            source=f"gift_lv:{target_lv}",
+            tx_prefix=f"gift_lv:{self.profile_name}:{self.state['player']['PlayerId']}:{target_lv}",
+        )
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _rpc_gift_login_info(self, _data: Any) -> dict[str, Any]:
+        """Return 7-day consecutive login gift state per ContinuousSignLayer.lua:264."""
+        today = time.strftime("%Y-%m-%d")
+        gl = self.state.setdefault("gift_login", {"login_days": 1, "last_login_date": today, "claimed": []})
+        login_days = max(1, min(7, int(gl.get("login_days", 1))))
+        claimed = set(int(x) for x in gl.get("claimed", []))
+        gift_list = []
+        for day_idx in sorted(int(k) for k in self.game_data.get("gift_login", {})):
+            status = 2 if day_idx in claimed else (1 if day_idx <= login_days else 0)
+            gift_list.append({"Id": day_idx, "Status": status})
+        return {"GiftList": gift_list}
+
+    def _rpc_gift_login_draw(self, data: Any) -> dict[str, Any]:
+        day_id = int(data[0]) if isinstance(data, list) and data else 0
+        today = time.strftime("%Y-%m-%d")
+        gl = self.state.setdefault("gift_login", {"login_days": 1, "last_login_date": today, "claimed": []})
+        login_days = max(1, min(7, int(gl.get("login_days", 1))))
+        claimed = gl.setdefault("claimed", [])
+        row = self.game_data.get("gift_login", {}).get(str(day_id))
+        if not row or day_id < 1 or day_id > login_days or day_id in claimed:
+            self._last_rpc_context["status"] = -1
+            return {}
+        claimed.append(day_id)
+        base_res = self._grant_resources_from_tuples(
+            _parse_resource_str(str(row.get("resourceList", ""))),
+            source=f"gift_login:{day_id}",
+            tx_prefix=f"gift_login:{self.profile_name}:{self.state['player']['PlayerId']}:{day_id}",
         )
         self.save()
         return {"BaseGetGameResourceList": base_res}

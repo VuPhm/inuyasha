@@ -205,6 +205,15 @@ def main() -> None:
     fashion_model = parse_simple_lua_items(os.path.join(cfg_dir, "FashionModel.lua"))
     fashion_step = parse_nested_lua_items(os.path.join(cfg_dir, "FashionStepRelation.lua"))
 
+    guide_relation = parse_nested_lua_items(os.path.join(cfg_dir, "GuideRelation.lua"))
+    glory_type = parse_simple_lua_items(os.path.join(cfg_dir, "GloryTypeModel.lua"))
+    glory_lv = parse_simple_lua_items(os.path.join(cfg_dir, "GloryLvRelation.lua"))
+    gift_login = parse_simple_lua_items(os.path.join(cfg_dir, "GiftLoginRelation.lua"))
+    gift_lv = parse_simple_lua_items(os.path.join(cfg_dir, "GiftLvRelation.lua"))
+    mystery_shop_config = parse_singleton_lua_item(os.path.join(cfg_dir, "MysteryshopConfig.lua"))
+    mystery_shop_fixed = parse_simple_lua_items(os.path.join(cfg_dir, "MysteryshopFixedRelation.lua"))
+    mystery_shop_odds = parse_simple_lua_items(os.path.join(cfg_dir, "MysteryshopOddsPseudoRelation.lua"))
+
     data = {
         "source": source_label,
         "counts": {
@@ -237,6 +246,13 @@ def main() -> None:
             "daydayfund_vip": len(daydayfund_vip),
             "goods_output": len(goods_output),
             "fashion_model": len(fashion_model),
+            "guide_relation": len(guide_relation),
+            "glory_type": len(glory_type),
+            "glory_lv": len(glory_lv),
+            "gift_login": len(gift_login),
+            "gift_lv": len(gift_lv),
+            "mystery_shop_fixed": len(mystery_shop_fixed),
+            "mystery_shop_odds": len(mystery_shop_odds),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -290,6 +306,14 @@ def main() -> None:
         "goods_output": goods_output,
         "fashion_model": fashion_model,
         "fashion_step": fashion_step,
+        "guide_relation": guide_relation,
+        "glory_type": glory_type,
+        "glory_lv": glory_lv,
+        "gift_login": gift_login,
+        "gift_lv": gift_lv,
+        "mystery_shop_config": mystery_shop_config,
+        "mystery_shop_fixed": mystery_shop_fixed,
+        "mystery_shop_odds": mystery_shop_odds,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

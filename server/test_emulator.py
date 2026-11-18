@@ -1389,6 +1389,260 @@ class EmulatorProtocolTest(unittest.TestCase):
             emu_p.write_text(emu_p.read_text(encoding="utf-8") + "\n# tamper\n", encoding="utf-8")
             self.assertFalse(env_ctl.get_active_stable_release(releases_dir=rel_dir)["verified"])
 
+    def test_25_boss_battle_drop_pool_validation_kill_and_legacy_migration(self):
+        import time
+        import uuid
+        from combat_sim import simulate_fight_info
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            normal = emu.get_profile_by_name("normal")
+
+            # 1. Verify entire BossBattle DropResource pool and LuckbossValueShop are valid & displayable
+            pool_ids = [int(item["ModelId"]) for item in normal.BOSS_DROP_POOL]
+            self.assertNotIn(15030101, pool_ids)
+            self.assertIn(15032101, pool_ids)
+            for item in normal.BOSS_DROP_POOL:
+                self.assertTrue(
+                    normal._is_valid_resource(int(item["TypeId"]), int(item["ModelId"])),
+                    msg=f"Invalid pool entry: {item}",
+                )
+            for mid in range(12010050, 12010056):
+                dr = normal._boss_drop_for_model(mid)
+                self.assertTrue(normal._is_valid_resource(dr["TypeId"], dr["ModelId"]))
+            for row in normal.game_data["luckboss_value_shop"].values():
+                self.assertTrue(normal._is_valid_resource(int(row["typeID"]), int(row["modelID"])))
+
+            # 2. Validation guard rejects invalid resource tuples & payloads before RPC emission
+            with self.assertRaises(ValueError):
+                normal._grant_resources_from_tuples(
+                    [(1503, 15030101, 1)],
+                    source="test_invalid",
+                    tx_prefix=f"test_invalid:{uuid.uuid4()}",
+                )
+            with self.assertRaises(ValueError):
+                normal.validate_base_resource_list(
+                    [{"TreasureDebris": [{"ResourceTypeSub": 1503, "TreasureDebrisModelId": 15030101, "Num": 1}]}],
+                    context="test_invalid_payload",
+                )
+
+            # 3. Full BossBattle cycle on BossModelId=12010052 (the tier that previously yielded 15030101)
+            normal.state["player"]["Lv"] = 20
+            normal.state["player"]["VIT"] = 200
+            for slot in normal.state["slots"]:
+                if slot.get("HeroModelId"):
+                    heroes_map = {h["Id"]: h for h in normal.state["heroes"]}
+                    heroes_map[slot["HeroId"]]["Lv"] = 35
+                    slot["Property"] = normal._compute_slot_property(slot, heroes_map)
+            normal._recalc_all_slots_and_fap()
+
+            now = int(time.time())
+            bs = normal._sync_boss_battle_state()
+            bs["attack_num"] = 20
+            boss_cfg = normal.game_data["heroes"]["12010052"]
+            boss_id = str(uuid.uuid4())
+            probe_boss = {
+                "Id": boss_id,
+                "PlayerId": str(normal.state["player"]["PlayerId"]),
+                "PlayerName": str(normal.state["player"]["PlayerName"]),
+                "BossModelId": 12010052,
+                "Name": boss_cfg["name"],
+                "Lv": 20,
+                "CurHP": 1000000,
+                "TotalHP": 1000000,
+                "AwayTime": now + 7200,
+                "CanHelpTime": 0,
+                "DropResource": normal._boss_drop_for_model(12010052),
+            }
+            preview = simulate_fight_info(normal._build_boss_fight_info(probe_boss, False), normal.game_data["attacks"])
+            preview_last = preview.verify_data.get("hp", [[]])[-1]
+            preview_hp = next((int(u["HP"]) for u in preview_last if int(u.get("PosId", 0)) == 8), 999000)
+            boss_hp = max(4000, (1000000 - preview_hp) * 3)
+            probe_boss["CurHP"] = boss_hp
+            probe_boss["TotalHP"] = boss_hp
+            bs["bosses"] = [probe_boss]
+            normal.state["battle"]["HasBoss"] = "True"
+
+            bl = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "GetBossList", "Data": [], "ServerId": 1})
+            self.assertEqual(bl["Status"], 0)
+            self.assertEqual(len(bl["Value"]["BossList"]), 1)
+            self.assertEqual(bl["Value"]["BossList"][0]["DropResource"]["ModelId"], 15032101)
+
+            # Normal attack must leave boss alive (HP > 0)
+            fi_norm = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "GetFightInfo", "Data": [boss_id, 0], "ServerId": 1})
+            self.assertEqual(fi_norm["Status"], 0)
+            bc_norm = simulate_fight_info(fi_norm["Value"]["FightInfo"], normal.game_data["attacks"])
+            atk_norm = emu.handle_rpc(
+                {
+                    "ModuleName": "BossBattle",
+                    "MethodName": "Fight",
+                    "Data": [boss_id, 0, bc_norm.won, json.dumps(bc_norm.verify_data)],
+                    "ServerId": 1,
+                }
+            )
+            self.assertEqual(atk_norm["Status"], 0)
+            self.assertGreater(atk_norm["Value"]["HurtValue"], 0)
+            self.assertTrue(atk_norm["Value"]["BossExist"])
+
+            # All-Out attacks until kill reward triggers
+            kill_res = atk_norm
+            for _ in range(10):
+                if not kill_res["Value"]["BossExist"]:
+                    break
+                fi_full = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "GetFightInfo", "Data": [boss_id, 1], "ServerId": 1})
+                self.assertEqual(fi_full["Status"], 0)
+                bc_full = simulate_fight_info(fi_full["Value"]["FightInfo"], normal.game_data["attacks"])
+                kill_res = emu.handle_rpc(
+                    {
+                        "ModuleName": "BossBattle",
+                        "MethodName": "Fight",
+                        "Data": [boss_id, 1, bc_full.won, json.dumps(bc_full.verify_data)],
+                        "ServerId": 1,
+                    }
+                )
+                self.assertEqual(kill_res["Status"], 0)
+            self.assertFalse(kill_res["Value"]["BossExist"])
+            kill_bundles = kill_res["Value"]["BaseGetGameResourceList"]
+            normal.validate_base_resource_list(kill_bundles, context="test_25_kill")
+            debris_rewards = kill_bundles[0].get("TreasureDebris", [])
+            self.assertEqual([d["TreasureDebrisModelId"] for d in debris_rewards], [15032101])
+            debris_delta = kill_res["Avatar"]["TreasureDebrisInfo"].get("15032101", [])
+            self.assertEqual(len(debris_delta), 1)
+            self.assertEqual(debris_delta[0].get("Num"), 1)
+
+            # Close victory screen & verify GetBossList + save/reload persistence
+            bl_after = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "GetBossList", "Data": [], "ServerId": 1})
+            self.assertEqual(bl_after["Status"], 0)
+            self.assertEqual(bl_after["Value"]["BossList"], [])
+
+            emu2 = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+            normal2 = emu2.get_profile_by_name("normal")
+            self.assertEqual(
+                sum(d["Num"] for d in normal2.state["treasure_debris"] if d["TreasureDebrisModelId"] == 15032101),
+                1,
+            )
+            init2 = emu2.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [], "ServerId": 1})
+            self.assertEqual(init2["Status"], 0)
+            self.assertEqual(
+                [d["TreasureDebrisModelId"] for d in init2["Value"].get("TreasureDebrisInfo", [])],
+                [15032101],
+            )
+
+            # 4. Legacy save migration: 15030101 in treasure_debris (merged cleanly) and boss DropResource
+            normal_path = data_dir / "normal_profile.json"
+            raw = json.loads(normal_path.read_text(encoding="utf-8"))
+            raw["treasure_debris"].append({"Id": str(uuid.uuid4()), "TreasureDebrisModelId": 15030101, "Num": 2})
+            legacy_boss_id = str(uuid.uuid4())
+            raw["boss_battle"]["bosses"] = [
+                {
+                    "Id": legacy_boss_id,
+                    "PlayerId": raw["player"]["PlayerId"],
+                    "PlayerName": raw["player"]["PlayerName"],
+                    "BossModelId": 12010052,
+                    "Name": "Legacy Boss",
+                    "Lv": 20,
+                    "CurHP": 1000,
+                    "TotalHP": 1000,
+                    "AwayTime": int(time.time()) + 3600,
+                    "CanHelpTime": 0,
+                    "DropResource": {"TypeId": 1503, "ModelId": 15030101, "Num": 1},
+                }
+            ]
+            normal_path.write_text(json.dumps(raw), encoding="utf-8")
+
+            emu3 = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+            normal3 = emu3.get_profile_by_name("normal")
+            debris_models = [d["TreasureDebrisModelId"] for d in normal3.state["treasure_debris"]]
+            self.assertNotIn(15030101, debris_models)
+            self.assertEqual(debris_models.count(15032101), 1)
+            self.assertEqual(normal3.state["treasure_debris"][0]["Num"], 3)
+            self.assertEqual(normal3.state["boss_battle"]["bosses"][0]["DropResource"]["ModelId"], 15032101)
+
+    def test_26_vit_and_sta_limit_normalization_and_no_polling_loop(self):
+        import time
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            debug_prof = emu.get_profile_by_name("debug")
+            vit_cfg = debug_prof.game_data["vit_config"]
+            sta_cfg = debug_prof.game_data["sta_config"]
+            self.assertEqual(int(vit_cfg["maxNum"]), 200)
+            self.assertEqual(int(sta_cfg["maxNum"]), 20)
+            vit_cd = int(vit_cfg["recoverCD"])
+            sta_cd = int(sta_cfg["recoverCD"])
+
+            # 1. Legacy debug profile with VITMaxNum=120 & stale VITNextRecoverTime <= now
+            p = debug_prof.state["player"]
+            now = int(time.time())
+            p["VIT"] = 165
+            p["VITMaxNum"] = 120
+            p["VITNextRecoverTime"] = now - 30
+            debug_prof.state = debug_prof._normalize_loaded_state(debug_prof.state)
+
+            self.assertEqual(debug_prof.state["player"]["VITMaxNum"], 200)
+            self.assertEqual(debug_prof.state["player"]["VIT"], 165)
+            # Client checks VIT < VitConfig.maxNum (200) and VITNextRecoverTime <= mTimeTick; must NOT loop
+            for _ in range(3):
+                res = emu.handle_rpc({"ModuleName": "Player", "MethodName": "AvatarInfo", "Data": [], "ServerId": 2})
+                self.assertEqual(res["Status"], 0)
+                val = res["Value"]
+                av = res["Avatar"]
+                cur_now = int(time.time())
+                self.assertEqual(val["VITMaxNum"], 200)
+                self.assertEqual(av["VITMaxNum"], 200)
+                self.assertGreater(val["VITNextRecoverTime"], cur_now)
+                self.assertLessEqual(val["VITNextRecoverTime"], cur_now + vit_cd)
+                self.assertEqual(val["VITNextRecoverTime"], av["VITNextRecoverTime"])
+
+            # 2. VIT boundaries: below (80), at limit (200), above limit (235), and VIP/elevated cap (250)
+            for vit_val, saved_max, exp_max, expect_future in [
+                (80, 120, 200, True),
+                (199, 200, 200, True),
+                (200, 120, 200, False),
+                (235, 200, 200, False),
+                (220, 250, 250, True),
+                (250, 250, 250, False),
+            ]:
+                p = debug_prof.state["player"]
+                cur_now = int(time.time())
+                p["VIT"] = vit_val
+                p["VITMaxNum"] = saved_max
+                p["VITNextRecoverTime"] = cur_now - 5
+                res = emu.handle_rpc({"ModuleName": "Player", "MethodName": "AvatarInfo", "Data": [], "ServerId": 2})
+                val = res["Value"]
+                self.assertEqual(val["VIT"], vit_val)
+                self.assertEqual(val["VITMaxNum"], exp_max)
+                if expect_future:
+                    self.assertGreater(val["VITNextRecoverTime"], cur_now)
+                    self.assertLessEqual(val["VITNextRecoverTime"], cur_now + vit_cd)
+                else:
+                    self.assertLessEqual(val["VITNextRecoverTime"], int(time.time()))
+
+            # 3. Symmetric STA checks: legacy low cap upgraded to 20, debug cap 40 preserved, OlinaHugh >20 preserved
+            for sta_val, saved_sta_max, exp_sta_max, expect_future in [
+                (10, 10, 20, True),
+                (20, 15, 20, False),
+                (35, 40, 40, True),
+                (40, 40, 40, False),
+                (143, 20, 20, False),
+            ]:
+                p = debug_prof.state["player"]
+                cur_now = int(time.time())
+                p["STA"] = sta_val
+                p["STAMaxNum"] = saved_sta_max
+                p["STANextRecoverTime"] = cur_now - 10
+                res = emu.handle_rpc({"ModuleName": "Player", "MethodName": "AvatarInfo", "Data": [], "ServerId": 2})
+                val = res["Value"]
+                self.assertEqual(val["STA"], sta_val)
+                self.assertEqual(val["STAMaxNum"], exp_sta_max)
+                if expect_future:
+                    self.assertGreater(val["STANextRecoverTime"], cur_now)
+                    self.assertLessEqual(val["STANextRecoverTime"], cur_now + sta_cd)
+                else:
+                    self.assertLessEqual(val["STANextRecoverTime"], int(time.time()))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

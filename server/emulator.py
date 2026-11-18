@@ -457,6 +457,7 @@ class ProfileStore:
         data.setdefault("daydayfund", {"if_draw": True, "cooled_time": 0, "last_multiple": 0, "harvest_list": []})
         data.setdefault("startwork", {"claimed_days": []})
         data.setdefault("fashions", [])
+        self._sanitize_legacy_debris_and_boss_drops(data, boss_state)
         p = data.setdefault("player", {})
         p.setdefault("ChargeNum", 0)
         p.setdefault("VipEXP", 0)
@@ -488,22 +489,181 @@ class ProfileStore:
                     n["Flag"] = 2
         return data
 
+    BOSS_DROP_POOL: tuple[dict[str, int], ...] = (
+        {"TypeId": 1602, "ModelId": 16020020, "Num": 1},
+        {"TypeId": 1602, "ModelId": 16020021, "Num": 1},
+        {"TypeId": 1503, "ModelId": 15032101, "Num": 1},
+        {"TypeId": 1504, "ModelId": 15040101, "Num": 1},
+    )
+    LEGACY_RESOURCE_REMAPPING: dict[tuple[int, int], tuple[int, int]] = {
+        (1503, 15030101): (1503, 15032101),
+    }
+    _ATTR_RESOURCE_TYPES: frozenset[int] = frozenset({1101, 1102, 1103, 1111, 1112, 1115, 1116, 1117, 1120})
+
+    def _is_valid_resource(self, rtype: int, rmodel: int) -> bool:
+        """Check whether (TypeId, ModelId) exists in game_data and can be rendered by client."""
+        if rtype in self._ATTR_RESOURCE_TYPES:
+            return True
+        mkey = str(rmodel)
+        if rtype == 1201:
+            return mkey in self.game_data.get("heroes", {})
+        if rtype in (1301, 1302, 1303, 1304):
+            eq = self.game_data.get("equips", {}).get(mkey)
+            return bool(eq and int(eq.get("typeID", rtype)) == rtype)
+        if rtype in (1401, 1402):
+            tr = self.game_data.get("treasures", {}).get(mkey)
+            return bool(tr and int(tr.get("typeID", rtype)) == rtype)
+        if rtype in (1503, 1504):
+            td = self.game_data.get("treasure_debris", {}).get(mkey)
+            if not td or int(td.get("typeID", 0)) != rtype:
+                return False
+            return str(td.get("treasureModelID", 0)) in self.game_data.get("treasures", {})
+        if rtype == 1901:
+            return mkey in self.game_data.get("fashion_model", {})
+        gm = self.game_data.get("goods_model", {}).get(mkey)
+        return bool(gm and int(gm.get("typeID", rtype)) == rtype)
+
+    def _validate_resource_tuples(
+        self, res_tuples: list[tuple[int, int, int]], source: str = ""
+    ) -> list[tuple[int, int, int]]:
+        """Validate every positive-count resource tuple before state mutation or RPC emission."""
+        for rtype, rmodel, rnum in res_tuples:
+            if int(rnum) <= 0:
+                continue
+            if not self._is_valid_resource(int(rtype), int(rmodel)):
+                raise ValueError(f"Invalid resource tuple ({rtype}, {rmodel}, {rnum}) in {source or 'rpc'}")
+        return res_tuples
+
+    def validate_base_resource_list(self, base_res: list[dict[str, Any]], context: str = "rpc") -> None:
+        """Verify every item in a BaseGetGameResourceList payload maps to a valid client resource."""
+        for bundle in base_res or []:
+            if not isinstance(bundle, dict):
+                continue
+            for item in bundle.get("Hero", []):
+                mid = int(item.get("HeroModelId", 0))
+                if not self._is_valid_resource(1201, mid):
+                    raise ValueError(f"Invalid Hero resource ModelId={mid} in {context}")
+            for item in bundle.get("Equip", []):
+                mid = int(item.get("EquipModelId", 0))
+                eq = self.game_data.get("equips", {}).get(str(mid))
+                if not eq or not self._is_valid_resource(int(eq.get("typeID", 0)), mid):
+                    raise ValueError(f"Invalid Equip resource ModelId={mid} in {context}")
+            for item in bundle.get("Treasure", []):
+                mid = int(item.get("TreasureModelId", 0))
+                tr = self.game_data.get("treasures", {}).get(str(mid))
+                if not tr or not self._is_valid_resource(int(tr.get("typeID", 0)), mid):
+                    raise ValueError(f"Invalid Treasure resource ModelId={mid} in {context}")
+            for item in bundle.get("TreasureDebris", []):
+                rtype = int(item.get("ResourceTypeSub", 0))
+                mid = int(item.get("TreasureDebrisModelId", 0))
+                if not self._is_valid_resource(rtype, mid):
+                    raise ValueError(f"Invalid TreasureDebris resource TypeId={rtype}, ModelId={mid} in {context}")
+            for item in bundle.get("Goods", []):
+                rtype = int(item.get("ResourceTypeSub", 0))
+                mid = int(item.get("GoodsModelId", 0))
+                if not self._is_valid_resource(rtype, mid):
+                    raise ValueError(f"Invalid Goods resource TypeId={rtype}, ModelId={mid} in {context}")
+            for item in bundle.get("Fashion", []):
+                mid = int(item.get("FashionModelId", 0))
+                if not self._is_valid_resource(1901, mid):
+                    raise ValueError(f"Invalid Fashion resource ModelId={mid} in {context}")
+
+    def _boss_drop_for_model(self, model_id: int) -> dict[str, int]:
+        """Select a validated DropResource entry for a LuckBoss model ID."""
+        tier_idx = max(0, int(model_id) - 12010050)
+        drop_res = dict(self.BOSS_DROP_POOL[tier_idx % len(self.BOSS_DROP_POOL)])
+        self._validate_resource_tuples(
+            [(int(drop_res["TypeId"]), int(drop_res["ModelId"]), int(drop_res["Num"]))],
+            source=f"boss_drop_pool:{model_id}",
+        )
+        return drop_res
+
+    def _sanitize_boss_drop(self, boss: dict[str, Any]) -> dict[str, int]:
+        """Normalize or repair an active boss's DropResource so invalid IDs never reach RPCs."""
+        dr = boss.get("DropResource")
+        if isinstance(dr, dict):
+            rtype = int(dr.get("TypeId", 0))
+            rmodel = int(dr.get("ModelId", 0))
+            rnum = max(1, int(dr.get("Num", 1)))
+            mapped = self.LEGACY_RESOURCE_REMAPPING.get((rtype, rmodel))
+            if mapped:
+                rtype, rmodel = mapped
+            if self._is_valid_resource(rtype, rmodel):
+                clean = {"TypeId": rtype, "ModelId": rmodel, "Num": rnum}
+                boss["DropResource"] = clean
+                return clean
+        clean = self._boss_drop_for_model(int(boss.get("BossModelId", 12010050)))
+        boss["DropResource"] = clean
+        return clean
+
+    def _sanitize_legacy_debris_and_boss_drops(self, data: dict[str, Any], boss_state: dict[str, Any]) -> None:
+        """Migrate legacy invalid 15030101 book debris saves/drops to valid 15032101."""
+        debris_raw = data.get("treasure_debris")
+        if isinstance(debris_raw, list):
+            merged_by_model: dict[int, dict[str, Any]] = {}
+            ordered_models: list[int] = []
+            for row in debris_raw:
+                if not isinstance(row, dict):
+                    continue
+                mid = int(row.get("TreasureDebrisModelId", 0))
+                remapped = self.LEGACY_RESOURCE_REMAPPING.get((1503, mid))
+                if remapped:
+                    mid = remapped[1]
+                num = int(row.get("Num", 0))
+                if mid not in merged_by_model:
+                    entry = dict(row)
+                    entry["TreasureDebrisModelId"] = mid
+                    entry["Num"] = num
+                    merged_by_model[mid] = entry
+                    ordered_models.append(mid)
+                else:
+                    merged_by_model[mid]["Num"] = int(merged_by_model[mid].get("Num", 0)) + num
+            data["treasure_debris"] = [merged_by_model[m] for m in ordered_models]
+
+        for boss in boss_state.get("bosses", []):
+            if isinstance(boss, dict):
+                self._sanitize_boss_drop(boss)
+
+    def _canonical_recover_limits(self) -> tuple[int, int, int, int]:
+        """Return (vit_max, vit_cd, sta_max, sta_cd) from canonical client/server configs."""
+        vit_cfg = self.game_data.get("vit_config", {})
+        sta_cfg = self.game_data.get("sta_config", {})
+        return (
+            int(vit_cfg.get("maxNum", 200)),
+            int(vit_cfg.get("recoverCD", 360)),
+            int(sta_cfg.get("maxNum", 20)),
+            int(sta_cfg.get("recoverCD", 900)),
+        )
+
     def _sync_player_recover_times(self, player: dict[str, Any] | None = None) -> None:
-        """Ensure VITNextRecoverTime and STANextRecoverTime are valid integer timestamps."""
+        """Normalize VITMaxNum/STAMaxNum against canonical config and keep recover timestamps valid."""
         p = player if player is not None else self.state["player"]
         now = int(time.time())
-        vit_cd = int(self.game_data.get("vit_config", {}).get("recoverCD", 360))
-        sta_cd = int(self.game_data.get("sta_config", {}).get("recoverCD", 900))
-        vit_max = int(p.get("VITMaxNum", 200))
-        sta_max = int(p.get("STAMaxNum", 40))
+        cfg_vit_max, vit_cd, cfg_sta_max, sta_cd = self._canonical_recover_limits()
+
+        raw_vit_max = p.get("VITMaxNum")
+        vit_max = max(cfg_vit_max, int(raw_vit_max)) if isinstance(raw_vit_max, (int, float)) else cfg_vit_max
+        p["VITMaxNum"] = vit_max
+
+        raw_sta_max = p.get("STAMaxNum")
+        sta_max = max(cfg_sta_max, int(raw_sta_max)) if isinstance(raw_sta_max, (int, float)) else cfg_sta_max
+        p["STAMaxNum"] = sta_max
+
         if int(p.get("VIT", 0)) < vit_max:
             cur = p.get("VITNextRecoverTime")
-            p["VITNextRecoverTime"] = max(now + 1, int(cur)) if isinstance(cur, (int, float)) and int(cur) > now else now + vit_cd
+            if isinstance(cur, (int, float)) and int(cur) > now:
+                p["VITNextRecoverTime"] = min(int(cur), now + vit_cd)
+            else:
+                p["VITNextRecoverTime"] = now + vit_cd
         else:
             p["VITNextRecoverTime"] = now
+
         if int(p.get("STA", 0)) < sta_max:
             cur = p.get("STANextRecoverTime")
-            p["STANextRecoverTime"] = max(now + 1, int(cur)) if isinstance(cur, (int, float)) and int(cur) > now else now + sta_cd
+            if isinstance(cur, (int, float)) and int(cur) > now:
+                p["STANextRecoverTime"] = min(int(cur), now + sta_cd)
+            else:
+                p["STANextRecoverTime"] = now + sta_cd
         else:
             p["STANextRecoverTime"] = now
 
@@ -960,8 +1120,11 @@ class ProfileStore:
         res_tuples: list[tuple[int, int, int]],
         source: str,
         tx_prefix: str,
+        validate_resources: bool = True,
     ) -> list[dict[str, Any]]:
         """Apply a list of (typeID, modelID, num) drops and build BaseGetGameResourceList payload."""
+        if validate_resources:
+            self._validate_resource_tuples(res_tuples, source=source)
         player_attrs: list[dict[str, Any]] = []
         new_heroes: list[dict[str, Any]] = []
         new_equips: list[dict[str, Any]] = []
@@ -1515,7 +1678,23 @@ class ProfileStore:
         }
 
     def _rpc_sync_avatar(self, _data: Any) -> dict[str, Any]:
-        return dict(self.state["player"])
+        p = self.state["player"]
+        before = (
+            p.get("VITMaxNum"),
+            p.get("VITNextRecoverTime"),
+            p.get("STAMaxNum"),
+            p.get("STANextRecoverTime"),
+        )
+        self._sync_player_recover_times(p)
+        after = (
+            p.get("VITMaxNum"),
+            p.get("VITNextRecoverTime"),
+            p.get("STAMaxNum"),
+            p.get("STANextRecoverTime"),
+        )
+        if after != before:
+            self.save()
+        return dict(p)
 
     def _rpc_alter_step_count(self, data: Any) -> dict[str, Any]:
         if isinstance(data, list) and len(data) >= 2:
@@ -3663,6 +3842,8 @@ class ProfileStore:
         bs["bosses"] = [
             b for b in bs.get("bosses", []) if int(b.get("CurHP", 0)) > 0 and int(b.get("AwayTime", 0)) > now
         ]
+        for b in bs["bosses"]:
+            self._sanitize_boss_drop(b)
         atk_num = int(bs.get("attack_num", 10))
         rec_time = int(bs.get("recover_time", now + rec_cd))
         if atk_num < max_atk:
@@ -3738,13 +3919,7 @@ class ProfileStore:
             ap_mult=1.2 + tier_idx * 0.2,
             def_mult=1.1 + tier_idx * 0.15,
         )
-        drop_options = [
-            {"TypeId": 1602, "ModelId": 16020020, "Num": 1},
-            {"TypeId": 1602, "ModelId": 16020021, "Num": 1},
-            {"TypeId": 1503, "ModelId": 15030101, "Num": 1},
-            {"TypeId": 1504, "ModelId": 15040101, "Num": 1},
-        ]
-        drop_res = drop_options[tier_idx % len(drop_options)]
+        drop_res = self._boss_drop_for_model(model_id)
         now = int(time.time())
         boss_entry = {
             "Id": str(uuid.uuid4()),
@@ -3902,7 +4077,7 @@ class ProfileStore:
             (1120, 0, jifen_gain),
         ]
         if not boss_exist and isinstance(boss.get("DropResource"), dict):
-            dr = boss["DropResource"]
+            dr = self._sanitize_boss_drop(boss)
             tuples.append((int(dr["TypeId"]), int(dr["ModelId"]), int(dr.get("Num", 1))))
 
         base_res = self._grant_resources_from_tuples(
@@ -3910,6 +4085,7 @@ class ProfileStore:
             source=f"boss_fight:{boss['BossModelId']}",
             tx_prefix=f"boss:{self.profile_name}:{boss_id}:{uuid.uuid4()}",
         )
+        self.validate_base_resource_list(base_res, context="BossBattle.Fight")
         old_lv2, new_lv2 = self._sync_level_from_exp()
         if new_lv2 != old_lv2:
             self._last_rpc_context["lv_changed"] = True
@@ -3949,6 +4125,7 @@ class ProfileStore:
             source=f"boss_box:{need_val}",
             tx_prefix=f"boss_box:{self.profile_name}:{need_val}:{uuid.uuid4()}",
         )
+        self.validate_base_resource_list(base_res, context="BossBattle.DrawBox")
         self.save()
         return {"BaseGetGameResourceList": base_res}
 
@@ -3971,6 +4148,7 @@ class ProfileStore:
             source="boss_one_key_box",
             tx_prefix=f"boss_box_all:{self.profile_name}:{uuid.uuid4()}",
         )
+        self.validate_base_resource_list(base_res, context="BossBattle.OneKeyDrawBox")
         self.save()
         return {"BaseGetGameResourceList": base_res}
 

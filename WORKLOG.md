@@ -133,3 +133,11 @@ python3 server/emulator.py --host 0.0.0.0 --port 8080
 - **Selective Pixel Verification & Suite (`server/test_emulator.py`):**
   - Updated `com.cmn.inuyasha_revival.apk` endpoint to current MacBook IP `192.168.1.250:8080` via `adb install -r` and selectively verified `Home`, `RoleInforLayer`, `Shop`, and `RechargeScene` with zero `STEP_POST` Lua errors.
   - All `18/18` tests in `server/test_emulator.py` passed (`2.295s`), `node --check poc/web_poc/app.js` exited `0`, and `env_ctl.py smoke` passed on both `8080` and `8082`.
+
+## Round R5.1 — Display Compatibility (`Pixel 3 XL` Android 12)
+- **Root Cause & Backups:** Diagnosed cold-start & `StartGameScene` `1440 x 1440` half-screen squashing (`1.775x` horizontal compression inside Android 12 compat bounds `Rect(279, 0 - 2853, 1440)` = `2574 x 1440`) caused by `AndroidManifest.xml` declaring `android:screenOrientation="portrait"` + `android:configChanges="orientation"` racing `MQActivity.onCreate` / `Cocos2dxRenderer` / `Display.lua`. Backed up pre-R5.1 APK & `server/saves/` to `server/backups/vn_r5_display_before/` before rebuilding.
+- **APK Fixes (`analysis/vn/apktool_patched/`):**
+  - Updated `AndroidManifest.xml` to `android:screenOrientation="sensorLandscape"` and `android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"`.
+  - Updated `Cocos2dxRenderer.smali` (`onSurfaceChanged`) to keep `mScreenWidth`/`mScreenHeight` synced before `nativeOnSurfaceChanged`, and `MQActivity.smali` (`onWindowFocusChanged`) to call `MQUtils.hideSystemUI`.
+  - Rebuilt & signed `analysis/vn/patched/com.cmn.inuyasha_revival.apk` with debug keystore (`adb install -r` preserved saves).
+- **Verification & Report:** Verified cold launch, close/re-open, Server Selection -> Home, background/resume (`Requested w=2574 h=1440`, `mBounds=Rect(279, 0 - 2853, 1440)`), `AdventureScene`, `BattleScene` (`7-2`), left/right edge buttons (`Avatar` `380,135`, `SHOP` `2730,105`, `SHOP X` `2750,75`, `MẠO HIỂM` `2700,1280`), zero `NORMAL` save gameplay loss (`OlinaHugh` Lv 16, `51★`), zero R5.1 `STEP_POST` Lua errors, `18/18` tests OK, `env_ctl.py smoke` OK, `node --check` OK. Documented in `R5_1_DISPLAY_REPORT.md`.

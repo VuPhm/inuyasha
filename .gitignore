@@ -26,6 +26,7 @@ node_modules/
 server/save_state.json
 server/saves/
 server/dev_saves/
+server/releases/
 server/qa_runs/
 server/backups/
 server/checkpoints/

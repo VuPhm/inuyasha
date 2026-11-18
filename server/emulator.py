@@ -43,8 +43,34 @@ from typing import Any
 from combat_sim import simulate_fight_info
 from economy_audit import ResourceLedger
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
 SERVER_DIR = Path(__file__).resolve().parent
+_default_root = SERVER_DIR.parent
+ROOT_DIR = Path(os.environ.get("INUYASHA_ROOT_DIR", str(_default_root))).resolve()
+
+
+def _load_release_meta() -> dict[str, Any]:
+    """Read RELEASE.json beside SERVER_DIR/parent if running from an isolated release bundle."""
+    for candidate in (SERVER_DIR.parent / "RELEASE.json", SERVER_DIR / "RELEASE.json"):
+        if candidate.exists():
+            try:
+                data = json.loads(candidate.read_text(encoding="utf-8"))
+                return {
+                    "release_tag": data.get("tag"),
+                    "commit": data.get("commit"),
+                    "source": "isolated_release",
+                    "release_dir": str(candidate.parent),
+                }
+            except Exception:
+                pass
+    return {
+        "release_tag": "working-tree",
+        "commit": None,
+        "source": "working_tree",
+        "release_dir": str(ROOT_DIR),
+    }
+
+
+RELEASE_META = _load_release_meta()
 
 
 def _det_uuid(seed: str) -> str:
@@ -3597,7 +3623,7 @@ class ProfileStore:
     # ------------------------------------------------------------------
 
     def _compute_red_dot_info(self) -> dict[str, int]:
-        """Compute module red-dot flags (never activate StartWork 2718 popup due to client #self.self bug)."""
+        """Compute module red-dot flags (including StartWork 2718 on Mon-Thu until claimed)."""
         lv = int(self.state.get("player", {}).get("Lv", 1))
         now = int(time.time())
         boss_state = self.state.get("boss_battle", {})
@@ -3613,11 +3639,15 @@ class ProfileStore:
         )
         df = self.state.get("daydayfund", {})
         can_fund = lv >= 19 and (bool(df.get("if_draw", True)) or now >= int(df.get("cooled_time", 0)))
+        today = time.strftime("%Y-%m-%d")
+        is_workday_window = time.localtime().tm_wday in (0, 1, 2, 3)
+        claimed_days = self.state.get("startwork", {}).get("claimed_days", [])
+        can_startwork = is_workday_window and (today not in claimed_days)
         return {
             "2203": 1 if (lv >= 18 and alive_boss) else 0,
             "2205": 1 if (lv >= 18 and claimable_box) else 0,
             "2710": 1 if can_fund else 0,
-            "2718": 0,
+            "2718": 1 if can_startwork else 0,
         }
 
     def _sync_boss_battle_state(self) -> dict[str, Any]:
@@ -3646,6 +3676,8 @@ class ProfileStore:
         else:
             bs["recover_time"] = now
         bs["jifen"] = int(self.state["player"].get("BossCoin", bs.get("jifen", 0)))
+        if "battle" in self.state:
+            self.state["battle"]["HasBoss"] = "True" if bs["bosses"] else "False"
         return bs
 
     def _luckboss_is_double_jifen(self) -> bool:
@@ -3728,6 +3760,8 @@ class ProfileStore:
             "DropResource": drop_res,
         }
         bs["bosses"].append(boss_entry)
+        if "battle" in self.state:
+            self.state["battle"]["HasBoss"] = "True"
         return boss_entry["Id"]
 
     def _build_boss_fight_info(self, boss: dict[str, Any], is_full: bool) -> dict[str, Any]:
@@ -4561,10 +4595,7 @@ class ProfileStore:
         step = self._pvp_step_for_lv(int(p.get("Lv", 20)))
         need_step = int(row.get("needStep", 1))
         need_rank = int(row.get("needRank", 0))
-        if step < need_step:
-            self._last_rpc_context["status"] = -1
-            return {}
-        if need_rank > 0 and int(pvp.get("history_max_rank", 1500)) > need_rank:
+        if step < need_step or (step == need_step and need_rank > 0 and int(pvp.get("history_max_rank", 1500)) > need_rank):
             self._last_rpc_context["status"] = -1
             return {}
 
@@ -5344,6 +5375,7 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                 {
                     "ok": True,
                     "env": self.server.emu.env,
+                    "release": RELEASE_META,
                     "data_dir": str(self.server.emu.data_dir),
                     "game": "InuYasha: Seek Jade",
                     "default_profile": self.server.emu.default_profile,

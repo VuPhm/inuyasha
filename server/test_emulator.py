@@ -1305,10 +1305,14 @@ class EmulatorProtocolTest(unittest.TestCase):
             self.assertTrue(harv["Value"]["IfDraw"])
             self.assertTrue(harv["Value"]["BaseGetGameResourceList"])
 
-            # StartWorkReward RPC + RedDotInfo[2718] safety guard
+            # StartWorkReward RPC + RedDotInfo[2718] dynamic Mon-Thu workday behavior
+            import time as _time
+
             sw_info = emu.handle_rpc({"ModuleName": "StartWorkReward", "MethodName": "GetStartworkRewardInfo", "Data": [], "ServerId": 1})
             self.assertEqual(sw_info["Status"], 0)
             self.assertIn("StartWorkReward", sw_info["Value"])
+            expected_before = 1 if _time.localtime().tm_wday in (0, 1, 2, 3) else 0
+            self.assertEqual(sw_info["Avatar"]["RedDotInfo"]["2718"], expected_before)
             sw_get = emu.handle_rpc({"ModuleName": "StartWorkReward", "MethodName": "GetStartworkReward", "Data": [], "ServerId": 1})
             self.assertEqual(sw_get["Status"], 0)
             self.assertEqual(sw_get["Avatar"]["RedDotInfo"]["2718"], 0)
@@ -1347,6 +1351,43 @@ class EmulatorProtocolTest(unittest.TestCase):
             c20 = qa_runner.QABackendClient(data_dir=Path(td) / "lv20", persist=True, new_player=True)
             res20 = qa_runner.apply_preset(c20, "QA_LV20")
             self.assertEqual(res20["summary"]["player"]["Lv"], 20)
+
+    def test_24_release_isolation_promote_and_rollback(self) -> None:
+        import env_ctl
+
+        with tempfile.TemporaryDirectory() as td:
+            rel_dir = Path(td) / "releases"
+            # Uninitialized stable release must refuse falling back to DEV working tree
+            empty_rel = env_ctl.get_active_stable_release(releases_dir=rel_dir)
+            self.assertFalse(empty_rel["configured"])
+            with self.assertRaises(RuntimeError):
+                env_ctl.start_env_daemon("stable", port_override=19999, data_dir=Path(td) / "s", releases_dir=rel_dir)
+
+            # Pin STABLE pointer to checkpoint-vn-r5.2 and stage checkpoint-vn-r6 separately
+            ptr52 = env_ctl._set_stable_release_pointer("checkpoint-vn-r5.2", releases_dir=rel_dir)
+            self.assertEqual(ptr52["active_release"], "checkpoint-vn-r5.2")
+            staged6 = env_ctl.materialize_release("checkpoint-vn-r6", releases_dir=rel_dir)
+            self.assertTrue(staged6["ok"])
+
+            active = env_ctl.get_active_stable_release(releases_dir=rel_dir)
+            self.assertTrue(active["verified"])
+            self.assertTrue(active["isolated_from_dev"])
+            self.assertEqual(active["active_release"], "checkpoint-vn-r5.2")
+            # Ensure materialized r5.2 snapshot does not carry R6 BossBattle handlers
+            r52_src = Path(active["emulator_path"]).read_text(encoding="utf-8")
+            self.assertNotIn("BossBattle.GetBossList", r52_src)
+
+            # Promote to r6 -> records previous_release; rollback reverts cleanly
+            ptr6 = env_ctl._set_stable_release_pointer("checkpoint-vn-r6", releases_dir=rel_dir)
+            self.assertEqual(ptr6["active_release"], "checkpoint-vn-r6")
+            self.assertEqual(ptr6["previous_release"], "checkpoint-vn-r5.2")
+            ptr_rb = env_ctl._set_stable_release_pointer(ptr6["previous_release"], releases_dir=rel_dir)
+            self.assertEqual(ptr_rb["active_release"], "checkpoint-vn-r5.2")
+
+            # Tampering with STABLE release code fails checksum verification
+            emu_p = Path(env_ctl.get_active_stable_release(releases_dir=rel_dir)["emulator_path"])
+            emu_p.write_text(emu_p.read_text(encoding="utf-8") + "\n# tamper\n", encoding="utf-8")
+            self.assertFalse(env_ctl.get_active_stable_release(releases_dir=rel_dir)["verified"])
 
 
 if __name__ == "__main__":

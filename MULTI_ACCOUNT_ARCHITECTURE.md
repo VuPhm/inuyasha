@@ -1,268 +1,202 @@
-# INUYASHA REVIVAL — R7 MULTI-ACCOUNT & PORTABLE SERVER ARCHITECTURE
+# INUYASHA REVIVAL — R7 MULTIPLAYER PRIVATE SERVER & PORTABLE ARCHITECTURE
 
-**Status:** Survey & Planning Document (R6.2 Deliverable — no runtime rewrite or voice generation in R6.2)  
-**Target Milestone:** Round R7 (~2 concurrent personal players on a single shared world, portable from macOS to Linux VPS / always-on PC / Docker), followed by Post-R7 Vietnamese Character Voice Localization  
-**Immediate Priority Order:** Pixel R6.2 Acceptance -> STABLE Promote (on approval) -> R7 Two-Player Foundation & Concurrent Online Verification -> Character Voice Localization Experiments
+**Status:** Architecture & Survey Specification (Revised before R7.2 / R7.3 implementation)  
+**Canonical Client Reference:** VN `com.cmn.inuyasha` (`v5.0.4.98`)  
+**Scope:** True multi-player private game server supporting $N$ independent concurrent players sharing **Server 1**, portable across macOS / always-on PC / Linux VPS / Docker (with initial multi-player acceptance validated using 2 simultaneous independent clients on Server 1).
 
----
-
-## Executive Summary
-
-In R6.2, `GameEmulatorState` in `server/emulator.py` routes RPCs solely by `ServerId` (`1 -> "normal"`, `2 -> "debug"`), `/API/ServerList_Client.ashx` and `/sdk/*` return hardcoded `"UserID": "100001"`, and client APK patching (`poc/patch_vn_apk.py`) pins `MQLogin` to `uid="100001"`. That forces two physical devices connecting to Server 1 to collide on `server/saves/normal_profile.json` (`OlinaHugh`, `PlayerId="200010"`).
-
-For R7, the minimal, least-invasive architecture decouples **Account (`AccountId` / `PlayerId`)** from **World (`ServerId`)**:
-- Keep **`ServerId = 1`** as the single shared game world where both personal players play together, while isolating **QA/DEBUG (`ServerId = 2` or explicit QA account)** completely.
-- Store per-player saves under `<data_dir>/worlds/<world_id>/accounts/<player_id>/profile.json` plus a per-world shared state `<data_dir>/worlds/<world_id>/world_state.json`.
-- Protect concurrent two-player requests inside `ThreadingEmulatorServer` with per-account `RLock`, a world lock, and a thread-safe `ResourceLedger` (currently `_applied_keys` in `server/economy_audit.py` has no lock).
-- Preserve backward compatibility for `OlinaHugh` (`PlayerId="200010"`, Lv 16 STABLE / Lv 20 DEV) via an automatic one-time migration from legacy `normal_profile.json` + `debug_profile.json`.
+> **Key Clarification (R7.3 Correction):**  
+> "2 players" is **only the initial acceptance target** — NOT a 2-account cap and **NOT** one person switching `Server 1 <-> Server 2` on a single device. The server must be a genuine multi-client private game server where independent players connect simultaneously to the **same Server 1 world**, each owning an independent account, session, player profile, roster, and save, while sharing rankings, shared bosses, events, social features, and (optionally) world chat.
 
 ---
 
-## Current Architecture Bottlenecks (Observed in R6.2)
+## 1. Exact Identifier Model (Verified from VN Client Lua Source)
 
-| Layer | File / Symbol | Current Limitation |
+Never conflate these identifiers; each comes directly from VN `5.0.4.98` Lua code:
+
+| Identifier | VN Client Field(s) | Scope & Lifecycle | Source Location |
+|---|---|---|---|
+| **`AccountId`** | `UserID` (and `LoginInfo.uid`) | Cross-world user account ID returned by `/sdk/login` or `/sdk/Register` (or third-party SDK login), persisted via `LocalData:saveLoginInfo`, passed to `/API/ServerList_Client.ashx` and `Player.Login` arg #6. | `Login/GameLoginScene.lua:493-506`, `Login/StartGameScene.lua:441,663` |
+| **`ServerId`** | `ServerID` / `ServerId` | **Game World / Shard ID** (`1` = Shared World S1, optional `2` = isolated QA/Sandbox). Sent on `/client.aspx` (`data.ServerId`) and `ChatMng:login()`. Multiple independent accounts select `ServerId = 1` simultaneously and inhabit the **same world**. | `Login/StartGameScene.lua:651,716`, `Network/HttpClient.lua:172`, `Chat/ChatMng.lua:151,158` |
+| **`PlayerId`** | `PlayerId` (`PlayerID`) | **Per-world player entity ID**: uniquely identifies `(AccountId, ServerId)` inside a world (`200010` for OlinaHugh on S1). Returned by `Player.Login` (`response.Value.PlayerId`), cached by client (`LocalData:savePlayerId`), and sent on every `/client.aspx` request (`data.PlayerId`) and `ChatMng:login()` (`Id`). | `Login/StartGameScene.lua:675,718`, `Network/HttpClient.lua:158,174`, `Chat/ChatMng.lua:142,154` |
+| **`Character` / `Hero.Id`** | *(No `CharacterId` field exists)* `Hero.Id`, `HeroModelId`, `SlotId` | The VN protocol has **no separate `CharacterId`** on login/RPC envelopes. Calling `Player.NewPlayer({PlayerName, Gender})` initializes the player's avatar metadata (`PlayerName`, `Gender`, `HeadImageId`) and creates their Main Hero instance (`Hero.Id` UUID, `HeroModelId=12010001/12010004`) in `SlotId=1`. | `Login/RoleCreateScene.lua:344,383`, `server/emulator.py` |
+| **`SessionId`** | Auth `sessionId` vs RPC `Session` | Two distinct tokens:<br>1. **Account auth token** (`sessionId` / `LoginInfo.token`) issued at SDK/account login.<br>2. **Per-login world session** (`response.Value.Session` from `Player.Login`), attached by client as `data.Session` on every `/client.aspx` call (`HttpClient.lua:159,173`). | `Login/StartGameScene.lua:444`, `Network/HttpClient.lua:159,173,271` |
+
+---
+
+## 2. Current Single-User Bottlenecks Observed in R6.2 / R7.1
+
+| Layer | Observed Behavior in Current Code | Why It Blocks True Multiplayer |
 |---|---|---|
-| Account routing | `server/emulator.py` (`GameEmulatorState.get_profile`, lines 5407–5421) | Maps `ServerId=1 -> profiles["normal"]` and `ServerId=2 -> profiles["debug"]`. Ignores `PlayerId`, `UserID`, and `Session` in `/client.aspx` requests. |
-| Auth & ServerList | `server/emulator.py` (`/sdk/*` lines 5544–5548; `/API/ServerList_Client.ashx` lines 5634–5676) | Ignores incoming POST credentials; hardcodes `"UserID": "100001"`, `"sessionId": "local-revival-session-0001"`. Uses `ServerID=1` vs `ServerID=2` to pick profile. |
-| Client SDK patch | `poc/patch_vn_apk.py` (lines 32–55) | Hooks `MQLogin` to fixed `uid="100001"` instead of `mqkk` email/password UI (`GameLoginScene.lua`) or per-device identity. |
-| Client RPC headers | Client `HttpClient.lua` (lines 172–178) & `StartGameScene.lua` | Sends `ServerId`, `Session`, `PlayerId`, `MAC`, `IDFA` on every `/client.aspx` RPC, plus `UserID`/`LoginInfo`/`ServerId` on `Player.Login` (available for server-side resolution, currently unused). |
-| Economy Ledger | `server/economy_audit.py` (`ResourceLedger`) | `_applied_keys: set[str]` and JSONL append have no internal lock; all profiles share one `audit_ledger.jsonl` under `SAVES_DIR`. |
-| Runtime & Paths | `server/env_ctl.py` & `server/emulator.py` | `env_ctl.py` uses POSIX `pgrep`, binds fixed ports `8080`/`8082`, and runs source/release trees on host; `poc/patch_*.py` hardcode macOS `/Users/vup/Library/...` and default `--server 192.168.1.250:8080`. |
+| RPC Routing | `GameEmulatorState.get_profile()` (`server/emulator.py:5460`) switches solely on `ServerId` (`1 -> normal`, `2 -> debug`). | Two devices joining `ServerId=1` share `normal_profile.json` (`200010`) and overwrite each other's state. |
+| Auth & ServerList | `/sdk/*` & `/API/ServerList_Client.ashx` (`emulator.py:5595,5685`) ignore incoming `UserID`/credentials and return hardcoded `"UserID": "100001"`. | Cannot distinguish real Player A vs Player B at login or issue per-user sessions. |
+| Session Validation | `/client.aspx` never checks `Session` or matches `Session` -> `(AccountId, ServerId, PlayerId)`. `-46` / `-1101` / `-1103` error flows are unused. | Spoofed/stale/colliding requests cannot be rejected cleanly or forced to re-login (`-1101`). |
+| APK SDK Stub | `poc/patch_vn_apk.py:31-58` hardcodes `MQLogin` to `uid="100001"`. | Every installed APK reports `UserID="100001"` unless using `mqkk` login UI (`GameLoginScene.lua`) or per-account auth. |
+| Ledger Thread Safety | `ResourceLedger` (`server/economy_audit.py`) holds `_applied_keys` in an unlocked `set` and shares one `audit_ledger.jsonl` without an internal lock. | Concurrent grants across threads risk race conditions on `_applied_keys` or interleaved JSONL writes. |
+| Shared Features | `boss_battle.bosses` and `pvp.rank` live inside each user's individual JSON (`normal_profile.json` / `debug_profile.json`). | Players on S1 only see scripted bots instead of real players' ranks, formations, or shared bosses. |
 
 ---
 
-## 1. Account & Session
+## 3. Target N-Player Private Server Architecture
 
-### Design Goals
-- Each player gets a distinct `AccountId` / `PlayerId` (e.g., `"200010"` for OlinaHugh, `"200011"` for Player 2).
-- `ServerId` identifies the **world** (`1 = Shared World S1`, optional `2 = QA/Sandbox`), **not** the user.
-- Both players select **Server 1** and stay completely isolated.
-- QA/DEBUG profile (`InuYasha`, `100001`) never shares world state, rankings, or saves with Server 1 players.
-- Players can recover their account after reinstalling the APK or switching phones.
+### 3.1 Storage Layout (`N` Accounts, World-Scoped)
 
-### Client Login & Reinstall Recovery Options (Comparison)
-
-The APK already contains `GameLoginScene.lua` supporting both `MQLogin` and `mqkk` (`Channel="mqkk"`, calling `/sdk/login`, `/sdk/Register`, `/sdk/Default`) without modifying core gameplay scripts:
-
-1. **Option A — Built-in `mqkk` Lightweight Account/Passcode (Recommended for R7):**
-   - Switch client login channel configuration from hardcoded `uid="100001"` to `mqkk` (or minimal username + PIN/passcode login in `GameLoginScene.lua`).
-   - `/sdk/Register` & `/sdk/login` look up `<data_dir>/accounts_index.json` (storing `account_id`, `username`, salted SHA-256/PBKDF2 password hash, `player_id`, `role`, `recovery_code`, `created_at`), issuing a random per-login opaque `session_token` (`secrets.token_urlsafe(24)`).
-   - Server sets `"UserID": account_id` and `"sessionId": session_token` in `/sdk/login` and `/API/ServerList_Client.ashx`.
-   - **Reinstall recovery:** Player simply logs in with their username/password (or single-use recovery code / admin-reset passcode) on any phone or reinstalled APK and immediately gets their exact `PlayerId` back.
-
-2. **Option B — Pre-issued Per-Player Token + Account-Switch File / QR / Device Binding (Zero-APK-UI fallback):**
-   - Generate two static player accounts (`p1`, `p2`) on the server with a bind token or lightweight web bind page (`POST /account/bind`), falling back to `MAC`/`IDFA` (`HttpClient.lua:172-178`) or per-device patched config (`player_token` in APK).
-   - **Limitation:** Pure `MAC`/`IDFA` breaks if Android resets `ANDROID_ID`/randomizes MAC on OS upgrade or reinstall; device-bound APK builds require building 2 different APKs unless paired with a login code.
-
-**Recommendation:** Use **Option A (`mqkk` username + password/PIN)** as the primary mechanism, backed by a manual recovery-code / Admin account-rebind fallback so reinstalling on a new phone works without rebuilding APKs.
-
-### Session Isolation & Validation Rules
-Every `/client.aspx` request carries `Session`, `PlayerId`, `ServerId`:
-1. Look up `session = session_store.get(req.get("Session"))`.
-2. Require `session` to be valid and unexpired; reject unknown/expired/forged sessions with an explicit auth error instead of silently defaulting to `normal`.
-3. Cross-check `req.get("PlayerId")`: once a session has entered a world (`PlayerId` assigned on `Player.Login` / `Player.NewPlayer`), reject any mismatched `PlayerId` (`HTTP 403` or RPC status error) to guarantee zero cross-account contamination.
-4. For `ServerId == 2` (`QA/DEBUG`) or `is_qa=True` accounts:
-   - Restrict login to explicit QA accounts (e.g. `account_id="100001"` with QA role flag or non-production `INUYASHA_ALLOW_QA_PROFILE=1`), and route `ServerId=2` to `<data_dir>/worlds/qa_sandbox/` so QA actions (Lv 99 boosts, `/admin/prepare`, debug items) can never leak into `World 1`.
-5. Bind `/sdk/*` `ServerList_Client.ashx` responses dynamically using the incoming `UserID`/`sessionId` so Client `StartGameScene` enters Server 1 with the logged-in user's identity rather than `"100001"`.
-
----
-
-## 2. Player Data
-
-### Per-Account Ownership Boundary
-
-Move single-account state out of `normal_profile.json` into per-account directories under World `S1`:
+No fixed cap on number of players (scales naturally from 2 test players to $N$ personal/private-server players):
 
 ```
 <data_dir>/
-  accounts_index.json                     # account credentials, player_id, roles, recovery hashes
-  audit_ledger.jsonl                      # append-only ledger (or per-world ledger)
+  accounts/
+    accounts_index.json                     # username/email -> AccountId, salted PBKDF2 hash, role ("player"|"qa"), recovery_hash, status
+    sessions.json                           # active/revocable world sessions (or in-memory + persistent salt)
+  audit_ledger.jsonl                        # locked append-only economy ledger (world_id + player_id scoped keys)
   worlds/
-    s1/
-      world_state.json                    # shared world: shared bosses, arena ladder, events, friends
-      accounts/
+    1/                                      # ServerId = 1 (Shared World for all real players)
+      world_state.json                      # Arena ladder, shared LuckBosses, Friend graph, Guilds, Notices, Events
+      players/
         200010/
-          profile.json                    # OlinaHugh complete save
+          profile.json                      # OlinaHugh (migrated intact)
         200011/
-          profile.json                    # Player 2 complete save
-    qa/
+          profile.json                      # Player 2
+        200012/
+          profile.json                      # Player 3 ... N
+    2/                                      # ServerId = 2 (Isolated QA/Debug World, gated by QA role/env flag)
       world_state.json
-      accounts/
+      players/
         100001/
-          profile.json                    # InuYasha QA/debug save
+          profile.json                      # InuYasha QA/Debug
 ```
 
-Each `accounts/<player_id>/profile.json` owns 100% independent state:
-- **Player identity & stats:** `PlayerId`, `Session`, `PlayerName`, `Gender`, `Lv`, `EXP`, `VIT`, `VITMaxNum`, `VITNextRecoverTime`, `STA`, `STAMaxNum`, `STANextRecoverTime`, `FAP`, `StarId`, `HeadImageId`, `FashionModelId`, `LastLoginTime`, `IsNewPlayer`.
+### 3.2 Authentication, Login & Session Lifecycle (`Status` Codes Match VN Client)
+
+Follows `GameLoginScene.lua`, `StartGameScene.lua`, and `HttpClient.lua` natively:
+
+1. **Account Auth (`/sdk/Register`, `/sdk/login`, `/sdk/Default`):**
+   - Enable `GameLoginScene:createMqkkUI()` (already built into VN client) or lightweight account binding so any player can register/login from any device without rebuilding per-user APKs.
+   - Generate unique `AccountId` (e.g. monotonic counter or UUID/string ID), store salted PBKDF2-HMAC-SHA256 password hash + optional single-use recovery code hash in `accounts_index.json`.
+   - Issue opaque SDK `sessionId` (`secrets.token_urlsafe(24)`), return `{"State": 1, "Result": {"UserID": account_id, "sessionId": sdk_token}}`.
+   - **Reinstall recovery:** Player installs the APK on a new phone and logs in with their `account` + password/recovery key -> receives the exact same `AccountId` (`UserID`), and `ServerList_Client.ashx` + `Player.Login(ServerId=1)` reconnects them to their existing `PlayerId` (`200010`, etc.).
+
+2. **Server List (`/API/ServerList_Client.ashx`):**
+   - Read `UserID` and `LoginInfo` from POST form body (`StartGameScene.lua:451`).
+   - Return Server 1 (`S1`) to all accounts; include Server 2 (`QA Sandbox`) **only** for `role="qa"` accounts or when `INUYASHA_EXPOSE_QA_SERVER=1` is enabled.
+   - `ServerUrl = f"http://{public_host}"`, `ChatServerUrl = f"{public_host_ip}:8081"` (if chat service is enabled).
+
+3. **World Login (`Player.Login` -> `PlayerId` + `Session`):**
+   - Inputs: `ServerId`, plus `[model, version, randNum, encryptedString, loginInfoJson, userID]` (`StartGameScene.lua:663`).
+   - Verify account exists (`-1102` if banned/locked) and verify QA access if `ServerId == 2`.
+   - Resolve `(AccountId, ServerId) -> PlayerId` from `worlds/<sid>/world_state.json["account_to_player"]` (creating a fresh `Lv 1`, `IsNewPlayer=1` player directory under `worlds/<sid>/players/<new_player_id>/profile.json` if first time on this world, allocating next unused `PlayerId` e.g. `max_id + 1`).
+   - Mint a fresh per-login `world_session = secrets.token_urlsafe(32)` stored in `SessionStore`: `{session -> (account_id, server_id, player_id, issued_at, expires_at, generation)}`.
+   - **Concurrent login safety (same account on two devices):** Logging into `(AccountId, ServerId)` rotates the active session for that `(AccountId, ServerId)` so the superseded session fails cleanly on its next RPC with **`Status = -1101`** (client displays *"Account logged in elsewhere / expired"* and returns to login screen per `HttpClient.lua:246-256`). Different accounts (`Player 1` and `Player 2`) hold completely separate sessions on `ServerId=1` simultaneously.
+
+4. **Per-RPC Enforcement (`/client.aspx`):**
+   - Look up `req["Session"]` -> verify valid & active:
+     - Unknown / expired -> return `Status = -1101` (or `-46` if silent refresh applies per `HttpClient.lua:271`).
+     - If `req["PlayerId"]` is non-empty and `!= session.player_id`, or `req["ServerId"] != session.server_id` -> **reject immediately (`Status = -1103`, no fallback to any default profile!)**.
+   - Route directly to `WorldManager.get_world(session.server_id).get_player(session.player_id)`.
+
+---
+
+## 4. Per-Player State vs Shared World State on `ServerId = 1`
+
+### 4.1 Strictly Private Per-Player Data (`worlds/<sid>/players/<player_id>/profile.json`)
+- **Identity & Vitals:** `PlayerId`, `AccountId`, `PlayerName`, `Gender`, `Lv`, `EXP`, `VIT`, `VITMaxNum`, `VITNextRecoverTime`, `STA`, `STAMaxNum`, `STANextRecoverTime`, `FAP`, `StarId`, `HeadImageId`, `FashionModelId`, `IsNewPlayer`.
 - **Currencies & VIP:** `Gold`, `Diamond`, `HeroCoin`, `HeroEXP`, `PVPCoin`, `BossCoin`, `Vip`, `VIPLv`, `VipEXP`, `ChargeNum`, `month_cards`, `charge_state`.
-- **Roster & Equipment:** `heroes`, `slots`, `embattle`, `equips`, `treasures`, `treasure_debris`, `treasure_protect_end`, `fashions`.
-- **Inventory & Progression:** `goods`, `battle`, `chapters`, `nodes`, `elite`, `nightmare`, `explore`.
-- **Quests, Steps & Daily Activities:** `claimed_step_rewards`, `StepCountList`, `recruit_state`, `shop_bought`, `lv_plan`, `vip_welfare_drawn_date`, `daydayfund`, `startwork`, personal `boss_battle` charges (`attack_num`, `recover_time`, `buy_count`, `drawn_boxes`, `jifen`, `next_boss_count`, `clear_counter`).
+- **Inventory & Roster:** `heroes`, `slots`, `embattle`, `equips`, `treasures`, `treasure_debris`, `treasure_protect_end`, `goods`, `fashions`.
+- **Progression & Personal Quests/Cooldowns:** `battle`, `chapters`, `nodes`, `elite`, `nightmare`, `explore`, `claimed_step_rewards`, `StepCountList`, `recruit_state`, `shop_bought`, `lv_plan`, `vip_welfare_drawn_date`, `daydayfund`, `startwork`, personal `boss_battle` charges (`attack_num`, `recover_time`, `buy_count`, `drawn_boxes`, `jifen`, `clear_counter`), personal `pvp` coins/shop limits/cooldowns.
 
-### Schema Versioning & Backward Compatibility for `OlinaHugh`
-- Add `"schema_version": 2` and `"account_id"` metadata inside `profile.json`, preserving every existing top-level key read by `ProfileStore._normalize_loaded_state()` (`player`, `heroes`, `slots`, `equips`, `goods`, `chapters`, `nodes`, `pvp`, `boss_battle`, etc.).
-- Reuse `ProfileStore._normalize_loaded_state()` so `OlinaHugh`'s Lv 16 / Lv 20 VIP 3 save loads without dropping any hero, equip, treasure debris (including `15030101 -> 15032101`), stage stars, daily flags, or VIP progress.
+### 4.2 Shared World Systems (`worlds/<sid>/world_state.json`, Protocol-Grounded)
 
----
+Only recover shared mechanisms that have **verified RPC/socket definitions in the VN client**:
 
-## 3. Shared World
+1. **Arena & Rankings (`PVP.*`, `Slot.SlotFormations`):**
+   - `world_state["arena_ladder"]`: ordered rank slots `1..2000` seeded with deterministic NPC bots, where active real players occupy real ranks and swap ranks atomically under `world_lock` (`PVP.PVPFight`).
+   - `world_state["player_snapshots"][player_id]`: combat snapshot (`PlayerName`, `Lv`, `FAP`, `HeadImageId`, `slots`, `heroes`, `embattle`) updated automatically after lineup/hero/equip changes and logins so Opponent Lookup (`Slot.SlotFormations`), `PVP.Refresh`, `PVP.PVPFight`, and `PVP.GetPVPTopRankList` reflect **actual players on Server 1**.
+   - Offline defense: fights against another player's rank resolve asynchronously against their `player_snapshots` entry (`simulate_fight_info`), keeping zero risk of blocking their concurrent PVE session.
 
-All non-real-time social/competitive features on **`ServerId = 1`** read and mutate `<data_dir>/worlds/s1/world_state.json`:
+2. **Shared LuckBoss (`BossBattle.*`):**
+   - Triggered bosses move into `world_state["bosses"]` with `OwnerPlayerId`, `OwnerName`, `CurHP`, `TotalHP`, `AwayTime`, `CanHelpTime`, `HelpOpen` (set when owner triggers `BossBattle.FriendHelp`), `DropResource`, and `Contributors: {player_id: damage}`.
+   - `BossBattle.GetBossList` returns player's own bosses + world/friend bosses whose help flag is open (`CanHelpTime > 0`).
+   - `BossBattle.JiFenRanking` ranks real players on `ServerId = 1` alongside NPC filler entries ordered by `JiFen`.
 
-1. **Shared Bosses (`LuckBoss`):**
-   - Personal boss attack charges (`attack_num`, `recover_time`, `buy_count`, personal `jifen`) stay inside `accounts/<player_id>/profile.json`.
-   - Active spawned boss instances move to `world_state.json["bosses"]` with `OwnerPlayerId`, `OwnerName`, `CurHP`, `TotalHP`, `AwayTime`, `CanHelpTime`, `Helpers: [player_id, ...]`, `ShareState`, and damage log `DamageByPlayer: {player_id: hurt}`.
-   - When Player A clicks `BossBattle.FriendHelp` (`CanHelpTime` / open help), `BossBattle.GetBossList` for Player B returns both Player B's own bosses and shared bosses from friends/world players.
-   - `BossBattle.JiFenRanking` merges live scores from all active Server 1 accounts (`200010`, `200011`) ahead of or mixed with scaled NPC bots based on `JiFen`.
+3. **Treasure Loot Targets (`TreasureLoot.*`):**
+   - Candidate pool includes real Server 1 players holding the requested debris (respecting `treasure_protect_end`) plus fallback NPC targets when fewer than 3 live targets hold that fragment.
 
-2. **Arena / Ranking (`PVP`):**
-   - Move `rank_table` (`rank -> entity_id`) into `world_state.json["arena_ladder"]`, seeded with the deterministic NPC bots (`1..1500+`), with real players (`200010`, `200011`) occupying live rank slots and mirrored `snapshot` combat teams (`PlayerName`, `Lv`, `FAP`, `slots`, `heroes`, `HeadImageId`) refreshed whenever a player logs in or changes lineup.
-   - `PVP.GetPVPTopRankList` and opponent matchmaking read live player snapshots from `world_state.json`, allowing Player 1 and Player 2 to see each other on the ladder and challenge each other's asynchronous defense snapshot (`simulate_fight_info`), swapping ranks atomically under `world_lock`.
-   - `PVP.shop_bought_daily`, `shop_bought_total`, `PVPCoin`, and `history` remain per-account (plus a compact match notice appended for the defender).
+4. **Social / World Chat (Future / Optional in R7.3b via Original `ChatMng.lua` Protocol):**
+   - `ChatMng.lua:140-260` defines a lightweight JSON-over-TCP socket protocol (`ChatServerUrl` e.g. `<host>:8081`):
+     - `CMD_TYPE_LOGIN = 1` (verifies `Sign = md5(Id + "-" + Name + "-7DE9DAA1-E87C-FF51-BCE3-15946DBE9462")` + `ServerId`),
+     - `CMD_TYPE_SEND_MSG = 3` (`CHANNEL_TYPE_SYSTEM=0`, `WORLD=1`, `UNION=2`, `PRIVATE=3`, `AVATAR=4`), `30s` heartbeat.
+   - HTTP gameplay works safely with or without `:8081` active (client disables chat cleanly when TCP is unreachable); adding a small Python async/threaded TCP relay on `:8081` scoped by `ServerId` later follows the exact client protocol without inventing custom endpoints.
 
-3. **World Events & Announcements:**
-   - Global event windows, double-point schedules (`LuckbossConfig`), welcome/maintenance notices (`Notice.GetNoticeList`), and server-wide milestone flags live in `world_state.json["events"]` so both players experience consistent server time/events.
-
-4. **Friends & Support (Future R7+):**
-   - Minimal mutual friend list (`world_state.json["friends"]` mapping `player_id -> set[friend_id]`) powers `FriendHelp` boss visibility, `TreasureLoot` opponent selection (filtering out protected players cleanly), and STA friend gifting without requiring live WebSocket/socket PvP or synchronous co-op.
-
-*(Real-time socket PvP / synchronous co-op ChatServer `ChatServerUrl` on `:8081` stays out of scope for R7.)*
+5. **Friends / Guilds (`Friend.*`, `Guild.*`, `Notice.*`):**
+   - Scoped strictly per `ServerId` in `world_state.json`; real players can add each other, join/form guilds, and see live world notices once implemented.
 
 ---
 
-## 4. Concurrency & Consistency
+## 5. Concurrency, Thread Safety & Consistency
 
-Because `ThreadingEmulatorServer` inherits `socketserver.ThreadingMixIn`, simultaneous HTTP requests from Player 1 and Player 2 execute on separate OS threads concurrently:
+Under `ThreadingEmulatorServer`, $N$ players send HTTP RPCs simultaneously on separate worker threads:
 
-### Locking Strategy (Deadlock-Free Strict Order)
-1. **Acquire order:** Always lock in strict total order:
-   1. `account_lock(player_id)` (per-account `threading.RLock`, sorted by `player_id` if ever locking two accounts)
-   2. `world_lock(world_id)` (`threading.RLock` for `world_state.json` mutations)
-   3. `ledger_lock` (internal `threading.RLock` inside `ResourceLedger`)
-2. **Scoped RPC execution:**
-   - **Account-only RPCs** (`Battle.*`, `Equip.*`, `Hero.*`, `Shop.*`, `Goods.*`, `Daydayfund.*`): acquire ONLY `account_lock(player_id)`. Player 1 and Player 2 fight stages, upgrade heroes, and buy items completely in parallel without blocking each other.
-   - **Shared-world RPCs** (`BossBattle.Fight` on a shared boss, `BossBattle.FriendHelp`, `BossBattle.GetBossList`, `PVP.Fight`, `PVP.GetPVPTopRankList`): acquire `account_lock(caller_id)` then `world_lock` (never lock two `ProfileStore` files simultaneously unless applying a defensive rank swap/inbox event via `world_state.json`).
-
-### Transaction Idempotency & Data Consistency
-- **Thread-safe `ResourceLedger` (`server/economy_audit.py`):**
-  - Guard `_applied_keys` check + append + JSONL file write inside a `threading.RLock` (`ResourceLedger._lock`), because currently `_applied_keys` is an unsynchronized Python `set` and JSONL writes from two threads could interleave.
-  - Enforce account-scoped idempotency keys everywhere: `f"{world_id}:{player_id}:{action}:{tx_id}"`.
-- **Client duplicate-request protection:**
-  - Support optional client retry keys (or short-TTL deduplication per `(player_id, ModuleName, MethodName, data_hash)` / Boss kill single-winner guard):
-  - For shared bosses: perform `if boss["CurHP"] <= 0: return boss_already_defeated` **inside `world_lock`** so two players hitting the last HP at the exact same millisecond cannot both receive kill rewards or double-grant `DropResource`.
-- **Atomic Persistence:**
-  - Keep existing `tempfile` + `os.replace()` atomic JSON writes per `accounts/<player_id>/profile.json` and `world_state.json` inside their respective locks so a crash or concurrent save by Player 1 can never truncate or overwrite Player 2's file.
+1. **Global Lock Acquisition Order (Deadlock-Free):**
+   1. `accounts_lock` (when mutating `accounts_index.json` or `SessionStore`)
+   2. `player_lock(server_id, player_id)` (one `RLock` per player; if ever needing two, acquire in sorted `player_id` order — though async snapshot reads avoid dual player locks!)
+   3. `world_lock(server_id)` (`RLock` guarding `world_state.json`)
+   4. `ledger_lock` (internal `RLock` inside `ResourceLedger` protecting `_applied_keys` and JSONL writes)
+2. **Isolation Guarantees:**
+   - Single-player RPCs (`Battle.*`, `Equip.*`, `Hero.*`, `ShopGoods.*`, `Goods.*`) lock ONLY `player_lock` — Player A and Player B run in full parallel without waiting on each other or touching each other's files.
+   - Shared-world mutations (e.g., killing a shared `LuckBoss` or swapping `Arena` ranks): `CurHP` decrement (`BossBattle.Fight`) and kill-reward eligibility (`boss_killed_by_this_call = old_hp > 0 and new_hp == 0`) execute **atomically inside `world_lock`**, guaranteeing only the true finisher receives the `DropResource` kill reward even under simultaneous requests.
+3. **Atomic Persistence & Ledger:**
+   - Every `profile.json`, `world_state.json`, and `accounts_index.json` writes via temp file + `os.replace()` while holding its owning lock.
+   - Every `ResourceLedger` idempotency key includes `(server_id, player_id, action, tx_id)`.
 
 ---
 
-## 5. Portable Server & Packaging Plan
+## 6. Portable Server & Operations (macOS -> Always-On PC / Linux VPS / Docker)
 
-### macOS / Absolute-Path Dependencies Found in Current Codebase
-
-| Item | Location | Finding | R7 Action |
-|---|---|---|---|
-| Host process management | `server/env_ctl.py` (line 110, 8080/8082) | Uses POSIX `pgrep -f` and hardcodes ports `8080`/`8082` + local paths. | Keep `env_ctl.py` for local workstation dev only; do NOT rely on `pgrep` inside Docker/systemd. |
-| Hardcoded LAN IP & Mac SDK paths | `poc/patch_vn_apk.py`, `poc/patch_*.py` | Hardcodes `/Users/vup/Library/Android/sdk/build-tools/...` and default `--server 192.168.1.250:8080`. | Build-time APK helper only (not imported by `emulator.py`); keep isolated from server runtime. |
-| Backend dynamic Host handling | `server/emulator.py` (`ServerList_Client.ashx`, lines 5636–5653) | Dynamically reads HTTP `Host` header (`ServerUrl = f"http://{host}"`). | **Good baseline**, add configurable `--public-url` / `INUYASHA_PUBLIC_BASE_URL` for reverse proxies (Nginx/Caddy/TLS/NAT) where internal `Host` header may differ from external LAN/VPS address. |
-| Asset/game_data discovery | `server/emulator.py` (`INUYASHA_ROOT_DIR`, `--data-dir`, lines 173–195) | Already checks `Path.exists()` gracefully for APK/OBB/assets and allows overriding `--data-dir` and `INUYASHA_ADMIN_TOKEN`. | Formalize `INUYASHA_ASSETS_DIR` and `INUYASHA_GAME_DATA_PATH` so `game_data.json` + extracted OBB assets mount cleanly outside code release dirs. |
-
-### Target R7 Packaging & Operations Layout
-
-1. **Configuration via Env Vars / Config File (Zero Hardcoded IPs):**
-   - `INUYASHA_HOST` (default `0.0.0.0`), `INUYASHA_PORT` (default `8080`)
-   - `INUYASHA_DATA_DIR` (external writable volume for `worlds/`, `accounts_index.json`, `audit_ledger.jsonl`, backups)
-   - `INUYASHA_ASSETS_DIR` (read-only OBB/APK asset bundle directory or pre-extracted cache + `game_data.json`)
-   - `INUYASHA_PUBLIC_URL` (optional explicit base URL returned in `ServerList_Client.ashx`, falling back to `Host` header when unset)
-   - `INUYASHA_ENV` (`prod` | `dev`), `INUYASHA_ALLOW_QA` (`0` on prod by default), `INUYASHA_ENABLE_ADMIN` (`0` or loopback/SSH-tunnel only)
-   - `INUYASHA_ADMIN_TOKEN` (required if Admin API enabled; never committed)
-
-2. **Separating Code Release from Runtime Data & Assets:**
-   - Code directory (`/app/server`) is immutable / read-only inside container or release tarball.
-   - All mutable state (`DATA_DIR` and `TRACE_PATH`) lives outside the code directory on a persistent host directory or Docker named volume (`/data`).
-   - Game data + client asset bundles (`ASSETS_DIR`, ~extracted OBB/APK files) mount separately as `/assets:ro` so container image rebuilds remain fast and lightweight.
-
-3. **Health Check, Backup/Restore & Admin API Hardening:**
-   - **Health Check:** Extend `/health` with lightweight JSON status (`ok`, `env`, `schema_version`, `world_count`, `active_accounts_count`, `uptime_sec`, `disk_writable` probe without exposing sensitive player tokens or internal filesystem secrets) for Docker `HEALTHCHECK` / systemd watchdog.
-   - **Backup / Restore:** Extend `server/env_ctl.py` (or a standalone `server/backup_ctl.py` usable inside Docker) to pause/snapshot `DATA_DIR` (all `accounts/*/profile.json`, `world_state.json`, `accounts_index.json`, `audit_ledger.jsonl`) + `manifest.json` SHA-256 checksums, plus pre-restore verification and daily rotation.
-   - **Admin API Network Isolation:** Current `_require_local_admin()` checks `client_ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1")` + `X-Admin-Token`. On Docker/VPS, **do not expose `/admin/*` via public reverse proxy or `0.0.0.0` port mapping**:
-     - Bind Admin API either to an isolated loopback port (`127.0.0.1:8090`, only reachable via SSH port-forward `ssh -L 8090:127.0.0.1:8090 vps`) or disable `/admin/*` cleanly in container config unless explicitly bound to `127.0.0.1`.
-     - Strip `/admin/*` at Nginx/Caddy (`location ^~ /admin/ { deny all; }`) if placed behind a reverse proxy.
-
-4. **Future Linux Docker Readiness:**
-   - Base image: `python:3.11-slim` with non-root user (`uid=1000`), zero native macOS binaries (`sqlite3` if added later is stdlib Python; `requirements.txt` currently uses Python stdlib only!).
-   - Mounts: `-v /srv/inuyasha/data:/data -v /srv/inuyasha/assets:/assets:ro`.
-   - Restart policy: `--restart unless-stopped`, graceful `SIGTERM` handler finishing in-flight requests and flushing atomic saves before exit.
+- **macOS dependencies audited:** `server/env_ctl.py` uses `pgrep` and local ports `8080`/`8082`; `poc/patch_*.py` hardcodes `/Users/vup/Library/...` and default `--server 192.168.1.250:8080` (build-time APK script only). `server/emulator.py` itself uses pure Python stdlib and already supports `INUYASHA_ROOT_DIR`, `--data-dir`, `--trace-path`, and `INUYASHA_ADMIN_TOKEN`.
+- **R7 target env configuration (zero hardcoded LAN IPs in backend):**
+  - `INUYASHA_HOST`, `INUYASHA_PORT`, `INUYASHA_PUBLIC_URL` (for proxies/NAT in `ServerList_Client.ashx`)
+  - `INUYASHA_DATA_DIR` (external writable volume `/data`)
+  - `INUYASHA_ASSETS_DIR` (external read-only OBB/assets + `game_data.json` volume `/assets:ro`)
+  - `INUYASHA_ENV`, `INUYASHA_ALLOW_QA`, `INUYASHA_ADMIN_TOKEN`
+- **Security & Ops:**
+  - `/health` exposes readiness metrics (`ok`, `env`, `schema_version`, `worlds`, `active_sessions`) without leaking tokens or secrets.
+  - `/admin/*` stays restricted to loopback/SSH tunnel (`127.0.0.1` + `X-Admin-Token`) or disabled on public-facing interfaces; never exposed via public reverse proxy.
+  - Backup/restore captures `accounts/`, `worlds/`, and `audit_ledger.jsonl` with SHA-256 `MANIFEST.json`.
+  - Voice packs (Post-R7): remain cleanly decoupled under `<assets_dir>/voice_packs/{vn,jp}/res/music/*.mp3` with zero backend/save impact.
 
 ---
 
-## Save Migration Proposal (`OlinaHugh` -> R7 Multi-Account)
+## 7. Preserving Existing Saves (`OlinaHugh` Migration)
 
-Transitioning cleanly without losing any STABLE (`Lv 16`) or DEV (`Lv 20 VIP 3`) progress:
-
-1. **Snapshot First:** Run `python3 server/env_ctl.py backup --env stable --label pre_r7_migration` and copy `dev_saves/` with SHA-256 verification before touching any file.
-2. **Automatic On-Boot Idempotent Migration (`migrate_r6_to_r7(data_dir)`):**
-   - Detect legacy layout (`normal_profile.json` or `debug_profile.json` present without `worlds/s1/accounts_index_migrated` marker).
-   - **Migrate `OlinaHugh` (`normal_profile.json`):**
-     - Read `normal_profile.json`, run R6.2 `_normalize_loaded_state()` (ensures `15030101 -> 15032101`, `VITMaxNum >= 200`, `STAMaxNum >= 20`, valid `DropResource`), extract `PlayerId = "200010"` and `PlayerName = "OlinaHugh"`.
-     - Register Player 1 account entry in `accounts_index.json` (`account_id="200010"`, `username="olinahugh"`, `player_id="200010"`, `world_id="s1"`, initial recovery/login secret configurable by operator).
-     - Write validated save atomically to `<data_dir>/worlds/s1/accounts/200010/profile.json` (`schema_version=2`).
-     - Seed initial World `s1` state (`<data_dir>/worlds/s1/world_state.json`): register OlinaHugh's Arena rank (`pvp.rank`) into `arena_ladder` and promote any still-active `boss_battle.bosses` cleanly to `world_state["bosses"]` with `OwnerPlayerId="200010"`.
-   - **Isolate QA Profile (`debug_profile.json`):**
-     - Register QA account (`account_id="100001"`, `role="qa"`) in `accounts_index.json` pointing to `worlds/qa/accounts/100001/profile.json`.
-     - Move `debug_profile.json` (`InuYasha`, Lv 10 VIP 5) to `<data_dir>/worlds/qa/accounts/100001/profile.json`. Never import QA characters or items into World `s1`.
-   - **Preserve Audit History:**
-     - Keep `audit_ledger.jsonl` append-only at `<data_dir>/audit_ledger.jsonl` (entries already carry `account_id="200010"` or `"100001"` and `profile="normal"`/`"debug"`). Seed `ResourceLedger._applied_keys` on boot from existing JSONL entries.
-   - **Archive Legacy Originals (Never Delete Immediately):**
-     - Copy original `normal_profile.json` and `debug_profile.json` into `<data_dir>/legacy_r6_archive/` (or keep read-only `.bak`) until R7 acceptance completes on devices.
-3. **Create Player 2 Account:**
-   - Player 2 registers cleanly via `/sdk/Register` (or CLI admin seed helper) receiving `PlayerId="200011"` on `ServerId=1`, starting at Lv 1 tutorial onboarding while sharing World `s1` (`arena_ladder`, `world_state.bosses`, events) with `OlinaHugh`.
+1. **Snapshot & Backup First:** Run `python3 server/env_ctl.py backup --tag pre_r7_multi_migration` before migrating any data directory.
+2. **Idempotent Migration (`migrate_r6_to_r7(data_dir)`):**
+   - Convert legacy `normal_profile.json` (`OlinaHugh`, `PlayerId="200010"`, Lv 16 STABLE / Lv 20 DEV) via R6.2/R7.1 `_normalize_loaded_state()` into `worlds/1/players/200010/profile.json` (`AccountId="acct_200010"` registered in `accounts_index.json`, mapped to `(AccountId, ServerId=1) -> PlayerId="200010"` in `worlds/1/world_state.json`, preserving all heroes, equips, treasures, `15032101`, chapter stars, VIP, Diamond, Gold, and Arena rank).
+   - Isolate legacy `debug_profile.json` (`InuYasha`, `PlayerId="100001"`) strictly into `worlds/2/players/100001/profile.json` under QA account `acct_100001` (`role="qa"`). Never import QA data into World 1.
+   - Keep `audit_ledger.jsonl` append-only and archive raw legacy files under `<data_dir>/legacy_r6_archive/`.
 
 ---
 
-## Recommended R7 Implementation Sequence & Roadmap
+## 8. Mandatory Acceptance Gate for R7.3 (Before Considering Multiplayer Complete)
 
-### Immediate Priorities (Before & During R7)
-1. **Pixel R6.2 Acceptance & STABLE Promotion:** Complete on-device verification of `BossBattle` + `VIT` recovery on Pixel (`checkpoint-vn-r6.2`), then promote to STABLE upon explicit user confirmation.
-2. **R7 Foundation & Concurrent Two-Player Test:** Implement isolated multi-account state on shared `ServerId = 1` + thread safety, and verify 2 real accounts online simultaneously.
-3. **Post-R7 Priority:** Once 2-player co-existence is stable, start Vietnamese character voice-pack experiments.
+> **Switching `Server 1 <-> Server 2` on a single device is NOT accepted as multiplayer verification.**
 
-### Engineering Phases for R7
-1. **Step 1 (Concurrency Foundation):** Add internal `RLock` to `ResourceLedger`, per-account locks + atomic save helper, and `/health` readiness details.
-2. **Step 2 (Directory Layout & Migration Tool):** Implement `worlds/s1/accounts/<player_id>/profile.json` loader + automatic tested migration from R6.2 `OlinaHugh` saves + rollback tests.
-3. **Step 3 (Account & Session Routing):** Implement `accounts_index.json`, `Session` token validation, `ServerList_Client.ashx` user resolution, QA gating (`ServerId=2`), and recovery flow.
-4. **Step 4 (Shared World):** Extract shared `arena_ladder`, shared `LuckBoss` pool (`FriendHelp` + kill lock), and `JiFenRanking` into `world_state.json`.
-5. **Step 5 (Portable Packaging & Docker):** Env-var configuration (`INUYASHA_DATA_DIR`, `INUYASHA_ASSETS_DIR`, `INUYASHA_PUBLIC_URL`), Admin API binding separation, backup CLI, and `Dockerfile` + Linux CI/test verification.
-
----
-
-## Cross-Version Source Governance Rule (Long-Term)
-
-> **VN (`com.cmn.inuyasha` 5.0.4.98) is the single canonical source of truth.**
-
-- **Allowed role of EN (`5.1.1`), TH (`5.1.3.6`), ZH (`5.0.0`), and TW builds:** Reference and verified fallback **only** — never mix code or data tables directly across regional builds into runtime logic or saves.
-- **Mandatory verification gate before porting any element from non-VN builds:**
-  1. **Model & Item IDs:** Verify exact existence in VN extracted tables (`server/game_data.json` / VN Lua tables) and OBB textures/UI icons (preventing R6.1 bugs like `15030101` missing from VN `TreasureDebrisModel`).
-  2. **Schema & Field Types:** Verify client Lua expectations for every field, dict/list nesting, and numeric/string flag (`Flag`, `TreasureDebrisInfo`, `HasBoss`, etc.).
-  3. **RPC Signatures & Side Effects:** Match VN client `NetworkResData` / layer handlers before wiring new modules or delta fields.
-  4. **Formulas & Config Limits:** Respect VN config caps/rates (e.g., `VitConfig.maxNum = 200` vs legacy EN `VITMaxNum = 120`, drop rates, VIP tables) and never overwrite VN formulas with unverified regional logic.
+R7.3 must pass both automated concurrent tests and live two-device/two-client verification on **Server 1**:
+1. **Two Concurrent Independent Clients (`Session A` for Player 1, `Session B` for Player 2) on `ServerId = 1`:**
+   - Simultaneous login with distinct `UserID` -> distinct `PlayerId` + distinct `Session`, both on `ServerId = 1`.
+   - Parallel PVE stage clears, shop purchases, hero upgrades, and daemon restart -> zero cross-write, zero lost saves, intact `OlinaHugh` save.
+2. **Cross-Session & Idempotency Guards:**
+   - Replaying Player A's request with Player B's `Session` or mismatched `PlayerId` is rejected (`-1103` / `-1101`).
+   - Same account logging in from a second client invalidates old session (`-1101`) cleanly.
+   - Concurrent finishing hits from Player A & Player B on the same shared `LuckBoss` grant kill `DropResource` to **at most one** finisher.
+3. **Shared World Verification:**
+   - Player A and Player B appear on the same Server 1 Arena ladder (`PVP.GetPVPTopRankList` / `Slot.SlotFormations`), can challenge each other's asynchronous defense team, and see each other in `BossBattle.JiFenRanking` / shared `FriendHelp` bosses.
 
 ---
 
-## Post-R7 Preparation — Vietnamese Character Voice Localization
+## 9. Phased Execution Plan (Remaining R7 Sequence)
 
-*(Architecture readiness only — no voice synthesis/recording or client audio changes in R6.2 or R7 core.)*
-
-### Observed Client Audio Footprint (`VN 5.0.4.98`)
-- Inspecting `analysis/vn/extracted/Android/obb/com.cmn.inuyasha/main.98.com.cmn.inuyasha.obb` shows all **655** `.mp3` audio clips live under one flat directory `res/music/`:
-  - Character dialogue / battle / skill / CG clips: `hc_*.mp3` (63), `hs_*.mp3` (46), `cg_*.mp3` (34), `Boss_*.mp3` (4), `hero_*.mp3` (4), numeric cue IDs (409)
-  - Shared BGM & SFX: `effect_*.mp3` (68), `sound_*.mp3` (20), `music_*.mp3` (7)
-
-### Decoupling Strategy (Zero Gameplay Impact)
-1. **Complete Separation from Backend & Saves:**
-   - Python server RPCs, combat simulator (`server/combat_sim.py`), `game_data.json` progression/economy tables, and `profile.json` / `world_state.json` never depend on audio clip content or language.
-   - Server `/assets/` only serves raw asset paths passively.
-2. **Layered Voice Pack (`vn` vs `jp`) by Identical Path Overlay:**
-   - Keep music/SFX (`effect_*`, `sound_*`, `music_*`) untouched in the base pack while mapping voice clips by existing filename (`res/music/<clip_id>.mp3`).
-   - Support switching between **JP original voice pack** and **VN voice pack** via an asset search-path / overlay directory (writable Android hot-update patch folder or separate optional voice-pack archive), with **automatic fallback** to the base OBB clip whenever a character line has not yet been dubbed in Vietnamese.
-3. **Externalized Asset Layout in R7 Server Packaging:**
-   - R7's `INUYASHA_ASSETS_DIR` design reserves an optional subdirectory (e.g., `<assets_dir>/voice_packs/vn/` vs `jp/` and optional future metadata manifest via `/API/ServerList_CheckResource.ashx`) so post-R7 voice drops can be delivered without changing core gameplay APKs or wiping player saves.
+1. **R7.2 (Next Immediate Coding Slice):** Restore remaining VN Tutorial steps & `GetStepCountReward` mappings (`2071`, `2181`, `274`, etc.) using original VN configs (`GuideMng.lua`, `GuideEventModel.lua`, `HomeScene.lua`) and verify a fresh Lv 1 onboarding flow end-to-end.
+2. **R7.3 (Private Server Multiplayer Foundation):**
+   - `R7.3a`: `ResourceLedger` locking, multi-player world/player directory storage, automatic `OlinaHugh` migration.
+   - `R7.3b`: `accounts_index.json`, `Session` issuance/validation (`-1101`/`-1103`), dynamic `ServerList_Client.ashx` & `/sdk/*` auth (`mqkk` / client login), multi-client Server 1 concurrent test suite.
+   - `R7.3c`: Shared World (`Arena` real player ladder/snapshots, shared `LuckBoss` help & JiFen ranking, optional `:8081` `ChatMng` relay) + 2-client concurrent live acceptance.
+3. **Post-R7:** Vietnamese character voice pack experiments (`res/music/*.mp3` overlay) once R7 multiplayer is stable.

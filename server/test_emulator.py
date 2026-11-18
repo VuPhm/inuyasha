@@ -1018,6 +1018,63 @@ class EmulatorProtocolTest(unittest.TestCase):
             self.assertEqual(res_f["stages_won"], 0)
             self.assertEqual(res_f["final_summary"]["battle"]["StarCount"], 0)
 
+    def test_19_concurrent_rpc_and_atomic_save_persistence(self) -> None:
+        import env_ctl
+
+        self.assertIn("stable", env_ctl.ENV_DAEMON_CONFIG)
+        self.assertEqual(env_ctl.ENV_DAEMON_CONFIG["stable"]["port"], 8080)
+        self.assertEqual(env_ctl.ENV_DAEMON_CONFIG["dev"]["port"], 8082)
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "concurrent_saves"
+            srv = ThreadingEmulatorServer(
+                ("127.0.0.1", 0),
+                persist=True,
+                quiet=True,
+                env="dev",
+                data_dir=data_dir,
+                trace_path=Path(td) / "trace.log",
+                admin_token="conc-token",
+            )
+            port = srv.server_address[1]
+            th = threading.Thread(target=srv.serve_forever, daemon=True)
+            th.start()
+            errors: list[str] = []
+
+            def worker(idx: int) -> None:
+                try:
+                    for j in range(6):
+                        mod, met = ("Player", "AvatarInfo") if (idx + j) % 2 == 0 else ("Battle", "GetBattleInfo")
+                        payload = json.dumps({"ModuleName": mod, "MethodName": met, "Data": [], "ServerId": 1}).encode("utf-8")
+                        req = urllib.request.Request(
+                            f"http://127.0.0.1:{port}/client.aspx",
+                            data=payload,
+                            headers={"Content-Type": "application/json", "X-Plain-Json": "1"},
+                            method="POST",
+                        )
+                        with urllib.request.urlopen(req, timeout=5) as resp:
+                            body = json.loads(resp.read().decode("utf-8"))
+                            if body.get("Status") != 0:
+                                errors.append(f"non-zero status: {body}")
+                except Exception as exc:
+                    errors.append(repr(exc))
+
+            try:
+                workers = [threading.Thread(target=worker, args=(i,)) for i in range(6)]
+                for w in workers:
+                    w.start()
+                for w in workers:
+                    w.join(timeout=10)
+                srv.emu.profiles["normal"].save()
+                self.assertEqual(errors, [])
+                tmp_files = list(data_dir.glob("*.tmp*"))
+                self.assertEqual(tmp_files, [])
+                reloaded = json.loads((data_dir / "normal_profile.json").read_text(encoding="utf-8"))
+                self.assertEqual(reloaded["player"]["PlayerId"], "200001")
+            finally:
+                srv.shutdown()
+                srv.server_close()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

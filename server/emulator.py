@@ -28,7 +28,9 @@ import os
 import random
 import re
 import secrets
+import signal
 import socketserver
+import threading
 import time
 import urllib.parse
 import uuid
@@ -301,7 +303,15 @@ class ProfileStore:
         self.persist = persist
         self.legacy_seed_path = legacy_seed_path
         self.trace_path = trace_path
+        self._lock = threading.RLock()
         self.state = self._load_or_init(reset=reset)
+
+    @staticmethod
+    def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_name(f".{path.name}.tmp.{os.getpid()}.{threading.get_ident()}")
+        tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp_path, path)
 
     def _load_or_init(self, reset: bool = False) -> dict[str, Any]:
         prev_player_id: str | None = None
@@ -314,8 +324,7 @@ class ProfileStore:
             data = json.loads(self.legacy_seed_path.read_text(encoding="utf-8"))
             data = self._normalize_loaded_state(data)
             if self.persist and self.state_path:
-                self.state_path.parent.mkdir(parents=True, exist_ok=True)
-                self.state_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+                self._write_json_atomic(self.state_path, data)
             return data
         if self.profile_name == "debug":
             state = self._create_debug_default_state()
@@ -325,8 +334,7 @@ class ProfileStore:
                 next_pid = str(max(200001, int(prev_player_id) + 1))
             state = self._create_normal_default_state(player_id=next_pid)
         if self.persist and self.state_path:
-            self.state_path.parent.mkdir(parents=True, exist_ok=True)
-            self.state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+            self._write_json_atomic(self.state_path, state)
         return state
 
     def _default_explore_state(self) -> dict[str, Any]:
@@ -415,19 +423,20 @@ class ProfileStore:
 
     def reset_state(self) -> dict[str, Any]:
         """Reset normal profile with a fresh PlayerId so Android LocalData guide cache starts clean."""
-        prev_id = str(self.state.get("player", {}).get("PlayerId", "200001"))
-        try:
-            next_num = max(200001, int(prev_id) + 1)
-        except ValueError:
-            next_num = 200001
-        self.state = self._create_normal_default_state(player_id=str(next_num))
-        self.save()
-        return self.state
+        with self._lock:
+            prev_id = str(self.state.get("player", {}).get("PlayerId", "200001"))
+            try:
+                next_num = max(200001, int(prev_id) + 1)
+            except ValueError:
+                next_num = 200001
+            self.state = self._create_normal_default_state(player_id=str(next_num))
+            self.save()
+            return self.state
 
     def save(self) -> None:
-        if self.persist and self.state_path:
-            self.state_path.parent.mkdir(parents=True, exist_ok=True)
-            self.state_path.write_text(json.dumps(self.state, ensure_ascii=False, indent=2), encoding="utf-8")
+        with self._lock:
+            if self.persist and self.state_path:
+                self._write_json_atomic(self.state_path, self.state)
 
     def _build_hero_instance(
         self, hero_model_id: int, lv: int = 1, step: int = 0, inst_id: str | None = None
@@ -1146,6 +1155,10 @@ class ProfileStore:
         }
 
     def handle_rpc(self, req: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            return self._handle_rpc_locked(req)
+
+    def _handle_rpc_locked(self, req: dict[str, Any]) -> dict[str, Any]:
         module = req.get("ModuleName", "")
         method = req.get("MethodName", "")
         data = req.get("Data") or []
@@ -3370,6 +3383,10 @@ class ProfileStore:
 
     def admin_state_summary(self) -> dict[str, Any]:
         """Return structured profile summary for admin/QA inspection."""
+        with self._lock:
+            return self._admin_state_summary_locked()
+
+    def _admin_state_summary_locked(self) -> dict[str, Any]:
         p = self.state["player"]
         b = self.state["battle"]
         deployed = [
@@ -3426,6 +3443,23 @@ class ProfileStore:
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         """Set VIP level or VipEXP via ResourceLedger, deriving Vip from game_data['vip_model']."""
+        with self._lock:
+            return self._admin_set_vip_locked(
+                vip_lv=vip_lv,
+                vip_exp=vip_exp,
+                actor=actor,
+                source=source,
+                idempotency_key=idempotency_key,
+            )
+
+    def _admin_set_vip_locked(
+        self,
+        vip_lv: int | None = None,
+        vip_exp: int | None = None,
+        actor: str = "admin",
+        source: str = "admin_vip",
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
         vip_model = self.game_data.get("vip_model", {})
         max_vip = max((int(k) for k in vip_model.keys()), default=20)
         cur_exp = int(self.state["player"].get("VipEXP", 0))
@@ -3472,6 +3506,27 @@ class ProfileStore:
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         """Grant validated resources, items, heroes, or equips with ledger audit trail."""
+        with self._lock:
+            return self._admin_grant_locked(
+                resources=resources,
+                items=items,
+                heroes=heroes,
+                equips=equips,
+                actor=actor,
+                source=source,
+                idempotency_key=idempotency_key,
+            )
+
+    def _admin_grant_locked(
+        self,
+        resources: list[dict[str, Any]] | None = None,
+        items: list[dict[str, Any]] | None = None,
+        heroes: list[dict[str, Any]] | None = None,
+        equips: list[dict[str, Any]] | None = None,
+        actor: str = "admin",
+        source: str = "admin_grant",
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
         p = self.state["player"]
         pid = str(p["PlayerId"])
         max_lv = int(self.game_data.get("player_config", {}).get("maxPlayerLV", 80))
@@ -3616,6 +3671,21 @@ class ProfileStore:
         source: str = "admin_prepare",
     ) -> dict[str, Any]:
         """Prepare account at an authentic target player Lv (and optional VIP tier)."""
+        with self._lock:
+            return self._admin_prepare_account_locked(
+                target_lv=target_lv,
+                vip_lv=vip_lv,
+                actor=actor,
+                source=source,
+            )
+
+    def _admin_prepare_account_locked(
+        self,
+        target_lv: int = 1,
+        vip_lv: int | None = None,
+        actor: str = "admin",
+        source: str = "admin_prepare",
+    ) -> dict[str, Any]:
         p = self.state["player"]
         max_lv = int(self.game_data.get("player_config", {}).get("maxPlayerLV", 80))
         lv = int(target_lv)
@@ -3733,6 +3803,7 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
     """HTTP request handler serving game RPCs, extracted assets, and the web PoC."""
 
     server_version = "SeekJadeRevival/0.2"
+    _trace_lock = threading.Lock()
 
     def log_message(self, fmt: str, *args: Any) -> None:
         if getattr(self.server, "quiet", False):
@@ -3740,12 +3811,15 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
         super().log_message(fmt, *args)
 
     def _send_bytes(self, status: int, content_type: str, body: bytes) -> None:
-        self.send_response(status)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
 
     def _send_json(self, status: int, payload: Any) -> None:
         raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -3762,9 +3836,10 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
     def _append_trace(self, line: str) -> None:
         trace_path = getattr(self.server.emu, "trace_path", None)
         if self.server.emu.persist and trace_path:
-            Path(trace_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(trace_path, "a", encoding="utf-8") as tf:
-                tf.write(f"{line}\n")
+            with self._trace_lock:
+                Path(trace_path).parent.mkdir(parents=True, exist_ok=True)
+                with open(trace_path, "a", encoding="utf-8") as tf:
+                    tf.write(f"{line}\n")
 
     def _require_local_admin(self) -> bool:
         client_ip = str(self.client_address[0] if self.client_address else "")
@@ -4077,6 +4152,10 @@ def main() -> None:
         f"normal_pid={srv.emu.profiles['normal'].state['player']['PlayerId']}, "
         f"debug_pid={srv.emu.profiles['debug'].state['player']['PlayerId']})"
     )
+    def _handle_sigterm(_signum: int, _frame: Any) -> None:
+        threading.Thread(target=srv.shutdown, daemon=True).start()
+
+    signal.signal(signal.SIGTERM, _handle_sigterm)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

@@ -25,5 +25,8 @@ node_modules/
 *.log
 server/save_state.json
 server/saves/
+server/dev_saves/
+server/qa_runs/
 server/backups/
 server/checkpoints/
+**/.admin_token

@@ -7,12 +7,14 @@ import json
 import tempfile
 import threading
 import unittest
+import urllib.error
 import urllib.request
 import zlib
 from pathlib import Path
 
 from economy_audit import DuplicateTransactionError, ResourceLedger, ResourceTransactionError
 from emulator import GameEmulatorState, ThreadingEmulatorServer
+import qa_runner
 
 
 class EmulatorProtocolTest(unittest.TestCase):
@@ -821,6 +823,200 @@ class EmulatorProtocolTest(unittest.TestCase):
         self.assertEqual(buy["Status"], 0)
         self.assertEqual(buy["Value"]["BattleInfo"]["BuyCount"], 1)
         self.assertEqual(prof.state["player"]["Diamond"], 50)
+
+    def test_15_role_info_recover_times_and_extra_activity_schemas(self) -> None:
+        emu = GameEmulatorState(persist=False)
+        prof = emu.profiles["normal"]
+        login = prof.handle_rpc({"ModuleName": "Player", "MethodName": "Login", "Data": []})
+        self.assertEqual(login["Status"], 0)
+        self.assertIsInstance(login["Value"].get("VITNextRecoverTime"), int)
+        self.assertIsInstance(login["Value"].get("STANextRecoverTime"), int)
+
+        init_res = prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": []})
+        pinfo = init_res["Value"]["PlayerInfo"]
+        self.assertIsInstance(pinfo.get("VITNextRecoverTime"), int)
+        self.assertIsInstance(pinfo.get("STANextRecoverTime"), int)
+
+        # LevelPlanLayer.lua expects CanRewardLvList & RewardLvList tables, never nil
+        lvp = prof.handle_rpc({"ModuleName": "LvPlan", "MethodName": "GetLvPlanInfo", "Data": []})
+        self.assertEqual(lvp["Status"], 0)
+        self.assertIsInstance(lvp["Value"].get("CanRewardLvList"), list)
+        self.assertIsInstance(lvp["Value"].get("RewardLvList"), list)
+
+        # VipWelfareLayer.lua expects CanDraw + ResourceList + Ctrl.showRewardList BaseGetGameResourceList
+        vw = prof.handle_rpc({"ModuleName": "VipWelfare", "MethodName": "GetVipWelfare", "Data": []})
+        self.assertTrue(vw["Value"]["CanDraw"])
+        self.assertGreater(len(vw["Value"]["ResourceList"]), 0)
+        self.assertIn("ResourceTypeSub", vw["Value"]["ResourceList"][0])
+
+        draw = prof.handle_rpc({"ModuleName": "VipWelfare", "MethodName": "DrawVipWelfare", "Data": []})
+        self.assertEqual(draw["Status"], 0)
+        self.assertGreater(len(draw["Value"].get("BaseGetGameResourceList", [])), 0)
+        vw2 = prof.handle_rpc({"ModuleName": "VipWelfare", "MethodName": "GetVipWelfare", "Data": []})
+        self.assertFalse(vw2["Value"]["CanDraw"])
+        draw2 = prof.handle_rpc({"ModuleName": "VipWelfare", "MethodName": "DrawVipWelfare", "Data": []})
+        self.assertEqual(draw2["Status"], -1)
+
+        # MonthSignInfo returns list (never {}) so table.sort succeeds
+        ms = prof.handle_rpc({"ModuleName": "MonthSignInfo", "MethodName": "GetInfo", "Data": []})
+        self.assertIsInstance(ms["Value"], list)
+
+    def test_16_simulated_charge_card_and_admin_api_auth_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "dev_data"
+            srv = ThreadingEmulatorServer(
+                ("127.0.0.1", 0),
+                persist=True,
+                quiet=True,
+                env="dev",
+                data_dir=data_dir,
+                trace_path=Path(td) / "dev_trace.log",
+                admin_token="secret-qa-token",
+            )
+            port = srv.server_address[1]
+            base = f"http://127.0.0.1:{port}"
+            th = threading.Thread(target=srv.serve_forever, daemon=True)
+            th.start()
+            try:
+                def call_admin(method: str, path: str, body: dict | None = None, token: str | None = None):
+                    headers = {"X-Plain-Json": "1"}
+                    if token is not None:
+                        headers["X-Admin-Token"] = token
+                    raw = json.dumps(body).encode("utf-8") if body is not None else None
+                    if raw is not None:
+                        headers["Content-Type"] = "application/json"
+                    req = urllib.request.Request(f"{base}{path}", data=raw, headers=headers, method=method)
+                    try:
+                        with urllib.request.urlopen(req, timeout=5) as r:
+                            return r.status, json.loads(r.read().decode("utf-8"))
+                    except urllib.error.HTTPError as e:
+                        return e.code, json.loads(e.read().decode("utf-8") or "{}")
+
+                # Unauthenticated / wrong token must return 401
+                st, _ = call_admin("GET", "/admin/state?profile=normal")
+                self.assertEqual(st, 401)
+                st, _ = call_admin("POST", "/admin/vip", {"profile": "normal", "vip_lv": 3}, token="wrong")
+                self.assertEqual(st, 401)
+
+                # Invalid resource / hero ID must fail validation cleanly with 400
+                st, _ = call_admin(
+                    "POST",
+                    "/admin/grant",
+                    {"profile": "normal", "resources": [{"type": "FakeCurrency", "amount": 100}]},
+                    token="secret-qa-token",
+                )
+                self.assertEqual(st, 400)
+                st, _ = call_admin(
+                    "POST",
+                    "/admin/grant",
+                    {"profile": "normal", "heroes": [{"model_id": 99999999, "lv": 1}]},
+                    token="secret-qa-token",
+                )
+                self.assertEqual(st, 400)
+
+                # Prepare Lv 15, grant valid hero/equip, set VIP 3 -> verified via audit log
+                st, prep = call_admin(
+                    "POST", "/admin/prepare", {"profile": "normal", "target_lv": 15}, token="secret-qa-token"
+                )
+                self.assertEqual(st, 200)
+                self.assertEqual(prep["player"]["Lv"], 15)
+
+                st, vip_res = call_admin(
+                    "POST", "/admin/vip", {"profile": "normal", "vip_lv": 3}, token="secret-qa-token"
+                )
+                self.assertEqual(st, 200)
+                self.assertEqual(vip_res["Vip"], 3)
+                self.assertEqual(vip_res["VipEXP"], 860)
+
+                st, grant_res = call_admin(
+                    "POST",
+                    "/admin/grant",
+                    {
+                        "profile": "normal",
+                        "resources": [{"type": "Diamond", "amount": 500}],
+                        "heroes": [{"model_id": 12011004, "lv": 15, "step": 1, "deploy": True}],
+                        "equips": [{"model_id": 13010404, "lv": 10, "slot_id": 1}],
+                    },
+                    token="secret-qa-token",
+                )
+                self.assertEqual(st, 200)
+                self.assertGreaterEqual(grant_res["summary"]["counts"]["heroes"], 2)
+
+                st, audit = call_admin("GET", "/admin/audit?limit=50", token="secret-qa-token")
+                self.assertEqual(st, 200)
+                sources = {tx["source"] for tx in audit["transactions"]}
+                self.assertIn("admin_prepare", sources)
+                self.assertIn("admin_vip", sources)
+                self.assertIn("admin_grant", sources)
+
+                # Simulated store charge + first-charge box + CardInfo monthly card
+                prof = srv.emu.profiles["normal"]
+                clist = prof.handle_rpc({"ModuleName": "PlayerCharge", "MethodName": "GetChargeList", "Data": []})
+                self.assertGreaterEqual(len(clist["Value"]), 3)
+                ord_res = prof.handle_rpc(
+                    {"ModuleName": "PlayerCharge", "MethodName": "GenerateOrderID", "Data": ["com.cmn.inuyasha.gem300"]}
+                )
+                self.assertTrue(str(ord_res["Value"]).startswith("ORD-"))
+                conf = prof.handle_rpc({"ModuleName": "PlayerCharge", "MethodName": "ConfirmOrder", "Data": [300]})
+                self.assertEqual(conf["Value"]["DiamondAdded"], 600)  # First recharge 2x
+                box = prof.handle_rpc({"ModuleName": "PlayerCharge", "MethodName": "DrawChargeBox", "Data": [60]})
+                self.assertEqual(box["Status"], 0)
+                self.assertGreater(len(box["Value"]["BaseGetGameResourceList"]), 0)
+
+                card_act = prof.handle_rpc({"ModuleName": "CardInfo", "MethodName": "Activity", "Data": [1]})
+                self.assertEqual(len(card_act["Value"]), 1)
+                self.assertTrue(card_act["Value"][0]["CanDrawBuyReward"])
+                daily = prof.handle_rpc({"ModuleName": "CardInfo", "MethodName": "DrawDailyReward", "Data": [1]})
+                self.assertEqual(daily["Status"], 0)
+            finally:
+                srv.shutdown()
+                srv.server_close()
+
+    def test_17_stable_dev_env_isolation_and_token_file(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            stable_dir = Path(td) / "stable"
+            dev_dir = Path(td) / "dev"
+            stable_trace = Path(td) / "stable.log"
+            dev_trace = Path(td) / "dev.log"
+            emu_s = GameEmulatorState(persist=True, env="stable", data_dir=stable_dir, trace_path=stable_trace)
+            emu_d = GameEmulatorState(persist=True, env="dev", data_dir=dev_dir, trace_path=dev_trace)
+            emu_d.handle_rpc({"ModuleName": "Player", "MethodName": "Login", "Data": [], "ServerId": 1})
+            self.assertTrue(dev_trace.exists())
+            self.assertFalse(stable_trace.exists())
+            self.assertEqual(emu_s.profiles["normal"].state["player"]["Lv"], 1)
+
+    def test_18_fast_qa_presets_progression_and_failure_no_rigging(self) -> None:
+        # Must refuse STABLE saves or port 8080
+        with self.assertRaises(qa_runner.SafetyViolationError):
+            qa_runner.QABackendClient(url="http://127.0.0.1:8080")
+        with self.assertRaises(qa_runner.SafetyViolationError):
+            qa_runner.QABackendClient(data_dir=Path(__file__).resolve().parent / "saves")
+
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            # STARTER organic progression for 5 stages
+            c_start = qa_runner.QABackendClient(data_dir=base / "starter", persist=True, new_player=True)
+            res_s = qa_runner.run_progression_qa(c_start, preset="STARTER", max_stages=5, star_lv=2)
+            self.assertEqual(res_s["stages_won"], 5)
+            self.assertGreaterEqual(res_s["final_summary"]["player"]["Lv"], 5)
+
+            # PROGRESSION & STRONG presets apply real heroes/equips/VIP
+            c_prog = qa_runner.QABackendClient(data_dir=base / "prog", persist=True, new_player=True)
+            res_p = qa_runner.run_progression_qa(c_prog, preset="PROGRESSION", target_lv=12, max_stages=2, star_lv=2)
+            self.assertEqual(res_p["stages_won"], 2)
+            self.assertGreaterEqual(res_p["final_summary"]["counts"]["deployed_slots"], 4)
+
+            c_str = qa_runner.QABackendClient(data_dir=base / "strong", persist=True, new_player=True)
+            res_st = qa_runner.run_progression_qa(c_str, preset="STRONG", target_lv=18, max_stages=2, star_lv=2)
+            self.assertEqual(res_st["stages_won"], 2)
+            self.assertGreaterEqual(res_st["final_summary"]["player"]["Vip"], 5)
+
+            # FAILURE preset vs hard Ch 16 boss MUST genuinely lose (0 rigged victories)
+            c_fail = qa_runner.QABackendClient(data_dir=base / "fail", persist=True, new_player=True)
+            res_f = qa_runner.run_progression_qa(c_fail, preset="FAILURE", target_node=1620, max_stages=1, star_lv=3)
+            self.assertEqual(res_f["stop_reason"], "battle_defeat")
+            self.assertEqual(res_f["stages_won"], 0)
+            self.assertEqual(res_f["final_summary"]["battle"]["StarCount"], 0)
 
 
 if __name__ == "__main__":

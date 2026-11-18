@@ -117,3 +117,19 @@ python3 server/emulator.py --host 0.0.0.0 --port 8080
   - `python3 /Users/vup/Documents/agy/inuyasha/server/test_emulator.py`: **8/8 tests PASSED** (`0.675s`).
   - `node --check /Users/vup/Documents/agy/inuyasha/poc/web_poc/app.js`: exit code 0.
   - Tạo checkpoint khôi phục tại `server/backups/vn_r3_stable_checkpoint/` và git tag `checkpoint-vn-r3`.
+
+
+## Round R5 — R4 Recovery → Fast QA, Simulated Top-Up/VIP Admin & STABLE/DEV Separation
+- **Phase 0 Checkpoint Preserved:** Rescued R4 live play progression (`OlinaHugh` `200010` Lv `16`, `7-3` unlocked, `51★`), 14/14 passing tests, and backup `server/backups/vn_r4_partial_checkpoint/` into commit `975e046` (`checkpoint-vn-r4-partial`) without altering `checkpoint-vn-r3` (`476dcfa`).
+- **Phase 0 Trace Bug Fixes (`server/emulator.py`):**
+  - Added `_sync_player_recover_times()` to maintain valid integer `VITNextRecoverTime` and `STANextRecoverTime` across state init, normalization, `Login`, `GetInitData`, and `Avatar` sync (`RoleInforLayer.luac:378` fixed).
+  - Implemented `LvPlan.{GetLvPlanInfo,OpenLvPlan,ReceiveLvPlan}`, `VipWelfare.{GetVipWelfare,DrawVipWelfare}`, and `MonthSignInfo.GetInfo` (`[]`).
+- **Phase 3 Simulated Top-Up, CardInfo & Authenticated Local Admin (`server/emulator.py`, `server/economy_audit.py`):**
+  - Added localhost + `X-Admin-Token` (`hmac.compare_digest`, `.admin_token` `0600`) gated endpoints: `GET /admin/state`, `GET /admin/audit`, `POST /admin/grant`, `POST /admin/vip`, `POST /admin/prepare` backed by `ResourceLedger` validation and `audit_ledger.jsonl`.
+  - Implemented `PlayerCharge.{GetChargeList,ChargeInfo,DrawChargeBox,GenerateOrderID,ConfirmOrder}` and `CardInfo.{GetInfo,GenerateOrderID,Activity,DrawDailyReward,DrawBuyReward}`.
+- **Phase 1 & 4 Fast QA Engine & Dual Environments (`server/qa_runner.py`, `server/env_ctl.py`):**
+  - Built `server/qa_runner.py` with real `FightExpression.lua` / `BattleCalc.lua` / `FightEnum_Target` wave simulation (`simulate_fight_info`), presets (`STARTER`, `PROGRESSION`, `STRONG`, `FAILURE`), safety block refusing `:8080` and `server/saves/`, and benchmark suite (`10` stages in `0.1621s`, `25`-stage R3/R4 regression + subsystems in `0.3813s`, `FAILURE` defeat in `0.0055s`).
+  - Added `--env {stable,dev}` (`8080` `server/saves/` vs `8082` `server/dev_saves/`) and `server/env_ctl.py` (`status`, `backup`, checksum-verified `rollback`, `sync-to-dev`, `smoke`).
+- **Selective Pixel Verification & Suite (`server/test_emulator.py`):**
+  - Updated `com.cmn.inuyasha_revival.apk` endpoint to current MacBook IP `192.168.1.250:8080` via `adb install -r` and selectively verified `Home`, `RoleInforLayer`, `Shop`, and `RechargeScene` with zero `STEP_POST` Lua errors.
+  - All `18/18` tests in `server/test_emulator.py` passed (`2.295s`), `node --check poc/web_poc/app.js` exited `0`, and `env_ctl.py smoke` passed on both `8080` and `8082`.

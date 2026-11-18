@@ -20,12 +20,14 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hmac
 import http.server
 import json
 import mimetypes
 import os
 import random
 import re
+import secrets
 import socketserver
 import time
 import urllib.parse
@@ -43,10 +45,93 @@ POC_DIR = ROOT_DIR / "poc" / "web_poc"
 GAME_DATA_PATH = SERVER_DIR / "game_data.json"
 LEGACY_SAVE_STATE_PATH = SERVER_DIR / "save_state.json"
 SAVES_DIR = SERVER_DIR / "saves"
+DEV_SAVES_DIR = SERVER_DIR / "dev_saves"
 NORMAL_STATE_PATH = SAVES_DIR / "normal_profile.json"
 DEBUG_STATE_PATH = SAVES_DIR / "debug_profile.json"
 AUDIT_LOG_PATH = SAVES_DIR / "audit_ledger.jsonl"
 RPC_TRACE_PATH = SERVER_DIR / "rpc_trace.log"
+DEV_RPC_TRACE_PATH = SERVER_DIR / "dev_rpc_trace.log"
+
+ENV_PRESETS: dict[str, dict[str, Any]] = {
+    "stable": {
+        "port": 8080,
+        "data_dir": SAVES_DIR,
+        "trace_path": RPC_TRACE_PATH,
+    },
+    "dev": {
+        "port": 8082,
+        "data_dir": DEV_SAVES_DIR,
+        "trace_path": DEV_RPC_TRACE_PATH,
+    },
+}
+
+# Exact VN client Config/LvPlanRewardModel.lua & LvPlanConfig.lua
+LV_PLAN_NEED_VIP = 2
+LV_PLAN_NEED_DIAMOND = 100
+LV_PLAN_REWARDS: dict[int, int] = {
+    10: 200,
+    15: 300,
+    20: 350,
+    25: 400,
+    30: 450,
+    35: 500,
+    40: 550,
+    45: 600,
+    50: 650,
+    55: 888,
+}
+
+# Exact VN client Config/VipWelfareModel.lua (LV 0..20)
+VIP_WELFARE_REWARDS: dict[int, str] = {
+    0: "1112,0,10000||1605,16050011,5",
+    1: "1112,0,30000||1605,16050011,10||1605,16050013,1",
+    2: "1112,0,50000||1605,16050011,15||1605,16050013,1||1117,0,1000",
+    3: "1112,0,80000||1605,16050011,20||1605,16050013,1||1117,0,1500||1605,16050012,1",
+    4: "1112,0,100000||1605,16050011,25||1605,16050013,1||1117,0,2000||1605,16050012,1||1605,16050010,1",
+    5: "1112,0,110000||1605,16050011,25||1605,16050013,1||1117,0,2200||1605,16050012,1||1605,16050010,1",
+    6: "1112,0,120000||1605,16050011,30||1605,16050013,2||1117,0,2500||1605,16050012,1||1605,16050010,1",
+    7: "1112,0,140000||1605,16050011,30||1605,16050013,2||1117,0,2800||1605,16050012,1||1605,16050010,1",
+    8: "1112,0,150000||1605,16050011,35||1605,16050013,2||1117,0,3000||1605,16050012,2||1605,16050010,2",
+    9: "1112,0,160000||1605,16050011,35||1605,16050013,2||1117,0,3000||1605,16050012,2||1605,16050010,2",
+    10: "1112,0,180000||1605,16050011,40||1605,16050013,2||1117,0,3500||1605,16050012,2||1605,16050010,3",
+    11: "1112,0,230000||1605,16050011,45||1605,16050013,2||1117,0,4000||1605,16050012,3||1605,16050010,4",
+    12: "1112,0,260000||1605,16050011,50||1605,16050013,2||1117,0,4000||1605,16050012,3||1605,16050010,5",
+    13: "1112,0,300000||1605,16050011,55||1605,16050013,2||1117,0,5000||1605,16050012,3||1605,16050010,6",
+    14: "1112,0,320000||1605,16050011,55||1605,16050013,2||1117,0,5500||1605,16050012,3||1605,16050010,7",
+    15: "1112,0,350000||1605,16050011,60||1605,16050013,3||1117,0,6000||1605,16050012,3||1605,16050010,8",
+    16: "1112,0,360000||1605,16050011,60||1605,16050013,3||1117,0,6000||1605,16050012,3||1605,16050010,9",
+    17: "1112,0,380000||1605,16050011,60||1605,16050013,3||1117,0,6000||1605,16050012,3||1605,16050010,10",
+    18: "1112,0,400000||1605,16050011,65||1605,16050013,3||1117,0,7000||1605,16050012,4||1605,16050010,10",
+    19: "1112,0,450000||1605,16050011,70||1605,16050013,3||1117,0,8000||1605,16050012,4||1605,16050010,10",
+    20: "1112,0,500000||1605,16050011,75||1605,16050013,3||1117,0,9000||1605,16050012,5||1605,16050010,10",
+}
+
+# Exact VN client Config/ChargeConfig.lua & simulated store tiers
+CHARGE_BOX_REWARDS: dict[int, str] = {
+    60: "1606,16060026,1||1602,16020021,1||1605,16050010,10||1603,16030006,1||1603,16030008,1||1605,16050001,200||1112,0,200000",
+    300: "1302,13020413,1||1303,13030413,1||1605,16050010,20||1603,16030006,2||1603,16030008,3||1605,16050001,500||1112,0,300000",
+    900: "1606,16060019,1||1605,16050010,30||1603,16030008,10||1605,16050001,1000||1112,0,500000",
+}
+CHARGE_TIERS: list[dict[str, Any]] = [
+    {"ProductId": "com.cmn.inuyasha.gem60", "ChargePoint": 60, "GamePoint": 60, "GiveGamePoint": 60, "Ratio": 2},
+    {"ProductId": "com.cmn.inuyasha.gem180", "ChargePoint": 180, "GamePoint": 180, "GiveGamePoint": 180, "Ratio": 2},
+    {"ProductId": "com.cmn.inuyasha.gem300", "ChargePoint": 300, "GamePoint": 300, "GiveGamePoint": 300, "Ratio": 2},
+    {"ProductId": "com.cmn.inuyasha.gem680", "ChargePoint": 680, "GamePoint": 680, "GiveGamePoint": 680, "Ratio": 2},
+    {"ProductId": "com.cmn.inuyasha.gem900", "ChargePoint": 900, "GamePoint": 900, "GiveGamePoint": 900, "Ratio": 2},
+    {"ProductId": "com.cmn.inuyasha.gem1980", "ChargePoint": 1980, "GamePoint": 1980, "GiveGamePoint": 1980, "Ratio": 2},
+    {"ProductId": "com.cmn.inuyasha.gem3280", "ChargePoint": 3280, "GamePoint": 3280, "GiveGamePoint": 3280, "Ratio": 2},
+    {"ProductId": "com.cmn.inuyasha.gem6480", "ChargePoint": 6480, "GamePoint": 6480, "GiveGamePoint": 6480, "Ratio": 2},
+]
+CARD_MODEL_CFG: dict[int, dict[str, Any]] = {
+    1: {
+        "ID": 1,
+        "ProductId": "com.cmn.inuyasha.card1",
+        "price": 300,
+        "continueTime": 30,
+        "dailyReward": "1111,0,100",
+        "buyReward": "1111,0,268",
+    }
+}
 
 EMPTY_ENTITY_ID = "00000000-0000-0000-0000-000000000000"
 
@@ -277,6 +362,14 @@ class ProfileStore:
         data.setdefault("recruit_state", {"MidAlreadyUseResource": False, "HigAlreadyUseResource": False, "OutZiCount": 5})
         data.setdefault("explore", self._default_explore_state())
         data.setdefault("shop_bought", {})
+        data.setdefault("lv_plan", {"open": False, "rewarded": []})
+        data.setdefault("vip_welfare_drawn_date", "")
+        data.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}})
+        data.setdefault("month_cards", {})
+        p = data.setdefault("player", {})
+        p.setdefault("ChargeNum", 0)
+        p.setdefault("VipEXP", 0)
+        self._sync_player_recover_times(p)
         for h in data.get("heroes", []):
             h.setdefault("WarfareColorLv", 0)
             h.setdefault("WarfareLv", 0)
@@ -300,6 +393,25 @@ class ProfileStore:
                 if n.get("StarCount", 0) > 0 and n.get("Flag", 0) == 0:
                     n["Flag"] = 2
         return data
+
+    def _sync_player_recover_times(self, player: dict[str, Any] | None = None) -> None:
+        """Ensure VITNextRecoverTime and STANextRecoverTime are valid integer timestamps."""
+        p = player if player is not None else self.state["player"]
+        now = int(time.time())
+        vit_cd = int(self.game_data.get("vit_config", {}).get("recoverCD", 360))
+        sta_cd = int(self.game_data.get("sta_config", {}).get("recoverCD", 900))
+        vit_max = int(p.get("VITMaxNum", 200))
+        sta_max = int(p.get("STAMaxNum", 40))
+        if int(p.get("VIT", 0)) < vit_max:
+            cur = p.get("VITNextRecoverTime")
+            p["VITNextRecoverTime"] = max(now + 1, int(cur)) if isinstance(cur, (int, float)) and int(cur) > now else now + vit_cd
+        else:
+            p["VITNextRecoverTime"] = now
+        if int(p.get("STA", 0)) < sta_max:
+            cur = p.get("STANextRecoverTime")
+            p["STANextRecoverTime"] = max(now + 1, int(cur)) if isinstance(cur, (int, float)) and int(cur) > now else now + sta_cd
+        else:
+            p["STANextRecoverTime"] = now
 
     def reset_state(self) -> dict[str, Any]:
         """Reset normal profile with a fresh PlayerId so Android LocalData guide cache starts clean."""
@@ -569,6 +681,9 @@ class ProfileStore:
                 "HeadImageId": main_model_id,
                 "AppErrorLevel": 0,
                 "IsNewPlayer": 1,
+                "ChargeNum": 0,
+                "VITNextRecoverTime": now,
+                "STANextRecoverTime": now,
                 "LastLoginTime": now,
                 "StepCountList": {},
             },
@@ -594,6 +709,10 @@ class ProfileStore:
             },
             "explore": self._default_explore_state(),
             "shop_bought": {},
+            "lv_plan": {"open": False, "rewarded": []},
+            "vip_welfare_drawn_date": "",
+            "charge_state": {"first_bought": [], "drawn_boxes": [], "orders": {}},
+            "month_cards": {},
             "battle": {
                 "MaxChapterId": 11,
                 "MaxNodeId": 1111,
@@ -632,6 +751,7 @@ class ProfileStore:
         for i, n in enumerate(ch11_nodes):
             node_states[str(n["ID"])] = self._make_node_state(n["ID"], flag=1 if i == 0 else 0)
 
+        now = int(time.time())
         return {
             "profile": "debug",
             "player": {
@@ -643,12 +763,15 @@ class ProfileStore:
                 "Vip": 5,
                 "VIPLv": 5,
                 "VipEXP": 3360,
+                "ChargeNum": 3360,
                 "Gold": 50000,
                 "Diamond": 8888,
                 "VIT": 120,
                 "VITMaxNum": 200,
+                "VITNextRecoverTime": now + 360,
                 "STA": 40,
                 "STAMaxNum": 40,
+                "STANextRecoverTime": now,
                 "HeroCoin": 1200,
                 "HeroEXP": 15000,
                 "FAP": 18500,
@@ -656,7 +779,7 @@ class ProfileStore:
                 "HeadImageId": 12011004,
                 "AppErrorLevel": 0,
                 "IsNewPlayer": 0,
-                "LastLoginTime": int(time.time()),
+                "LastLoginTime": now,
                 "StepCountList": {"1": 999},
             },
             "heroes": hero_instances,
@@ -667,6 +790,10 @@ class ProfileStore:
             "claimed_step_rewards": [],
             "recruit_state": {"MidAlreadyUseResource": False, "HigAlreadyUseResource": False, "OutZiCount": 5},
             "explore": self._default_explore_state(),
+            "lv_plan": {"open": False, "rewarded": []},
+            "vip_welfare_drawn_date": "",
+            "charge_state": {"first_bought": [], "drawn_boxes": [], "orders": {}},
+            "month_cards": {},
             "battle": {
                 "MaxChapterId": 11,
                 "MaxNodeId": ch11_nodes[0]["ID"] if ch11_nodes else 1111,
@@ -1100,6 +1227,22 @@ class ProfileStore:
             "EliteBattle.Fight": self._rpc_elite_fight,
             "EliteBattle.DrawFirstReward": self._rpc_elite_draw_first_reward,
             "EliteBattle.BuyFightCount": self._rpc_elite_buy_fight_count,
+            "LvPlan.GetLvPlanInfo": self._rpc_lv_plan_info,
+            "LvPlan.OpenLvPlan": self._rpc_lv_plan_open,
+            "LvPlan.ReceiveLvPlan": self._rpc_lv_plan_receive,
+            "VipWelfare.GetVipWelfare": self._rpc_vip_welfare_info,
+            "VipWelfare.DrawVipWelfare": self._rpc_vip_welfare_draw,
+            "PlayerCharge.GetChargeList": self._rpc_player_charge_list,
+            "PlayerCharge.ChargeInfo": self._rpc_player_charge_info,
+            "PlayerCharge.DrawChargeBox": self._rpc_player_charge_draw_box,
+            "PlayerCharge.GenerateOrderID": self._rpc_player_charge_generate_order,
+            "PlayerCharge.ConfirmOrder": self._rpc_player_charge_confirm_order,
+            "CardInfo.GetInfo": self._rpc_card_info,
+            "CardInfo.GenerateOrderID": self._rpc_card_generate_order,
+            "CardInfo.Activity": self._rpc_card_activity,
+            "CardInfo.DrawDailyReward": self._rpc_card_draw_daily,
+            "CardInfo.DrawBuyReward": self._rpc_card_draw_buy,
+            "MonthSignInfo.GetInfo": lambda _d: [],
             "Notice.GetNoticeList": lambda _d: [],
             "Enemy.GetEnemyList": lambda _d: [],
             "TraderInfo.GetInfo": lambda _d: {"TraderInfo": None},
@@ -1113,6 +1256,7 @@ class ProfileStore:
         handled = fn is not None
         value = fn(data) if fn else {}
         status = int(self._last_rpc_context.get("status", 0))
+        self._sync_player_recover_times()
 
         if self.persist and self.trace_path:
             with open(self.trace_path, "a", encoding="utf-8") as tf:
@@ -1147,6 +1291,7 @@ class ProfileStore:
 
     def _rpc_login(self, _data: Any) -> dict[str, Any]:
         self.state["player"]["LastLoginTime"] = int(time.time())
+        self._sync_player_recover_times()
         self.save()
         return dict(self.state["player"])
 
@@ -1171,6 +1316,7 @@ class ProfileStore:
         return {"PlayerId": self.state["player"]["PlayerId"]}
 
     def _rpc_get_init_data(self, _data: Any) -> dict[str, Any]:
+        self._sync_player_recover_times()
         module_subs = self.game_data.get("module_subs", {})
         if module_subs:
             open_submodules = sorted(
@@ -2918,6 +3064,592 @@ class ProfileStore:
         return {"BattleInfo": self._elite_battle_info_payload()}
 
 
+    # ------------------------------------------------------------------
+    # ExtraActivity, Charge, CardInfo, and Authenticated Admin Helpers
+    # ------------------------------------------------------------------
+    def _rpc_lv_plan_info(self, _data: Any) -> dict[str, Any]:
+        lp = self.state.setdefault("lv_plan", {"open": False, "rewarded": []})
+        rewarded = [int(x) for x in lp.get("rewarded", [])]
+        player_lv = int(self.state["player"].get("Lv", 1))
+        player_vip = int(self.state["player"].get("Vip", 0))
+        can_list: list[int] = []
+        if player_vip >= LV_PLAN_NEED_VIP:
+            for tier_lv in sorted(LV_PLAN_REWARDS):
+                if player_lv >= tier_lv and tier_lv not in rewarded:
+                    can_list.append(tier_lv)
+        return {
+            "CanRewardLvList": can_list,
+            "RewardLvList": rewarded,
+        }
+
+    def _rpc_lv_plan_open(self, _data: Any) -> dict[str, Any]:
+        lp = self.state.setdefault("lv_plan", {"open": False, "rewarded": []})
+        lp["open"] = True
+        self.save()
+        return self._rpc_lv_plan_info([])
+
+    def _rpc_lv_plan_receive(self, data: Any) -> dict[str, Any]:
+        tier_lv = int(data[0]) if isinstance(data, list) and data else 0
+        reward_diamond = LV_PLAN_REWARDS.get(tier_lv)
+        p = self.state["player"]
+        lp = self.state.setdefault("lv_plan", {"open": False, "rewarded": []})
+        rewarded = [int(x) for x in lp.get("rewarded", [])]
+        if (
+            reward_diamond is None
+            or int(p.get("Vip", 0)) < LV_PLAN_NEED_VIP
+            or int(p.get("Lv", 1)) < tier_lv
+            or tier_lv in rewarded
+            or int(p.get("Diamond", 0)) < LV_PLAN_NEED_DIAMOND
+        ):
+            self._last_rpc_context["status"] = -1
+            return {}
+        self.ledger.apply_player_delta(
+            p,
+            self.profile_name,
+            "Diamond",
+            -LV_PLAN_NEED_DIAMOND,
+            source=f"lv_plan_cost:{tier_lv}",
+            idempotency_key=f"lvplan:cost:{self.profile_name}:{p['PlayerId']}:{tier_lv}",
+        )
+        base_res = self._grant_resources_from_tuples(
+            [(1111, 0, reward_diamond)],
+            source=f"lv_plan_reward:{tier_lv}",
+            tx_prefix=f"lvplan:rew:{self.profile_name}:{p['PlayerId']}:{tier_lv}",
+        )
+        rewarded.append(tier_lv)
+        lp["rewarded"] = sorted(set(rewarded))
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _vip_welfare_tuples(self) -> list[tuple[int, int, int]]:
+        vip = max(0, min(20, int(self.state["player"].get("Vip", 0))))
+        raw = VIP_WELFARE_REWARDS.get(vip, VIP_WELFARE_REWARDS[0])
+        return _parse_resource_str(raw)
+
+    def _rpc_vip_welfare_info(self, _data: Any) -> dict[str, Any]:
+        today = time.strftime("%Y-%m-%d")
+        can_draw = self.state.get("vip_welfare_drawn_date", "") != today
+        res_list = [
+            {"ResourceTypeSub": rtype, "ModelId": rmodel, "Count": rnum}
+            for rtype, rmodel, rnum in self._vip_welfare_tuples()
+        ]
+        return {"CanDraw": can_draw, "ResourceList": res_list}
+
+    def _rpc_vip_welfare_draw(self, _data: Any) -> dict[str, Any]:
+        today = time.strftime("%Y-%m-%d")
+        if self.state.get("vip_welfare_drawn_date", "") == today:
+            self._last_rpc_context["status"] = -1
+            return {}
+        tuples = self._vip_welfare_tuples()
+        base_res = self._grant_resources_from_tuples(
+            tuples,
+            source=f"vip_welfare:{today}",
+            tx_prefix=f"vipwelfare:{self.profile_name}:{self.state['player']['PlayerId']}:{today}",
+        )
+        self.state["vip_welfare_drawn_date"] = today
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _rpc_player_charge_list(self, _data: Any) -> list[dict[str, Any]]:
+        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}})
+        bought = {str(x) for x in cs.get("first_bought", [])}
+        out: list[dict[str, Any]] = []
+        for tier in CHARGE_TIERS:
+            is_first = tier["ProductId"] not in bought
+            out.append(
+                {
+                    "ProductId": tier["ProductId"],
+                    "ChargePoint": tier["ChargePoint"],
+                    "GamePoint": tier["GamePoint"],
+                    "GiveGamePoint": tier["GiveGamePoint"] if is_first else 0,
+                    "IsFirst": is_first,
+                    "Ratio": tier["Ratio"] if is_first else 1,
+                }
+            )
+        return out
+
+    def _rpc_player_charge_info(self, _data: Any) -> dict[str, Any]:
+        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}})
+        return {
+            "ChargeNum": int(self.state["player"].get("ChargeNum", 0)),
+            "DrawNums": [int(x) for x in cs.get("drawn_boxes", [])],
+        }
+
+    def _rpc_player_charge_draw_box(self, data: Any) -> dict[str, Any]:
+        num = int(data[0]) if isinstance(data, list) and data else 0
+        raw = CHARGE_BOX_REWARDS.get(num)
+        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}})
+        drawn = [int(x) for x in cs.get("drawn_boxes", [])]
+        if not raw or int(self.state["player"].get("ChargeNum", 0)) < num or num in drawn:
+            self._last_rpc_context["status"] = -1
+            return {}
+        base_res = self._grant_resources_from_tuples(
+            _parse_resource_str(raw),
+            source=f"first_charge_box:{num}",
+            tx_prefix=f"chargebox:{self.profile_name}:{self.state['player']['PlayerId']}:{num}",
+        )
+        drawn.append(num)
+        cs["drawn_boxes"] = sorted(set(drawn))
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _rpc_player_charge_generate_order(self, data: Any) -> str:
+        pid = str(data[0]) if isinstance(data, list) and data else CHARGE_TIERS[0]["ProductId"]
+        order_id = f"ORD-{uuid.uuid4().hex[:16]}"
+        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}})
+        cs.setdefault("orders", {})[order_id] = {"ProductId": pid, "ts": int(time.time())}
+        self.save()
+        return order_id
+
+    def _apply_simulated_charge(
+        self,
+        tier: dict[str, Any],
+        actor: str = "player",
+        source: str = "simulated_charge",
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        p = self.state["player"]
+        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}})
+        bought = cs.setdefault("first_bought", [])
+        pid = tier["ProductId"]
+        is_first = pid not in bought
+        base_diamonds = int(tier["GamePoint"])
+        bonus_diamonds = int(tier["GiveGamePoint"]) if is_first else 0
+        total_diamonds = base_diamonds + bonus_diamonds
+        tx_key = idempotency_key or f"simcharge:{self.profile_name}:{p['PlayerId']}:{uuid.uuid4()}"
+        self.ledger.apply_player_delta(
+            p,
+            self.profile_name,
+            "Diamond",
+            total_diamonds,
+            source=source,
+            idempotency_key=f"{tx_key}:diamond",
+            actor=actor,
+            metadata={"ProductId": pid, "ChargePoint": tier["ChargePoint"], "is_first": is_first},
+        )
+        self.ledger.apply_player_delta(
+            p,
+            self.profile_name,
+            "VipEXP",
+            base_diamonds,
+            source=source,
+            idempotency_key=f"{tx_key}:vipexp",
+            actor=actor,
+            metadata={"ProductId": pid},
+        )
+        p["ChargeNum"] = int(p.get("ChargeNum", 0)) + base_diamonds
+        if is_first:
+            bought.append(pid)
+        self.save()
+        return {
+            "ProductId": pid,
+            "DiamondAdded": total_diamonds,
+            "VipEXPAdded": base_diamonds,
+            "Vip": int(p.get("Vip", 0)),
+            "Diamond": int(p.get("Diamond", 0)),
+            "ChargeNum": int(p["ChargeNum"]),
+        }
+
+    def _rpc_player_charge_confirm_order(self, data: Any) -> dict[str, Any]:
+        arg = data[0] if isinstance(data, list) and data else CHARGE_TIERS[0]["ChargePoint"]
+        tier = next(
+            (
+                t
+                for t in CHARGE_TIERS
+                if str(t["ProductId"]) == str(arg) or str(t["ChargePoint"]) == str(arg)
+            ),
+            None,
+        )
+        if tier is None:
+            try:
+                pts = int(arg)
+                tier = {
+                    "ProductId": f"com.cmn.inuyasha.custom{pts}",
+                    "ChargePoint": pts,
+                    "GamePoint": pts,
+                    "GiveGamePoint": 0,
+                    "Ratio": 1,
+                }
+            except (TypeError, ValueError):
+                self._last_rpc_context["status"] = -1
+                return {}
+        return self._apply_simulated_charge(tier, actor="player", source="simulated_charge_rpc")
+
+    def _card_list_payload(self) -> list[dict[str, Any]]:
+        now = int(time.time())
+        today = time.strftime("%Y-%m-%d")
+        cards = self.state.setdefault("month_cards", {})
+        out: list[dict[str, Any]] = []
+        for cid_str, info in sorted(cards.items()):
+            exp_ts = int(info.get("ExpireTime", 0))
+            if exp_ts <= now:
+                continue
+            out.append(
+                {
+                    "CardId": int(cid_str),
+                    "ExpireTime": exp_ts,
+                    "CanDrawTodayReward": info.get("LastDailyDate", "") != today,
+                    "CanDrawBuyReward": not bool(info.get("BuyDrawn", False)),
+                }
+            )
+        return out
+
+    def _rpc_card_info(self, _data: Any) -> list[dict[str, Any]]:
+        return self._card_list_payload()
+
+    def _rpc_card_generate_order(self, data: Any) -> dict[str, Any]:
+        cid = int(data[0]) if isinstance(data, list) and data else 1
+        cfg = CARD_MODEL_CFG.get(cid, CARD_MODEL_CFG[1])
+        return {"ProductId": cfg["ProductId"], "OrderId": f"CARDORD-{uuid.uuid4().hex[:14]}"}
+
+    def _rpc_card_activity(self, data: Any) -> list[dict[str, Any]]:
+        cid = int(data[0]) if isinstance(data, list) and data else 1
+        cfg = CARD_MODEL_CFG.get(cid)
+        if not cfg:
+            self._last_rpc_context["status"] = -1
+            return []
+        now = int(time.time())
+        cards = self.state.setdefault("month_cards", {})
+        cur = cards.get(str(cid), {})
+        base_exp = max(now, int(cur.get("ExpireTime", now)))
+        cards[str(cid)] = {
+            "CardId": cid,
+            "ExpireTime": base_exp + int(cfg["continueTime"]) * 86400,
+            "LastDailyDate": cur.get("LastDailyDate", ""),
+            "BuyDrawn": False,
+        }
+        p = self.state["player"]
+        self.ledger.apply_player_delta(
+            p,
+            self.profile_name,
+            "VipEXP",
+            int(cfg["price"]),
+            source=f"card_activity:{cid}",
+            idempotency_key=f"cardact:{self.profile_name}:{p['PlayerId']}:{cid}:{uuid.uuid4()}",
+        )
+        p["ChargeNum"] = int(p.get("ChargeNum", 0)) + int(cfg["price"])
+        self.save()
+        return self._card_list_payload()
+
+    def _rpc_card_draw_daily(self, data: Any) -> dict[str, Any]:
+        cid = int(data[0]) if isinstance(data, list) and data else 1
+        cfg = CARD_MODEL_CFG.get(cid)
+        now = int(time.time())
+        today = time.strftime("%Y-%m-%d")
+        cards = self.state.setdefault("month_cards", {})
+        entry = cards.get(str(cid))
+        if not cfg or not entry or int(entry.get("ExpireTime", 0)) <= now or entry.get("LastDailyDate") == today:
+            self._last_rpc_context["status"] = -1
+            return {}
+        base_res = self._grant_resources_from_tuples(
+            _parse_resource_str(cfg["dailyReward"]),
+            source=f"card_daily:{cid}",
+            tx_prefix=f"carddaily:{self.profile_name}:{self.state['player']['PlayerId']}:{cid}:{today}",
+        )
+        entry["LastDailyDate"] = today
+        self.save()
+        return {"BaseGetGameResourceList": base_res, "CardInfo": self._card_list_payload()}
+
+    def _rpc_card_draw_buy(self, data: Any) -> dict[str, Any]:
+        cid = int(data[0]) if isinstance(data, list) and data else 1
+        cfg = CARD_MODEL_CFG.get(cid)
+        now = int(time.time())
+        cards = self.state.setdefault("month_cards", {})
+        entry = cards.get(str(cid))
+        if not cfg or not entry or int(entry.get("ExpireTime", 0)) <= now or entry.get("BuyDrawn"):
+            self._last_rpc_context["status"] = -1
+            return {}
+        base_res = self._grant_resources_from_tuples(
+            _parse_resource_str(cfg["buyReward"]),
+            source=f"card_buy:{cid}",
+            tx_prefix=f"cardbuy:{self.profile_name}:{self.state['player']['PlayerId']}:{cid}:{uuid.uuid4()}",
+        )
+        entry["BuyDrawn"] = True
+        self.save()
+        return {"BaseGetGameResourceList": base_res, "CardInfo": self._card_list_payload()}
+
+    def admin_state_summary(self) -> dict[str, Any]:
+        """Return structured profile summary for admin/QA inspection."""
+        p = self.state["player"]
+        b = self.state["battle"]
+        deployed = [
+            {
+                "SlotId": s["SlotId"],
+                "HeroId": s["HeroId"],
+                "HeroModelId": s["HeroModelId"],
+                "FAP": int(s.get("Property", {}).get("FAP", 0)),
+            }
+            for s in self.state["slots"]
+            if int(s.get("HeroModelId", 0)) > 0
+        ]
+        return {
+            "profile": self.profile_name,
+            "player": {
+                "PlayerId": p["PlayerId"],
+                "PlayerName": p.get("PlayerName"),
+                "Lv": int(p["Lv"]),
+                "EXP": int(p["EXP"]),
+                "Vip": int(p.get("Vip", 0)),
+                "VipEXP": int(p.get("VipEXP", 0)),
+                "Gold": int(p["Gold"]),
+                "Diamond": int(p["Diamond"]),
+                "VIT": int(p["VIT"]),
+                "STA": int(p["STA"]),
+                "HeroCoin": int(p["HeroCoin"]),
+                "HeroEXP": int(p["HeroEXP"]),
+                "FAP": int(p["FAP"]),
+                "StarId": int(p.get("StarId", 0)),
+                "ChargeNum": int(p.get("ChargeNum", 0)),
+                "IsNewPlayer": int(p.get("IsNewPlayer", 0)),
+            },
+            "battle": {
+                "MaxChapterId": int(b.get("MaxChapterId", 11)),
+                "MaxNodeId": int(b.get("MaxNodeId", 1111)),
+                "StarCount": int(b.get("StarCount", 0)),
+            },
+            "counts": {
+                "heroes": len(self.state.get("heroes", [])),
+                "deployed_slots": len(deployed),
+                "equips": len(self.state.get("equips", [])),
+                "treasures": len(self.state.get("treasures", [])),
+                "goods": len(self.state.get("goods", [])),
+            },
+            "deployed": deployed,
+        }
+
+    def admin_set_vip(
+        self,
+        vip_lv: int | None = None,
+        vip_exp: int | None = None,
+        actor: str = "admin",
+        source: str = "admin_vip",
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Set VIP level or VipEXP via ResourceLedger, deriving Vip from game_data['vip_model']."""
+        vip_model = self.game_data.get("vip_model", {})
+        max_vip = max((int(k) for k in vip_model.keys()), default=20)
+        cur_exp = int(self.state["player"].get("VipEXP", 0))
+        if vip_lv is not None:
+            lv = int(vip_lv)
+            if lv < 0 or lv > max_vip or str(lv) not in vip_model:
+                raise ValueError(f"Invalid vip_lv={vip_lv}; valid range 0..{max_vip}")
+            target_exp = int(vip_model[str(lv)]["expTotal"])
+        elif vip_exp is not None:
+            target_exp = int(vip_exp)
+            if target_exp < 0:
+                raise ValueError("vip_exp must be >= 0")
+        else:
+            raise ValueError("Provide vip_lv or vip_exp")
+        delta = target_exp - cur_exp
+        if delta != 0:
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                "VipEXP",
+                delta,
+                source=source,
+                idempotency_key=idempotency_key,
+                actor=actor,
+            )
+        else:
+            derived = int(self.ledger.derive_vip_level(target_exp))
+            self.state["player"]["Vip"] = derived
+            self.state["player"]["VIPLv"] = derived
+        self.save()
+        return {
+            "Vip": int(self.state["player"]["Vip"]),
+            "VipEXP": int(self.state["player"]["VipEXP"]),
+        }
+
+    def admin_grant(
+        self,
+        resources: list[dict[str, Any]] | None = None,
+        items: list[dict[str, Any]] | None = None,
+        heroes: list[dict[str, Any]] | None = None,
+        equips: list[dict[str, Any]] | None = None,
+        actor: str = "admin",
+        source: str = "admin_grant",
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Grant validated resources, items, heroes, or equips with ledger audit trail."""
+        p = self.state["player"]
+        pid = str(p["PlayerId"])
+        max_lv = int(self.game_data.get("player_config", {}).get("maxPlayerLV", 80))
+        player_lv = int(p.get("Lv", 1))
+        granted_resources: list[dict[str, Any]] = []
+        item_tuples: list[tuple[int, int, int]] = []
+        granted_heroes: list[dict[str, Any]] = []
+        granted_equips: list[dict[str, Any]] = []
+
+        for idx, res in enumerate(resources or []):
+            rtype = str(res.get("type", ""))
+            amount = int(res.get("amount", 0))
+            if amount <= 0:
+                raise ValueError(f"Resource amount must be > 0 for {rtype}")
+            tx_key = f"{idempotency_key}:res:{idx}:{rtype}" if idempotency_key else None
+            tx = self.ledger.apply_player_delta(
+                p,
+                self.profile_name,
+                rtype,
+                amount,
+                source=source,
+                idempotency_key=tx_key,
+                actor=actor,
+            )
+            if rtype == "EXP":
+                self._sync_level_from_exp()
+                player_lv = int(p.get("Lv", 1))
+            granted_resources.append({"type": rtype, "amount": amount, "balance": tx.balance_after})
+
+        for entry in items or []:
+            mid = int(entry.get("id", 0))
+            num = int(entry.get("num", 1))
+            if num <= 0:
+                raise ValueError(f"Item num must be > 0 for {mid}")
+            mid_str = str(mid)
+            if mid_str in self.game_data.get("goods_model", {}):
+                rtype = int(entry.get("type") or (mid // 10000))
+            elif mid_str in self.game_data.get("treasure_debris", {}):
+                rtype = int(entry.get("type") or 1504)
+            elif mid_str in self.game_data.get("treasures", {}):
+                rtype = int(entry.get("type") or (mid // 10000))
+            elif mid_str in self.game_data.get("equips", {}):
+                rtype = int(entry.get("type") or (mid // 10000))
+            else:
+                raise ValueError(f"Unknown game item model_id={mid}")
+            item_tuples.append((rtype, mid, num))
+
+        if item_tuples:
+            self._grant_resources_from_tuples(
+                item_tuples,
+                source=source,
+                tx_prefix=idempotency_key or f"{source}:{self.profile_name}:{pid}:{uuid.uuid4()}",
+            )
+
+        for idx, hspec in enumerate(heroes or []):
+            hid = int(hspec.get("model_id", 0))
+            if str(hid) not in self.game_data.get("heroes", {}):
+                raise ValueError(f"Unknown hero model_id={hid}")
+            lv = max(1, min(int(hspec.get("lv", 1)), max_lv, player_lv))
+            step = max(0, min(int(hspec.get("step", 0)), 15))
+            inst = self._build_hero_instance(hid, lv=lv, step=step)
+            self.state["heroes"].append(inst)
+            self.ledger.record_grant_event(
+                account_id=pid,
+                profile=self.profile_name,
+                resource_type=f"Hero:{hid}",
+                amount=1,
+                balance_after=len(self.state["heroes"]),
+                source=source,
+                idempotency_key=f"{idempotency_key}:hero:{idx}:{hid}" if idempotency_key else None,
+                actor=actor,
+                metadata={"lv": lv, "step": step, "inst_id": inst["Id"]},
+            )
+            if hspec.get("deploy"):
+                slot_idx = hspec.get("slot_id")
+                target_slot = None
+                if slot_idx is not None:
+                    sid = int(slot_idx)
+                    if 1 <= sid <= len(self.state["slots"]):
+                        target_slot = self.state["slots"][sid - 1]
+                else:
+                    target_slot = next((s for s in self.state["slots"] if int(s.get("HeroModelId", 0)) == 0), None)
+                if target_slot is not None:
+                    target_slot["HeroId"] = inst["Id"]
+                    target_slot["HeroModelId"] = hid
+                    self.state["embattle"][f"Formation{target_slot['SlotId']}"] = target_slot["SlotId"]
+            granted_heroes.append({"Id": inst["Id"], "HeroModelId": hid, "Lv": lv, "Step": step})
+
+        for idx, espec in enumerate(equips or []):
+            eid = int(espec.get("model_id", 0))
+            if str(eid) not in self.game_data.get("equips", {}):
+                raise ValueError(f"Unknown equip model_id={eid}")
+            lv = max(1, min(int(espec.get("lv", 1)), player_lv * 2, max_lv * 2))
+            step = max(0, min(int(espec.get("step", 0)), 10))
+            rtype = eid // 10000
+            eq_id = str(uuid.uuid4())
+            eq_obj = {
+                "Id": eq_id,
+                "EquipModelId": eid,
+                "Lv": lv,
+                "Step": step,
+                "Gold": 0,
+                "Star": 0,
+                "Crdate": int(time.time()),
+            }
+            self.state.setdefault("equips", []).append(eq_obj)
+            self.ledger.record_grant_event(
+                account_id=pid,
+                profile=self.profile_name,
+                resource_type=f"Equip:{eid}",
+                amount=1,
+                balance_after=len(self.state["equips"]),
+                source=source,
+                idempotency_key=f"{idempotency_key}:equip:{idx}:{eid}" if idempotency_key else None,
+                actor=actor,
+                metadata={"lv": lv, "step": step, "inst_id": eq_id},
+            )
+            slot_id = espec.get("slot_id")
+            if slot_id is not None:
+                sid = int(slot_id)
+                slot_key = self.EQUIP_TYPE_TO_SLOT_KEY.get(rtype)
+                if 1 <= sid <= len(self.state["slots"]) and slot_key:
+                    self.state["slots"][sid - 1][slot_key] = eq_obj
+            granted_equips.append({"Id": eq_id, "EquipModelId": eid, "Lv": lv})
+
+        self._recalc_all_slots_and_fap()
+        self._sync_player_recover_times()
+        self.save()
+        return {
+            "resources": granted_resources,
+            "items_count": len(item_tuples),
+            "heroes": granted_heroes,
+            "equips": granted_equips,
+            "summary": self.admin_state_summary(),
+        }
+
+    def admin_prepare_account(
+        self,
+        target_lv: int = 1,
+        vip_lv: int | None = None,
+        actor: str = "admin",
+        source: str = "admin_prepare",
+    ) -> dict[str, Any]:
+        """Prepare account at an authentic target player Lv (and optional VIP tier)."""
+        p = self.state["player"]
+        max_lv = int(self.game_data.get("player_config", {}).get("maxPlayerLV", 80))
+        lv = int(target_lv)
+        if lv < 1 or lv > max_lv or str(lv) not in self.game_data.get("player_lv", {}):
+            raise ValueError(f"Invalid target_lv={target_lv}; valid 1..{max_lv}")
+        target_exp = int(self.game_data["player_lv"][str(lv)]["EXPTotal"])
+        cur_exp = int(p.get("EXP", 0))
+        if target_exp != cur_exp:
+            self.ledger.apply_player_delta(
+                p,
+                self.profile_name,
+                "EXP",
+                target_exp - cur_exp,
+                source=source,
+                actor=actor,
+            )
+        if lv < int(p.get("Lv", 1)):
+            p["Lv"] = lv
+            if self.state.get("slots"):
+                main_hid = self.state["slots"][0].get("HeroId")
+                for h in self.state.get("heroes", []):
+                    if h["Id"] == main_hid:
+                        h["Lv"] = lv
+        else:
+            self._sync_level_from_exp()
+        p["IsNewPlayer"] = 0
+        if vip_lv is not None:
+            self.admin_set_vip(vip_lv=vip_lv, actor=actor, source=source)
+        self._recalc_all_slots_and_fap()
+        self._sync_player_recover_times()
+        self.save()
+        return self.admin_state_summary()
+
+
 class GameEmulatorState:
     """Multi-profile coordinator hosting NORMAL_PROFILE (ServerId=1) and DEBUG_PROFILE (ServerId=2)."""
 
@@ -2926,16 +3658,26 @@ class GameEmulatorState:
         persist: bool = True,
         new_player: bool = False,
         default_profile: str = "normal",
-        normal_path: Path = NORMAL_STATE_PATH,
-        debug_path: Path = DEBUG_STATE_PATH,
-        audit_path: Path = AUDIT_LOG_PATH,
-        trace_path: Path | None = RPC_TRACE_PATH,
+        normal_path: Path | None = None,
+        debug_path: Path | None = None,
+        audit_path: Path | None = None,
+        trace_path: Path | None = None,
+        env: str = "stable",
+        data_dir: Path | None = None,
     ) -> None:
         self.persist = persist
         self.default_profile = default_profile
+        self.env = env if env in ENV_PRESETS else "stable"
+        preset = ENV_PRESETS[self.env]
+        resolved_dir = Path(data_dir) if data_dir is not None else Path(preset["data_dir"])
+        self.data_dir = resolved_dir
+        resolved_normal = Path(normal_path) if normal_path is not None else (resolved_dir / "normal_profile.json")
+        resolved_debug = Path(debug_path) if debug_path is not None else (resolved_dir / "debug_profile.json")
+        resolved_audit = Path(audit_path) if audit_path is not None else (resolved_dir / "audit_ledger.jsonl")
+        self.trace_path = Path(trace_path) if trace_path is not None else Path(preset["trace_path"])
         self.game_data = json.loads(GAME_DATA_PATH.read_text(encoding="utf-8"))
         self.ledger = ResourceLedger(
-            audit_log_path=audit_path if persist else None,
+            audit_log_path=resolved_audit if persist else None,
             vip_model=self.game_data.get("vip_model", {}),
         )
         self.profiles: dict[str, ProfileStore] = {
@@ -2943,22 +3685,27 @@ class GameEmulatorState:
                 "normal",
                 self.game_data,
                 self.ledger,
-                state_path=normal_path,
+                state_path=resolved_normal,
                 persist=persist,
                 reset=new_player,
-                trace_path=trace_path,
+                trace_path=self.trace_path if persist else None,
             ),
             "debug": ProfileStore(
                 "debug",
                 self.game_data,
                 self.ledger,
-                state_path=debug_path,
+                state_path=resolved_debug,
                 persist=persist,
                 reset=False,
-                legacy_seed_path=LEGACY_SAVE_STATE_PATH,
-                trace_path=trace_path,
+                legacy_seed_path=LEGACY_SAVE_STATE_PATH if self.env == "stable" else None,
+                trace_path=self.trace_path if persist else None,
             ),
         }
+
+    def get_profile_by_name(self, name: str) -> ProfileStore:
+        if name not in self.profiles:
+            raise ValueError(f"Unknown profile: {name}")
+        return self.profiles[name]
 
     @property
     def state(self) -> dict[str, Any]:
@@ -3012,16 +3759,55 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
         else:
             self._send_bytes(status, "application/octet-stream", zlib.compress(raw))
 
+    def _append_trace(self, line: str) -> None:
+        trace_path = getattr(self.server.emu, "trace_path", None)
+        if self.server.emu.persist and trace_path:
+            Path(trace_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(trace_path, "a", encoding="utf-8") as tf:
+                tf.write(f"{line}\n")
+
+    def _require_local_admin(self) -> bool:
+        client_ip = str(self.client_address[0] if self.client_address else "")
+        if client_ip not in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+            self._send_json(403, {"error": "Admin API restricted to localhost"})
+            return False
+        expected = getattr(self.server, "admin_token", "") or ""
+        provided = self.headers.get("X-Admin-Token", "")
+        if not expected or not hmac.compare_digest(provided, expected):
+            self._send_json(401, {"error": "Missing or invalid X-Admin-Token"})
+            return False
+        return True
+
     def do_OPTIONS(self) -> None:
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Admin-Token")
         self.end_headers()
 
     def do_GET(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        qs = urllib.parse.parse_qs(parsed.query)
+
+        if path == "/admin/state":
+            if not self._require_local_admin():
+                return
+            prof_name = (qs.get("profile") or [self.server.emu.default_profile])[0]
+            try:
+                prof = self.server.emu.get_profile_by_name(prof_name)
+                self._send_json(200, {"ok": True, "env": self.server.emu.env, **prof.admin_state_summary()})
+            except ValueError as exc:
+                self._send_json(400, {"error": str(exc)})
+            return
+        if path == "/admin/audit":
+            if not self._require_local_admin():
+                return
+            acc = (qs.get("account_id") or [None])[0]
+            limit = int((qs.get("limit") or ["100"])[0])
+            txs = self.server.emu.ledger.list_transactions(account_id=acc, limit=limit)
+            self._send_json(200, {"ok": True, "env": self.server.emu.env, "transactions": txs})
+            return
 
         if path in ("/", "/poc", "/poc/"):
             self._serve_poc_file("index.html")
@@ -3055,9 +3841,7 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
             )
             return
         if path in ("/api/report.ashx", "/api/stepnew.ashx"):
-            if self.server.emu.persist:
-                with open(RPC_TRACE_PATH, "a", encoding="utf-8") as tf:
-                    tf.write(f"{time.strftime('%H:%M:%S')} STEP_GET {self.path}\n")
+            self._append_trace(f"{time.strftime('%H:%M:%S')} STEP_GET {self.path}")
             self._send_json(200, {"Code": 0, "Message": "OK"})
             return
         if path.startswith("/sdk/"):
@@ -3071,6 +3855,8 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                 200,
                 {
                     "ok": True,
+                    "env": self.server.emu.env,
+                    "data_dir": str(self.server.emu.data_dir),
                     "game": "InuYasha: Seek Jade",
                     "default_profile": self.server.emu.default_profile,
                     "profiles": {
@@ -3092,24 +3878,63 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
         body = self.rfile.read(length) if length > 0 else b""
         path = parsed.path
 
+        if path.startswith("/admin/"):
+            if not self._require_local_admin():
+                return
+            try:
+                payload = json.loads(body.decode("utf-8") or "{}")
+                prof_name = str(payload.get("profile") or self.server.emu.default_profile)
+                prof = self.server.emu.get_profile_by_name(prof_name)
+                actor = str(payload.get("actor") or "local_admin")
+                idem = payload.get("idempotency_key")
+                if path == "/admin/grant":
+                    res = prof.admin_grant(
+                        resources=payload.get("resources"),
+                        items=payload.get("items"),
+                        heroes=payload.get("heroes"),
+                        equips=payload.get("equips"),
+                        actor=actor,
+                        source=str(payload.get("source") or "admin_grant"),
+                        idempotency_key=idem,
+                    )
+                    self._send_json(200, {"ok": True, "env": self.server.emu.env, **res})
+                    return
+                if path == "/admin/vip":
+                    res = prof.admin_set_vip(
+                        vip_lv=payload.get("vip_lv"),
+                        vip_exp=payload.get("vip_exp"),
+                        actor=actor,
+                        source=str(payload.get("source") or "admin_vip"),
+                        idempotency_key=idem,
+                    )
+                    self._send_json(200, {"ok": True, "env": self.server.emu.env, **res})
+                    return
+                if path == "/admin/prepare":
+                    res = prof.admin_prepare_account(
+                        target_lv=int(payload.get("target_lv", 1)),
+                        vip_lv=payload.get("vip_lv"),
+                        actor=actor,
+                        source=str(payload.get("source") or "admin_prepare"),
+                    )
+                    self._send_json(200, {"ok": True, "env": self.server.emu.env, **res})
+                    return
+                self._send_json(404, {"error": f"Unknown admin endpoint: {path}"})
+            except (ValueError, KeyError, json.JSONDecodeError) as exc:
+                self._send_json(400, {"error": str(exc)})
+            return
+
         if path in ("/api/report.ashx", "/api/stepnew.ashx"):
-            if self.server.emu.persist:
-                with open(RPC_TRACE_PATH, "a", encoding="utf-8") as tf:
-                    tf.write(f"{time.strftime('%H:%M:%S')} STEP_POST {path} body={body[:300]!r}\n")
+            self._append_trace(f"{time.strftime('%H:%M:%S')} STEP_POST {path} body={body[:300]!r}")
             self._send_json(200, {"Code": 0, "Message": "OK"})
             return
 
         if path == "/API/ServerList_CheckResource.ashx":
-            if self.server.emu.persist:
-                with open(RPC_TRACE_PATH, "a", encoding="utf-8") as tf:
-                    tf.write(f"{time.strftime('%H:%M:%S')} CHECK_RES body={body[:200]!r}\n")
+            self._append_trace(f"{time.strftime('%H:%M:%S')} CHECK_RES body={body[:200]!r}")
             self._send_client_json(200, {"Code": 0, "Data": {}})
             return
 
         if path == "/API/ServerList_Client.ashx":
-            if self.server.emu.persist:
-                with open(RPC_TRACE_PATH, "a", encoding="utf-8") as tf:
-                    tf.write(f"{time.strftime('%H:%M:%S')} SERVERLIST body={body[:300]!r}\n")
+            self._append_trace(f"{time.strftime('%H:%M:%S')} SERVERLIST body={body[:300]!r}")
             host = self.headers.get("Host") or f"127.0.0.1:{self.server.server_port}"
             host_ip = host.split(":", 1)[0]
             default_sid = 2 if self.server.emu.default_profile == "debug" else 1
@@ -3193,12 +4018,26 @@ class ThreadingEmulatorServer(socketserver.ThreadingMixIn, http.server.HTTPServe
         quiet: bool = False,
         new_player: bool = False,
         default_profile: str = "normal",
+        env: str = "stable",
+        data_dir: Path | None = None,
+        trace_path: Path | None = None,
+        admin_token: str | None = None,
     ) -> None:
         self.emu = GameEmulatorState(
             persist=persist,
             new_player=new_player,
             default_profile=default_profile,
+            env=env,
+            data_dir=data_dir,
+            trace_path=trace_path,
         )
+        tok = admin_token or os.environ.get("INUYASHA_ADMIN_TOKEN") or secrets.token_urlsafe(24)
+        self.admin_token = tok
+        if persist:
+            tok_file = self.emu.data_dir / ".admin_token"
+            self.emu.data_dir.mkdir(parents=True, exist_ok=True)
+            tok_file.write_text(tok, encoding="utf-8")
+            os.chmod(tok_file, 0o600)
         self.assets = AssetArchive([(VN_APK_PATH, VN_OBB_PATH), (EN_APK_PATH, EN_OBB_PATH)])
         self.quiet = quiet
         super().__init__(server_address, EmulatorHandler)
@@ -3206,9 +4045,13 @@ class ThreadingEmulatorServer(socketserver.ThreadingMixIn, http.server.HTTPServe
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="InuYasha: Seek Jade Local Server Emulator")
+    parser.add_argument("--env", choices=["stable", "dev"], default="stable", help="Server environment preset")
     parser.add_argument("--host", default="127.0.0.1", help="Bind host (use 0.0.0.0 for LAN/Pixel 3 XL)")
-    parser.add_argument("--port", type=int, default=8080, help="Bind port")
+    parser.add_argument("--port", type=int, default=None, help="Bind port (default: 8080 stable, 8082 dev)")
     parser.add_argument("--profile", choices=["normal", "debug"], default="normal", help="Default server profile")
+    parser.add_argument("--data-dir", type=Path, default=None, help="Override save/ledger directory")
+    parser.add_argument("--trace-path", type=Path, default=None, help="Override RPC trace log path")
+    parser.add_argument("--admin-token", default=None, help="Local Admin API token (default: INUYASHA_ADMIN_TOKEN or generated)")
     parser.add_argument(
         "--new-player",
         "--reset-normal",
@@ -3218,14 +4061,20 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    port = args.port if args.port is not None else int(ENV_PRESETS[args.env]["port"])
     srv = ThreadingEmulatorServer(
-        (args.host, args.port),
+        (args.host, port),
         new_player=args.reset_normal,
         default_profile=args.profile,
+        env=args.env,
+        data_dir=args.data_dir,
+        trace_path=args.trace_path,
+        admin_token=args.admin_token,
     )
     print(
-        f"InuYasha: Seek Jade Emulator listening on http://{args.host}:{args.port}/poc/ "
-        f"(default={args.profile}, normal_pid={srv.emu.profiles['normal'].state['player']['PlayerId']}, "
+        f"InuYasha: Seek Jade [{srv.emu.env.upper()}] listening on http://{args.host}:{port}/poc/ "
+        f"(data_dir={srv.emu.data_dir}, default={args.profile}, "
+        f"normal_pid={srv.emu.profiles['normal'].state['player']['PlayerId']}, "
         f"debug_pid={srv.emu.profiles['debug'].state['player']['PlayerId']})"
     )
     try:

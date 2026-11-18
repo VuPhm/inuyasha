@@ -1350,7 +1350,38 @@ class ProfileStore:
                         h["Lv"] = new_lv
                         break
                 self._recalc_all_slots_and_fap()
+            self._unlock_eligible_next_chapters()
         return old_lv, new_lv
+
+    def _unlock_next_chapter_after(self, ch_id: int) -> dict[str, Any] | None:
+        """Unlock chapter ch_id+1 only when BattleChapterModel.needLV is satisfied (VN original rule)."""
+        next_ch_id = ch_id + 1
+        next_cfg = self.game_data["chapters"].get(str(next_ch_id))
+        if not next_cfg or str(next_ch_id) in self.state.get("chapters", {}):
+            return None
+        need_lv = int(next_cfg.get("needLV", 1))
+        if int(self.state["player"].get("Lv", 1)) < need_lv:
+            return None
+        next_chapter = self._make_chapter_state(next_ch_id)
+        self.state["chapters"][str(next_ch_id)] = next_chapter
+        next_ch_nodes = sorted(
+            [int(k) for k, v in self.game_data["nodes"].items() if v.get("chapterModelID") == next_ch_id]
+        )
+        if next_ch_nodes:
+            self.state["nodes"].setdefault(str(next_ch_nodes[0]), self._make_node_state(next_ch_nodes[0], flag=1))
+            self.state["battle"]["MaxNodeId"] = max(self.state["battle"]["MaxNodeId"], next_ch_nodes[0])
+        self.state["battle"]["MaxChapterId"] = max(self.state["battle"]["MaxChapterId"], next_ch_id)
+        return next_chapter
+
+    def _unlock_eligible_next_chapters(self) -> list[dict[str, Any]]:
+        """Unlock any passed chapter's successor once player Lv meets BattleChapterModel.needLV."""
+        unlocked: list[dict[str, Any]] = []
+        for cid_str, ch_st in sorted(list(self.state.get("chapters", {}).items()), key=lambda kv: int(kv[0])):
+            if int(ch_st.get("IfPass", 0)) == 1:
+                nxt = self._unlock_next_chapter_after(int(cid_str))
+                if nxt is not None:
+                    unlocked.append(nxt)
+        return unlocked
 
     def _hero_fight_obj(
         self,
@@ -2244,9 +2275,32 @@ class ProfileStore:
             )
         return allies
 
+    def _can_enter_battle_node(self, ch_id: int, node_id: int, check_vit: bool = True) -> tuple[bool, str]:
+        """Enforce VN chapter needLV, daily fightNumMax, and VitConfig.perUseNum stamina."""
+        ch_cfg = self.game_data["chapters"].get(str(ch_id), {})
+        if int(self.state["player"].get("Lv", 1)) < int(ch_cfg.get("needLV", 1)):
+            return False, "chapter_level_locked"
+        node_cfg = self.game_data["nodes"].get(str(node_id))
+        if not node_cfg or int(node_cfg.get("chapterModelID", 0)) != ch_id:
+            return False, "invalid_node"
+        node_st = self.state.get("nodes", {}).get(str(node_id))
+        max_fights = int(node_cfg.get("fightNumMax", 10))
+        if node_st and int(node_st.get("FightCount", 0)) >= max_fights:
+            return False, "fight_limit_reached"
+        if check_vit:
+            vit_cost = int(self.game_data.get("vit_config", {}).get("perUseNum", 5))
+            if int(self.state["player"].get("VIT", 0)) < vit_cost:
+                return False, "insufficient_vit"
+        return True, "ok"
+
     def _rpc_get_fight_info(self, data: Any) -> dict[str, Any]:
+        ch_id = int(data[0]) if isinstance(data, list) and len(data) >= 1 else 11
         node_id = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 1111
         star_lv = int(data[2]) if isinstance(data, list) and len(data) >= 3 else 1
+        allowed, _reason = self._can_enter_battle_node(ch_id, node_id, check_vit=True)
+        if not allowed:
+            self._last_rpc_context["status"] = -1
+            return {}
         node_cfg = self.game_data["nodes"].get(str(node_id), {"ID": node_id, "name": "1-1", "starCount": 1, "fightRound": 1})
         allies = self._build_ally_fight_objs()
 
@@ -2375,17 +2429,7 @@ class ProfileStore:
                 self.state["battle"]["MaxNodeId"] = max(self.state["battle"]["MaxNodeId"], next_nid)
             else:
                 ch_st["IfPass"] = 1
-                next_ch_id = ch_id + 1
-                if str(next_ch_id) in self.game_data["chapters"] and str(next_ch_id) not in self.state["chapters"]:
-                    next_chapter = self._make_chapter_state(next_ch_id)
-                    self.state["chapters"][str(next_ch_id)] = next_chapter
-                    next_ch_nodes = sorted(
-                        [int(k) for k, v in self.game_data["nodes"].items() if v.get("chapterModelID") == next_ch_id]
-                    )
-                    if next_ch_nodes:
-                        self.state["nodes"][str(next_ch_nodes[0])] = self._make_node_state(next_ch_nodes[0], flag=1)
-                        self.state["battle"]["MaxNodeId"] = max(self.state["battle"]["MaxNodeId"], next_ch_nodes[0])
-                    self.state["battle"]["MaxChapterId"] = max(self.state["battle"]["MaxChapterId"], next_ch_id)
+                next_chapter = self._unlock_next_chapter_after(ch_id)
 
         reward_tuples: list[tuple[int, int, int]] = []
         if won:
@@ -2420,6 +2464,11 @@ class ProfileStore:
 
         verify_info = self._verify_battle_payload(verify_raw, won)
         if not verify_info.get("consistent", True):
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        allowed, _reason = self._can_enter_battle_node(ch_id, node_id, check_vit=True)
+        if not allowed:
             self._last_rpc_context["status"] = -1
             return {}
 
@@ -2950,6 +2999,9 @@ class ProfileStore:
     def _rpc_shop_buy_goods(self, data: Any) -> dict[str, Any]:
         gid = int(data[0]) if isinstance(data, list) and len(data) >= 1 else 16030006
         count = max(1, int(data[1]) if isinstance(data, list) and len(data) >= 2 else 1)
+        if not self._is_valid_resource(gid // 10000, gid):
+            self._last_rpc_context["status"] = -1
+            return {}
         info = self._build_shop_goods_entry(gid)
         if info["MaxNum"] >= 0 and info["Num"] + count > info["MaxNum"]:
             self._last_rpc_context["status"] = -1

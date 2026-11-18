@@ -1643,6 +1643,68 @@ class EmulatorProtocolTest(unittest.TestCase):
                 else:
                     self.assertLessEqual(val["STANextRecoverTime"], int(time.time()))
 
+    def test_27_r7_stage_progression_guards_and_chapter_need_lv(self):
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            normal = emu.get_profile_by_name("normal")
+            gd = normal.game_data
+
+            # 1. VIT guard: below vit_cost (5), Battle.GetFightInfo and Battle.Fight reject (-1)
+            normal.state["player"]["VIT"] = 4
+            fi_low_vit = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "GetFightInfo", "Data": [11, 1111, 1], "ServerId": 1})
+            self.assertEqual(fi_low_vit["Status"], -1)
+            f_low_vit = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1111, 1, True, "", False], "ServerId": 1})
+            self.assertEqual(f_low_vit["Status"], -1)
+
+            # Exactly 5 VIT succeeds and deducts 5 -> 0
+            normal.state["player"]["VIT"] = 5
+            f_ok = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1111, 1, True, "", False], "ServerId": 1})
+            self.assertEqual(f_ok["Status"], 0)
+            self.assertEqual(normal.state["player"]["VIT"], 0)
+
+            # 2. Daily fightNumMax guard & ResetCount recovery
+            normal.state["player"]["VIT"] = 200
+            max_fights = int(gd["nodes"]["1111"]["fightNumMax"])
+            normal.state["nodes"]["1111"]["FightCount"] = max_fights
+            fi_cap = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "GetFightInfo", "Data": [11, 1111, 1], "ServerId": 1})
+            self.assertEqual(fi_cap["Status"], -1)
+            f_cap = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1111, 1, True, "", False], "ServerId": 1})
+            self.assertEqual(f_cap["Status"], -1)
+            rc = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "ResetCount", "Data": [11, 1111], "ServerId": 1})
+            self.assertEqual(rc["Status"], 0)
+            fi_after_reset = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "GetFightInfo", "Data": [11, 1111, 1], "ServerId": 1})
+            self.assertEqual(fi_after_reset["Status"], 0)
+
+            # 3. BattleChapterModel.needLV gate (Ch 27 requires Lv 28):
+            # Below Lv 28: clearing final node of Ch 26 sets IfPass=1 without unlocking Ch 27, and Ch 27 battles reject
+            ch26_nodes = sorted([int(k) for k, v in gd["nodes"].items() if v.get("chapterModelID") == 26])
+            ch27_nodes = sorted([int(k) for k, v in gd["nodes"].items() if v.get("chapterModelID") == 27])
+            self.assertEqual(int(gd["chapters"]["27"]["needLV"]), 28)
+            last_26 = ch26_nodes[-1]
+            first_27 = ch27_nodes[0]
+
+            normal.state["player"]["Lv"] = 26
+            normal.state["player"]["EXP"] = int(gd["player_lv"]["26"]["EXPTotal"])
+            normal.state["chapters"]["26"] = normal._make_chapter_state(26)
+            normal.state["nodes"][str(last_26)] = normal._make_node_state(last_26, flag=1)
+
+            early_27 = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "GetFightInfo", "Data": [27, first_27, 1], "ServerId": 1})
+            self.assertEqual(early_27["Status"], -1)
+
+            clear_26 = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [26, last_26, 1, True, "", False], "ServerId": 1})
+            self.assertEqual(clear_26["Status"], 0)
+            self.assertEqual(normal.state["chapters"]["26"]["IfPass"], 1)
+            self.assertNotIn("27", normal.state["chapters"])
+            self.assertNotIn("NextChapter", clear_26["Value"])
+
+            # Leveling up to 28 automatically unlocks Ch 27 and its first node
+            normal.state["player"]["EXP"] = int(gd["player_lv"]["28"]["EXPTotal"])
+            normal._sync_level_from_exp()
+            self.assertEqual(normal.state["player"]["Lv"], 28)
+            self.assertIn("27", normal.state["chapters"])
+            self.assertIn(str(first_27), normal.state["nodes"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -12,7 +12,7 @@ import zlib
 from pathlib import Path
 
 from economy_audit import DuplicateTransactionError, ResourceLedger, ResourceTransactionError
-from emulator import ThreadingEmulatorServer
+from emulator import GameEmulatorState, ThreadingEmulatorServer
 
 
 class EmulatorProtocolTest(unittest.TestCase):
@@ -307,6 +307,135 @@ class EmulatorProtocolTest(unittest.TestCase):
                 self.assertEqual(r.status, 200)
                 body = r.read()
                 self.assertGreater(len(body), 50)
+
+    def test_06_vn_config_extraction_and_combat_scaling(self) -> None:
+        gd = self.srv.emu.game_data
+        self.assertIn("com.cmn.inuyasha", gd["source"])
+        self.assertEqual(gd["counts"]["heroes"], 204)
+        self.assertEqual(gd["player_config"]["maxPlayerLV"], 80)
+        self.assertEqual(gd["counts"]["hero_step"], 57)
+        self.assertEqual(gd["counts"]["attrtree"], 1001)
+
+        # Multi-wave stage 1217 (2-7, fightRound=2) returns 2 waves in FightObjs
+        f_1217 = self._rpc("Battle", "GetFightInfo", [12, 1217, 1], server_id=1)
+        self.assertEqual(f_1217["Status"], 0)
+        self.assertEqual(len(f_1217["Value"]["FightInfo"]["FightObjs"]), 2)
+
+        # Multi-star stage 2311 (starCount=3) scales enemy HP/AP/DEF strictly across 1★, 2★, 3★
+        hp_by_star = []
+        for star_lv in (1, 2, 3):
+            fi = self._rpc("Battle", "GetFightInfo", [23, 2311, star_lv], server_id=1)
+            self.assertEqual(fi["Status"], 0)
+            enemies = [h for h in fi["Value"]["FightInfo"]["FightObjs"][0]["Heros"][6:] if h]
+            self.assertGreaterEqual(len(enemies), 3)
+            hp_by_star.append(sum(e["HP"] for e in enemies))
+        self.assertLess(hp_by_star[0], hp_by_star[1])
+        self.assertLess(hp_by_star[1], hp_by_star[2])
+
+    def test_07_star_rating_replay_con_fight_and_draw_box(self) -> None:
+        # Use isolated state in a fresh emulator instance to test Ch 11 & Ch 23 star persistence cleanly
+        emu = GameEmulatorState(persist=False)
+        prof = emu.profiles["normal"]
+        pid = prof.state["player"]["PlayerId"]
+
+        # Ch 11 nodes have starCount=1; winning at star_lv=3 clamps to 1★, IfDrawBoxA is False (bool)
+        for nid in (1111, 1112, 1113, 1114):
+            res = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, nid, 3, True, "", False]})
+            self.assertEqual(res["Status"], 0)
+            self.assertEqual(res["Value"]["CurrentNode"]["StarCount"], 1)
+            self.assertIs(res["Value"]["CurrentChapter"]["IfDrawBoxA"], False)
+
+        # DrawBox rejects before 5 stars
+        fail_box = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "DrawBox", "Data": [11, 111]})
+        self.assertEqual(fail_box["Status"], -1)
+
+        # Clear 1115 -> 5 stars total -> Ch 12 unlocked + DrawBox succeeds + ConFight works
+        res_1115 = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1115, 1, True, "", False]})
+        self.assertEqual(res_1115["Value"]["CurrentChapter"]["StarCount"], 5)
+        self.assertIn("NextChapter", res_1115["Value"])
+
+        ok_box = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "DrawBox", "Data": [11, 111]})
+        self.assertEqual(ok_box["Status"], 0)
+        self.assertIs(ok_box["Value"]["Chapter"]["IfDrawBoxA"], True)
+        # Double-claim blocked
+        dup_box = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "DrawBox", "Data": [11, 111]})
+        self.assertEqual(dup_box["Status"], -1)
+
+        # Contradictory verifyData rejected (won=True while ally HP=0 & enemy HP>0)
+        bad_verify = json.dumps({"hp": [[{"PosId": 1, "HP": 0, "RP": 0}, {"PosId": 7, "HP": 100, "RP": 50}]]})
+        bad_fight = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1115, 1, True, bad_verify, False]})
+        self.assertEqual(bad_fight["Status"], -1)
+
+        # 3-star node (2311, starCount=3): progressive 1★ -> 2★ -> 3★, and 1★ replay preserves 3★
+        prof.state["chapters"]["23"] = prof._make_chapter_state(23)
+        prof.state["nodes"]["2311"] = prof._make_node_state(2311, flag=1)
+        r1 = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [23, 2311, 1, True, "", False]})
+        self.assertEqual(r1["Value"]["CurrentNode"]["StarCount"], 1)
+        r2 = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [23, 2311, 2, True, "", False]})
+        self.assertEqual(r2["Value"]["CurrentNode"]["StarCount"], 2)
+        r3 = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [23, 2311, 3, True, "", False]})
+        self.assertEqual(r3["Value"]["CurrentNode"]["StarCount"], 3)
+        r_replay = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [23, 2311, 1, True, "", False]})
+        self.assertEqual(r_replay["Value"]["CurrentNode"]["StarCount"], 3)
+
+        # ConFight 3x returns 3 reward bundles and deducts VIT
+        vit_before = prof.state["player"]["VIT"]
+        cf = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "ConFight", "Data": [23, 2311, 3, 3, 2]})
+        self.assertEqual(cf["Status"], 0)
+        self.assertEqual(len(cf["Value"]["BaseGetGameResourceList"]), 3)
+        self.assertEqual(prof.state["player"]["VIT"], vit_before - 15)
+        self.assertIsNotNone(pid)
+
+    def test_08_hero_lv_up_step_up_explore_and_lighten_star_to_lv10(self) -> None:
+        emu = GameEmulatorState(persist=False)
+        prof = emu.profiles["normal"]
+        prof.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["KagomeVN", 1]})
+
+        # Recruit companion Ayame -> HeroLvUp 10x -> HeroStepUp Step 0 -> 1
+        rec = prof.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [2, 1]})
+        self.assertEqual(rec["Status"], 0)
+        ayame = rec["Value"]["BaseGetGameResourceList"][0]["Hero"][0]
+        prof.handle_rpc({"ModuleName": "Slot", "MethodName": "HeroCombat", "Data": [2, ayame["Id"]]})
+
+        fap_before = prof.state["player"]["FAP"]
+        lv_res = prof.handle_rpc({"ModuleName": "Hero", "MethodName": "HeroLvUp", "Data": [ayame["Id"], 10]})
+        self.assertEqual(lv_res["Status"], 0)
+        self.assertEqual(lv_res["Value"]["Lv"], 10)  # Capped at max(playerLv*2, 10)
+        self.assertGreater(prof.state["player"]["FAP"], fap_before)
+
+        # Play Ch 1 (5 stages) and Ch 2 to push Player Lv up + claim Ch 1 & Ch 2 boxes (for 120 pills & stars)
+        for nid in (1111, 1112, 1113, 1114, 1115):
+            prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, nid, 1, True, "", False]})
+        prof.handle_rpc({"ModuleName": "Battle", "MethodName": "DrawBox", "Data": [11, 111]})
+        for nid in (1211, 1212, 1213, 1214, 1215, 1216, 1217):
+            prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [12, nid, 1, True, "", False]})
+
+        step_res = prof.handle_rpc({"ModuleName": "Hero", "MethodName": "HeroStepUp", "Data": [ayame["Id"], []]})
+        self.assertEqual(step_res["Status"], 0)
+        self.assertEqual(step_res["Value"]["Step"], 1)
+        for s in prof.state["slots"]:
+            self.assertEqual(s.get("FAP"), int(s["Property"]["FAP"]))
+
+        # LightenStar spends earned stars + gold and increases slot stats
+        ls_info = prof.handle_rpc({"ModuleName": "LightenStar", "MethodName": "GetLightenStarInfo", "Data": []})
+        self.assertGreaterEqual(ls_info["Value"]["StarCount"], 12)
+        fap_pre_star = prof.state["player"]["FAP"]
+        ls_up = prof.handle_rpc({"ModuleName": "LightenStar", "MethodName": "LightenStar", "Data": []})
+        self.assertEqual(ls_up["Status"], 0)
+        self.assertEqual(ls_up["Value"]["StarId"], 1)
+        self.assertGreater(prof.state["player"]["FAP"], fap_pre_star)
+
+        # Explore (Seek Jade) + Ch 3 pushes player to Lv >= 10 organically without hacks
+        exp_info = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "GetInfo", "Data": []})
+        self.assertGreater(exp_info["Value"]["RemainNum"], 15)
+        exp_one = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "Explore", "Data": []})
+        self.assertEqual(exp_one["Status"], 0)
+        self.assertIn("RewardModelId", exp_one["Value"])
+
+        for nid in (1311, 1312, 1313, 1314, 1315, 1316, 1317, 1318):
+            prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [13, nid, 1, True, "", False]})
+        prof.handle_rpc({"ModuleName": "Explore", "MethodName": "OneKeyExplore", "Data": []})
+        self.assertGreaterEqual(prof.state["player"]["Lv"], 10)
 
 
 if __name__ == "__main__":

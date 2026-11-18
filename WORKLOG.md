@@ -85,3 +85,35 @@ python3 server/emulator.py --host 0.0.0.0 --port 8080
 - **Tách 2 hồ sơ**: `ServerId=1` (`NORMAL_PROFILE`, `server/saves/normal_profile.json`) và `ServerId=2` (`DEBUG_PROFILE`, `server/saves/debug_profile.json`).
 - **Kiểm thử tự động & trực tiếp**: `python3 server/test_emulator.py` **5/5 PASSED** (`0.651s`); Pixel 3 XL chạy thông suốt từ tạo nhân vật `DylanBes` -> `1-1..1-5` -> Chapter 2 (`2-1..2-2`) lên **Lv 7**, tắt/mở lại không lặp tutorial, và xác minh `DEBUG_PROFILE` chạy độc lập.
 - **Nền tảng Admin Ledger**: Tạo `server/economy_audit.py` (`ResourceTransaction`, `ResourceLedger` có idempotency, JSONL audit, cấm chỉnh chỉ số chiến đấu, VIP dẫn xuất từ `VipEXP`).
+
+---
+
+## 7. Đánh giá chuyển nền tảng sang bản Việt Nam (`com.cmn.inuyasha` 5.0.4.98)
+- Chi tiết đầy đủ trong [VN_MIGRATION_REPORT.md](file:///Users/vup/Documents/agy/inuyasha/VN_MIGRATION_REPORT.md).
+- **Checkpoint EN bất biến**: Git tag `checkpoint-en-r2` (`fed435c`) + backup tại `server/backups/en_r2_stable_checkpoint/`.
+- **Thu thập & Thử nghiệm song song**: Tải XAPK `originals/vn/com.cmn.inuyasha_5.0.4.98.xapk` (`210,162,212` bytes, `chmod 444`), đóng gói bản thử nghiệm cô lập `poc/patch_vn_apk.py` (chuyển `libs.apk` sang `classes2.dex` và bỏ `Stub!` để chạy sạch trên Android 12).
+- **Thử nghiệm trực tiếp Pixel 3 XL với `emulator.py` không sửa đổi**: Chạy thông suốt `StartGameScene` -> Tạo nhân vật (`BrownAimee`) -> CG tiếng Việt -> `BattleScript0000` -> `HomeScene` -> `1-1` -> Triệu hồi & Đội hình `Ayame` -> `1-2` (cho ra kết quả HP/RP cuối trận khớp EN 100%).
+- **Kết luận**: **`SWITCH VN`** (tương thích protocol/combat/data ~99%, sẵn Việt hóa `Language.lua` + `UTMCAFETA.ttf` + CG/UI, chi phí chuyển đổi ước tính ~0.5–1 ngày); giữ nguyên APK & dữ liệu EN ở checkpoint cho đến khi hoàn tất dọn text & regression R3.
+
+---
+
+## 8. Kết quả thực hiện Round R3 (`SWITCH VN`, Combat & Star System Fidelity, Lv 1 -> Lv 10+)
+- Chi tiết đầy đủ trong [R3_REPORT.md](file:///Users/vup/Documents/agy/inuyasha/R3_REPORT.md).
+- **Chốt chuyển nền tảng VN (`com.cmn.inuyasha` 5.0.4.98)**:
+  - Chuyển `server/extract_game_data.py` sang đọc config VN mặc định (`analysis/vn/decompiled_src/Config`, giữ `--client en`), xuất `server/game_data.json` gồm 204 heroes, 441 attacks, 70 chapters, 689 nodes, 34 non-zero guide NPCs, 1,001 `AttrtreeModel` nodes, 14 `AttrtreeSlotRelation` slots, 65 Nightmare chapters / 639 Nightmare nodes, và các bảng `Explore*`/`BattleConfig`.
+  - Cập nhật `AssetArchive` trong `server/emulator.py` ưu tiên APK/OBB VN (`analysis/vn/extracted/com.cmn.inuyasha.apk`, `main.98.com.cmn.inuyasha.obb`) có fallback EN.
+- **Khôi phục Pipeline Chiến đấu & Công thức gốc (`Phase B`)**:
+  - Xác minh `CSCommon/ServerInterface.lua` (`CheckBattleResult`), `FightExpression.lua`, `BattleCalc.lua`: enemy roster thường theo từng ải không đóng gói trong client APK (`BattleNodeGuidenpcRelation` chỉ chứa `34/3816` dòng NPC hướng dẫn kịch bản), nên `_build_enemy_wave` tạo wave đúng số lượng `fightRound`, đặt boss `node_cfg["pic"]` ở wave cuối, gán `Step`/`RebornStep` thật của đồng minh và nhân hệ số độ khó `diff_mult` (`1★ -> 1.0x`, `2★ -> commonNPCAttrR/10000`, `3★ -> hardNPCAttrR/10000`) không buff ảo người chơi hay nerf quái trên `NORMAL_PROFILE`.
+  - Bổ sung `_verify_battle_payload` đối soát `verifyData` (`hp` wave cuối khi client gửi lên) trong `Battle.Fight`.
+- **Khôi phục Hệ thống Chấm sao, Rương & Ngộ Đạo (`Phase C`)**:
+  - Giải mã nguyên nhân trận thắng thường chỉ 1 sao ở đầu game: `BattleNodeModel.lua` quy định `starCount = 1` cho Chương `11..19` (chỉ có độ khó Dễ), `2` sao cho Chương `20..22`, `3` sao từ Chương `23+`, còn `Nightmare` (`Ác Mộng`) chấm `1..6` sao.
+  - Sửa lỗi `IfDrawBoxA/B/C` khởi tạo `0` thay vì boolean `False`/`True` trong `_make_chapter_state` (do Lua coi `0 == false` và `not 0` đều sai ở `BattleLayer.lua`), kích hoạt nhận rương sao & `HOÀN MỸ`.
+  - Triển khai `Battle.ConFight`, `Battle.ResetCount`, `Battle.OneKeyDrawBoxs`, kiểm tra điều kiện sao trong `Battle.DrawBox`, và hệ thống `LightenStar.*` (`GetLightenStarInfo`, `LightenStar`, `LightenStarForOneKey`) cộng `AttrtreeModel` (`431 AP`, `432 HP`, `433 DEF`) vào `Slot["Property"]`.
+- **Onboarding liên tục tới Lv 10+ & Sửa lỗi Live (`Phase D/E/F`)**:
+  - Bổ sung `Hero.HeroLvUp`, `Hero.HeroStepUp`, `Explore.*` (`GetInfo`, `Explore`, `OneKeyExplore`, `BuyExploreNum`, `DrawDailyReward`), thưởng thăng cấp `PlayerLvRelation` + `ExploreConfig.critNum` (`+5`), `"WarfarespiritInfo": []` (sửa crash `HeroUpdateScene.luac:227`), và trường `Slot["FAP"]` (sửa lỗi popup `HeroBreakInforLayer.luac:420` sau khi Đột Phá).
+  - Kiểm thử trực tiếp trên **Google Pixel 3 XL** với client VN (`PlayerId "200010"`, `"OlinaHugh"`): vượt trọn vẹn NewPlayer -> CG -> Prologue -> `1-1..1-5` -> `Ayame` Gacha/Formation -> Ch 1 & Ch 2 `HOÀN MỸ` (`DrawRoadBox`, `DrawBox`, `OneKeyDrawBoxs`) -> Lv 7 `Hero.HeroLvUp` -> Lv 8 `Hero.HeroStepUp` -> Lv 9 `Tầm Ngọc` (`Explore.Explore`) -> Ch 3 (`3-1..3-4`) -> **Lv 10** (`FAP 7160`, `4 trang bị Lv 20`, `Ayame +1`, `16★`), lực chiến & tiến trình lưu bền vững qua force-stop/mở lại; kiểm chứng trận thua `0★` khi đi thiếu trang bị/đội hình yếu ở `2-2`.
+  - Khôi phục nguyên trạng `server/saves/debug_profile.json` từ `pre_r3_live_test` (`100001 InuYasha Lv 10 VIP 5`).
+- **Kiểm thử tự động & Checkpoint**:
+  - `python3 /Users/vup/Documents/agy/inuyasha/server/test_emulator.py`: **8/8 tests PASSED** (`0.675s`).
+  - `node --check /Users/vup/Documents/agy/inuyasha/poc/web_poc/app.js`: exit code 0.
+  - Tạo checkpoint khôi phục tại `server/backups/vn_r3_stable_checkpoint/` và git tag `checkpoint-vn-r3`.

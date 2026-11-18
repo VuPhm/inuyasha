@@ -437,6 +437,391 @@ class EmulatorProtocolTest(unittest.TestCase):
         prof.handle_rpc({"ModuleName": "Explore", "MethodName": "OneKeyExplore", "Data": []})
         self.assertGreaterEqual(prof.state["player"]["Lv"], 10)
 
+    def test_09_battle_defeat_and_reward_idempotency_guards(self) -> None:
+        emu = GameEmulatorState(persist=False)
+        prof = emu.profiles["normal"]
+        prof.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["GuardTester", 0]})
+        self.assertEqual(prof.state["heroes"][0]["HeroModelId"], 12010001)  # Male starter
+
+        # Defeat on 1-1: no VIT deducted, no rewards, Flag stays 1, StarCount stays 0, 1112 not unlocked
+        p_before = dict(prof.state["player"])
+        lose = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1111, 1, False, "", False]})
+        self.assertEqual(lose["Status"], 0)
+        self.assertEqual(lose["Value"]["IsSuccess"], "False")
+        self.assertEqual(lose["Value"]["CurrentNode"]["Flag"], 1)
+        self.assertEqual(lose["Value"]["CurrentNode"]["StarCount"], 0)
+        self.assertIsNone(lose["Value"]["NextNode"])
+        self.assertEqual(lose["Value"]["BaseGetGameResourceList"], [])
+        self.assertEqual(prof.state["player"]["VIT"], p_before["VIT"])
+        self.assertEqual(prof.state["player"]["Gold"], p_before["Gold"])
+        self.assertEqual(prof.state["player"]["EXP"], p_before["EXP"])
+        self.assertNotIn("1112", prof.state["nodes"])
+
+        # Contradictory defeat verifyData (ally alive & enemy dead with won=False) rejected
+        bad_lose = json.dumps({"hp": [[{"PosId": 1, "HP": 120, "RP": 50}, {"PosId": 7, "HP": 0, "RP": 0}]]})
+        bad_res = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1111, 1, False, bad_lose, False]})
+        self.assertEqual(bad_res["Status"], -1)
+
+        # Tutorial step reward idempotency (-1136 on duplicate claim)
+        step_ok = prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [1602]})
+        self.assertEqual(step_ok["Status"], 0)
+        diamond_after = prof.state["player"]["Diamond"]
+        self.assertEqual(diamond_after, 200)
+        step_dup = prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [1602]})
+        self.assertEqual(step_dup["Status"], -1136)
+        self.assertEqual(prof.state["player"]["Diamond"], diamond_after)
+
+        # DrawRoadBox rejects before unlock, succeeds once, rejects duplicate claim (no duplicate equip!)
+        early_rb = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "DrawRoadBox", "Data": [11, 111]})
+        self.assertEqual(early_rb["Status"], -1)
+        prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1111, 1, True, "", False]})
+        prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1112, 1, True, "", False]})
+        equips_before = len(prof.state["equips"])
+        ok_rb = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "DrawRoadBox", "Data": [11, 111]})
+        self.assertEqual(ok_rb["Status"], 0)
+        self.assertEqual(len(prof.state["equips"]), equips_before + 1)
+        dup_rb = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "DrawRoadBox", "Data": [11, 111]})
+        self.assertEqual(dup_rb["Status"], -1)
+        self.assertEqual(len(prof.state["equips"]), equips_before + 1)
+
+        # OneKeyDrawBoxs claims unlocked chapter boxes once; repeating grants nothing extra
+        for nid in (1113, 1114, 1115):
+            prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, nid, 1, True, "", False]})
+        ok_onekey = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "OneKeyDrawBoxs", "Data": [11, {"1": [111]}]})
+        self.assertEqual(ok_onekey["Status"], 0)
+        self.assertTrue(ok_onekey["Value"]["BaseGetGameResourceList"])
+        gold_after_box = prof.state["player"]["Gold"]
+        dup_onekey = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "OneKeyDrawBoxs", "Data": [11, {"1": [111]}]})
+        self.assertEqual(dup_onekey["Status"], 0)
+        self.assertEqual(dup_onekey["Value"]["BaseGetGameResourceList"], [])
+        self.assertEqual(prof.state["player"]["Gold"], gold_after_box)
+
+        # ResetCount clears FightCount and increments ResetFightCount
+        rc = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "ResetCount", "Data": [11, 1111]})
+        self.assertEqual(rc["Status"], 0)
+        self.assertEqual(rc["Value"]["FightCount"], 0)
+        self.assertEqual(rc["Value"]["ResetFightCount"], 1)
+
+    def test_10_recruit_equip_set_and_explore_subflows(self) -> None:
+        emu = GameEmulatorState(persist=False)
+        prof = emu.profiles["normal"]
+        prof.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["EquipExplore", 1]})
+
+        # Recruit type 1 consumes talisman 16050003 (initResource has 1) and rejects when 0 remain
+        r_info = prof.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "RecruitInfo", "Data": []})
+        self.assertEqual(r_info["Status"], 0)
+        r_tal = prof.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [1, 0]})
+        self.assertEqual(r_tal["Status"], 0)
+        r_tal_empty = prof.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [1, 0]})
+        self.assertEqual(r_tal_empty["Status"], -1)
+
+        # Grant diamonds via step reward 1602 (200) + paid Recruit type 2 (80)
+        prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [1602]})
+        r_paid = prof.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [2, 0]})
+        self.assertEqual(r_paid["Status"], 0)
+        self.assertEqual(prof.state["player"]["Diamond"], 120)
+
+        # EquipCompose (explicit 5 white -> 1 green), EquipLvUpForCount, and set bonus verification
+        prof._grant_resources_from_tuples(
+            [(1304, 13040130, 5), (1301, 13010215, 1), (1302, 13020215, 1), (1303, 13030215, 1)],
+            source="test_seed",
+            tx_prefix="test10:seed",
+        )
+        white_ids = [e["Id"] for e in prof.state["equips"] if e["EquipModelId"] == 13040130][:5]
+        comp = prof.handle_rpc({"ModuleName": "Equip", "MethodName": "EquipCompose", "Data": [white_ids]})
+        self.assertEqual(comp["Status"], 0)
+        green_neck = comp["Value"]["BaseGetGameResourceList"][0]["Equip"][0]
+        self.assertEqual(green_neck["EquipModelId"], 13040215)
+
+        lv_cnt = prof.handle_rpc({"ModuleName": "Equip", "MethodName": "EquipLvUpForCount", "Data": [green_neck["Id"], 2]})
+        self.assertEqual(lv_cnt["Status"], 0)
+        self.assertEqual(lv_cnt["Value"]["EquipInfo"]["Lv"], 2)
+
+        # Equip 2 -> 4 pieces of Set Out (equipGroupID > 0) and confirm FAP strictly increases
+        w_id = next(e["Id"] for e in prof.state["equips"] if e["EquipModelId"] == 13010215)
+        h_id = next(e["Id"] for e in prof.state["equips"] if e["EquipModelId"] == 13020215)
+        c_id = next(e["Id"] for e in prof.state["equips"] if e["EquipModelId"] == 13030215)
+        prof.handle_rpc({"ModuleName": "Slot", "MethodName": "OneKeyEquipCombat", "Data": [1, w_id, h_id, "", "", "", ""]})
+        fap_2pc = prof.state["slots"][0]["FAP"]
+        prof.handle_rpc({"ModuleName": "Slot", "MethodName": "OneKeyEquipCombat", "Data": [1, "", "", c_id, green_neck["Id"], "", ""]})
+        fap_4pc = prof.state["slots"][0]["FAP"]
+        self.assertGreater(fap_4pc, fap_2pc)
+
+        # Explore: BuyExploreNum (-20 Diamond, +5 RemainNum) & DrawDailyReward (50/75/100) threshold + idempotency
+        exp_buy = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "BuyExploreNum", "Data": []})
+        self.assertEqual(exp_buy["Status"], 0)
+        self.assertEqual(exp_buy["Value"]["ResetNum"], 1)
+        self.assertEqual(prof.state["player"]["Diamond"], 100)
+
+        early_daily = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "DrawDailyReward", "Data": [50]})
+        self.assertEqual(early_daily["Status"], -1)
+        while prof.state["explore"]["DailyNum"] < 50:
+            if prof.state["explore"]["RemainNum"] <= 0:
+                prof.state["explore"]["RemainNum"] = 10
+            prof.handle_rpc({"ModuleName": "Explore", "MethodName": "OneKeyExplore", "Data": []})
+        ok_daily = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "DrawDailyReward", "Data": [50]})
+        self.assertEqual(ok_daily["Status"], 0)
+        dup_daily = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "DrawDailyReward", "Data": [50]})
+        self.assertEqual(dup_daily["Status"], -1)
+
+    def test_11_isolated_save_reload_and_r3_trace_replay(self) -> None:
+        # Ensure tests NEVER mutate real server/saves/* or server/rpc_trace.log
+        server_dir = Path(__file__).resolve().parent
+        real_files = [
+            server_dir / "saves" / "normal_profile.json",
+            server_dir / "saves" / "debug_profile.json",
+            server_dir / "saves" / "audit_ledger.jsonl",
+            server_dir / "rpc_trace.log",
+        ]
+        before_stats = {p: (p.stat().st_size, p.stat().st_mtime_ns) for p in real_files if p.exists()}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            normal_p = tmp_dir / "normal_profile.json"
+            debug_p = tmp_dir / "debug_profile.json"
+            audit_p = tmp_dir / "audit_ledger.jsonl"
+            trace_p = tmp_dir / "rpc_trace.log"
+
+            emu1 = GameEmulatorState(
+                persist=True,
+                normal_path=normal_p,
+                debug_path=debug_p,
+                audit_path=audit_p,
+                trace_path=trace_p,
+            )
+            # Replay core R3 progression flow up to Lv 10+
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Player", "MethodName": "Login", "Data": []})
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["OlinaReplay", 1]})
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Player", "MethodName": "GetInitData", "Data": [1] * 20})
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Player", "MethodName": "AlterPlayerStepCount", "Data": [1, 997]})
+            emu1.handle_rpc(
+                {
+                    "ServerId": 1,
+                    "ModuleName": "Battle",
+                    "MethodName": "Fight",
+                    "Data": [11, 1111, 1, True, "", False],
+                    "ExtensionString": {"GuideInfo": [{"GuideId": 951, "Ordinal": 3}]},
+                }
+            )
+            rec = emu1.handle_rpc({"ServerId": 1, "ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [2, 1]})
+            ayame_id = rec["Value"]["BaseGetGameResourceList"][0]["Hero"][0]["Id"]
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Slot", "MethodName": "HeroCombat", "Data": [2, ayame_id]})
+            for nid in (1112, 1113, 1114, 1115):
+                emu1.handle_rpc({"ServerId": 1, "ModuleName": "Battle", "MethodName": "Fight", "Data": [11, nid, 1, True, "", False]})
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Battle", "MethodName": "DrawRoadBox", "Data": [11, 111]})
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Battle", "MethodName": "DrawBox", "Data": [11, 111]})
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Equip", "MethodName": "EquipOneKeyCompose", "Data": []})
+            for nid in (1211, 1212, 1213, 1214, 1215, 1216, 1217):
+                emu1.handle_rpc({"ServerId": 1, "ModuleName": "Battle", "MethodName": "Fight", "Data": [12, nid, 1, True, "", False]})
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Battle", "MethodName": "OneKeyDrawBoxs", "Data": [12, {"1": [121, 122], "2": [121, 122]}]})
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Hero", "MethodName": "HeroLvUp", "Data": [ayame_id, 10]})
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Hero", "MethodName": "HeroStepUp", "Data": [ayame_id, []]})
+            emu1.handle_rpc({"ServerId": 1, "ModuleName": "Explore", "MethodName": "Explore", "Data": []})
+            for nid in (1311, 1312, 1313, 1314):
+                emu1.handle_rpc({"ServerId": 1, "ModuleName": "Battle", "MethodName": "Fight", "Data": [13, nid, 1, True, "", False]})
+
+            snap = json.loads(json.dumps(emu1.profiles["normal"].state))
+            self.assertGreaterEqual(snap["player"]["Lv"], 9)
+            self.assertTrue(normal_p.exists())
+            self.assertTrue(trace_p.exists())
+
+            # Reload from disk into a fresh GameEmulatorState (simulating server restart)
+            emu2 = GameEmulatorState(
+                persist=True,
+                normal_path=normal_p,
+                debug_path=debug_p,
+                audit_path=audit_p,
+                trace_path=trace_p,
+            )
+            reloaded_login = emu2.handle_rpc({"ServerId": 1, "ModuleName": "Player", "MethodName": "Login", "Data": []})
+            self.assertEqual(reloaded_login["Value"]["IsNewPlayer"], 0)
+            self.assertEqual(reloaded_login["Value"]["PlayerName"], "OlinaReplay")
+            self.assertEqual(reloaded_login["Value"]["StepCountList"], snap["player"]["StepCountList"])
+            self.assertEqual(reloaded_login["Value"]["Gold"], snap["player"]["Gold"])
+            self.assertEqual(reloaded_login["Value"]["Diamond"], snap["player"]["Diamond"])
+
+            b_info = emu2.handle_rpc({"ServerId": 1, "ModuleName": "Battle", "MethodName": "GetBattleInfo", "Data": [1, 1]})
+            self.assertEqual(b_info["Value"]["BattleInfo"]["StarCount"], snap["battle"]["StarCount"])
+
+            # Already-claimed rewards remain blocked after restart
+            self.assertEqual(
+                emu2.handle_rpc({"ServerId": 1, "ModuleName": "Battle", "MethodName": "DrawBox", "Data": [11, 111]})["Status"],
+                -1,
+            )
+            self.assertEqual(
+                emu2.handle_rpc({"ServerId": 1, "ModuleName": "Battle", "MethodName": "DrawRoadBox", "Data": [11, 111]})["Status"],
+                -1,
+            )
+
+        # Verify R3 checkpoint backup save loads cleanly without mutation
+        r3_backup = server_dir / "backups" / "vn_r3_stable_checkpoint" / "normal_profile.json"
+        if r3_backup.exists():
+            r3_data = json.loads(r3_backup.read_text(encoding="utf-8"))
+            norm = emu1.profiles["normal"]._normalize_loaded_state(r3_data)
+            self.assertEqual(norm["player"]["Lv"], 10)
+            self.assertEqual(norm["battle"]["MaxChapterId"], 13)
+
+        after_stats = {p: (p.stat().st_size, p.stat().st_mtime_ns) for p in real_files if p.exists()}
+        self.assertEqual(before_stats, after_stats)
+
+    def test_12_all_chapter_info_shop_goods_and_goods_use(self) -> None:
+        emu = GameEmulatorState(persist=False)
+        prof = emu.profiles["normal"]
+        prof.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["ShopTester", 1]})
+        for nid in (1111, 1112, 1113, 1114, 1115):
+            prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, nid, 1, True, "", False]})
+
+        # Battle.AllChapterInfo returns NodeList per requested chapter
+        all_ch = prof.handle_rpc({"ModuleName": "Battle", "MethodName": "AllChapterInfo", "Data": [[11, 12]]})
+        self.assertEqual(all_ch["Status"], 0)
+        self.assertEqual([c["ChapterModelId"] for c in all_ch["Value"]], [11, 12])
+        self.assertEqual(len(all_ch["Value"][0]["NodeList"]), 5)
+        self.assertEqual([n["NodeModelId"] for n in all_ch["Value"][1]["NodeList"]], [1211])
+
+        # ShopGoods.GetShopGoodsInfo & dynamic pricing BuyGoods (16030006 -> 20, 20, 30)
+        info0 = prof.handle_rpc({"ModuleName": "ShopGoods", "MethodName": "GetShopGoodsInfo", "Data": [16030006]})
+        self.assertEqual(info0["Status"], 0)
+        self.assertEqual(info0["Value"][0]["CurrPrice"], 20)
+        self.assertEqual(info0["Value"][0]["Num"], 0)
+
+        prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [1602]})  # +200 Diamond
+        b1 = prof.handle_rpc({"ModuleName": "ShopGoods", "MethodName": "BuyGoods", "Data": [16030006, 2]})
+        self.assertEqual(b1["Status"], 0)
+        self.assertEqual(b1["Value"]["Num"], 2)
+        self.assertEqual(b1["Value"]["CurrPrice"], 30)
+        self.assertEqual(prof.state["player"]["Diamond"], 160)
+        self.assertIn("GoodsInfo", b1["Avatar"])
+
+        # Goods.GoodsUse consumes 1x 16030006 and grants +25 VIT
+        vit_before = prof.state["player"]["VIT"]
+        pill = next(g for g in prof.state["goods"] if g["GoodsModelId"] == 16030006)
+        used = prof.handle_rpc({"ModuleName": "Goods", "MethodName": "GoodsUse", "Data": [pill["Id"], 16030006, 1]})
+        self.assertEqual(used["Status"], 0)
+        self.assertEqual(prof.state["player"]["VIT"], vit_before + 25)
+        self.assertIn("GoodsInfo", used["Avatar"])
+
+    def test_13_treasure_loot_compose_and_slot_equip(self) -> None:
+        emu = GameEmulatorState(persist=False)
+        prof = emu.profiles["normal"]
+        prof.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["GrabTester", 1]})
+
+        # StepCountReward 1761 grants 2 starter mount debris (15040101, 15040102) and blocks duplicate claim
+        r1761 = prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [1761]})
+        self.assertEqual(r1761["Status"], 0)
+        debris_ids = sorted(d["TreasureDebrisModelId"] for d in prof.state["treasure_debris"])
+        self.assertEqual(debris_ids, [15040101, 15040102])
+        self.assertEqual(set(r1761["Avatar"]["TreasureDebrisInfo"].keys()), {"15040101", "15040102"})
+        r1761_dup = prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [1761]})
+        self.assertEqual(r1761_dup["Status"], -1136)
+
+        # TreasureLootProtect info + buy via diamond
+        prot0 = prof.handle_rpc({"ModuleName": "TreasureLootProtect", "MethodName": "GetTreasureLootProtectInfo", "Data": []})
+        self.assertEqual(prot0["Status"], 0)
+        self.assertEqual(prot0["Value"]["EndTime"], 0)
+        prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [1602]})  # +200 Diamond
+        prot1 = prof.handle_rpc({"ModuleName": "TreasureLootProtect", "MethodName": "TreasureLootProtect", "Data": [2]})
+        self.assertEqual(prot1["Status"], 0)
+        self.assertGreater(prot1["Value"]["EndTime"], 0)
+        self.assertEqual(prof.state["player"]["Diamond"], 180)  # 200 - 20
+
+        # Target list + single loot for missing fragment 15040103
+        tlist = prof.handle_rpc({"ModuleName": "TreasureLoot", "MethodName": "TreasureDebrisTargetList", "Data": [14020501, 15040103]})
+        self.assertEqual(tlist["Status"], 0)
+        targets = tlist["Value"]["TreasureLootTeamInfo"]
+        self.assertGreaterEqual(len(targets), 3)
+
+        sta_before = prof.state["player"]["STA"]
+        loot = prof.handle_rpc(
+            {"ModuleName": "TreasureLoot", "MethodName": "TreasureLoot", "Data": [targets[0]["LootPlayerId"], 14020501, 15040103]}
+        )
+        self.assertEqual(loot["Status"], 0)
+        self.assertEqual(loot["Value"]["IfTargetCanLoot"], 1)
+        self.assertEqual(loot["Value"]["IsWinFight"], 1)
+        self.assertEqual(loot["Value"]["FightInfo"]["IsWinFight"], 1)
+        self.assertEqual(loot["Value"]["IsWinLootSuccess"], 1)
+        self.assertEqual(len(loot["Value"]["ChoiceGetGameResource"]), 3)
+        self.assertEqual(prof.state["player"]["STA"], sta_before - 2)
+        self.assertIn("15040103", loot["Avatar"]["TreasureDebrisInfo"])
+
+        # Compose 14020501 (consumes 3 fragments, returns Treasure instance, idempotent against double compose)
+        comp = prof.handle_rpc({"ModuleName": "TreasureDebris", "MethodName": "TreasureDebrisCompose", "Data": [14020501]})
+        self.assertEqual(comp["Status"], 0)
+        tr_inst = comp["Value"]["BaseGetGameResourceList"][0]["Treasure"][0]
+        self.assertEqual(tr_inst["TreasureModelId"], 14020501)
+        self.assertEqual(prof.state["treasure_debris"], [])
+        comp_dup = prof.handle_rpc({"ModuleName": "TreasureDebris", "MethodName": "TreasureDebrisCompose", "Data": [14020501]})
+        self.assertEqual(comp_dup["Value"].get("IsTreasureDebrisNotEnough"), 0)
+
+        # Equip composed Horse on Slot 1 and confirm AP + FAP increase
+        fap_before = prof.state["slots"][0]["FAP"]
+        ap_before = prof.state["slots"][0]["Property"]["AP"]
+        eq_res = prof.handle_rpc(
+            {"ModuleName": "Slot", "MethodName": "OneKeyEquipCombat", "Data": [1, "", "", "", "", "", tr_inst["Id"]]}
+        )
+        self.assertEqual(eq_res["Status"], 0)
+        self.assertEqual(prof.state["slots"][0]["Horse"]["TreasureModelId"], 14020501)
+        self.assertEqual(prof.state["slots"][0]["Property"]["AP"], ap_before + 20)
+        self.assertEqual(prof.state["slots"][0]["FAP"], fap_before + 100)
+
+        # GetInitData persists composed treasure
+        init_res = prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [1] * 20})
+        self.assertEqual(len(init_res["Value"]["TreasureInfo"]), 1)
+        self.assertEqual(init_res["Value"]["TreasureInfo"][0]["Id"], tr_inst["Id"])
+
+    def test_14_elite_battle_and_goods_delta_drop(self) -> None:
+        emu = GameEmulatorState(persist=False)
+        prof = emu.profiles["normal"]
+        prof.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["EliteTester", 1]})
+
+        # Stacked Goods grants return delta Num in BaseGetGameResourceList and total stack in Avatar.GoodsInfo
+        start_stone = next((g["Num"] for g in prof.state["goods"] if g["GoodsModelId"] == 16050001), 0)
+        drop1 = prof._grant_resources_from_tuples([(1605, 16050001, 2)], source="t14:1", tx_prefix="t14:1")
+        drop2 = prof._grant_resources_from_tuples([(1605, 16050001, 3)], source="t14:2", tx_prefix="t14:2")
+        self.assertEqual(drop1[0]["Goods"][0]["Num"], 2)
+        self.assertEqual(drop2[0]["Goods"][0]["Num"], 3)
+        bag_stone = next(g for g in prof.state["goods"] if g["GoodsModelId"] == 16050001)
+        self.assertEqual(bag_stone["Num"], start_stone + 5)
+
+        # Locked before Ch 2 (1217) is cleared; unlocks once 1217 Flag == 2
+        info0 = prof.handle_rpc({"ModuleName": "EliteBattle", "MethodName": "GetBattleInfo", "Data": [1, 1]})
+        self.assertEqual(info0["Status"], 0)
+        self.assertEqual(info0["Value"]["NodeList"][0]["Flag"], 0)
+
+        prof.state["nodes"]["1217"] = prof._make_node_state(1217, flag=2)
+        info1 = prof.handle_rpc({"ModuleName": "EliteBattle", "MethodName": "GetBattleInfo", "Data": [1, 1]})
+        self.assertEqual(info1["Value"]["BattleInfo"]["FightCount"], 3)
+        self.assertEqual(info1["Value"]["NodeList"][0]["Flag"], 1)
+        self.assertEqual(info1["Value"]["NodeList"][0]["CanDraw"], "False")
+
+        # GetFightInfo + Fight deducts 10 VIT, decrements FightCount, omits BossId when no Boss spawned
+        finfo = prof.handle_rpc({"ModuleName": "EliteBattle", "MethodName": "GetFightInfo", "Data": [11]})
+        self.assertEqual(finfo["Status"], 0)
+        self.assertIn("FightObjs", finfo["Value"]["FightInfo"])
+
+        vit_before = prof.state["player"]["VIT"]
+        efight = prof.handle_rpc({"ModuleName": "EliteBattle", "MethodName": "Fight", "Data": [11, True, "", False]})
+        self.assertEqual(efight["Status"], 0)
+        self.assertEqual(efight["Value"]["IsSuccess"], "True")
+        self.assertNotIn("BossId", efight["Value"])
+        self.assertEqual(efight["Value"]["CurrentNode"]["Flag"], 2)
+        self.assertEqual(efight["Value"]["CurrentNode"]["CanDraw"], "True")
+        self.assertEqual(prof.state["player"]["VIT"], vit_before - 10)
+        self.assertEqual(efight["Value"]["BattleInfo"]["FightCount"], 2)
+
+        # DrawFirstReward grants reward once and blocks duplicate claim
+        first = prof.handle_rpc({"ModuleName": "EliteBattle", "MethodName": "DrawFirstReward", "Data": [11]})
+        self.assertEqual(first["Status"], 0)
+        self.assertEqual(first["Value"]["NodeInfo"]["CanDraw"], "False")
+        self.assertEqual(prof.state["player"]["Diamond"], 100)
+        first_dup = prof.handle_rpc({"ModuleName": "EliteBattle", "MethodName": "DrawFirstReward", "Data": [11]})
+        self.assertEqual(first_dup["Status"], -1)
+
+        # BuyFightCount spends 50 Diamond and increments BuyCount
+        buy = prof.handle_rpc({"ModuleName": "EliteBattle", "MethodName": "BuyFightCount", "Data": [3]})
+        self.assertEqual(buy["Status"], 0)
+        self.assertEqual(buy["Value"]["BattleInfo"]["BuyCount"], 1)
+        self.assertEqual(prof.state["player"]["Diamond"], 50)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

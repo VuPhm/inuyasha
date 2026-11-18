@@ -207,6 +207,7 @@ class ProfileStore:
         persist: bool = True,
         reset: bool = False,
         legacy_seed_path: Path | None = None,
+        trace_path: Path | None = RPC_TRACE_PATH,
     ) -> None:
         self.profile_name = profile_name  # "normal" or "debug"
         self.game_data = game_data
@@ -214,6 +215,7 @@ class ProfileStore:
         self.state_path = state_path
         self.persist = persist
         self.legacy_seed_path = legacy_seed_path
+        self.trace_path = trace_path
         self.state = self._load_or_init(reset=reset)
 
     def _load_or_init(self, reset: bool = False) -> dict[str, Any]:
@@ -257,10 +259,24 @@ class ProfileStore:
     def _normalize_loaded_state(self, data: dict[str, Any]) -> dict[str, Any]:
         """Ensure loaded states have required fields without altering saved progress."""
         data.setdefault("equips", [])
+        data.setdefault("treasures", [])
+        data.setdefault("treasure_debris", [])
+        data.setdefault("treasure_protect_end", 0)
+        el_cfg = self.game_data.get("elite_config", {})
+        data.setdefault(
+            "elite",
+            {
+                "fight_count": int(el_cfg.get("maxFightNum", 3)),
+                "buy_count": 0,
+                "consume_buy_count": 0,
+                "nodes": {},
+            },
+        )
         data.setdefault("goods", [])
         data.setdefault("claimed_step_rewards", [])
         data.setdefault("recruit_state", {"MidAlreadyUseResource": False, "HigAlreadyUseResource": False, "OutZiCount": 5})
         data.setdefault("explore", self._default_explore_state())
+        data.setdefault("shop_bought", {})
         for h in data.get("heroes", []):
             h.setdefault("WarfareColorLv", 0)
             h.setdefault("WarfareLv", 0)
@@ -378,6 +394,17 @@ class ProfileStore:
                     set_hp += int(bonus.get("HP", 0))
                     set_ap += int(bonus.get("AP", 0))
                     set_def += int(bonus.get("DEF", 0))
+
+        treasures_cfg = self.game_data.get("treasures", {})
+        for tkey in ("Book", "Horse"):
+            tr = slot.get(tkey)
+            if tr and tr.get("TreasureModelId"):
+                tm = treasures_cfg.get(str(tr["TreasureModelId"]), {})
+                tlv = int(tr.get("Lv", 0))
+                up_r = float(tm.get("upR", 0.25))
+                scale = tlv * up_r + 1.0
+                eq_hp += int(float(tm.get("HPBase", 0)) * scale)
+                eq_ap += int(float(tm.get("APBase", 0)) * scale)
 
         star_bonus = self._get_slot_star_bonuses(int(slot.get("SlotId", 0))) if hasattr(self, "state") else {"HP": 0, "AP": 0, "DEF": 0}
         hp1 = hero_hp + eq_hp + set_hp + star_bonus["HP"]
@@ -549,6 +576,15 @@ class ProfileStore:
             "slots": slots,
             "embattle": {f"Formation{i}": i for i in range(1, 7)},
             "equips": [],
+            "treasures": [],
+            "treasure_debris": [],
+            "treasure_protect_end": 0,
+            "elite": {
+                "fight_count": int(self.game_data.get("elite_config", {}).get("maxFightNum", 3)),
+                "buy_count": 0,
+                "consume_buy_count": 0,
+                "nodes": {},
+            },
             "goods": init_goods,
             "claimed_step_rewards": [],
             "recruit_state": {
@@ -557,6 +593,7 @@ class ProfileStore:
                 "OutZiCount": 5,
             },
             "explore": self._default_explore_state(),
+            "shop_bought": {},
             "battle": {
                 "MaxChapterId": 11,
                 "MaxNodeId": 1111,
@@ -667,6 +704,26 @@ class ProfileStore:
             "ResetFightTime": 0,
         }
 
+    def _mark_goods_changed(self, model_id: int) -> None:
+        if not hasattr(self, "_last_rpc_context"):
+            return
+        changed = self._last_rpc_context.setdefault("goods_changed", {})
+        if changed is None:
+            changed = {}
+            self._last_rpc_context["goods_changed"] = changed
+        changed[str(model_id)] = [g for g in self.state.get("goods", []) if int(g["GoodsModelId"]) == model_id]
+
+    def _mark_treasure_debris_changed(self, debris_model_id: int) -> None:
+        if not hasattr(self, "_last_rpc_context"):
+            return
+        changed = self._last_rpc_context.setdefault("treasure_debris_changed", {})
+        if changed is None:
+            changed = {}
+            self._last_rpc_context["treasure_debris_changed"] = changed
+        changed[str(debris_model_id)] = [
+            d for d in self.state.get("treasure_debris", []) if int(d["TreasureDebrisModelId"]) == debris_model_id
+        ]
+
     def _grant_resources_from_tuples(
         self,
         res_tuples: list[tuple[int, int, int]],
@@ -677,6 +734,8 @@ class ProfileStore:
         player_attrs: list[dict[str, Any]] = []
         new_heroes: list[dict[str, Any]] = []
         new_equips: list[dict[str, Any]] = []
+        new_treasures: list[dict[str, Any]] = []
+        new_treasure_debris: list[dict[str, Any]] = []
         new_goods: list[dict[str, Any]] = []
 
         attr_map = {
@@ -743,13 +802,61 @@ class ProfileStore:
                         source=source,
                         idempotency_key=f"{tx_prefix}:{idx}:equip:{copy_i}:{eq_inst['Id']}",
                     )
+            elif rtype in (1401, 1402):
+                treasures_list = self.state.setdefault("treasures", [])
+                for copy_i in range(rnum):
+                    tr_inst = {
+                        "Id": str(uuid.uuid4()),
+                        "TreasureModelId": rmodel,
+                        "Lv": 0,
+                        "Step": 0,
+                        "EXP": 0,
+                    }
+                    treasures_list.append(tr_inst)
+                    new_treasures.append(tr_inst)
+                    self.ledger.record_grant_event(
+                        account_id=str(self.state["player"]["PlayerId"]),
+                        profile=self.profile_name,
+                        resource_type=f"Treasure:{rmodel}",
+                        amount=1,
+                        balance_after=len(treasures_list),
+                        source=source,
+                        idempotency_key=f"{tx_prefix}:{idx}:treasure:{copy_i}:{tr_inst['Id']}",
+                    )
+            elif rtype in (1503, 1504):
+                debris_list = self.state.setdefault("treasure_debris", [])
+                existing_deb = next(
+                    (d for d in debris_list if int(d["TreasureDebrisModelId"]) == rmodel),
+                    None,
+                )
+                if existing_deb:
+                    existing_deb["Num"] = int(existing_deb["Num"]) + rnum
+                    deb_obj = dict(existing_deb)
+                else:
+                    deb_obj = {
+                        "Id": str(uuid.uuid4()),
+                        "TreasureDebrisModelId": rmodel,
+                        "Num": rnum,
+                    }
+                    debris_list.append(deb_obj)
+                new_treasure_debris.append({**deb_obj, "ResourceTypeSub": rtype, "Num": rnum})
+                self._mark_treasure_debris_changed(rmodel)
+                self.ledger.record_grant_event(
+                    account_id=str(self.state["player"]["PlayerId"]),
+                    profile=self.profile_name,
+                    resource_type=f"TreasureDebris:{rmodel}",
+                    amount=rnum,
+                    balance_after=deb_obj["Num"],
+                    source=source,
+                    idempotency_key=f"{tx_prefix}:{idx}:debris:{rmodel}",
+                )
             else:
                 existing = next((g for g in self.state["goods"] if g["GoodsModelId"] == rmodel), None)
                 if existing:
                     existing["Num"] += rnum
-                    goods_obj = dict(existing)
+                    stored_obj = existing
                 else:
-                    goods_obj = {
+                    stored_obj = {
                         "Id": str(uuid.uuid4()),
                         "GoodsModelId": rmodel,
                         "Num": rnum,
@@ -758,14 +865,15 @@ class ProfileStore:
                         "BeginTime": 0,
                         "EndTime": 0,
                     }
-                    self.state["goods"].append(goods_obj)
-                new_goods.append(goods_obj)
+                    self.state["goods"].append(stored_obj)
+                new_goods.append({**stored_obj, "ResourceTypeSub": rtype, "Num": rnum})
+                self._mark_goods_changed(rmodel)
                 self.ledger.record_grant_event(
                     account_id=str(self.state["player"]["PlayerId"]),
                     profile=self.profile_name,
                     resource_type=f"Goods:{rmodel}",
                     amount=rnum,
-                    balance_after=goods_obj["Num"],
+                    balance_after=stored_obj["Num"],
                     source=source,
                     idempotency_key=f"{tx_prefix}:{idx}:goods:{rmodel}",
                 )
@@ -777,6 +885,10 @@ class ProfileStore:
             bundle["Hero"] = new_heroes
         if new_equips:
             bundle["Equip"] = new_equips
+        if new_treasures:
+            bundle["Treasure"] = new_treasures
+        if new_treasure_debris:
+            bundle["TreasureDebris"] = new_treasure_debris
         if new_goods:
             bundle["Goods"] = new_goods
         return [bundle] if bundle else []
@@ -957,6 +1069,7 @@ class ProfileStore:
             "Equip.EquipLvUpForCount": self._rpc_equip_lv_up_for_count,
             "Battle.GetBattleInfo": self._rpc_get_battle_info,
             "Battle.GetNodeList": self._rpc_get_node_list,
+            "Battle.AllChapterInfo": self._rpc_all_chapter_info,
             "Battle.GetFightInfo": self._rpc_get_fight_info,
             "Battle.Fight": self._rpc_battle_fight,
             "Battle.ConFight": self._rpc_battle_con_fight,
@@ -972,6 +1085,21 @@ class ProfileStore:
             "LightenStar.GetLightenStarInfo": self._rpc_lighten_star_info,
             "LightenStar.LightenStar": self._rpc_lighten_star_up,
             "LightenStar.LightenStarForOneKey": self._rpc_lighten_star_one_key,
+            "ShopGoods.ShopGoodsList": self._rpc_shop_goods_list,
+            "ShopGoods.GetShopGoodsInfo": self._rpc_get_shop_goods_info,
+            "ShopGoods.BuyGoods": self._rpc_shop_buy_goods,
+            "Goods.GoodsUse": self._rpc_goods_use,
+            "TreasureLootProtect.GetTreasureLootProtectInfo": self._rpc_treasure_protect_info,
+            "TreasureLootProtect.TreasureLootProtect": self._rpc_treasure_protect_buy,
+            "TreasureLoot.TreasureDebrisTargetList": self._rpc_treasure_target_list,
+            "TreasureLoot.TreasureLoot": self._rpc_treasure_loot,
+            "TreasureLoot.TreasureLootForCount": self._rpc_treasure_loot_count,
+            "TreasureDebris.TreasureDebrisCompose": self._rpc_treasure_compose,
+            "EliteBattle.GetBattleInfo": self._rpc_elite_get_battle_info,
+            "EliteBattle.GetFightInfo": self._rpc_elite_get_fight_info,
+            "EliteBattle.Fight": self._rpc_elite_fight,
+            "EliteBattle.DrawFirstReward": self._rpc_elite_draw_first_reward,
+            "EliteBattle.BuyFightCount": self._rpc_elite_buy_fight_count,
             "Notice.GetNoticeList": lambda _d: [],
             "Enemy.GetEnemyList": lambda _d: [],
             "TraderInfo.GetInfo": lambda _d: {"TraderInfo": None},
@@ -986,8 +1114,8 @@ class ProfileStore:
         value = fn(data) if fn else {}
         status = int(self._last_rpc_context.get("status", 0))
 
-        if self.persist:
-            with open(RPC_TRACE_PATH, "a", encoding="utf-8") as tf:
+        if self.persist and self.trace_path:
+            with open(self.trace_path, "a", encoding="utf-8") as tf:
                 tf.write(
                     f"{time.strftime('%H:%M:%S')} [{self.profile_name}] RPC {key} "
                     f"handled={handled} status={status} data={json.dumps(data, ensure_ascii=False)}\n"
@@ -1001,8 +1129,13 @@ class ProfileStore:
             avatar = {k: v for k, v in self.state["player"].items() if k != "Lv"}
             if self._last_rpc_context.get("lv_changed"):
                 avatar["Lv"] = self.state["player"]["Lv"]
+                avatar["XYCurCount"] = int(self.state.get("explore", {}).get("RemainNum", 15))
             if self._last_rpc_context.get("slots_changed"):
                 avatar["SlotInfo"] = self.state["slots"]
+            if self._last_rpc_context.get("goods_changed") is not None:
+                avatar["GoodsInfo"] = self._last_rpc_context["goods_changed"]
+            if self._last_rpc_context.get("treasure_debris_changed") is not None:
+                avatar["TreasureDebrisInfo"] = self._last_rpc_context["treasure_debris_changed"]
             avatar["TimedActivityOpenInfo"] = {}
 
         return {
@@ -1053,14 +1186,14 @@ class ProfileStore:
             "PlayerInfo": self.state["player"],
             "HeroInfo": self.state["heroes"],
             "EquipInfo": self.state.get("equips", []),
-            "TreasureInfo": [],
+            "TreasureInfo": self.state.get("treasures", []),
             "SlotInfo": self.state["slots"],
             "MateInfo": [],
             "SlotFormationInfo": self.state["embattle"],
             "GoodsHeroDebrisInfo": [],
             "GoodsEquipDebrisInfo": [],
             "GoodsPropsInfo": self.state.get("goods", []),
-            "TreasureDebrisInfo": [],
+            "TreasureDebrisInfo": self.state.get("treasure_debris", []),
             "BagInfo": [{"BagModelId": bid, "Size": 200, "ExpandNum": 0} for bid in range(1, 10)],
             "SkillList": [],
             "ModulesInfo": modules,
@@ -1095,6 +1228,8 @@ class ProfileStore:
             76001: [(1304, 13040130, 5)],  # 5 white necklaces if not dropped in 1-3
             1641: [(1301, 13010130, 1)],
             1602: [(1111, 0, 200)],
+            1761: [(1504, 15040101, 1), (1504, 15040102, 1)],  # Lv 14 Grab guide starter mount fragments
+            1881: [(1503, 15032101, 1), (1503, 15032102, 1)],  # Backup Grab guide book fragments
         }
         tuples = reward_map.get(event_id, [])
         claimed.append(event_id)
@@ -1241,6 +1376,26 @@ class ProfileStore:
                     "Id": eq["Id"],
                     "EquipModelId": eq["EquipModelId"],
                     "Lv": eq["Lv"],
+                }
+
+        treasures_by_id = {t["Id"]: t for t in self.state.get("treasures", [])}
+        treasure_keys = ("Book", "Horse")
+        for idx, tkey in enumerate(treasure_keys, start=5):
+            tid = str(data[idx] or "")
+            if tid == "":
+                continue
+            if tid == EMPTY_ENTITY_ID:
+                target_slot.pop(tkey, None)
+            elif tid in treasures_by_id:
+                tr = treasures_by_id[tid]
+                for other in self.state["slots"]:
+                    if other.get(tkey, {}).get("Id") == tid:
+                        other.pop(tkey, None)
+                target_slot[tkey] = {
+                    "Id": tr["Id"],
+                    "TreasureModelId": tr["TreasureModelId"],
+                    "Lv": int(tr.get("Lv", 0)),
+                    "Step": int(tr.get("Step", 0)),
                 }
 
         self._recalc_all_slots_and_fap()
@@ -1438,6 +1593,15 @@ class ProfileStore:
                 self.save()
         return nodes
 
+    def _rpc_all_chapter_info(self, data: Any) -> list[dict[str, Any]]:
+        raw_ids = data[0] if isinstance(data, list) and data and isinstance(data[0], list) else []
+        out: list[dict[str, Any]] = []
+        for raw_cid in raw_ids:
+            cid = int(raw_cid)
+            if str(cid) in self.state["chapters"]:
+                out.append({"ChapterModelId": cid, "NodeList": self._rpc_get_node_list([cid])})
+        return out
+
     def _difficulty_multiplier(self, node_cfg: dict[str, Any], star_lv: int) -> float:
         """Compute BattleNodeModel enemy stat ratio per selected star tier (1=Easy, 2=Normal, 3=Hard)."""
         max_stars = max(1, int(node_cfg.get("starCount", 1)))
@@ -1516,13 +1680,9 @@ class ProfileStore:
         enemy_fap = sum(int(h["HP"] + h["AP"] * 5 + h["DEF"] * 5) for h in enemies if h)
         return enemies, enemy_fap
 
-    def _rpc_get_fight_info(self, data: Any) -> dict[str, Any]:
-        node_id = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 1111
-        star_lv = int(data[2]) if isinstance(data, list) and len(data) >= 3 else 1
-        node_cfg = self.game_data["nodes"].get(str(node_id), {"ID": node_id, "name": "1-1", "starCount": 1, "fightRound": 1})
+    def _build_ally_fight_objs(self) -> list[dict[str, Any]]:
         heroes_cfg = self.game_data["heroes"]
         heroes_by_id = {h["Id"]: h for h in self.state["heroes"]}
-
         allies: list[dict[str, Any]] = [{} for _ in range(6)]
         if self.profile_name == "debug":
             for idx, inst in enumerate(self.state["heroes"][:6]):
@@ -1535,34 +1695,42 @@ class ProfileStore:
                     ap_mult=2.5,
                     step=int(inst.get("Step", 1)),
                 )
-        else:
-            slots_by_id = {int(s["SlotId"]): s for s in self.state["slots"]}
-            emb = self.state.get("embattle", {})
-            placed = False
-            for f_idx in range(1, 7):
-                slot_id = int(emb.get(f"Formation{f_idx}", f_idx))
-                slot = slots_by_id.get(slot_id)
-                if slot and slot.get("HeroId") and slot["HeroId"] != EMPTY_ENTITY_ID:
-                    cfg = heroes_cfg[str(slot["HeroModelId"])]
-                    inst = heroes_by_id.get(slot["HeroId"], {})
-                    allies[f_idx - 1] = self._hero_fight_obj(
-                        cfg,
-                        is_boss=False,
-                        step=int(inst.get("Step", 0)),
-                        reborn_step=int(inst.get("RebornStep", 0)),
-                        override_stats=slot["Property"],
-                    )
-                    placed = True
-            if not placed and self.state["heroes"]:
-                inst = self.state["heroes"][0]
-                cfg = heroes_cfg[str(inst["HeroModelId"])]
-                allies[0] = self._hero_fight_obj(
+            return allies
+
+        slots_by_id = {int(s["SlotId"]): s for s in self.state["slots"]}
+        emb = self.state.get("embattle", {})
+        placed = False
+        for f_idx in range(1, 7):
+            slot_id = int(emb.get(f"Formation{f_idx}", f_idx))
+            slot = slots_by_id.get(slot_id)
+            if slot and slot.get("HeroId") and slot["HeroId"] != EMPTY_ENTITY_ID:
+                cfg = heroes_cfg[str(slot["HeroModelId"])]
+                inst = heroes_by_id.get(slot["HeroId"], {})
+                allies[f_idx - 1] = self._hero_fight_obj(
                     cfg,
-                    lv=inst["Lv"],
                     is_boss=False,
                     step=int(inst.get("Step", 0)),
                     reborn_step=int(inst.get("RebornStep", 0)),
+                    override_stats=slot["Property"],
                 )
+                placed = True
+        if not placed and self.state["heroes"]:
+            inst = self.state["heroes"][0]
+            cfg = heroes_cfg[str(inst["HeroModelId"])]
+            allies[0] = self._hero_fight_obj(
+                cfg,
+                lv=inst["Lv"],
+                is_boss=False,
+                step=int(inst.get("Step", 0)),
+                reborn_step=int(inst.get("RebornStep", 0)),
+            )
+        return allies
+
+    def _rpc_get_fight_info(self, data: Any) -> dict[str, Any]:
+        node_id = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 1111
+        star_lv = int(data[2]) if isinstance(data, list) and len(data) >= 3 else 1
+        node_cfg = self.game_data["nodes"].get(str(node_id), {"ID": node_id, "name": "1-1", "starCount": 1, "fightRound": 1})
+        allies = self._build_ally_fight_objs()
 
         total_waves = max(1, int(node_cfg.get("fightRound", 1)))
         fight_objs: list[dict[str, Any]] = []
@@ -1811,9 +1979,15 @@ class ProfileStore:
             self._last_rpc_context["status"] = -1
             return {}
 
+        matched_suffix = None
         for suffix in ("A", "B", "C"):
             if int(ch_model.get(f"roadBox{suffix}ID", 0)) == box_id:
-                ch_st[f"CanDrawRoadBox{suffix}"] = 2
+                matched_suffix = suffix
+                break
+        if not matched_suffix or ch_st.get(f"CanDrawRoadBox{matched_suffix}", 0) != 1:
+            self._last_rpc_context["status"] = -1
+            return {}
+        ch_st[f"CanDrawRoadBox{matched_suffix}"] = 2
 
         tuples = _parse_resource_str(box_cfg.get("outputResource", ""))
         base_res = self._grant_resources_from_tuples(
@@ -2178,6 +2352,571 @@ class ProfileStore:
         self.save()
         return self._lighten_star_payload()
 
+    def _shop_goods_price_for_step(self, goods_model_id: int, step_num: int, fallback: int) -> int:
+        price_tbl = self.game_data.get("shop_goods_price", {}).get(str(goods_model_id), {})
+        if not price_tbl:
+            return fallback
+        if str(step_num) in price_tbl:
+            return int(price_tbl[str(step_num)].get("newPrice", fallback))
+        max_k = max((int(k) for k in price_tbl if k.isdigit()), default=0)
+        return int(price_tbl.get(str(max_k), {}).get("newPrice", fallback)) if max_k > 0 else fallback
+
+    def _build_shop_goods_entry(self, goods_model_id: int) -> dict[str, Any]:
+        shop_tbl = self.game_data.get("shop_goods", {})
+        row = next((r for r in shop_tbl.values() if int(r.get("goodsModelID", 0)) == goods_model_id), None)
+        init_price = int(row.get("initPrice", 20)) if row else 20
+        sell_type_id = int(row.get("sellTypeID", 1111)) if row else 1111
+        if_vip_limit = bool(row.get("ifVipLimitBuy", True)) if row else True
+        if_dyn = bool(row.get("ifDynamicPrice", False)) if row else False
+
+        bought = int(self.state.setdefault("shop_bought", {}).get(str(goods_model_id), 0))
+        curr_price = self._shop_goods_price_for_step(goods_model_id, bought + 1, init_price) if if_dyn else init_price
+
+        if not if_vip_limit:
+            max_num = -1
+        else:
+            vip_lv = str(int(self.state["player"].get("Vip", 0)))
+            vip_tbl = self.game_data.get("vip_buy_limit", {}).get(vip_lv, {})
+            max_num = int(vip_tbl.get(str(goods_model_id), {}).get("buyMaxNum", 6))
+
+        return {
+            "GoodsModelId": goods_model_id,
+            "SellTypeId": sell_type_id,
+            "CurrPrice": curr_price,
+            "Num": bought,
+            "MaxNum": max_num,
+        }
+
+    def _rpc_shop_goods_list(self, _data: Any) -> list[dict[str, Any]]:
+        shop_tbl = self.game_data.get("shop_goods", {})
+        return [
+            self._build_shop_goods_entry(int(row["goodsModelID"]))
+            for _, row in sorted(shop_tbl.items(), key=lambda kv: int(kv[0]))
+            if int(row.get("goodsModelID", 0)) > 0
+        ]
+
+    def _rpc_get_shop_goods_info(self, data: Any) -> list[dict[str, Any]]:
+        gid = int(data[0]) if isinstance(data, list) and data else 16030006
+        return [self._build_shop_goods_entry(gid)]
+
+    def _rpc_shop_buy_goods(self, data: Any) -> dict[str, Any]:
+        gid = int(data[0]) if isinstance(data, list) and len(data) >= 1 else 16030006
+        count = max(1, int(data[1]) if isinstance(data, list) and len(data) >= 2 else 1)
+        info = self._build_shop_goods_entry(gid)
+        if info["MaxNum"] >= 0 and info["Num"] + count > info["MaxNum"]:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        shop_tbl = self.game_data.get("shop_goods", {})
+        row = next((r for r in shop_tbl.values() if int(r.get("goodsModelID", 0)) == gid), None)
+        init_price = int(row.get("initPrice", 20)) if row else 20
+        if_dyn = bool(row.get("ifDynamicPrice", False)) if row else False
+        total_cost = sum(
+            self._shop_goods_price_for_step(gid, info["Num"] + step_i + 1, init_price) if if_dyn else init_price
+            for step_i in range(count)
+        )
+        currency = "Gold" if info["SellTypeId"] == 1112 else "Diamond"
+        if int(self.state["player"].get(currency, 0)) < total_cost:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        if total_cost > 0:
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                currency,
+                -total_cost,
+                source=f"shop_buy:{gid}x{count}",
+            )
+        self.state.setdefault("shop_bought", {})[str(gid)] = info["Num"] + count
+        self._grant_resources_from_tuples(
+            [(gid // 10000, gid, count)],
+            source=f"shop_buy:{gid}",
+            tx_prefix=f"shop_buy:{self.profile_name}:{gid}:{uuid.uuid4()}",
+        )
+        self._mark_goods_changed(gid)
+        self.save()
+        return self._build_shop_goods_entry(gid)
+
+    def _rpc_goods_use(self, data: Any) -> dict[str, Any]:
+        if not isinstance(data, list) or len(data) < 2:
+            self._last_rpc_context["status"] = -1
+            return {}
+        entity_id = str(data[0])
+        gid = int(data[1])
+        count = max(1, int(data[2]) if len(data) >= 3 else 1)
+
+        item = next(
+            (g for g in self.state.get("goods", []) if g["Id"] == entity_id or int(g["GoodsModelId"]) == gid),
+            None,
+        )
+        if not item or int(item.get("Num", 0)) < count:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        g_cfg = self.game_data.get("goods_model", {}).get(str(gid), {})
+        type_id = int(g_cfg.get("typeID", gid // 10000))
+        out_type = int(g_cfg.get("outputTypeID", 0))
+        out_model = int(g_cfg.get("outputModelID", 0))
+        out_num = int(g_cfg.get("outputNum", 0))
+
+        consume = count
+        tuples: list[tuple[int, int, int]] = []
+        if type_id in (1501, 1502):
+            req_each = max(1, int(g_cfg.get("maxNum", 1)))
+            crafts = count // req_each
+            if crafts <= 0 or out_type <= 0 or out_model <= 0:
+                self._last_rpc_context["status"] = -1
+                return {}
+            consume = crafts * req_each
+            tuples.append((out_type, out_model, max(1, out_num) * crafts))
+        elif out_type > 0 and out_num > 0:
+            tuples.append((out_type, out_model, out_num * count))
+
+        item["Num"] = int(item["Num"]) - consume
+        if item["Num"] <= 0:
+            self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != item["Id"]]
+
+        base_res = self._grant_resources_from_tuples(
+            tuples,
+            source=f"goods_use:{gid}",
+            tx_prefix=f"goods_use:{self.profile_name}:{gid}:{uuid.uuid4()}",
+        )
+        self._mark_goods_changed(gid)
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _rpc_treasure_protect_info(self, _data: Any) -> dict[str, Any]:
+        return {"EndTime": int(self.state.get("treasure_protect_end", 0))}
+
+    def _rpc_treasure_protect_buy(self, data: Any) -> dict[str, Any]:
+        # Type 1 uses protect item (16050004), type 2 uses Diamonds from TreasureLootConfig
+        req_type = int(data[0]) if isinstance(data, list) and data else 2
+        cfg = self.game_data.get("treasure_loot_config", {})
+        per_sec = int(cfg.get("perProtectTime", 7200))
+        used = False
+        if req_type == 1:
+            mat = next((g for g in self.state.get("goods", []) if int(g.get("GoodsModelId", 0)) == 16050004 and int(g.get("Num", 0)) >= 1), None)
+            if mat:
+                mat["Num"] = int(mat["Num"]) - 1
+                if mat["Num"] <= 0:
+                    self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != mat["Id"]]
+                self._mark_goods_changed(16050004)
+                used = True
+        if not used:
+            cost = int(cfg.get("protectUseDiamond", 20))
+            if int(self.state["player"].get("Diamond", 0)) < cost:
+                self._last_rpc_context["status"] = -1
+                return {}
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                "Diamond",
+                -cost,
+                source="treasure_protect",
+            )
+        now = int(time.time())
+        cur_end = max(now, int(self.state.get("treasure_protect_end", 0)))
+        self.state["treasure_protect_end"] = cur_end + per_sec
+        self.save()
+        return {"EndTime": self.state["treasure_protect_end"]}
+
+    def _build_treasure_robots(self, debris_model_id: int) -> list[dict[str, Any]]:
+        cfg = self.game_data.get("treasure_loot_config", {})
+        count = max(3, min(6, int(cfg.get("perGetTeamNum", 6))))
+        player_lv = max(1, int(self.state["player"].get("Lv", 1)))
+        player_fap = max(1200, int(self.state["player"].get("FAP", 1200)))
+        roster = [
+            ("robot_9001", "Yêu Quái Sói", 12011022, 1),
+            ("robot_9002", "Thổ Phỉ Sơn Cốc", 12013005, 1),
+            ("robot_9003", "Binh Lính Thành", 12012045, 2),
+            ("robot_9004", "Lãng Nhân Chiến Quốc", 12013043, 2),
+            ("robot_9005", "Tà Yêu Đêm", 12011032, 3),
+            ("robot_9006", "Hắc Yêu Sĩ", 12012029, 3),
+        ]
+        heroes_cfg = self.game_data.get("heroes", {})
+        targets: list[dict[str, Any]] = []
+        for idx in range(count):
+            rid, rname, hid, pro_enum = roster[idx % len(roster)]
+            if str(hid) not in heroes_cfg:
+                hid = int(next(iter(heroes_cfg.keys())))
+            lv = max(1, player_lv - 2 + (idx % 3))
+            fap = max(800, int(player_fap * (0.55 + 0.06 * idx)))
+            targets.append(
+                {
+                    "LootPlayerId": f"{rid}_{debris_model_id}",
+                    "Name": rname,
+                    "Lv": lv,
+                    "FAP": fap,
+                    "HeroModelId": hid,
+                    "PVPInterLv": 0,
+                    "IsRobot": 1,
+                    "LootProEnum": pro_enum,
+                }
+            )
+        return targets
+
+    def _rpc_treasure_target_list(self, data: Any) -> dict[str, Any]:
+        debris_id = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 15040103
+        return {"TreasureLootTeamInfo": self._build_treasure_robots(debris_id)}
+
+    def _execute_single_treasure_loot(
+        self,
+        loot_player_id: str,
+        treasure_model_id: int,
+        debris_model_id: int,
+    ) -> dict[str, Any] | None:
+        sta_cfg = self.game_data.get("sta_config", {})
+        sta_cost = int(sta_cfg.get("perUseNum", 2))
+        if int(self.state["player"].get("STA", 0)) < sta_cost:
+            self._last_rpc_context["status"] = -1
+            return None
+
+        self.ledger.apply_player_delta(
+            self.state["player"],
+            self.profile_name,
+            "STA",
+            -sta_cost,
+            source=f"treasure_loot:{debris_model_id}",
+        )
+
+        targets = self._build_treasure_robots(debris_model_id)
+        target = next((t for t in targets if t["LootPlayerId"] == loot_player_id), targets[0])
+        if int(target.get("IsRobot", 1)) != 1:
+            self.state["treasure_protect_end"] = 0
+
+        player_lv = max(1, int(self.state["player"].get("Lv", 1)))
+        player_fap = max(1000, int(self.state["player"].get("FAP", 1000)))
+        heroes_cfg = self.game_data["heroes"]
+        allies = self._build_ally_fight_objs()
+        enemy_lv = max(1, player_lv // 2)
+        leader_cfg = heroes_cfg.get(str(target["HeroModelId"]), next(iter(heroes_cfg.values())))
+        mob_cfg = heroes_cfg.get("12012045", leader_cfg)
+        enemies: list[dict[str, Any]] = [{} for _ in range(6)]
+        enemies[1] = self._hero_fight_obj(leader_cfg, lv=enemy_lv, is_boss=False, hp_mult=0.45, ap_mult=0.45, def_mult=0.45)
+        enemies[0] = self._hero_fight_obj(mob_cfg, lv=max(1, enemy_lv - 1), is_boss=False, hp_mult=0.4, ap_mult=0.4, def_mult=0.4)
+        enemies[2] = self._hero_fight_obj(mob_cfg, lv=max(1, enemy_lv - 1), is_boss=False, hp_mult=0.4, ap_mult=0.4, def_mult=0.4)
+        enemy_fap = sum(int(h["HP"] + h["AP"] * 5 + h["DEF"] * 5) for h in enemies if h)
+
+        won = player_fap >= enemy_fap or target.get("IsRobot", 1) == 1
+        loot_cfg = self.game_data.get("treasure_loot_config", {})
+        deb_cfg = self.game_data.get("treasure_debris", {}).get(str(debris_model_id), {})
+        deb_rtype = int(deb_cfg.get("typeID", 1504 if str(debris_model_id).startswith("1504") else 1503))
+
+        has_debris = any(
+            int(d.get("TreasureDebrisModelId", 0)) == debris_model_id and int(d.get("Num", 0)) > 0
+            for d in self.state.get("treasure_debris", [])
+        )
+        loot_success = 1 if (won and (not has_debris or random.randint(1, 100) <= 75)) else 0
+
+        gold_gain = int(player_lv * float(loot_cfg.get("perLootGetGoldR", 600000)) / 10000.0) if won else 0
+        exp_gain = int(sta_cost * player_lv * (int(sta_cfg.get("perGetEXPR", 20000)) / 10000.0)) if won else 0
+        flip_gold = max(300, player_lv * 40) if won else 0
+
+        reward_tuples: list[tuple[int, int, int]] = []
+        if won:
+            reward_tuples.append((1112, 0, gold_gain + flip_gold))
+            reward_tuples.append((1101, 0, exp_gain))
+            if loot_success == 1 and debris_model_id > 0:
+                reward_tuples.append((deb_rtype, debris_model_id, 1))
+
+        base_res = self._grant_resources_from_tuples(
+            reward_tuples,
+            source=f"treasure_loot:{debris_model_id}",
+            tx_prefix=f"loot:{self.profile_name}:{debris_model_id}:{uuid.uuid4()}",
+        )
+        if not base_res:
+            base_res = [{"PlayerAttr": [{"ResourceTypeSub": 1112, "Num": 0}, {"ResourceTypeSub": 1101, "Num": 0}]}]
+
+        old_lv, new_lv = self._sync_level_from_exp()
+        if new_lv != old_lv:
+            self._last_rpc_context["lv_changed"] = True
+            self._last_rpc_context["slots_changed"] = True
+
+        choice_cards = [
+            {"IsDrop": 1, "ResourceTypeSub": 1112, "ModelId": 0, "Num": flip_gold},
+            {"IsDrop": 0, "ResourceTypeSub": 1117, "ModelId": 0, "Num": 40},
+            {"IsDrop": 0, "ResourceTypeSub": 1605, "ModelId": 16050001, "Num": 2},
+        ]
+        fight_info = {
+            "IsWinFight": 1 if won else 0,
+            "FightObjs": [
+                {
+                    "Heros": allies + enemies,
+                    "TeamData": [
+                        {"Fsp": 2000, "Fap": player_fap},
+                        {"Fsp": 1100, "Fap": enemy_fap},
+                    ],
+                    "Pets": [],
+                    "RandNum": random.randint(1000, 999999),
+                    "IsPVP": False,
+                }
+            ],
+        }
+        return {
+            "IfTargetCanLoot": 1,
+            "IsWinFight": 1 if won else 0,
+            "IsWinLootSuccess": loot_success,
+            "FightInfo": fight_info,
+            "BaseGetGameResourceList": base_res,
+            "ChoiceGetGameResource": choice_cards,
+        }
+
+    def _rpc_treasure_loot(self, data: Any) -> dict[str, Any]:
+        loot_player_id = str(data[0]) if isinstance(data, list) and len(data) >= 1 else "robot_9001"
+        treasure_model_id = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 14020501
+        debris_model_id = int(data[2]) if isinstance(data, list) and len(data) >= 3 else 15040103
+        res = self._execute_single_treasure_loot(loot_player_id, treasure_model_id, debris_model_id)
+        if res is None:
+            return {}
+        self.save()
+        return res
+
+    def _rpc_treasure_loot_count(self, data: Any) -> dict[str, Any]:
+        loot_player_id = str(data[0]) if isinstance(data, list) and len(data) >= 1 else "robot_9001"
+        treasure_model_id = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 14020501
+        debris_model_id = int(data[2]) if isinstance(data, list) and len(data) >= 3 else 15040103
+        req_count = max(1, min(10, int(data[3]) if isinstance(data, list) and len(data) >= 4 else 1))
+
+        choices: list[dict[str, Any]] = []
+        base_last: list[dict[str, Any]] = []
+        got_loot = 0
+        for _ in range(req_count):
+            step_res = self._execute_single_treasure_loot(loot_player_id, treasure_model_id, debris_model_id)
+            if step_res is None:
+                break
+            base_last = step_res["BaseGetGameResourceList"]
+            drop_card = next((c for c in step_res["ChoiceGetGameResource"] if c.get("IsDrop") == 1), step_res["ChoiceGetGameResource"][0])
+            choices.append(drop_card)
+            if step_res["IsWinLootSuccess"] == 1:
+                got_loot = 1
+                break
+        if not choices:
+            return {}
+        self.save()
+        return {
+            "IsWinLootSuccess": got_loot,
+            "BaseGameResource": base_last,
+            "ChoiceGameResource": choices,
+        }
+
+    def _rpc_treasure_compose(self, data: Any) -> dict[str, Any]:
+        treasure_model_id = int(data[0]) if isinstance(data, list) and data else 0
+        tr_cfg = self.game_data.get("treasures", {}).get(str(treasure_model_id))
+        if not tr_cfg:
+            self._last_rpc_context["status"] = -1
+            return {}
+        req_debris = tr_cfg.get("debrisModelIds", [])
+        if not isinstance(req_debris, list) or not req_debris:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        debris_list = self.state.setdefault("treasure_debris", [])
+        by_model = {int(d["TreasureDebrisModelId"]): d for d in debris_list}
+        for did in req_debris:
+            entry = by_model.get(int(did))
+            if not entry or int(entry.get("Num", 0)) < 1:
+                return {"IsTreasureDebrisNotEnough": 0}
+
+        for did in req_debris:
+            did_int = int(did)
+            entry = by_model[did_int]
+            entry["Num"] = int(entry["Num"]) - 1
+            if entry["Num"] <= 0:
+                self.state["treasure_debris"] = [
+                    d for d in self.state["treasure_debris"] if int(d["TreasureDebrisModelId"]) != did_int
+                ]
+            self._mark_treasure_debris_changed(did_int)
+
+        rtype = int(tr_cfg.get("typeID", 1402 if str(treasure_model_id).startswith("1402") else 1401))
+        base_res = self._grant_resources_from_tuples(
+            [(rtype, treasure_model_id, 1)],
+            source=f"treasure_compose:{treasure_model_id}",
+            tx_prefix=f"compose:{self.profile_name}:{treasure_model_id}:{uuid.uuid4()}",
+        )
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _elite_battle_info_payload(self) -> dict[str, Any]:
+        el = self.state.setdefault("elite", {"fight_count": 3, "buy_count": 0, "consume_buy_count": 0, "nodes": {}})
+        return {
+            "BuyCount": int(el.get("buy_count", 0)),
+            "FightCount": int(el.get("fight_count", 3)),
+            "RefreshCount": 0,
+            "ConsumeBuyCount": int(el.get("consume_buy_count", 0)),
+            "CanFightTime": 0,
+        }
+
+    def _sync_elite_nodes(self) -> list[dict[str, Any]]:
+        el = self.state.setdefault("elite", {"fight_count": 3, "buy_count": 0, "consume_buy_count": 0, "nodes": {}})
+        saved_nodes = el.setdefault("nodes", {})
+        elite_cfg_nodes = self.game_data.get("elite_nodes", {})
+        ordered_ids = sorted(elite_cfg_nodes.keys(), key=int)
+        out: list[dict[str, Any]] = []
+        prev_cleared = True
+        for nid_str in ordered_ids:
+            nid = int(nid_str)
+            cfg = elite_cfg_nodes[nid_str]
+            st = saved_nodes.setdefault(
+                nid_str,
+                {"NodeModelId": nid, "Flag": 0, "PassTime": 0, "CanDraw": "False", "first_claimed": False},
+            )
+            req_node = int(cfg.get("needBattleNodeModelID", 0))
+            req_ok = req_node <= 0 or int(self.state.get("nodes", {}).get(str(req_node), {}).get("Flag", 0)) == 2
+            if int(st.get("Flag", 0)) == 0 and prev_cleared and req_ok:
+                st["Flag"] = 1
+            if int(st.get("Flag", 0)) == 2 and not st.get("first_claimed", False):
+                st["CanDraw"] = "True"
+            else:
+                st["CanDraw"] = "False"
+            out.append(
+                {
+                    "NodeModelId": nid,
+                    "Flag": int(st["Flag"]),
+                    "PassTime": int(st.get("PassTime", 0)),
+                    "CanDraw": st["CanDraw"],
+                }
+            )
+            prev_cleared = int(st["Flag"]) == 2
+        return out
+
+    def _rpc_elite_get_battle_info(self, _data: Any) -> dict[str, Any]:
+        node_list = self._sync_elite_nodes()
+        return {
+            "BattleInfo": self._elite_battle_info_payload(),
+            "NodeList": node_list,
+        }
+
+    def _rpc_elite_get_fight_info(self, data: Any) -> dict[str, Any]:
+        elite_id = int(data[0]) if isinstance(data, list) and data else 11
+        cfg = self.game_data.get("elite_nodes", {}).get(str(elite_id), {})
+        ref_nid = int(cfg.get("needBattleNodeModelID", 1217))
+        ref_node_cfg = self.game_data.get("nodes", {}).get(str(ref_nid), {"chapterModelID": 12, "pic": "12012045"})
+        allies = self._build_ally_fight_objs()
+        enemies, enemy_fap = self._build_enemy_wave(ref_nid, ref_node_cfg, 1, 1, 2)
+        return {
+            "FightInfo": {
+                "FightObjs": [
+                    {
+                        "Heros": allies + enemies,
+                        "TeamData": [
+                            {"Fsp": 2000, "Fap": int(self.state["player"].get("FAP", 1000))},
+                            {"Fsp": 1300, "Fap": enemy_fap},
+                        ],
+                        "Pets": [],
+                        "RandNum": random.randint(1000, 999999),
+                        "IsPVP": False,
+                    }
+                ]
+            }
+        }
+
+    def _rpc_elite_fight(self, data: Any) -> dict[str, Any]:
+        elite_id = int(data[0]) if isinstance(data, list) and len(data) >= 1 else 11
+        won = bool(data[1]) if isinstance(data, list) and len(data) >= 2 else True
+        verify_raw = data[2] if isinstance(data, list) and len(data) >= 3 else None
+
+        if not self._verify_battle_payload(verify_raw, won).get("consistent", True):
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        el_cfg = self.game_data.get("elite_config", {})
+        vit_cost = int(el_cfg.get("fightVITSuccessful", 10))
+        el = self.state.setdefault("elite", {"fight_count": 3, "buy_count": 0, "consume_buy_count": 0, "nodes": {}})
+        avail = int(el.get("fight_count", 0)) + max(0, int(el.get("buy_count", 0)) - int(el.get("consume_buy_count", 0)))
+        if won and (avail <= 0 or int(self.state["player"].get("VIT", 0)) < vit_cost):
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        node_list = self._sync_elite_nodes()
+        node_cfg = self.game_data.get("elite_nodes", {}).get(str(elite_id), {})
+        st = el["nodes"].setdefault(
+            str(elite_id), {"NodeModelId": elite_id, "Flag": 1, "PassTime": 0, "CanDraw": "False", "first_claimed": False}
+        )
+        base_res: list[dict[str, Any]] = []
+        if won:
+            if int(el.get("fight_count", 0)) > 0:
+                el["fight_count"] = int(el["fight_count"]) - 1
+            else:
+                el["consume_buy_count"] = int(el.get("consume_buy_count", 0)) + 1
+            self.ledger.apply_player_delta(self.state["player"], self.profile_name, "VIT", -vit_cost, source=f"elite_vit:{elite_id}")
+            st["Flag"] = 2
+            st["PassTime"] = int(time.time())
+            if not st.get("first_claimed", False):
+                st["CanDraw"] = "True"
+
+            old_lv = int(self.state["player"]["Lv"])
+            per_exp_pct = int(self.game_data.get("vit_config", {}).get("perGetEXPR", 20000))
+            exp_gain = int(vit_cost * old_lv * (per_exp_pct / 10000.0))
+            gold_gain = int(node_cfg.get("dropGold", 3000))
+            hero_exp_gain = int(node_cfg.get("dropHeroExp", 3000))
+            base_res = self._grant_resources_from_tuples(
+                [(1101, 0, exp_gain), (1112, 0, gold_gain), (1117, 0, hero_exp_gain)],
+                source=f"elite_victory:{elite_id}",
+                tx_prefix=f"elite:{self.profile_name}:{elite_id}:{uuid.uuid4()}",
+            )
+            old_lv2, new_lv2 = self._sync_level_from_exp()
+            if new_lv2 != old_lv2:
+                self._last_rpc_context["lv_changed"] = True
+                self._last_rpc_context["slots_changed"] = True
+
+        node_list = self._sync_elite_nodes()
+        cur_node = next((n for n in node_list if n["NodeModelId"] == elite_id), {"NodeModelId": elite_id, "Flag": int(st["Flag"]), "PassTime": int(st["PassTime"]), "CanDraw": st["CanDraw"]})
+        next_node = next((n for n in node_list if n["NodeModelId"] == elite_id + 1), cur_node)
+        self.save()
+        return {
+            "IsSuccess": "True" if won else "False",
+            "BattleInfo": self._elite_battle_info_payload(),
+            "CurrentNode": cur_node,
+            "NextNode": next_node,
+            "BaseGetGameResourceList": base_res if won else [],
+        }
+
+    def _rpc_elite_draw_first_reward(self, data: Any) -> dict[str, Any]:
+        elite_id = int(data[0]) if isinstance(data, list) and data else 11
+        self._sync_elite_nodes()
+        el = self.state.setdefault("elite", {"fight_count": 3, "buy_count": 0, "consume_buy_count": 0, "nodes": {}})
+        st = el.get("nodes", {}).get(str(elite_id))
+        if not st or int(st.get("Flag", 0)) != 2 or st.get("first_claimed", False):
+            self._last_rpc_context["status"] = -1
+            return {}
+        cfg = self.game_data.get("elite_nodes", {}).get(str(elite_id), {})
+        tuples = _parse_resource_str(str(cfg.get("firstReward", "")))
+        st["first_claimed"] = True
+        st["CanDraw"] = "False"
+        base_res = self._grant_resources_from_tuples(
+            tuples,
+            source=f"elite_first:{elite_id}",
+            tx_prefix=f"elite_first:{self.profile_name}:{elite_id}",
+        )
+        self.save()
+        return {
+            "NodeInfo": {"NodeModelId": elite_id, "Flag": int(st["Flag"]), "PassTime": int(st.get("PassTime", 0)), "CanDraw": "False"},
+            "BaseGetGameResourceList": base_res,
+        }
+
+    def _rpc_elite_buy_fight_count(self, data: Any) -> dict[str, Any]:
+        ctype = int(data[0]) if isinstance(data, list) and data else 3
+        el = self.state.setdefault("elite", {"fight_count": 3, "buy_count": 0, "consume_buy_count": 0, "nodes": {}})
+        used_prop = False
+        if ctype == 2:
+            mat = next((g for g in self.state.get("goods", []) if int(g.get("GoodsModelId", 0)) == 16050014 and int(g.get("Num", 0)) >= 1), None)
+            if mat:
+                mat["Num"] = int(mat["Num"]) - 1
+                if mat["Num"] <= 0:
+                    self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != mat["Id"]]
+                self._mark_goods_changed(16050014)
+                used_prop = True
+        if not used_prop:
+            cost = 50
+            if int(self.state["player"].get("Diamond", 0)) < cost:
+                self._last_rpc_context["status"] = -1
+                return {}
+            self.ledger.apply_player_delta(self.state["player"], self.profile_name, "Diamond", -cost, source="elite_buy")
+        el["buy_count"] = int(el.get("buy_count", 0)) + 1
+        self.save()
+        return {"BattleInfo": self._elite_battle_info_payload()}
+
 
 class GameEmulatorState:
     """Multi-profile coordinator hosting NORMAL_PROFILE (ServerId=1) and DEBUG_PROFILE (ServerId=2)."""
@@ -2190,6 +2929,7 @@ class GameEmulatorState:
         normal_path: Path = NORMAL_STATE_PATH,
         debug_path: Path = DEBUG_STATE_PATH,
         audit_path: Path = AUDIT_LOG_PATH,
+        trace_path: Path | None = RPC_TRACE_PATH,
     ) -> None:
         self.persist = persist
         self.default_profile = default_profile
@@ -2206,6 +2946,7 @@ class GameEmulatorState:
                 state_path=normal_path,
                 persist=persist,
                 reset=new_player,
+                trace_path=trace_path,
             ),
             "debug": ProfileStore(
                 "debug",
@@ -2215,6 +2956,7 @@ class GameEmulatorState:
                 persist=persist,
                 reset=False,
                 legacy_seed_path=LEGACY_SAVE_STATE_PATH,
+                trace_path=trace_path,
             ),
         }
 

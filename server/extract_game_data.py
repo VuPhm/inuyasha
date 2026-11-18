@@ -98,6 +98,26 @@ def parse_array_lua_items(path: str, id_key: str = "ID") -> dict[str, dict[str, 
     return items
 
 
+def parse_vip_buy_limit(path: str) -> dict[str, dict[str, dict[str, Any]]]:
+    """Parse `VipBuyLimitModel` 3-level nested `[LV][typeID][modelID]` into `{LV: {modelID: fields}}`."""
+    if not os.path.exists(path):
+        return {}
+    text = open(path, "r", encoding="utf-8", errors="replace").read()
+    m = re.search(r"\bitems\s*=\s*\{", text)
+    if not m:
+        return {}
+    body = text[m.end() :]
+    lv_re = re.compile(r"^\s{8}\[(\d+)\]\s*=\s*\{(.*?)^\s{8}\}", re.M | re.S)
+    mod_re = re.compile(r"^\s{16}\[(\d+)\]\s*=\s*\{(.*?)^\s{16}\}", re.M | re.S)
+    out: dict[str, dict[str, dict[str, Any]]] = {}
+    for lvm in lv_re.finditer(body):
+        models: dict[str, dict[str, Any]] = {}
+        for mm in mod_re.finditer(lvm.group(2)):
+            models[mm.group(1)] = _parse_fields(mm.group(2), indent=20)
+        out[lvm.group(1)] = models
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Extract InuYasha Lua config tables to game_data.json")
     parser.add_argument("--client", choices=["vn", "en"], default="vn", help="Source Lua config tree")
@@ -152,6 +172,16 @@ def main() -> None:
     nightmare_chapters = parse_simple_lua_items(os.path.join(cfg_dir, "NightmareChapterModel.lua"))
     nightmare_nodes = parse_simple_lua_items(os.path.join(cfg_dir, "NightmareNodeModel.lua"))
 
+    goods_model = parse_simple_lua_items(os.path.join(cfg_dir, "GoodsModel.lua"))
+    shop_goods = parse_simple_lua_items(os.path.join(cfg_dir, "ShopGoodsModel.lua"))
+    shop_goods_price = parse_nested_lua_items(os.path.join(cfg_dir, "ShopGoodsPriceRelation.lua"))
+    vip_buy_limit = parse_vip_buy_limit(os.path.join(cfg_dir, "VipBuyLimitModel.lua"))
+    treasures = parse_simple_lua_items(os.path.join(cfg_dir, "TreasureModel.lua"))
+    treasure_debris = parse_simple_lua_items(os.path.join(cfg_dir, "TreasureDebrisModel.lua"))
+    treasure_loot_config = parse_singleton_lua_item(os.path.join(cfg_dir, "TreasureLootConfig.lua"))
+    elite_nodes = parse_simple_lua_items(os.path.join(cfg_dir, "ElitebattleNodeModel.lua"))
+    elite_config = parse_singleton_lua_item(os.path.join(cfg_dir, "ElitebattleConfig.lua"))
+
     data = {
         "source": source_label,
         "counts": {
@@ -172,6 +202,11 @@ def main() -> None:
             "attrtree": len(attrtree),
             "nightmare_chapters": len(nightmare_chapters),
             "nightmare_nodes": len(nightmare_nodes),
+            "goods_model": len(goods_model),
+            "shop_goods": len(shop_goods),
+            "treasures": len(treasures),
+            "treasure_debris": len(treasure_debris),
+            "elite_nodes": len(elite_nodes),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -180,6 +215,8 @@ def main() -> None:
         "callequip_config": callequip_config,
         "battle_config": battle_config,
         "explore_config": explore_config,
+        "treasure_loot_config": treasure_loot_config,
+        "elite_config": elite_config,
         "player_lv": player_lv,
         "hero_lv": hero_lv,
         "hero_step": hero_step,
@@ -205,6 +242,13 @@ def main() -> None:
         "explore_reward_nums": explore_reward_nums,
         "nightmare_chapters": nightmare_chapters,
         "nightmare_nodes": nightmare_nodes,
+        "goods_model": goods_model,
+        "shop_goods": shop_goods,
+        "shop_goods_price": shop_goods_price,
+        "vip_buy_limit": vip_buy_limit,
+        "treasures": treasures,
+        "treasure_debris": treasure_debris,
+        "elite_nodes": elite_nodes,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

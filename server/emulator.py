@@ -168,6 +168,35 @@ CARD_MODEL_CFG: dict[int, dict[str, Any]] = {
     }
 }
 
+# Quality-tiered recruit weights per banner (q=6 Green, q=10 Blue, q=13 Purple, q=15 Orange).
+# NOTE: Official VN/EN/TH/ZH HeroRecruitModel.lua configs define pools/costs/CDs/extraRewards
+# without drop-rate tables; these tier weights are server-modeled & configurable, never flat
+# uniform random across all heroes, and UR (q=18) heroes are excluded from normal recruit pools.
+RECRUIT_RATE_CONFIG: dict[int, dict[int, int]] = {
+    1: {6: 5000, 10: 4200, 13: 800},
+    2: {6: 2500, 10: 5500, 13: 2000},
+    3: {10: 4500, 13: 4500, 15: 1000},
+}
+
+DEFAULT_PLAYER_STATS: dict[str, int] = {
+    "total_recruits": 0,
+    "dream_recruits": 0,
+    "destiny_recruits": 0,
+    "soul_recruits": 0,
+    "explore_count": 0,
+    "pvp_fights": 0,
+    "pvp_wins": 0,
+    "boss_fights": 0,
+    "mystery_refresh": 0,
+    "treasure_loot_wins": 0,
+    "equip_lvup_count": 0,
+    "equip_compose_count": 0,
+    "vit_pills_used": 0,
+    "sta_pills_used": 0,
+    "daydayfund_count": 0,
+    "lighten_star_count": 0,
+}
+
 EMPTY_ENTITY_ID = "00000000-0000-0000-0000-000000000000"
 
 VN_APK_PATH = ROOT_DIR / "analysis" / "vn" / "extracted" / "com.cmn.inuyasha.apk"
@@ -476,8 +505,28 @@ class ProfileStore:
         gl_state.setdefault("claimed", [])
         data.setdefault(
             "mystery_shop",
-            {"normal": None, "senior": None, "free_date": "", "free_count": 1, "gold_count": 0},
+            {"normal": None, "senior": None, "free_date": "", "free_count": 2, "gold_count": 0},
         )
+        rs = data.setdefault("recruit_state", {})
+        rs.setdefault("MidAlreadyUseResource", False)
+        rs.setdefault("HigAlreadyUseResource", False)
+        rs.setdefault("OutZiCount", 9)
+        rs.setdefault("history", [])
+        cs = data.setdefault("charge_state", {})
+        cs.setdefault("first_bought", [])
+        cs.setdefault("drawn_boxes", [])
+        cs.setdefault("orders", {})
+        cs.setdefault("card_orders", {})
+        data.setdefault("vip_gift_bought", [])
+        st = data.setdefault("success_target", {})
+        st.setdefault("start_ts", int(time.time()))
+        st.setdefault("drawn", {})
+        st.setdefault("drawn_days", [])
+        st.setdefault("if_draw", 0)
+        st.setdefault("exchange_counts", {})
+        stats = data.setdefault("stats", {})
+        for sk, sv in DEFAULT_PLAYER_STATS.items():
+            stats.setdefault(sk, sv)
         self._sanitize_legacy_debris_and_boss_drops(data, boss_state)
         p = data.setdefault("player", {})
         p.setdefault("ChargeNum", 0)
@@ -657,9 +706,14 @@ class ProfileStore:
         )
 
     def _sync_player_recover_times(self, player: dict[str, Any] | None = None) -> None:
-        """Normalize VITMaxNum/STAMaxNum against canonical config and keep recover timestamps valid."""
+        """Normalize VITMaxNum/STAMaxNum, VIP sync, and recover timestamps."""
         p = player if player is not None else self.state["player"]
         now = int(time.time())
+        vip_exp = int(p.get("VipEXP", 0))
+        derived_vip = self.ledger.derive_vip_level(vip_exp) if vip_exp > 0 else 0
+        vip_lv = max(int(p.get("Vip", 0)), int(p.get("VIPLv", 0)), derived_vip)
+        p["Vip"] = vip_lv
+        p["VIPLv"] = vip_lv
         cfg_vit_max, vit_cd, cfg_sta_max, sta_cd = self._canonical_recover_limits()
 
         raw_vit_max = p.get("VITMaxNum")
@@ -1020,14 +1074,24 @@ class ProfileStore:
             "recruit_state": {
                 "MidAlreadyUseResource": False,
                 "HigAlreadyUseResource": False,
-                "OutZiCount": 5,
+                "OutZiCount": 9,
+                "history": [],
             },
             "explore": self._default_explore_state(),
             "shop_bought": {},
+            "vip_gift_bought": [],
             "lv_plan": {"open": False, "rewarded": []},
             "vip_welfare_drawn_date": "",
-            "charge_state": {"first_bought": [], "drawn_boxes": [], "orders": {}},
+            "charge_state": {"first_bought": [], "drawn_boxes": [], "orders": {}, "card_orders": {}},
             "month_cards": {},
+            "success_target": {
+                "start_ts": now,
+                "drawn": {},
+                "drawn_days": [],
+                "if_draw": 0,
+                "exchange_counts": {},
+            },
+            "stats": dict(DEFAULT_PLAYER_STATS),
             "battle": {
                 "MaxChapterId": 11,
                 "MaxNodeId": 1111,
@@ -1610,7 +1674,10 @@ class ProfileStore:
             "ShopGoods.ShopGoodsList": self._rpc_shop_goods_list,
             "ShopGoods.GetShopGoodsInfo": self._rpc_get_shop_goods_info,
             "ShopGoods.BuyGoods": self._rpc_shop_buy_goods,
+            "ShopGift.ShopGiftList": self._rpc_shop_gift_list,
+            "ShopGift.BuyGift": self._rpc_shop_buy_gift,
             "Goods.GoodsUse": self._rpc_goods_use,
+            "Goods.GoodsUseForBoxChoice": self._rpc_goods_use_box_choice,
             "TreasureLootProtect.GetTreasureLootProtectInfo": self._rpc_treasure_protect_info,
             "TreasureLootProtect.TreasureLootProtect": self._rpc_treasure_protect_buy,
             "TreasureLoot.TreasureDebrisTargetList": self._rpc_treasure_target_list,
@@ -1682,6 +1749,11 @@ class ProfileStore:
             "MysteryShop.SeniorGetInfo": self._rpc_mystery_shop_senior_get_info,
             "MysteryShop.SeniorRefreshtGoodsList": self._rpc_mystery_shop_senior_refresh,
             "MysteryShop.SeniorMysteryShopBuyGoods": self._rpc_mystery_shop_senior_buy,
+            "SuccessTargetInfo.GetInfo": self._rpc_success_target_get_info,
+            "SuccessTargetInfo.DrawReward": self._rpc_success_target_draw_reward,
+            "SuccessTargetInfo.DrawTotalReward": self._rpc_success_target_draw_total_reward,
+            "SuccessTargetInfo.GetExchangeInfo": self._rpc_success_target_get_exchange_info,
+            "SuccessTargetInfo.Exchange": self._rpc_success_target_exchange,
             "Reward.Rewars": lambda _d: [],
         }
         fn = handlers.get(key)
@@ -1876,14 +1948,35 @@ class ProfileStore:
         self.save()
         return {"BaseGetGameResourceList": base_res}
 
+    def _inc_stat(self, key: str, delta: int = 1) -> int:
+        stats = self.state.setdefault("stats", dict(DEFAULT_PLAYER_STATS))
+        stats[key] = int(stats.get(key, 0)) + int(delta)
+        return int(stats[key])
+
+    def _consume_goods(self, goods_model_id: int, count: int) -> bool:
+        """Atomically verify and deduct count units of goods_model_id from bag."""
+        if count <= 0:
+            return True
+        item = next(
+            (g for g in self.state.get("goods", []) if int(g.get("GoodsModelId", 0)) == goods_model_id),
+            None,
+        )
+        if not item or int(item.get("Num", 0)) < count:
+            return False
+        item["Num"] = int(item["Num"]) - count
+        if item["Num"] <= 0:
+            self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != item["Id"]]
+        self._mark_goods_changed(goods_model_id)
+        return True
+
     def _rpc_recruit_info(self, _data: Any) -> dict[str, Any]:
         now = int(time.time())
         rs = self.state.setdefault(
             "recruit_state",
-            {"MidAlreadyUseResource": False, "HigAlreadyUseResource": False, "OutZiCount": 5},
+            {"MidAlreadyUseResource": False, "HigAlreadyUseResource": False, "OutZiCount": 9, "history": []},
         )
         return {
-            "OutZiCount": int(rs.get("OutZiCount", 5)),
+            "OutZiCount": int(rs.get("OutZiCount", 9)),
             "CooledInfo": [
                 {"Type": 2, "CooledTime": int(rs.get("GoodReadyAt", now))},
                 {"Type": 3, "CooledTime": int(rs.get("ExcellentReadyAt", now))},
@@ -1892,37 +1985,76 @@ class ProfileStore:
             "HigAlreadyUseResource": bool(rs.get("HigAlreadyUseResource", False)),
         }
 
+    def _pick_recruit_hero(
+        self,
+        banner_id: int,
+        pool_ids: list[int],
+        force_quality: int | None = None,
+    ) -> int:
+        """Select a hero from banner pool using configured quality tier weights (no uniform UR/flat random)."""
+        heroes_cfg = self.game_data.get("heroes", {})
+        by_quality: dict[int, list[int]] = {}
+        for hid in pool_ids:
+            h_cfg = heroes_cfg.get(str(hid))
+            if not h_cfg:
+                continue
+            q = int(h_cfg.get("quality", 10))
+            if q >= 18:
+                continue  # UR heroes are exclusive to TimedRecruit / UR Choice chests
+            by_quality.setdefault(q, []).append(hid)
+        if not by_quality:
+            return 12011014
+        if force_quality is not None:
+            bucket = by_quality.get(force_quality) or by_quality[max(by_quality)]
+            return random.choice(bucket)
+        weights_cfg = RECRUIT_RATE_CONFIG.get(banner_id, RECRUIT_RATE_CONFIG[2])
+        avail_tiers = sorted(by_quality)
+        tier_weights = [max(1, int(weights_cfg.get(q, 100))) for q in avail_tiers]
+        chosen_q = random.choices(avail_tiers, weights=tier_weights, k=1)[0]
+        return random.choice(by_quality[chosen_q])
+
     def _rpc_recruit(self, data: Any) -> dict[str, Any]:
         rtype = int(data[0]) if isinstance(data, list) and len(data) >= 1 else 2
         is_free = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 1
+        if rtype not in (1, 10, 2, 3, 30, 40):
+            self._last_rpc_context["status"] = -1
+            return {}
+
         now = int(time.time())
         rs = self.state.setdefault(
             "recruit_state",
-            {"MidAlreadyUseResource": False, "HigAlreadyUseResource": False, "OutZiCount": 5},
+            {"MidAlreadyUseResource": False, "HigAlreadyUseResource": False, "OutZiCount": 9, "history": []},
         )
-        rec_cfg = self.game_data.get("hero_recruit", {}).get(str(rtype), {})
-        pool_str = rec_cfg.get("outShowMain") or rec_cfg.get("outShowAll") or "12011014"
-        pool = [int(x) for x in pool_str.split(",") if x.strip().isdigit()]
+        recruit_tbl = self.game_data.get("hero_recruit", {})
+        cfg_key = "30" if rtype == 40 and "40" not in recruit_tbl else str(rtype)
+        rec_cfg = recruit_tbl.get(cfg_key, {})
+        base_banner = 1 if rtype in (1, 10) else (2 if rtype == 2 else 3)
+        fallback_all = recruit_tbl.get(str(base_banner), {}).get("outShowAll", "12011014")
+        pool_all = [int(x) for x in str(rec_cfg.get("outShowAll") or fallback_all).split(",") if x.strip().isdigit()]
+        pool_main = [int(x) for x in str(rec_cfg.get("outShowMain") or "").split(",") if x.strip().isdigit()]
 
-        # Spend cost or enforce free-recruit cooldown
-        if rtype == 1:
-            talisman = next((g for g in self.state.get("goods", []) if g["GoodsModelId"] == 16050003), None)
-            if not talisman or talisman["Num"] < 1:
+        # Validate & deduct banner resource or free-recruit cooldown
+        if rtype in (1, 10):
+            reqs = _parse_resource_str(str(rec_cfg.get("recruitUse", f"1605,16050003,{10 if rtype == 10 else 1}")))
+            _, rm, rn = reqs[0] if reqs else (1605, 16050003, 10 if rtype == 10 else 1)
+            if not self._consume_goods(rm, rn):
                 self._last_rpc_context["status"] = -1
                 return {}
-            talisman["Num"] -= 1
-            if talisman["Num"] <= 0:
-                self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != talisman["Id"]]
-            self._mark_goods_changed(16050003)
-        elif is_free == 1:
+        elif rtype == 40:
+            if not self._consume_goods(16050056, 1):
+                self._last_rpc_context["status"] = -1
+                return {}
+        elif rtype in (2, 3) and is_free == 1:
             if rtype == 2 and rs.get("MidAlreadyUseResource", False) and now < int(rs.get("GoodReadyAt", 0)):
                 self._last_rpc_context["status"] = -1
                 return {}
             if rtype == 3 and rs.get("HigAlreadyUseResource", False) and now < int(rs.get("ExcellentReadyAt", 0)):
                 self._last_rpc_context["status"] = -1
                 return {}
-        elif is_free == 0:
-            cost = 280 if rtype == 3 else (2680 if rtype == 30 else 80)
+        elif rtype in (2, 3, 30) and is_free == 0:
+            reqs = _parse_resource_str(str(rec_cfg.get("recruitUse", "")))
+            default_cost = 280 if rtype == 3 else (2680 if rtype == 30 else 80)
+            cost = int(reqs[0][2]) if reqs and reqs[0][0] == 1111 else default_cost
             if int(self.state["player"].get("Diamond", 0)) < cost:
                 self._last_rpc_context["status"] = -1
                 return {}
@@ -1933,17 +2065,48 @@ class ProfileStore:
                 -cost,
                 source=f"recruit:{rtype}",
             )
+        else:
+            self._last_rpc_context["status"] = -1
+            return {}
 
-        count = 10 if rtype in (10, 30) else 1
-        tuples: list[tuple[int, int, int]] = []
-        for idx in range(count):
-            if rtype == 2 and not rs.get("MidAlreadyUseResource", False):
-                chosen_hid = 12011014  # Ayame (4*/5* starter summon from Destiny Recruit pool)
-            else:
-                chosen_hid = pool[idx % len(pool)] if pool else 12011014
-            tuples.append((1201, chosen_hid, 1))
+        count = 10 if rtype in (10, 30, 40) else 1
+        heroes_cfg = self.game_data.get("heroes", {})
+        chosen_hids: list[int] = []
+        out_zi = int(rs.get("OutZiCount", 9))
 
-        gold_gain = int(rec_cfg.get("goldCoin", 0) or (1000 if rtype == 2 else 0))
+        if rtype == 2 and not rs.get("MidAlreadyUseResource", False):
+            # Canonical Tutorial Guide 1: first Destiny pull always grants Ayame (12011014)
+            chosen_hids.append(12011014)
+        elif rtype in (1, 10, 2):
+            for _ in range(count):
+                chosen_hids.append(self._pick_recruit_hero(base_banner, pool_all))
+        else:
+            # Soul Recruit (3, 30, 40): first pull or OutZiCount <= 0 or >=1 slot in 10x guarantees q=15
+            first_soul = rtype == 3 and not rs.get("HigAlreadyUseResource", False)
+            hit_q15 = False
+            for idx in range(count):
+                force_q = 15 if ((idx == 0 and first_soul) or out_zi <= 0) else None
+                src_pool = (pool_main or pool_all) if force_q == 15 else pool_all
+                hid = self._pick_recruit_hero(3, src_pool, force_quality=force_q)
+                hq = int(heroes_cfg.get(str(hid), {}).get("quality", 10))
+                if hq >= 15:
+                    hit_q15 = True
+                    out_zi = 9
+                else:
+                    out_zi = max(0, out_zi - 1)
+                chosen_hids.append(hid)
+            if count == 10 and not hit_q15:
+                # 10x Soul guarantees at least one q=15 Orange hero
+                chosen_hids[-1] = self._pick_recruit_hero(3, pool_main or pool_all, force_quality=15)
+                out_zi = 9
+            rs["OutZiCount"] = out_zi
+
+        tuples: list[tuple[int, int, int]] = [(1201, hid, 1) for hid in chosen_hids]
+        extra_str = str(rec_cfg.get("extraRewards") or ("1606,16060005,10" if rtype in (30, 40) else ""))
+        for rt, rm, rn in _parse_resource_str(extra_str):
+            if rn > 0:
+                tuples.append((rt, rm, rn))
+        gold_gain = int(rec_cfg.get("goldCoin", 0) or 0)
         if gold_gain > 0:
             tuples.append((1112, 0, gold_gain))
 
@@ -1953,22 +2116,40 @@ class ProfileStore:
             tx_prefix=f"recruit:{self.profile_name}:{now}:{uuid.uuid4()}",
         )
 
-        cd_min = int(rec_cfg.get("freeTimeCD", 1380))
-        next_tick = now + max(0, cd_min) * 60
-        if rtype == 2:
+        next_tick = now
+        if rtype == 2 and (is_free == 1 or not rs.get("MidAlreadyUseResource", False)):
+            cd_min = int(rec_cfg.get("freeTimeCD", 1380))
+            next_tick = now + max(0, cd_min) * 60
             rs["MidAlreadyUseResource"] = True
             rs["GoodReadyAt"] = next_tick
-        elif rtype == 3:
+        elif rtype == 3 and (is_free == 1 or not rs.get("HigAlreadyUseResource", False)):
+            cd_min = int(rec_cfg.get("freeTimeCD", 2820))
+            next_tick = now + max(0, cd_min) * 60
             rs["HigAlreadyUseResource"] = True
             rs["ExcellentReadyAt"] = next_tick
-            rs["OutZiCount"] = max(0, int(rs.get("OutZiCount", 5)) - 1)
+        elif rtype == 2:
+            next_tick = int(rs.get("GoodReadyAt", now))
+        elif rtype == 3:
+            next_tick = int(rs.get("ExcellentReadyAt", now))
+
+        hist = rs.setdefault("history", [])
+        hist.append({"ts": now, "rtype": rtype, "is_free": is_free, "heroes": chosen_hids})
+        if len(hist) > 50:
+            rs["history"] = hist[-50:]
+        self._inc_stat("total_recruits", len(chosen_hids))
+        if rtype in (1, 10):
+            self._inc_stat("dream_recruits", len(chosen_hids))
+        elif rtype == 2:
+            self._inc_stat("destiny_recruits", len(chosen_hids))
+        else:
+            self._inc_stat("soul_recruits", len(chosen_hids))
 
         self.save()
         return {
             "CooledTick": next_tick,
             "MidAlreadyUseResource": bool(rs.get("MidAlreadyUseResource", False)),
             "HigAlreadyUseResource": bool(rs.get("HigAlreadyUseResource", False)),
-            "OutZiCount": int(rs.get("OutZiCount", 5)),
+            "OutZiCount": int(rs.get("OutZiCount", 9)),
             "BaseGetGameResourceList": base_res,
         }
 
@@ -2140,6 +2321,7 @@ class ProfileStore:
             source=f"equip_compose:{out_model_id}",
             tx_prefix=f"equip_compose:{self.profile_name}:{uuid.uuid4()}",
         )
+        self._inc_stat("equip_compose_count", 1)
         return consumed_ids, base_res
 
     def _rpc_equip_compose(self, data: Any) -> dict[str, Any]:
@@ -2200,6 +2382,7 @@ class ProfileStore:
             )
         eq["Lv"] = cur_lv + 1
         eq["Gold"] = int(eq.get("Gold", 0)) + cost
+        self._inc_stat("equip_lvup_count", 1)
         return True
 
     def _sync_slot_equips(self) -> None:
@@ -2897,10 +3080,13 @@ class ProfileStore:
 
     def _explore_payload(self) -> dict[str, Any]:
         exp_st = self.state.setdefault("explore", self._default_explore_state())
+        vip_lv = int(self.state.get("player", {}).get("VIPLv", self.state.get("player", {}).get("Vip", 0)))
+        vip_cfg = self.game_data.get("vip_model", {}).get(str(vip_lv), {})
+        max_reset = max(1, int(vip_cfg.get("exploreMaxNum", 1)))
         return {
             "RecoverTime": int(exp_st.get("RecoverTime", int(time.time()) + 900)),
             "ResetNum": int(exp_st.get("ResetNum", 0)),
-            "MaxResetNum": int(exp_st.get("MaxResetNum", 5)),
+            "MaxResetNum": max_reset,
             "RemainNum": int(exp_st.get("RemainNum", 15)),
             "MaxNum": int(exp_st.get("MaxNum", 25)),
             "DailyNum": int(exp_st.get("DailyNum", 0)),
@@ -2914,6 +3100,7 @@ class ProfileStore:
         exp_st = self.state.setdefault("explore", self._default_explore_state())
         exp_st["RemainNum"] = int(exp_st.get("RemainNum", 0)) - 1
         exp_st["DailyNum"] = int(exp_st.get("DailyNum", 0)) + 1
+        self._inc_stat("explore_count", 1)
         roll = random.randint(1, 10000)
         reward_id = 1
         mult = 1
@@ -2989,7 +3176,8 @@ class ProfileStore:
 
     def _rpc_explore_buy(self, _data: Any) -> dict[str, Any]:
         exp_st = self.state.setdefault("explore", self._default_explore_state())
-        if int(exp_st.get("ResetNum", 0)) >= int(exp_st.get("MaxResetNum", 5)) or int(self.state["player"]["Diamond"]) < 20:
+        max_reset = self._explore_payload()["MaxResetNum"]
+        if int(exp_st.get("ResetNum", 0)) >= max_reset or int(self.state["player"]["Diamond"]) < 20:
             self._last_rpc_context["status"] = -1
             return {}
         self.ledger.apply_player_delta(self.state["player"], self.profile_name, "Diamond", -20, source="explore_buy")
@@ -3057,6 +3245,7 @@ class ProfileStore:
             exp_st = self.state.setdefault("explore", self._default_explore_state())
             exp_st["MaxNum"] = int(exp_st.get("MaxNum", 25)) + xunyu_add
             exp_st["RemainNum"] = int(exp_st.get("RemainNum", 0)) + xunyu_add
+        self._inc_stat("lighten_star_count", 1)
         return True
 
     def _rpc_lighten_star_up(self, _data: Any) -> dict[str, Any]:
@@ -3169,13 +3358,80 @@ class ProfileStore:
         self.save()
         return self._build_shop_goods_entry(gid)
 
+    def _build_vip_gift_entry(self, row: dict[str, Any], bought_ids: set[int]) -> dict[str, Any]:
+        gid = int(row["goodsModelID"])
+        return {
+            "GoodsModelId": gid,
+            "SellTypeId": int(row.get("sellTypeID", 1111)),
+            "InitPrice": int(row.get("initPrice", 0)),
+            "CurrPrice": int(row.get("currPrice", 0)),
+            "MaxNum": 1,
+            "Num": 1 if gid in bought_ids else 0,
+            "VipLv": int(row["ID"]),
+        }
+
+    def _rpc_shop_gift_list(self, _data: Any) -> list[dict[str, Any]]:
+        gift_tbl = self.game_data.get("shop_vip_gift", {})
+        bought_ids = {int(x) for x in self.state.get("vip_gift_bought", [])}
+        return [
+            self._build_vip_gift_entry(row, bought_ids)
+            for _, row in sorted(gift_tbl.items(), key=lambda kv: int(kv[0]))
+            if int(row.get("goodsModelID", 0)) > 0
+        ]
+
+    def _rpc_shop_buy_gift(self, data: Any) -> dict[str, Any]:
+        gid = int(data[0]) if isinstance(data, list) and len(data) >= 1 else 0
+        buy_count = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 1
+        gift_tbl = self.game_data.get("shop_vip_gift", {})
+        row = next((r for r in gift_tbl.values() if int(r.get("goodsModelID", 0)) == gid), None)
+        if not row or buy_count != 1:
+            self._last_rpc_context["status"] = -1
+            return {}
+        req_vip = int(row["ID"])
+        cur_vip = int(self.state["player"].get("VIPLv", self.state["player"].get("Vip", 0)))
+        bought = self.state.setdefault("vip_gift_bought", [])
+        if cur_vip < req_vip or gid in {int(x) for x in bought}:
+            self._last_rpc_context["status"] = -1
+            return {}
+        price = int(row.get("currPrice", 0))
+        currency = "Gold" if int(row.get("sellTypeID", 1111)) == 1112 else "Diamond"
+        if int(self.state["player"].get(currency, 0)) < price:
+            self._last_rpc_context["status"] = -1
+            return {}
+        if price > 0:
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                currency,
+                -price,
+                source=f"shop_gift:{gid}",
+                idempotency_key=f"shopgift_cost:{self.profile_name}:{gid}",
+            )
+        bought.append(gid)
+        base_res = self._grant_resources_from_tuples(
+            [(gid // 10000, gid, 1)],
+            source=f"shop_gift:{gid}",
+            tx_prefix=f"shopgift_item:{self.profile_name}:{gid}",
+        )
+        bought_ids = {int(x) for x in bought}
+        self.save()
+        return {
+            "BuyGiftRecord": self._build_vip_gift_entry(row, bought_ids),
+            "BaseGetGameResourceList": base_res,
+        }
+
     def _rpc_goods_use(self, data: Any) -> dict[str, Any]:
         if not isinstance(data, list) or len(data) < 2:
             self._last_rpc_context["status"] = -1
             return {}
         entity_id = str(data[0])
         gid = int(data[1])
-        count = max(1, int(data[2]) if len(data) >= 3 else 1)
+        count = int(data[2]) if len(data) >= 3 else 1
+        if count <= 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+        if gid == 16050056:
+            return self._rpc_recruit([40, 0])
 
         item = next(
             (g for g in self.state.get("goods", []) if g["Id"] == entity_id or int(g["GoodsModelId"]) == gid),
@@ -3207,23 +3463,31 @@ class ProfileStore:
                 self.game_data["goods_output"][str(odds_code)].values(),
                 key=lambda r: int(r.get("ID", 0)),
             )
-            for _ in range(count):
-                max_roll = max((int(r.get("oddsMax", 0)) for r in pool_rows), default=0)
-                if max_roll > 0:
+            max_roll = max((int(r.get("oddsMax", 0)) for r in pool_rows), default=0)
+            if type_id == 1601 or max_roll == 0:
+                # eBoxFixed (including all 21 VIP gift bundles 16010001..16010021) grants EVERY row
+                for row in pool_rows:
+                    tuples.append(
+                        (
+                            int(row.get("outputTypeID", 0)),
+                            int(row.get("outputModelID", 0)),
+                            max(1, int(row.get("outputNum", 1))) * count,
+                        )
+                    )
+            else:
+                for _ in range(count):
                     roll = random.randint(1, max_roll)
                     chosen = next(
                         (r for r in pool_rows if int(r.get("oddsMin", 0)) <= roll <= int(r.get("oddsMax", 0))),
                         pool_rows[0],
                     )
-                else:
-                    chosen = random.choice(pool_rows)
-                tuples.append(
-                    (
-                        int(chosen.get("outputTypeID", 0)),
-                        int(chosen.get("outputModelID", 0)),
-                        max(1, int(chosen.get("outputNum", 1))),
+                    tuples.append(
+                        (
+                            int(chosen.get("outputTypeID", 0)),
+                            int(chosen.get("outputModelID", 0)),
+                            max(1, int(chosen.get("outputNum", 1))),
+                        )
                     )
-                )
         elif out_type > 0 and out_num > 0:
             tuples.append((out_type, out_model, out_num * count))
 
@@ -3236,7 +3500,71 @@ class ProfileStore:
             source=f"goods_use:{gid}",
             tx_prefix=f"goods_use:{self.profile_name}:{gid}:{uuid.uuid4()}",
         )
+        if type_id == 1603:
+            if out_type == 1102:
+                self._inc_stat("vit_pills_used", consume)
+            elif out_type == 1103:
+                self._inc_stat("sta_pills_used", consume)
         self._mark_goods_changed(gid)
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _rpc_goods_use_box_choice(self, data: Any) -> dict[str, Any]:
+        """Implement Goods.GoodsUseForBoxChoice for eBoxChoice (1606) and eFashionChoice (1608)."""
+        if not isinstance(data, list) or len(data) < 3:
+            self._last_rpc_context["status"] = -1
+            return {}
+        entity_id = str(data[0])
+        box_gid = int(data[1])
+        selected_model_id = int(data[2])
+        count = int(data[3]) if len(data) >= 4 else 1
+        if count <= 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        item = next(
+            (g for g in self.state.get("goods", []) if g["Id"] == entity_id and int(g["GoodsModelId"]) == box_gid),
+            None,
+        ) or next(
+            (g for g in self.state.get("goods", []) if int(g["GoodsModelId"]) == box_gid),
+            None,
+        )
+        if not item or int(item.get("Num", 0)) < count:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        g_cfg = self.game_data.get("goods_model", {}).get(str(box_gid), {})
+        type_id = int(g_cfg.get("typeID", box_gid // 10000))
+        odds_code = int(g_cfg.get("goodsOutputOddsCode", 0))
+        if type_id not in (1606, 1608) or odds_code <= 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        pool_rows = self.game_data.get("goods_output", {}).get(str(odds_code), {}).values()
+        chosen = next(
+            (r for r in pool_rows if int(r.get("outputModelID", 0)) == selected_model_id),
+            None,
+        )
+        if not chosen:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        item["Num"] = int(item["Num"]) - count
+        if item["Num"] <= 0:
+            self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != item["Id"]]
+
+        base_res = self._grant_resources_from_tuples(
+            [
+                (
+                    int(chosen.get("outputTypeID", 0)),
+                    int(chosen.get("outputModelID", 0)),
+                    max(1, int(chosen.get("outputNum", 1))) * count,
+                )
+            ],
+            source=f"box_choice:{box_gid}:{selected_model_id}",
+            tx_prefix=f"boxchoice:{self.profile_name}:{box_gid}:{selected_model_id}:{uuid.uuid4()}",
+        )
+        self._mark_goods_changed(box_gid)
         self.save()
         return {"BaseGetGameResourceList": base_res}
 
@@ -3382,6 +3710,8 @@ class ProfileStore:
         if not base_res:
             base_res = [{"PlayerAttr": [{"ResourceTypeSub": 1112, "Num": 0}, {"ResourceTypeSub": 1101, "Num": 0}]}]
 
+        if loot_success == 1:
+            self._inc_stat("treasure_loot_wins", 1)
         old_lv, new_lv = self._sync_level_from_exp()
         if new_lv != old_lv:
             self._last_rpc_context["lv_changed"] = True
@@ -3805,11 +4135,31 @@ class ProfileStore:
         self.save()
         return {"BaseGetGameResourceList": base_res}
 
+    def _resolve_charge_tier(self, identifier: Any) -> dict[str, Any] | None:
+        key = str(identifier).strip()
+        return next(
+            (
+                t
+                for t in CHARGE_TIERS
+                if str(t["ProductId"]) == key or str(t["ChargePoint"]) == key
+            ),
+            None,
+        )
+
     def _rpc_player_charge_generate_order(self, data: Any) -> str:
-        pid = str(data[0]) if isinstance(data, list) and data else CHARGE_TIERS[0]["ProductId"]
+        arg = data[0] if isinstance(data, list) and data else CHARGE_TIERS[0]["ProductId"]
+        tier = self._resolve_charge_tier(arg)
+        if not tier:
+            self._last_rpc_context["status"] = -1
+            return ""
         order_id = f"ORD-{uuid.uuid4().hex[:16]}"
-        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}})
-        cs.setdefault("orders", {})[order_id] = {"ProductId": pid, "ts": int(time.time())}
+        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}, "card_orders": {}})
+        cs.setdefault("orders", {})[order_id] = {
+            "ProductId": tier["ProductId"],
+            "ChargePoint": tier["ChargePoint"],
+            "status": "pending",
+            "ts": int(time.time()),
+        }
         self.save()
         return order_id
 
@@ -3821,7 +4171,7 @@ class ProfileStore:
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         p = self.state["player"]
-        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}})
+        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}, "card_orders": {}})
         bought = cs.setdefault("first_bought", [])
         pid = tier["ProductId"]
         is_first = pid not in bought
@@ -3852,40 +4202,47 @@ class ProfileStore:
         p["ChargeNum"] = int(p.get("ChargeNum", 0)) + base_diamonds
         if is_first:
             bought.append(pid)
+        self._sync_player_recover_times(p)
         self.save()
         return {
             "ProductId": pid,
             "DiamondAdded": total_diamonds,
             "VipEXPAdded": base_diamonds,
             "Vip": int(p.get("Vip", 0)),
+            "VIPLv": int(p.get("VIPLv", 0)),
+            "VipEXP": int(p.get("VipEXP", 0)),
             "Diamond": int(p.get("Diamond", 0)),
             "ChargeNum": int(p["ChargeNum"]),
         }
 
     def _rpc_player_charge_confirm_order(self, data: Any) -> dict[str, Any]:
-        arg = data[0] if isinstance(data, list) and data else CHARGE_TIERS[0]["ChargePoint"]
-        tier = next(
-            (
-                t
-                for t in CHARGE_TIERS
-                if str(t["ProductId"]) == str(arg) or str(t["ChargePoint"]) == str(arg)
-            ),
-            None,
-        )
+        if not isinstance(data, list) or not data:
+            self._last_rpc_context["status"] = -1
+            return {}
+        tier = self._resolve_charge_tier(data[0])
         if tier is None:
-            try:
-                pts = int(arg)
-                tier = {
-                    "ProductId": f"com.cmn.inuyasha.custom{pts}",
-                    "ChargePoint": pts,
-                    "GamePoint": pts,
-                    "GiveGamePoint": 0,
-                    "Ratio": 1,
-                }
-            except (TypeError, ValueError):
+            self._last_rpc_context["status"] = -1
+            return {}
+        order_id = str(data[1]).strip() if len(data) >= 2 and data[1] is not None else ""
+        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}, "card_orders": {}})
+        tx_key = None
+        if order_id:
+            ord_entry = cs.setdefault("orders", {}).get(order_id)
+            if not isinstance(ord_entry, dict) or ord_entry.get("ProductId") != tier["ProductId"]:
                 self._last_rpc_context["status"] = -1
                 return {}
-        return self._apply_simulated_charge(tier, actor="player", source="simulated_charge_rpc")
+            if ord_entry.get("status") == "completed":
+                self._last_rpc_context["status"] = -1136
+                return {}
+            ord_entry["status"] = "completed"
+            ord_entry["completed_at"] = int(time.time())
+            tx_key = f"order:{self.profile_name}:{order_id}"
+        return self._apply_simulated_charge(
+            tier,
+            actor="player",
+            source="simulated_charge_rpc",
+            idempotency_key=tx_key,
+        )
 
     def _card_list_payload(self) -> list[dict[str, Any]]:
         now = int(time.time())
@@ -3911,8 +4268,20 @@ class ProfileStore:
 
     def _rpc_card_generate_order(self, data: Any) -> dict[str, Any]:
         cid = int(data[0]) if isinstance(data, list) and data else 1
-        cfg = CARD_MODEL_CFG.get(cid, CARD_MODEL_CFG[1])
-        return {"ProductId": cfg["ProductId"], "OrderId": f"CARDORD-{uuid.uuid4().hex[:14]}"}
+        cfg = CARD_MODEL_CFG.get(cid)
+        if not cfg:
+            self._last_rpc_context["status"] = -1
+            return {}
+        order_id = f"CARDORD-{uuid.uuid4().hex[:14]}"
+        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}, "card_orders": {}})
+        cs.setdefault("card_orders", {})[order_id] = {
+            "CardId": cid,
+            "ProductId": cfg["ProductId"],
+            "status": "pending",
+            "ts": int(time.time()),
+        }
+        self.save()
+        return {"ProductId": cfg["ProductId"], "OrderId": order_id}
 
     def _rpc_card_activity(self, data: Any) -> list[dict[str, Any]]:
         cid = int(data[0]) if isinstance(data, list) and data else 1
@@ -3920,6 +4289,20 @@ class ProfileStore:
         if not cfg:
             self._last_rpc_context["status"] = -1
             return []
+        order_id = str(data[1]).strip() if isinstance(data, list) and len(data) >= 2 and data[1] is not None else ""
+        cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}, "card_orders": {}})
+        tx_key = f"cardact:{self.profile_name}:{self.state['player']['PlayerId']}:{cid}:{uuid.uuid4()}"
+        if order_id:
+            ord_entry = cs.setdefault("card_orders", {}).get(order_id)
+            if not isinstance(ord_entry, dict) or int(ord_entry.get("CardId", 0)) != cid:
+                self._last_rpc_context["status"] = -1
+                return []
+            if ord_entry.get("status") == "completed":
+                self._last_rpc_context["status"] = -1136
+                return []
+            ord_entry["status"] = "completed"
+            ord_entry["completed_at"] = int(time.time())
+            tx_key = f"cardact:{self.profile_name}:{order_id}"
         now = int(time.time())
         cards = self.state.setdefault("month_cards", {})
         cur = cards.get(str(cid), {})
@@ -3937,9 +4320,10 @@ class ProfileStore:
             "VipEXP",
             int(cfg["price"]),
             source=f"card_activity:{cid}",
-            idempotency_key=f"cardact:{self.profile_name}:{p['PlayerId']}:{cid}:{uuid.uuid4()}",
+            idempotency_key=tx_key,
         )
         p["ChargeNum"] = int(p.get("ChargeNum", 0)) + int(cfg["price"])
+        self._sync_player_recover_times(p)
         self.save()
         return self._card_list_payload()
 
@@ -4022,6 +4406,11 @@ class ProfileStore:
             if clv in (1, 2, 3):
                 compose_buckets[clv] = compose_buckets.get(clv, 0) + 1
         can_compose_equip = any(cnt >= 5 for cnt in compose_buckets.values())
+        st_payload = self._build_success_target_info() if lv >= 11 else {}
+        has_success_claim = any(
+            int(item.get("Sequence", 0)) > len([x for x in str(item.get("DrawNums", "")).split(",") if x.strip()])
+            for item in st_payload.get("TargetList", [])
+        )
 
         return {
             "1400": 1 if can_compose_equip else 0,
@@ -4030,7 +4419,345 @@ class ProfileStore:
             "2205": 1 if (lv >= 18 and claimable_box) else 0,
             "2710": 1 if can_fund else 0,
             "2718": 1 if can_startwork else 0,
+            "4900": 1 if has_success_claim else 0,
         }
+
+    # ------------------------- R7.4: SuccessTargetInfo (4900) -------------------------
+
+    def _success_target_metrics(self, cur_day: int) -> tuple[dict[int, int], list[tuple[dict[str, Any], dict[str, Any]]], list[tuple[dict[str, Any], dict[str, Any]]]]:
+        p = self.state["player"]
+        stats = self.state.setdefault("stats", dict(DEFAULT_PLAYER_STATS))
+        heroes_by_id = {str(h["Id"]): h for h in self.state.get("heroes", [])}
+        heroes_cfg = self.game_data.get("heroes", {})
+        equips_by_id = {str(e["Id"]): e for e in self.state.get("equips", [])}
+        equips_cfg = self.game_data.get("equips", {})
+        chapters = self.state.get("chapters", {})
+
+        deployed_heroes: list[tuple[dict[str, Any], dict[str, Any]]] = []
+        equipped_equips: list[tuple[dict[str, Any], dict[str, Any]]] = []
+        by_eq_slot: dict[str, list[dict[str, Any]]] = {"Weapon": [], "Helmet": [], "Clothes": [], "Necklace": []}
+
+        for slot in self.state.get("slots", []):
+            hid = str(slot.get("HeroId", ""))
+            if hid in heroes_by_id:
+                h = heroes_by_id[hid]
+                deployed_heroes.append((h, heroes_cfg.get(str(h.get("HeroModelId", 0)), {})))
+            for skey in ("Weapon", "Helmet", "Clothes", "Necklace"):
+                s_eq = slot.get(skey)
+                if isinstance(s_eq, dict) and s_eq.get("Id") in equips_by_id:
+                    eq = equips_by_id[s_eq["Id"]]
+                    cfg = equips_cfg.get(str(eq.get("EquipModelId", 0)), {})
+                    equipped_equips.append((eq, cfg))
+                    by_eq_slot[skey].append(eq)
+
+        cleared_ch = [int(cid) - 10 for cid, ch in chapters.items() if int(ch.get("IfPass", 0)) == 1]
+        max_chapter_idx = max(cleared_ch) if cleared_ch else max(0, int(self.state.get("battle", {}).get("MaxChapterId", 11)) - 11)
+        elite_cleared = [
+            int(nid) - 10
+            for nid, st in self.state.get("elite", {}).get("nodes", {}).items()
+            if int(st.get("Flag", 0)) >= 2
+        ]
+        top4_eq_scores = sorted(
+            [
+                int(cfg.get("colorLV", 1)) * 1000 + int(eq.get("Lv", 0)) * 50 + int(eq.get("ExtraCount", 0)) * 20
+                for eq, cfg in equipped_equips
+            ],
+            reverse=True,
+        )[:4]
+        slot_slot_names = {37: "Weapon", 38: "Helmet", 39: "Clothes", 40: "Necklace"}
+
+        scalars: dict[int, int] = {
+            1: max_chapter_idx,
+            2: int(p.get("Lv", 1)),
+            3: max(cur_day, int(self.state.get("gift_login", {}).get("login_days", 1))),
+            4: int(stats.get("soul_recruits", 0)),
+            5: max((int(eq.get("Lv", 0)) for eq, _ in equipped_equips), default=0),
+            6: sum(1 for _, hc in deployed_heroes if int(hc.get("quality", 0)) >= 15),
+            9: max(int(stats.get("explore_count", 0)), int(self.state.get("explore", {}).get("DailyNum", 0))),
+            10: int(stats.get("treasure_loot_wins", 0)),
+            11: int(stats.get("pvp_fights", 0)),
+            13: int(stats.get("pvp_wins", 0)),
+            14: max(elite_cleared, default=0),
+            15: sum(int(h.get("Lv", 1)) for h, _ in deployed_heroes),
+            16: int(stats.get("mystery_refresh", 0)),
+            17: int(stats.get("boss_fights", 0)),
+            18: sum(int(ch.get("StarCount", 0)) for ch in chapters.values()),
+            19: sum(top4_eq_scores) // max(1, len(top4_eq_scores)) if len(top4_eq_scores) >= 4 else 0,
+            22: int(stats.get("daydayfund_count", 0)),
+            23: int(stats.get("sta_pills_used", 0)),
+            24: int(stats.get("vit_pills_used", 0)),
+            25: int(stats.get("zcsf_count", 0)),
+            26: int(stats.get("mystery_treasure_count", 0)),
+            27: int(stats.get("teambattle_count", 0)),
+            29: sum(1 for _, hc in deployed_heroes if int(hc.get("quality", 0)) >= 15),
+            31: int(p.get("FAP", 0)),
+            32: int(stats.get("wish_points", 0)),
+            33: int(stats.get("mystery_treasure_max_dmg", 0)),
+            34: max(int(stats.get("equip_lvup_count", 0)), sum(int(eq.get("Lv", 0)) for eq, _ in equipped_equips)),
+            35: max(int(self.state.get("boss_battle", {}).get("jifen", 0)), int(p.get("BossCoin", 0))),
+            36: int(stats.get("jade_search_count", 0)),
+        }
+        for tid_eq, skey in slot_slot_names.items():
+            # Equip refine/star resonance milestone (e.g. 2/3 pieces refined or Lv >= 40)
+            scalars[tid_eq] = sum(1 for eq in by_eq_slot[skey] if int(eq.get("Lv", 0)) >= 40 or int(eq.get("ExtraCount", 0)) >= 1)
+        return scalars, equipped_equips, deployed_heroes
+
+    def _evaluate_success_row(
+        self,
+        tid: int,
+        row: dict[str, Any],
+        scalars: dict[int, int],
+        equipped_equips: list[tuple[dict[str, Any], dict[str, Any]]],
+        deployed_heroes: list[tuple[dict[str, Any], dict[str, Any]]],
+    ) -> tuple[bool, int]:
+        c1 = int(row.get("completeCondition1", 0))
+        c2 = int(row.get("completeCondition2", 0))
+        if c2 > 0:
+            if tid == 5:
+                val = sum(1 for eq, _ in equipped_equips if int(eq.get("Lv", 0)) >= c2)
+            elif tid == 6:
+                val = sum(1 for h, hc in deployed_heroes if int(hc.get("quality", 0)) >= 15 and int(h.get("Step", 0)) >= c2)
+            elif tid == 29:
+                val = sum(1 for h, hc in deployed_heroes if int(hc.get("quality", 0)) >= 15 and int(h.get("Lv", 0)) >= c2)
+            else:
+                val = scalars.get(tid, 0)
+            return val >= c1, val
+        val = scalars.get(tid, 0)
+        return val >= c1, val
+
+    def _build_success_target_info(self) -> dict[str, Any]:
+        now = int(time.time())
+        st = self.state.setdefault(
+            "success_target",
+            {"start_ts": now, "drawn": {}, "drawn_days": [], "if_draw": 0, "exchange_counts": {}},
+        )
+        start_ts = int(st.get("start_ts", now))
+        cur_day = max(1, 1 + max(0, now - start_ts) // 86400)
+        if_draw = int(st.get("if_draw", 0))
+        end_date = start_ts + 7 * 86400
+
+        scalars, equipped_equips, deployed_heroes = self._success_target_metrics(cur_day)
+        model_tbl = self.game_data.get("success_target_model", {})
+        reward_tbl = self.game_data.get("success_target_reward", {})
+        drawn_map = st.get("drawn", {})
+
+        target_list: list[dict[str, Any]] = []
+        day_finish: dict[int, int] = {d: 0 for d in range(1, 8)}
+        day_total: dict[int, int] = {d: 0 for d in range(1, 8)}
+
+        for tid_str in sorted(model_tbl.keys(), key=lambda x: int(x)):
+            tid = int(tid_str)
+            rows = sorted(reward_tbl.get(tid_str, []), key=lambda r: int(r.get("sequence", 0)))
+            drawn_seqs = [int(x) for x in drawn_map.get(tid_str, [])]
+            seq_info: dict[str, int] = {}
+            completed_count = 0
+
+            for row in rows:
+                seq = int(row.get("sequence", 0))
+                aday = int(row.get("appearDay", 1))
+                done, val = self._evaluate_success_row(tid, row, scalars, equipped_equips, deployed_heroes)
+                seq_info[str(seq)] = val
+                if 1 <= aday <= 7:
+                    day_total[aday] += 1
+                    if done:
+                        day_finish[aday] += 1
+                unlocked = (aday <= 7 and aday <= cur_day) or (aday == 8 and (if_draw == 1 or cur_day >= 8))
+                if unlocked and done:
+                    completed_count += 1
+
+            target_list.append(
+                {
+                    "TargetId": tid,
+                    "Sequence": completed_count,
+                    "ReachedNum": scalars.get(tid, 0),
+                    "DrawNums": ",".join(str(x) for x in sorted(set(drawn_seqs))),
+                    "SequenceInfo": seq_info,
+                }
+            )
+
+        drawn_days = set(int(d) for d in st.get("drawn_days", []))
+        draw_day = [
+            {
+                "Day": d,
+                "FinishTargetCount": day_finish[d],
+                "TotalTargetCount": max(1, day_total[d]),
+            }
+            for d in range(1, min(7, cur_day) + 1)
+            if d not in drawn_days
+        ]
+        cur_cap_day = min(7, cur_day)
+        return {
+            "Day": cur_day,
+            "EndDate": end_date,
+            "IfDraw": if_draw,
+            "FinishTargetCount": day_finish.get(cur_cap_day, 0),
+            "TotalTargetCount": max(1, day_total.get(cur_cap_day, 1)),
+            "DrawDay": draw_day,
+            "TargetList": target_list,
+        }
+
+    def _rpc_success_target_get_info(self, _data: Any) -> dict[str, Any]:
+        return self._build_success_target_info()
+
+    def _rpc_success_target_draw_reward(self, data: Any) -> dict[str, Any]:
+        if not isinstance(data, list) or len(data) < 2:
+            self._last_rpc_context["status"] = -1
+            return {}
+        tid = int(data[0])
+        seq = int(data[1])
+        info = self._build_success_target_info()
+        cur_day = int(info["Day"])
+        if_draw = int(info["IfDraw"])
+        rows = self.game_data.get("success_target_reward", {}).get(str(tid), [])
+        row = next((r for r in rows if int(r.get("sequence", 0)) == seq), None)
+        if not row:
+            self._last_rpc_context["status"] = -1
+            return {}
+        aday = int(row.get("appearDay", 1))
+        unlocked = (aday <= 7 and aday <= cur_day) or (aday == 8 and (if_draw == 1 or cur_day >= 8))
+        st = self.state["success_target"]
+        drawn = st.setdefault("drawn", {}).setdefault(str(tid), [])
+        if not unlocked or seq in drawn:
+            self._last_rpc_context["status"] = -1
+            return {}
+        scalars, equipped_equips, deployed_heroes = self._success_target_metrics(cur_day)
+        done, _ = self._evaluate_success_row(tid, row, scalars, equipped_equips, deployed_heroes)
+        if not done:
+            self._last_rpc_context["status"] = -1
+            return {}
+        drawn.append(seq)
+        base_res = self._grant_resources_from_tuples(
+            _parse_resource_str(str(row.get("resourceList", ""))),
+            source=f"success_target:{tid}:{seq}",
+            tx_prefix=f"successtarget:{self.profile_name}:{tid}:{seq}",
+        )
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _rpc_success_target_draw_total_reward(self, _data: Any) -> dict[str, Any]:
+        info = self._build_success_target_info()
+        st = self.state["success_target"]
+        if int(st.get("if_draw", 0)) == 1:
+            self._last_rpc_context["status"] = -1
+            return {}
+        time_tbl = self.game_data.get("success_time_model", {})
+        tuples: list[tuple[int, int, int]] = []
+        drawn_days = set(int(d) for d in st.get("drawn_days", []))
+        for d_entry in info.get("DrawDay", []):
+            day = int(d_entry["Day"])
+            if day in drawn_days:
+                continue
+            t_cfg = next((v for v in time_tbl.values() if int(v.get("openDay", 0)) == day and not v.get("isSuccess")), None)
+            if t_cfg and int(d_entry.get("FinishTargetCount", 0)) > 0:
+                res_list = _parse_resource_str(str(t_cfg.get("resourceList", "")))
+                if res_list:
+                    rt, rm, rn = res_list[0]
+                    scaled = math.ceil(int(d_entry["FinishTargetCount"]) / max(1, int(d_entry["TotalTargetCount"])) * rn)
+                    if scaled > 0:
+                        tuples.append((rt, rm, scaled))
+            drawn_days.add(day)
+        st["drawn_days"] = sorted(drawn_days)
+        st["if_draw"] = 1
+        base_res = self._grant_resources_from_tuples(
+            tuples,
+            source="success_target_total",
+            tx_prefix=f"successtarget_total:{self.profile_name}:{self.state['player']['PlayerId']}",
+        )
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+    def _iter_success_purchase_rows(self) -> list[dict[str, Any]]:
+        purchase_tbl = self.game_data.get("success_purchase_model", {})
+        rows: list[dict[str, Any]] = []
+        for val in purchase_tbl.values():
+            if not isinstance(val, dict):
+                continue
+            if "day" in val and "sequence" in val:
+                rows.append(val)
+            else:
+                for sub in val.values():
+                    if isinstance(sub, dict) and "day" in sub and "sequence" in sub:
+                        rows.append(sub)
+        return sorted(rows, key=lambda r: (int(r.get("day", 1)), int(r.get("sequence", 1))))
+
+    def _rpc_success_target_get_exchange_info(self, _data: Any) -> dict[str, Any]:
+        now = int(time.time())
+        st = self.state.setdefault(
+            "success_target",
+            {"start_ts": now, "drawn": {}, "drawn_days": [], "if_draw": 0, "exchange_counts": {}},
+        )
+        end_date = int(st.get("start_ts", now)) + 7 * 86400
+        ex_counts = st.get("exchange_counts", {})
+        by_day: list[list[dict[str, Any]]] = [[] for _ in range(7)]
+        for row in self._iter_success_purchase_rows():
+            d = int(row.get("day", 1))
+            seq = int(row.get("sequence", 1))
+            if 1 <= d <= 7:
+                cnt = int(ex_counts.get(f"{d}:{seq}", 0))
+                by_day[d - 1].append({"Sequence": seq, "GlobalNum": cnt, "PersonalNum": cnt})
+        return {"EndDate": end_date, "ActivityList": by_day}
+
+    def _rpc_success_target_exchange(self, data: Any) -> dict[str, Any]:
+        if not isinstance(data, list) or len(data) < 2:
+            self._last_rpc_context["status"] = -1
+            return {}
+        day = int(data[0])
+        seq = int(data[1])
+        row = next(
+            (r for r in self._iter_success_purchase_rows() if int(r.get("day", 0)) == day and int(r.get("sequence", 0)) == seq),
+            None,
+        )
+        if not row:
+            self._last_rpc_context["status"] = -1
+            return {}
+        p = self.state["player"]
+        cur_vip = int(p.get("VIPLv", p.get("Vip", 0)))
+        if int(p.get("Lv", 1)) < int(row.get("needLv", 1)) or cur_vip < int(row.get("needVipLv", 0)):
+            self._last_rpc_context["status"] = -1
+            return {}
+        st = self.state["success_target"]
+        ex_counts = st.setdefault("exchange_counts", {})
+        key = f"{day}:{seq}"
+        cur_cnt = int(ex_counts.get(key, 0))
+        if cur_cnt >= int(row.get("singleMax", 1)) or cur_cnt >= int(row.get("serverMax", 1)):
+            self._last_rpc_context["status"] = -1
+            return {}
+        costs = _parse_resource_str(str(row.get("needresourceList", "")))
+        attr_map = {1111: "Diamond", 1112: "Gold", 1115: "PVPCoin", 1116: "HeroCoin", 1120: "BossCoin"}
+        for rt, rm, rn in costs:
+            if rn <= 0:
+                continue
+            if rt in attr_map:
+                field = attr_map[rt]
+                if int(self.state["player"].get(field, 0)) < rn:
+                    self._last_rpc_context["status"] = -1105 if rt == 1111 else -1
+                    return {}
+            elif rt >= 1500:
+                g = next((x for x in self.state.get("goods", []) if int(x.get("GoodsModelId", 0)) == rm), None)
+                if not g or int(g.get("Num", 0)) < rn:
+                    self._last_rpc_context["status"] = -1
+                    return {}
+        for rt, rm, rn in costs:
+            if rn <= 0:
+                continue
+            if rt in attr_map:
+                self.ledger.apply_player_delta(
+                    self.state["player"],
+                    self.profile_name,
+                    attr_map[rt],
+                    -rn,
+                    source=f"success_exchange:{day}:{seq}",
+                )
+            elif rt >= 1500:
+                self._consume_goods(rm, rn)
+        ex_counts[key] = cur_cnt + 1
+        base_res = self._grant_resources_from_tuples(
+            _parse_resource_str(str(row.get("resourceList", ""))),
+            source=f"success_exchange:{day}:{seq}",
+            tx_prefix=f"success_ex:{self.profile_name}:{day}:{seq}:{uuid.uuid4()}",
+        )
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
 
     def _sync_boss_battle_state(self) -> dict[str, Any]:
         """Recover LuckBoss attack charges over time and prune defeated/expired bosses."""
@@ -4294,6 +5021,7 @@ class ProfileStore:
             self._last_rpc_context["lv_changed"] = True
             self._last_rpc_context["slots_changed"] = True
 
+        self._inc_stat("boss_fights", need_atk)
         self.save()
         return {
             "HurtValue": hurt,
@@ -4853,6 +5581,9 @@ class ProfileStore:
         self.ledger.apply_player_delta(p, self.profile_name, "STA", -sta_cost, source=f"pvp_sta:{target_rank}")
         outcome = simulate_fight_info(fight_info, self.game_data["attacks"])
         is_win = 1 if outcome.won else 0
+        self._inc_stat("pvp_fights", 1)
+        if is_win:
+            self._inc_stat("pvp_wins", 1)
 
         old_rank = int(pvp.get("rank", 1500))
         old_max_rank = int(pvp.get("history_max_rank", old_rank))
@@ -5044,6 +5775,7 @@ class ProfileStore:
         df["last_multiple"] = mult
         df["cooled_time"] = 0
         df["if_draw"] = False
+        self._inc_stat("daydayfund_count", 1)
         self.save()
         return {
             "Multiple": mult,
@@ -5358,23 +6090,25 @@ class ProfileStore:
         return out
 
     def _mystery_shop_state(self, senior: bool = False) -> dict[str, Any]:
+        vip_lv = int(self.state["player"].get("VIPLv", self.state["player"].get("Vip", 0)))
+        vip_cfg = self.game_data.get("vip_model", {}).get(str(vip_lv), {})
+        free_max = max(1, int(vip_cfg.get("freeRefreshMysteryShopMaxNum", 2)))
+        max_refresh = int(vip_cfg.get("refreshMysteryShopMaxNum", 10 + vip_lv * 5))
         ms = self.state.setdefault(
             "mystery_shop",
-            {"normal": None, "senior": None, "free_date": "", "free_count": 1, "gold_count": 0},
+            {"normal": None, "senior": None, "free_date": "", "free_count": free_max, "gold_count": 0},
         )
         today = time.strftime("%Y-%m-%d")
         if ms.get("free_date") != today:
             ms["free_date"] = today
-            ms["free_count"] = 1
+            ms["free_count"] = free_max
             ms["gold_count"] = 0
         key = "senior" if senior else "normal"
         if not ms.get(key):
             ms[key] = self._build_mystery_shop_items(1 if senior else 0)
             self.save()
-        vip_lv = int(self.state["player"].get("Vip", 0))
-        max_refresh = 20 + vip_lv * 5
         return {
-            "FreeCount": int(ms.get("free_count", 1)),
+            "FreeCount": int(ms.get("free_count", free_max)),
             "GoldCount": int(ms.get("gold_count", 0)),
             "RefreshMysteryShopMaxNum": max_refresh,
             "MysteryShopGoodsList": ms[key],
@@ -5425,6 +6159,7 @@ class ProfileStore:
             ms["gold_count"] = int(ms.get("gold_count", 0)) + 1
 
         ms["senior" if senior else "normal"] = self._build_mystery_shop_items(1 if senior else 0)
+        self._inc_stat("mystery_refresh", 1)
         self.save()
         return self._mystery_shop_state(senior=senior)
 

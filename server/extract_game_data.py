@@ -118,6 +118,27 @@ def parse_vip_buy_limit(path: str) -> dict[str, dict[str, dict[str, Any]]]:
     return out
 
 
+def parse_success_target_rewards(path: str) -> dict[str, list[dict[str, Any]]]:
+    """Parse 3-level `SuccessTargetRewardRelation` `[targetID][sequence][appearDay]` into `{targetID: [rows...]}`."""
+    if not os.path.exists(path):
+        return {}
+    text = open(path, "r", encoding="utf-8", errors="replace").read()
+    m = re.search(r"\bitems\s*=\s*\{", text)
+    if not m:
+        return {}
+    body = text[m.end() :]
+    leaf_re = re.compile(r"^\s{16}\[\d+\]\s*=\s*\{(.*?)^\s{16}\}", re.M | re.S)
+    by_target: dict[str, list[dict[str, Any]]] = {}
+    for lm in leaf_re.finditer(body):
+        fields = _parse_fields(lm.group(1), indent=20)
+        tid = fields.get("targetID")
+        if tid is not None:
+            by_target.setdefault(str(int(tid)), []).append(fields)
+    for rows in by_target.values():
+        rows.sort(key=lambda r: (int(r.get("appearDay", 0)), int(r.get("sequence", 0))))
+    return by_target
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Extract InuYasha Lua config tables to game_data.json")
     parser.add_argument("--client", choices=["vn", "en"], default="vn", help="Source Lua config tree")
@@ -214,6 +235,16 @@ def main() -> None:
     mystery_shop_fixed = parse_simple_lua_items(os.path.join(cfg_dir, "MysteryshopFixedRelation.lua"))
     mystery_shop_odds = parse_simple_lua_items(os.path.join(cfg_dir, "MysteryshopOddsPseudoRelation.lua"))
 
+    shop_vip_gift = parse_simple_lua_items(os.path.join(cfg_dir, "ShopVipGiftModel.lua"))
+    vip_slot_relation = parse_simple_lua_items(os.path.join(cfg_dir, "VipSlotRelation.lua"))
+    charge_config = parse_array_lua_items(os.path.join(cfg_dir, "ChargeConfig.lua"), id_key="num")
+    card_model = parse_simple_lua_items(os.path.join(cfg_dir, "CardModel.lua"))
+    timed_recruit_model = parse_simple_lua_items(os.path.join(cfg_dir, "TimedRecruitModel.lua"))
+    success_target_model = parse_simple_lua_items(os.path.join(cfg_dir, "SuccessTargetModel.lua"))
+    success_target_reward = parse_success_target_rewards(os.path.join(cfg_dir, "SuccessTargetRewardRelation.lua"))
+    success_time_model = parse_simple_lua_items(os.path.join(cfg_dir, "SuccessTimeModel.lua"))
+    success_purchase_model = parse_nested_lua_items(os.path.join(cfg_dir, "SuccessPurchaseModel.lua"))
+
     data = {
         "source": source_label,
         "counts": {
@@ -253,6 +284,15 @@ def main() -> None:
             "gift_lv": len(gift_lv),
             "mystery_shop_fixed": len(mystery_shop_fixed),
             "mystery_shop_odds": len(mystery_shop_odds),
+            "shop_vip_gift": len(shop_vip_gift),
+            "vip_slot_relation": len(vip_slot_relation),
+            "charge_config": len(charge_config),
+            "card_model": len(card_model),
+            "timed_recruit_model": len(timed_recruit_model),
+            "success_target_model": len(success_target_model),
+            "success_target_reward": sum(len(v) for v in success_target_reward.values()),
+            "success_time_model": len(success_time_model),
+            "success_purchase_model": sum(len(v) for v in success_purchase_model.values()),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -314,6 +354,15 @@ def main() -> None:
         "mystery_shop_config": mystery_shop_config,
         "mystery_shop_fixed": mystery_shop_fixed,
         "mystery_shop_odds": mystery_shop_odds,
+        "shop_vip_gift": shop_vip_gift,
+        "vip_slot_relation": vip_slot_relation,
+        "charge_config": charge_config,
+        "card_model": card_model,
+        "timed_recruit_model": timed_recruit_model,
+        "success_target_model": success_target_model,
+        "success_target_reward": success_target_reward,
+        "success_time_model": success_time_model,
+        "success_purchase_model": success_purchase_model,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

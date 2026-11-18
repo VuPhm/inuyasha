@@ -36,7 +36,16 @@
     "gift_login": 7,
     "gift_lv": 20,
     "mystery_shop_fixed": 8,
-    "mystery_shop_odds": 138
+    "mystery_shop_odds": 138,
+    "shop_vip_gift": 21,
+    "vip_slot_relation": 4,
+    "charge_config": 3,
+    "card_model": 1,
+    "timed_recruit_model": 6,
+    "success_target_model": 42,
+    "success_target_reward": 327,
+    "success_time_model": 8,
+    "success_purchase_model": 14
   },
   "player_config": {
     "initLv": 1,
@@ -265177,6 +265186,3583 @@
       "outResource": "1501,15010061,50",
       "useResource": "1116,0,1500",
       "odds": 1000
+    }
+  },
+  "shop_vip_gift": {
+    "0": {
+      "ID": 0,
+      "serverGroupID": 0,
+      "goodsModelID": 16010001,
+      "sellTypeID": 1111,
+      "initPrice": 148,
+      "currPrice": 18
+    },
+    "1": {
+      "ID": 1,
+      "serverGroupID": 0,
+      "goodsModelID": 16010002,
+      "sellTypeID": 1111,
+      "initPrice": 248,
+      "currPrice": 58
+    },
+    "2": {
+      "ID": 2,
+      "serverGroupID": 0,
+      "goodsModelID": 16010003,
+      "sellTypeID": 1111,
+      "initPrice": 488,
+      "currPrice": 98
+    },
+    "3": {
+      "ID": 3,
+      "serverGroupID": 0,
+      "goodsModelID": 16010004,
+      "sellTypeID": 1111,
+      "initPrice": 938,
+      "currPrice": 198
+    },
+    "4": {
+      "ID": 4,
+      "serverGroupID": 0,
+      "goodsModelID": 16010005,
+      "sellTypeID": 1111,
+      "initPrice": 1488,
+      "currPrice": 298
+    },
+    "5": {
+      "ID": 5,
+      "serverGroupID": 0,
+      "goodsModelID": 16010006,
+      "sellTypeID": 1111,
+      "initPrice": 1988,
+      "currPrice": 498
+    },
+    "6": {
+      "ID": 6,
+      "serverGroupID": 0,
+      "goodsModelID": 16010007,
+      "sellTypeID": 1111,
+      "initPrice": 2818,
+      "currPrice": 688
+    },
+    "7": {
+      "ID": 7,
+      "serverGroupID": 0,
+      "goodsModelID": 16010008,
+      "sellTypeID": 1111,
+      "initPrice": 3638,
+      "currPrice": 888
+    },
+    "8": {
+      "ID": 8,
+      "serverGroupID": 0,
+      "goodsModelID": 16010009,
+      "sellTypeID": 1111,
+      "initPrice": 4718,
+      "currPrice": 1888
+    },
+    "9": {
+      "ID": 9,
+      "serverGroupID": 0,
+      "goodsModelID": 16010010,
+      "sellTypeID": 1111,
+      "initPrice": 10548,
+      "currPrice": 2488
+    },
+    "10": {
+      "ID": 10,
+      "serverGroupID": 0,
+      "goodsModelID": 16010011,
+      "sellTypeID": 1111,
+      "initPrice": 12768,
+      "currPrice": 3288
+    },
+    "11": {
+      "ID": 11,
+      "serverGroupID": 0,
+      "goodsModelID": 16010012,
+      "sellTypeID": 1111,
+      "initPrice": 14432,
+      "currPrice": 3988
+    },
+    "12": {
+      "ID": 12,
+      "serverGroupID": 0,
+      "goodsModelID": 16010013,
+      "sellTypeID": 1111,
+      "initPrice": 16748,
+      "currPrice": 5588
+    },
+    "13": {
+      "ID": 13,
+      "serverGroupID": 0,
+      "goodsModelID": 16010014,
+      "sellTypeID": 1111,
+      "initPrice": 21098,
+      "currPrice": 5788
+    },
+    "14": {
+      "ID": 14,
+      "serverGroupID": 0,
+      "goodsModelID": 16010015,
+      "sellTypeID": 1111,
+      "initPrice": 23698,
+      "currPrice": 5988
+    },
+    "15": {
+      "ID": 15,
+      "serverGroupID": 0,
+      "goodsModelID": 16010016,
+      "sellTypeID": 1111,
+      "initPrice": 25468,
+      "currPrice": 6488
+    },
+    "16": {
+      "ID": 16,
+      "serverGroupID": 0,
+      "goodsModelID": 16010017,
+      "sellTypeID": 1111,
+      "initPrice": 27088,
+      "currPrice": 6988
+    },
+    "17": {
+      "ID": 17,
+      "serverGroupID": 0,
+      "goodsModelID": 16010018,
+      "sellTypeID": 1111,
+      "initPrice": 32768,
+      "currPrice": 7488
+    },
+    "18": {
+      "ID": 18,
+      "serverGroupID": 0,
+      "goodsModelID": 16010019,
+      "sellTypeID": 1111,
+      "initPrice": 36658,
+      "currPrice": 7988
+    },
+    "19": {
+      "ID": 19,
+      "serverGroupID": 0,
+      "goodsModelID": 16010020,
+      "sellTypeID": 1111,
+      "initPrice": 39598,
+      "currPrice": 8888
+    },
+    "20": {
+      "ID": 20,
+      "serverGroupID": 0,
+      "goodsModelID": 16010021,
+      "sellTypeID": 1111,
+      "initPrice": 48888,
+      "currPrice": 9888
+    }
+  },
+  "vip_slot_relation": {
+    "9": {
+      "slotId": 9,
+      "LV": 1
+    },
+    "10": {
+      "slotId": 10,
+      "LV": 5
+    },
+    "11": {
+      "slotId": 11,
+      "LV": 12
+    },
+    "12": {
+      "slotId": 12,
+      "LV": 14
+    }
+  },
+  "charge_config": {
+    "60": {
+      "num": 60,
+      "name": "至尊首充",
+      "rewardResouceList": "1606,16060026,1||1602,16020021,1||1605,16050010,10||1603,16030006,1||1603,16030008,1||1605,16050001,200||1112,0,200000",
+      "numView": 18000
+    },
+    "300": {
+      "num": 300,
+      "name": "地至尊首充",
+      "rewardResouceList": "1302,13020413,1||1303,13030413,1||1605,16050010,20||1603,16030006,2||1603,16030008,3||1605,16050001,500||1112,0,300000",
+      "numView": 90000
+    },
+    "900": {
+      "num": 900,
+      "name": "天至尊首充",
+      "rewardResouceList": "1606,16060019,1||1605,16050010,30||1603,16030008,10||1605,16050001,1000||1112,0,500000",
+      "numView": 270000
+    }
+  },
+  "card_model": {
+    "1": {
+      "ID": 1,
+      "name": "90000",
+      "price": 90000,
+      "continueTime": 30,
+      "buyAgainLeftTimeMax": 120,
+      "dailyReward": "1111,0,100",
+      "buyReward": "1111,0,268"
+    }
+  },
+  "timed_recruit_model": {
+    "81": {
+      "activityEnumID": 81,
+      "freeRecruitCD": 72000,
+      "recruitPrice": 280,
+      "needCredit": 60,
+      "perRecruitGetCredit": 10,
+      "outputLowHeroR": 9000,
+      "outputHighHeroIntervalNum": 9,
+      "globalOutputNeedNum": 300,
+      "globalOutputVIPMax": 11,
+      "goldHeroModelID": 16060008,
+      "receiveBlessNum": 500,
+      "blessNumMax": 500,
+      "startBlessLimit": 600,
+      "firstBless": 320,
+      "firstBlessR": 0.7,
+      "blessOddsR": 0.00014,
+      "limitNum": 500,
+      "btnPic": "sy_147"
+    },
+    "82": {
+      "activityEnumID": 82,
+      "freeRecruitCD": 72000,
+      "recruitPrice": 280,
+      "needCredit": 60,
+      "perRecruitGetCredit": 10,
+      "outputLowHeroR": 9000,
+      "outputHighHeroIntervalNum": 9,
+      "globalOutputNeedNum": 300,
+      "globalOutputVIPMax": 11,
+      "goldHeroModelID": 16060009,
+      "receiveBlessNum": 500,
+      "blessNumMax": 500,
+      "startBlessLimit": 600,
+      "firstBless": 320,
+      "firstBlessR": 0.7,
+      "blessOddsR": 0.00014,
+      "limitNum": 500,
+      "btnPic": "sy_148"
+    },
+    "83": {
+      "activityEnumID": 83,
+      "freeRecruitCD": 72000,
+      "recruitPrice": 280,
+      "needCredit": 60,
+      "perRecruitGetCredit": 10,
+      "outputLowHeroR": 9000,
+      "outputHighHeroIntervalNum": 9,
+      "globalOutputNeedNum": 300,
+      "globalOutputVIPMax": 11,
+      "goldHeroModelID": 16060034,
+      "receiveBlessNum": 500,
+      "blessNumMax": 500,
+      "startBlessLimit": 600,
+      "firstBless": 320,
+      "firstBlessR": 0.7,
+      "blessOddsR": 0.00014,
+      "limitNum": 500,
+      "btnPic": "sy_154"
+    },
+    "84": {
+      "activityEnumID": 84,
+      "freeRecruitCD": 72000,
+      "recruitPrice": 280,
+      "needCredit": 60,
+      "perRecruitGetCredit": 10,
+      "outputLowHeroR": 9000,
+      "outputHighHeroIntervalNum": 9,
+      "globalOutputNeedNum": 300,
+      "globalOutputVIPMax": 11,
+      "goldHeroModelID": 16060037,
+      "receiveBlessNum": 500,
+      "blessNumMax": 500,
+      "startBlessLimit": 600,
+      "firstBless": 320,
+      "firstBlessR": 0.7,
+      "blessOddsR": 0.00014,
+      "limitNum": 500,
+      "btnPic": ""
+    },
+    "85": {
+      "activityEnumID": 85,
+      "freeRecruitCD": 72000,
+      "recruitPrice": 280,
+      "needCredit": 60,
+      "perRecruitGetCredit": 10,
+      "outputLowHeroR": 9000,
+      "outputHighHeroIntervalNum": 9,
+      "globalOutputNeedNum": 300,
+      "globalOutputVIPMax": 11,
+      "goldHeroModelID": 16060038,
+      "receiveBlessNum": 500,
+      "blessNumMax": 500,
+      "startBlessLimit": 600,
+      "firstBless": 320,
+      "firstBlessR": 0.7,
+      "blessOddsR": 0.00014,
+      "limitNum": 500,
+      "btnPic": ""
+    },
+    "86": {
+      "activityEnumID": 86,
+      "freeRecruitCD": 72000,
+      "recruitPrice": 280,
+      "needCredit": 60,
+      "perRecruitGetCredit": 10,
+      "outputLowHeroR": 9000,
+      "outputHighHeroIntervalNum": 9,
+      "globalOutputNeedNum": 300,
+      "globalOutputVIPMax": 11,
+      "goldHeroModelID": 16060039,
+      "receiveBlessNum": 500,
+      "blessNumMax": 500,
+      "startBlessLimit": 600,
+      "firstBless": 320,
+      "firstBlessR": 0.7,
+      "blessOddsR": 0.00014,
+      "limitNum": 500,
+      "btnPic": ""
+    }
+  },
+  "success_target_model": {
+    "1": {
+      "targetID": 1,
+      "modelID": 4901,
+      "name": "Cao Thủ Đi Ải",
+      "reachedIntroFormat": "Vượt ải Chương %s",
+      "jumpModuleID": 2201,
+      "isUse": true
+    },
+    "2": {
+      "targetID": 2,
+      "modelID": 4902,
+      "name": "Trùm Đua Cấp",
+      "reachedIntroFormat": "Đạt Lv%s",
+      "jumpModuleID": 2201,
+      "isUse": true
+    },
+    "3": {
+      "targetID": 3,
+      "modelID": 4903,
+      "name": "Siêng Login",
+      "reachedIntroFormat": "Ngày thứ %s",
+      "jumpModuleID": 0,
+      "isUse": true
+    },
+    "4": {
+      "targetID": 4,
+      "modelID": 4904,
+      "name": "Triệu Hồi Linh Hồn",
+      "reachedIntroFormat": "Triệu Hồi %s lần",
+      "jumpModuleID": 3801,
+      "isUse": true
+    },
+    "5": {
+      "targetID": 5,
+      "modelID": 4905,
+      "name": "Trùm Cường Hóa",
+      "reachedIntroFormat": "%s món trang bị cường hóa đạt Lv%s",
+      "jumpModuleID": 1401,
+      "isUse": true
+    },
+    "6": {
+      "targetID": 6,
+      "modelID": 4906,
+      "name": "Cao Thủ Đột Phá",
+      "reachedIntroFormat": "Ra trận %s Tướng Cam +%s",
+      "jumpModuleID": 1102,
+      "isUse": true
+    },
+    "7": {
+      "targetID": 7,
+      "modelID": 4907,
+      "name": "Đồng Đội",
+      "reachedIntroFormat": "%s người ra trận",
+      "jumpModuleID": 2302,
+      "isUse": false
+    },
+    "8": {
+      "targetID": 8,
+      "modelID": 4907,
+      "name": "Đồng Đội",
+      "reachedIntroFormat": "%s đồng đội ra trận",
+      "jumpModuleID": 2302,
+      "isUse": false
+    },
+    "9": {
+      "targetID": 9,
+      "modelID": 4908,
+      "name": "Ngộ Đạo",
+      "reachedIntroFormat": "Ngộ Đạo %s lần",
+      "jumpModuleID": 2302,
+      "isUse": true
+    },
+    "10": {
+      "targetID": 10,
+      "modelID": 4909,
+      "name": "Đoạt Bảo",
+      "reachedIntroFormat": "Đoạt %s mảnh Bảo Vật",
+      "jumpModuleID": 2501,
+      "isUse": true
+    },
+    "11": {
+      "targetID": 11,
+      "modelID": 4910,
+      "name": "Cao Thủ Quyết Đấu",
+      "reachedIntroFormat": "Khiêu chiến Đấu Trường %s lần",
+      "jumpModuleID": 2502,
+      "isUse": true
+    },
+    "12": {
+      "targetID": 12,
+      "modelID": 4911,
+      "name": "Triệu Hồi Tr.Bị",
+      "reachedIntroFormat": "Triệu Hồi %s lần",
+      "jumpModuleID": 3802,
+      "isUse": false
+    },
+    "13": {
+      "targetID": 13,
+      "modelID": 4912,
+      "name": "Bá Chủ",
+      "reachedIntroFormat": "Thắng %s lần khiêu chiến",
+      "jumpModuleID": 2504,
+      "isUse": true
+    },
+    "14": {
+      "targetID": 14,
+      "modelID": 4913,
+      "name": "PB Tinh Anh",
+      "reachedIntroFormat": "Vượt ải PB Tinh Anh %s",
+      "jumpModuleID": 2202,
+      "isUse": true
+    },
+    "15": {
+      "targetID": 15,
+      "modelID": 4914,
+      "name": "Tín Đồ",
+      "reachedIntroFormat": "Tổng Lv đạt Lv%s",
+      "jumpModuleID": 2301,
+      "isUse": true
+    },
+    "16": {
+      "targetID": 16,
+      "modelID": 4915,
+      "name": "Shop Bí Ẩn",
+      "reachedIntroFormat": "Làm mới %s lần",
+      "jumpModuleID": 2100,
+      "isUse": true
+    },
+    "17": {
+      "targetID": 17,
+      "modelID": 4916,
+      "name": "Cuồng Chiến",
+      "reachedIntroFormat": "Khiêu chiến Yêu Vương %s lần",
+      "jumpModuleID": 2203,
+      "isUse": true
+    },
+    "18": {
+      "targetID": 18,
+      "modelID": 4917,
+      "name": "Mộ Thần Binh",
+      "reachedIntroFormat": "Số Sao đạt %s Sao",
+      "jumpModuleID": 2507,
+      "isUse": true
+    },
+    "19": {
+      "targetID": 19,
+      "modelID": 4918,
+      "name": "Tăng Cấp Tr.Bị",
+      "reachedIntroFormat": "Có 4 món trang bị phẩm cấp đạt %s",
+      "jumpModuleID": 1403,
+      "isUse": true
+    },
+    "20": {
+      "targetID": 20,
+      "modelID": 4919,
+      "name": "Tăng Cấp Bảo Vật",
+      "reachedIntroFormat": "%s món Bảo Vật Tím hoặc phẩm chất trở lên tăng cấp +%s",
+      "jumpModuleID": 1404,
+      "isUse": false
+    },
+    "21": {
+      "targetID": 21,
+      "modelID": 4919,
+      "name": "Tăng Cấp Bảo Vật",
+      "reachedIntroFormat": "%s món Bảo Vật Tím hoặc phẩm chất trở lên cường hóa +%s",
+      "jumpModuleID": 1404,
+      "isUse": false
+    },
+    "22": {
+      "targetID": 22,
+      "modelID": 4920,
+      "name": "Đổi Vận",
+      "reachedIntroFormat": "Ước đổi vận %s lần",
+      "jumpModuleID": 2303,
+      "isUse": true
+    },
+    "23": {
+      "targetID": 23,
+      "modelID": 4921,
+      "name": "Siêu Hoạt Lực",
+      "reachedIntroFormat": "Dùng %s lần Thuốc Hoạt Lực",
+      "jumpModuleID": 2002,
+      "isUse": true
+    },
+    "24": {
+      "targetID": 24,
+      "modelID": 4922,
+      "name": "Siêu Thể Lực",
+      "reachedIntroFormat": "Dùng %s lần Thuốc Thể Lực",
+      "jumpModuleID": 2002,
+      "isUse": true
+    },
+    "25": {
+      "targetID": 25,
+      "modelID": 4923,
+      "name": "Chiêu Tài",
+      "reachedIntroFormat": "Chiêu Tài %s lần",
+      "jumpModuleID": 2711,
+      "isUse": true
+    },
+    "26": {
+      "targetID": 26,
+      "modelID": 4924,
+      "name": "Kho Báu Bí Ẩn",
+      "reachedIntroFormat": "Khiêu chiến Kho Báu Bí Ẩn %s lần",
+      "jumpModuleID": 4600,
+      "isUse": true
+    },
+    "27": {
+      "targetID": 27,
+      "modelID": 4925,
+      "name": "PB Tổ Đội",
+      "reachedIntroFormat": "Trấn thủ %s lần PB Tổ Đội",
+      "jumpModuleID": 2319,
+      "isUse": true
+    },
+    "28": {
+      "targetID": 28,
+      "modelID": 4926,
+      "name": "Hợp Thành Tr.Bị",
+      "reachedIntroFormat": "Hợp thành %s món trang bị",
+      "jumpModuleID": 1405,
+      "isUse": false
+    },
+    "29": {
+      "targetID": 29,
+      "modelID": 4927,
+      "name": "Tướng Chính",
+      "reachedIntroFormat": "%s Tướng Chính Cam đạt Lv%s",
+      "jumpModuleID": 1101,
+      "isUse": true
+    },
+    "30": {
+      "targetID": 30,
+      "modelID": 4928,
+      "name": "Đấu Võ",
+      "reachedIntroFormat": "Khiêu chiến%s lần",
+      "jumpModuleID": 2503,
+      "isUse": false
+    },
+    "31": {
+      "targetID": 31,
+      "modelID": 4929,
+      "name": "Đột Phá",
+      "reachedIntroFormat": "Tổng Chiến Lực đạt %s",
+      "jumpModuleID": 1200,
+      "isUse": true
+    },
+    "32": {
+      "targetID": 32,
+      "modelID": 4930,
+      "name": "Ước",
+      "reachedIntroFormat": "Điểm đạt %s",
+      "jumpModuleID": 2303,
+      "isUse": true
+    },
+    "33": {
+      "targetID": 33,
+      "modelID": 4931,
+      "name": "Trùm Sát Thương",
+      "reachedIntroFormat": "Kho Báu Bí Ẩn ST cao nhất đạt %s",
+      "jumpModuleID": 4600,
+      "isUse": true
+    },
+    "34": {
+      "targetID": 34,
+      "modelID": 4932,
+      "name": "Thầy Tăng Cấp",
+      "reachedIntroFormat": "Trang bị ra trận tăng cấp đạt %s lần",
+      "jumpModuleID": 1403,
+      "isUse": true
+    },
+    "35": {
+      "targetID": 35,
+      "modelID": 4933,
+      "name": "Yêu Vương",
+      "reachedIntroFormat": "Nhận %sđ",
+      "jumpModuleID": 2203,
+      "isUse": true
+    },
+    "36": {
+      "targetID": 36,
+      "modelID": 4934,
+      "name": "Tầm Ngọc",
+      "reachedIntroFormat": "Tầm Ngọc %s lần",
+      "jumpModuleID": 5200,
+      "isUse": true
+    },
+    "37": {
+      "targetID": 37,
+      "modelID": 4935,
+      "name": "Trùm Tăng Cấp",
+      "reachedIntroFormat": "Trùm Tăng Cấp Vũ Khí đạt Lv%s",
+      "jumpModuleID": 1408,
+      "isUse": true
+    },
+    "38": {
+      "targetID": 38,
+      "modelID": 4935,
+      "name": "Trùm Tăng Cấp",
+      "reachedIntroFormat": "Trùm Tăng Cấp Mũ đạt Lv%s",
+      "jumpModuleID": 1408,
+      "isUse": true
+    },
+    "39": {
+      "targetID": 39,
+      "modelID": 4935,
+      "name": "Trùm Tăng Cấp",
+      "reachedIntroFormat": "Trùm Tăng Cấp Giáp đạt Lv%s",
+      "jumpModuleID": 1408,
+      "isUse": true
+    },
+    "40": {
+      "targetID": 40,
+      "modelID": 4935,
+      "name": "Trùm Tăng Cấp",
+      "reachedIntroFormat": "Trùm Tăng Cấp Dây đạt Lv%s",
+      "jumpModuleID": 1408,
+      "isUse": true
+    },
+    "41": {
+      "targetID": 41,
+      "modelID": 4935,
+      "name": "Trùm Tăng Cấp",
+      "reachedIntroFormat": "Trùm Tăng Cấp bất kỳ đạt Lv%s",
+      "jumpModuleID": 1408,
+      "isUse": false
+    },
+    "42": {
+      "targetID": 42,
+      "modelID": 4936,
+      "name": "Trùm Luyện Thể",
+      "reachedIntroFormat": "%s Trùm Luyện Thể đạt Lv%s",
+      "jumpModuleID": 5700,
+      "isUse": false
+    }
+  },
+  "success_target_reward": {
+    "3": [
+      {
+        "targetID": 3,
+        "sequence": 1,
+        "appearDay": 1,
+        "completeCondition1": 1,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,600||1112,0,50000||1605,16050003,10"
+      },
+      {
+        "targetID": 3,
+        "sequence": 2,
+        "appearDay": 2,
+        "completeCondition1": 2,
+        "completeCondition2": 0,
+        "resourceList": "1302,13020404,1||1602,16020012,1"
+      },
+      {
+        "targetID": 3,
+        "sequence": 3,
+        "appearDay": 3,
+        "completeCondition1": 3,
+        "completeCondition2": 0,
+        "resourceList": "1606,16060013,1||1605,16050001,300||1112,0,50000"
+      },
+      {
+        "targetID": 3,
+        "sequence": 4,
+        "appearDay": 4,
+        "completeCondition1": 4,
+        "completeCondition2": 0,
+        "resourceList": "1301,13010422,1||1304,13040423,1"
+      },
+      {
+        "targetID": 3,
+        "sequence": 5,
+        "appearDay": 5,
+        "completeCondition1": 5,
+        "completeCondition2": 0,
+        "resourceList": "1301,13010519,1||1116,0,900||1112,0,50000"
+      },
+      {
+        "targetID": 3,
+        "sequence": 6,
+        "appearDay": 6,
+        "completeCondition1": 6,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020014,1||1401,14011304,2||1402,14021304,2"
+      },
+      {
+        "targetID": 3,
+        "sequence": 7,
+        "appearDay": 7,
+        "completeCondition1": 7,
+        "completeCondition2": 0,
+        "resourceList": "1606,16060012,1||1605,16050001,500"
+      },
+      {
+        "targetID": 3,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 8,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1606,16060005,20"
+      },
+      {
+        "targetID": 3,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 9,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1606,16060005,20"
+      },
+      {
+        "targetID": 3,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 10,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1606,16060005,20"
+      },
+      {
+        "targetID": 3,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 11,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1606,16060005,20"
+      },
+      {
+        "targetID": 3,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 12,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1606,16060005,20"
+      },
+      {
+        "targetID": 3,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 13,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1606,16060005,20"
+      },
+      {
+        "targetID": 3,
+        "sequence": 14,
+        "appearDay": 8,
+        "completeCondition1": 14,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1606,16060005,30"
+      },
+      {
+        "targetID": 3,
+        "sequence": 15,
+        "appearDay": 8,
+        "completeCondition1": 15,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,400||1605,16050003,3"
+      },
+      {
+        "targetID": 3,
+        "sequence": 16,
+        "appearDay": 8,
+        "completeCondition1": 16,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,5||1602,16020021,1"
+      },
+      {
+        "targetID": 3,
+        "sequence": 17,
+        "appearDay": 8,
+        "completeCondition1": 17,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      {
+        "targetID": 3,
+        "sequence": 18,
+        "appearDay": 8,
+        "completeCondition1": 18,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020021,1||1605,16050003,2"
+      },
+      {
+        "targetID": 3,
+        "sequence": 19,
+        "appearDay": 8,
+        "completeCondition1": 19,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      {
+        "targetID": 3,
+        "sequence": 20,
+        "appearDay": 8,
+        "completeCondition1": 20,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,5||1603,16030006,3"
+      },
+      {
+        "targetID": 3,
+        "sequence": 21,
+        "appearDay": 8,
+        "completeCondition1": 21,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      {
+        "targetID": 3,
+        "sequence": 22,
+        "appearDay": 8,
+        "completeCondition1": 22,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,5||1603,16030008,5"
+      },
+      {
+        "targetID": 3,
+        "sequence": 23,
+        "appearDay": 8,
+        "completeCondition1": 23,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      {
+        "targetID": 3,
+        "sequence": 24,
+        "appearDay": 8,
+        "completeCondition1": 24,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020022,1||1605,16050003,2"
+      },
+      {
+        "targetID": 3,
+        "sequence": 25,
+        "appearDay": 8,
+        "completeCondition1": 25,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,500||1605,16050001,400"
+      },
+      {
+        "targetID": 3,
+        "sequence": 26,
+        "appearDay": 8,
+        "completeCondition1": 26,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      {
+        "targetID": 3,
+        "sequence": 27,
+        "appearDay": 8,
+        "completeCondition1": 27,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,5||1602,16020021,1"
+      },
+      {
+        "targetID": 3,
+        "sequence": 28,
+        "appearDay": 8,
+        "completeCondition1": 28,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      {
+        "targetID": 3,
+        "sequence": 29,
+        "appearDay": 8,
+        "completeCondition1": 29,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,5||1301,13010507,1"
+      },
+      {
+        "targetID": 3,
+        "sequence": 30,
+        "appearDay": 8,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      }
+    ],
+    "1": [
+      {
+        "targetID": 1,
+        "sequence": 1,
+        "appearDay": 1,
+        "completeCondition1": 8,
+        "completeCondition2": 0,
+        "resourceList": "1117,0,20000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 2,
+        "appearDay": 1,
+        "completeCondition1": 10,
+        "completeCondition2": 0,
+        "resourceList": "1117,0,30000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 3,
+        "appearDay": 1,
+        "completeCondition1": 12,
+        "completeCondition2": 0,
+        "resourceList": "1117,0,50000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 4,
+        "appearDay": 1,
+        "completeCondition1": 14,
+        "completeCondition2": 0,
+        "resourceList": "1117,0,80000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 5,
+        "appearDay": 1,
+        "completeCondition1": 16,
+        "completeCondition2": 0,
+        "resourceList": "1117,0,100000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 6,
+        "appearDay": 1,
+        "completeCondition1": 18,
+        "completeCondition2": 0,
+        "resourceList": "1117,0,120000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 24,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 25,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,85000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 26,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,90000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 27,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,95000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 28,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 29,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,105000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,110000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 14,
+        "appearDay": 8,
+        "completeCondition1": 31,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,115000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 15,
+        "appearDay": 8,
+        "completeCondition1": 32,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,120000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 16,
+        "appearDay": 8,
+        "completeCondition1": 33,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,125000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 17,
+        "appearDay": 8,
+        "completeCondition1": 34,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,130000"
+      },
+      {
+        "targetID": 1,
+        "sequence": 18,
+        "appearDay": 8,
+        "completeCondition1": 35,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,135000"
+      }
+    ],
+    "36": [
+      {
+        "targetID": 36,
+        "sequence": 1,
+        "appearDay": 1,
+        "completeCondition1": 20,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 36,
+        "sequence": 2,
+        "appearDay": 1,
+        "completeCondition1": 40,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 36,
+        "sequence": 3,
+        "appearDay": 1,
+        "completeCondition1": 60,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,40000"
+      },
+      {
+        "targetID": 36,
+        "sequence": 4,
+        "appearDay": 1,
+        "completeCondition1": 80,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,40000"
+      },
+      {
+        "targetID": 36,
+        "sequence": 5,
+        "appearDay": 1,
+        "completeCondition1": 100,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,60000"
+      },
+      {
+        "targetID": 36,
+        "sequence": 6,
+        "appearDay": 1,
+        "completeCondition1": 120,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,60000"
+      }
+    ],
+    "4": [
+      {
+        "targetID": 4,
+        "sequence": 1,
+        "appearDay": 1,
+        "completeCondition1": 5,
+        "completeCondition2": 0,
+        "resourceList": "1116,0,200"
+      },
+      {
+        "targetID": 4,
+        "sequence": 2,
+        "appearDay": 1,
+        "completeCondition1": 8,
+        "completeCondition2": 0,
+        "resourceList": "1116,0,200"
+      },
+      {
+        "targetID": 4,
+        "sequence": 3,
+        "appearDay": 1,
+        "completeCondition1": 11,
+        "completeCondition2": 0,
+        "resourceList": "1116,0,300"
+      },
+      {
+        "targetID": 4,
+        "sequence": 4,
+        "appearDay": 1,
+        "completeCondition1": 14,
+        "completeCondition2": 0,
+        "resourceList": "1116,0,300"
+      },
+      {
+        "targetID": 4,
+        "sequence": 5,
+        "appearDay": 1,
+        "completeCondition1": 17,
+        "completeCondition2": 0,
+        "resourceList": "1116,0,400"
+      },
+      {
+        "targetID": 4,
+        "sequence": 6,
+        "appearDay": 1,
+        "completeCondition1": 20,
+        "completeCondition2": 0,
+        "resourceList": "1116,0,400"
+      },
+      {
+        "targetID": 4,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 80,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1112,0,75000"
+      },
+      {
+        "targetID": 4,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 90,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,200||1112,0,80000"
+      },
+      {
+        "targetID": 4,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 100,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,200||1112,0,85000||1602,16020015,1"
+      },
+      {
+        "targetID": 4,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 120,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,200||1112,0,90000"
+      },
+      {
+        "targetID": 4,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 150,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,200||1112,0,95000"
+      },
+      {
+        "targetID": 4,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 200,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,200||1112,0,100000||1602,16020015,1"
+      },
+      {
+        "targetID": 4,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 250,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,200||1112,0,105000"
+      },
+      {
+        "targetID": 4,
+        "sequence": 14,
+        "appearDay": 8,
+        "completeCondition1": 300,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,200||1112,0,110000||1602,16020015,1"
+      }
+    ],
+    "10": [
+      {
+        "targetID": 10,
+        "sequence": 1,
+        "appearDay": 2,
+        "completeCondition1": 5,
+        "completeCondition2": 0,
+        "resourceList": "1504,15040301,1"
+      },
+      {
+        "targetID": 10,
+        "sequence": 2,
+        "appearDay": 2,
+        "completeCondition1": 10,
+        "completeCondition2": 0,
+        "resourceList": "1503,15032301,1"
+      },
+      {
+        "targetID": 10,
+        "sequence": 3,
+        "appearDay": 2,
+        "completeCondition1": 15,
+        "completeCondition2": 0,
+        "resourceList": "1504,15040301,2"
+      },
+      {
+        "targetID": 10,
+        "sequence": 4,
+        "appearDay": 2,
+        "completeCondition1": 20,
+        "completeCondition2": 0,
+        "resourceList": "1503,15032301,2"
+      },
+      {
+        "targetID": 10,
+        "sequence": 5,
+        "appearDay": 2,
+        "completeCondition1": 25,
+        "completeCondition2": 0,
+        "resourceList": "1504,15040401,2"
+      },
+      {
+        "targetID": 10,
+        "sequence": 6,
+        "appearDay": 2,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1503,15032401,2"
+      },
+      {
+        "targetID": 10,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 120,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,65000"
+      },
+      {
+        "targetID": 10,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 140,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,70000"
+      },
+      {
+        "targetID": 10,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 160,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,75000||1603,16030008,3"
+      },
+      {
+        "targetID": 10,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 180,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 10,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 200,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,85000"
+      },
+      {
+        "targetID": 10,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 250,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,90000||1603,16030008,4"
+      },
+      {
+        "targetID": 10,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 300,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,95000"
+      },
+      {
+        "targetID": 10,
+        "sequence": 14,
+        "appearDay": 8,
+        "completeCondition1": 350,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 10,
+        "sequence": 15,
+        "appearDay": 8,
+        "completeCondition1": 400,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,105000||1603,16030008,5"
+      }
+    ],
+    "11": [
+      {
+        "targetID": 11,
+        "sequence": 1,
+        "appearDay": 2,
+        "completeCondition1": 5,
+        "completeCondition2": 0,
+        "resourceList": "1115,0,100"
+      },
+      {
+        "targetID": 11,
+        "sequence": 2,
+        "appearDay": 2,
+        "completeCondition1": 10,
+        "completeCondition2": 0,
+        "resourceList": "1115,0,100"
+      },
+      {
+        "targetID": 11,
+        "sequence": 3,
+        "appearDay": 2,
+        "completeCondition1": 15,
+        "completeCondition2": 0,
+        "resourceList": "1115,0,200"
+      },
+      {
+        "targetID": 11,
+        "sequence": 4,
+        "appearDay": 2,
+        "completeCondition1": 20,
+        "completeCondition2": 0,
+        "resourceList": "1115,0,200"
+      },
+      {
+        "targetID": 11,
+        "sequence": 5,
+        "appearDay": 2,
+        "completeCondition1": 25,
+        "completeCondition2": 0,
+        "resourceList": "1115,0,300"
+      },
+      {
+        "targetID": 11,
+        "sequence": 6,
+        "appearDay": 2,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1115,0,300"
+      },
+      {
+        "targetID": 11,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 150,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,32000"
+      },
+      {
+        "targetID": 11,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 200,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,34000"
+      },
+      {
+        "targetID": 11,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 250,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,36000||1603,16030008,2"
+      },
+      {
+        "targetID": 11,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 300,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,38000"
+      },
+      {
+        "targetID": 11,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 350,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,40000"
+      },
+      {
+        "targetID": 11,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 400,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,42000||1603,16030008,2"
+      },
+      {
+        "targetID": 11,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 450,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,44000"
+      },
+      {
+        "targetID": 11,
+        "sequence": 14,
+        "appearDay": 8,
+        "completeCondition1": 500,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,46000||1603,16030008,3"
+      }
+    ],
+    "9": [
+      {
+        "targetID": 9,
+        "sequence": 1,
+        "appearDay": 2,
+        "completeCondition1": 60,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,30000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 2,
+        "appearDay": 2,
+        "completeCondition1": 80,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,30000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 3,
+        "appearDay": 2,
+        "completeCondition1": 100,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 4,
+        "appearDay": 2,
+        "completeCondition1": 120,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 5,
+        "appearDay": 2,
+        "completeCondition1": 140,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 250,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,70000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 280,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,75000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 310,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 340,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,85000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 370,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,90000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 400,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,90000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 430,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,90000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 460,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,90000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 14,
+        "appearDay": 8,
+        "completeCondition1": 490,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,90000"
+      },
+      {
+        "targetID": 9,
+        "sequence": 15,
+        "appearDay": 8,
+        "completeCondition1": 520,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,90000"
+      }
+    ],
+    "5": [
+      {
+        "targetID": 5,
+        "sequence": 1,
+        "appearDay": 3,
+        "completeCondition1": 24,
+        "completeCondition2": 50,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 5,
+        "sequence": 2,
+        "appearDay": 3,
+        "completeCondition1": 24,
+        "completeCondition2": 55,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 5,
+        "sequence": 3,
+        "appearDay": 3,
+        "completeCondition1": 24,
+        "completeCondition2": 60,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 5,
+        "sequence": 4,
+        "appearDay": 3,
+        "completeCondition1": 24,
+        "completeCondition2": 65,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 5,
+        "sequence": 5,
+        "appearDay": 3,
+        "completeCondition1": 24,
+        "completeCondition2": 70,
+        "resourceList": "1112,0,80000"
+      }
+    ],
+    "34": [
+      {
+        "targetID": 34,
+        "sequence": 1,
+        "appearDay": 3,
+        "completeCondition1": 2,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,2"
+      },
+      {
+        "targetID": 34,
+        "sequence": 2,
+        "appearDay": 3,
+        "completeCondition1": 4,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,2"
+      },
+      {
+        "targetID": 34,
+        "sequence": 3,
+        "appearDay": 3,
+        "completeCondition1": 6,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,3"
+      },
+      {
+        "targetID": 34,
+        "sequence": 4,
+        "appearDay": 3,
+        "completeCondition1": 8,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,3"
+      },
+      {
+        "targetID": 34,
+        "sequence": 5,
+        "appearDay": 3,
+        "completeCondition1": 10,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,4"
+      }
+    ],
+    "14": [
+      {
+        "targetID": 14,
+        "sequence": 1,
+        "appearDay": 3,
+        "completeCondition1": 4,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,30000"
+      },
+      {
+        "targetID": 14,
+        "sequence": 2,
+        "appearDay": 3,
+        "completeCondition1": 5,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 14,
+        "sequence": 3,
+        "appearDay": 3,
+        "completeCondition1": 6,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 14,
+        "sequence": 4,
+        "appearDay": 3,
+        "completeCondition1": 7,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 14,
+        "sequence": 5,
+        "appearDay": 3,
+        "completeCondition1": 8,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 14,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 10,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050011,10||1112,0,50000"
+      },
+      {
+        "targetID": 14,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 11,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050011,10||1112,0,50000"
+      },
+      {
+        "targetID": 14,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 12,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050011,10||1112,0,50000"
+      },
+      {
+        "targetID": 14,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 13,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050011,10||1112,0,50000"
+      },
+      {
+        "targetID": 14,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 14,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050011,10||1112,0,50000"
+      },
+      {
+        "targetID": 14,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 15,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050011,10||1112,0,50000"
+      }
+    ],
+    "29": [
+      {
+        "targetID": 29,
+        "sequence": 1,
+        "appearDay": 4,
+        "completeCondition1": 5,
+        "completeCondition2": 25,
+        "resourceList": "1117,0,20000"
+      },
+      {
+        "targetID": 29,
+        "sequence": 2,
+        "appearDay": 4,
+        "completeCondition1": 5,
+        "completeCondition2": 30,
+        "resourceList": "1117,0,30000"
+      },
+      {
+        "targetID": 29,
+        "sequence": 3,
+        "appearDay": 4,
+        "completeCondition1": 5,
+        "completeCondition2": 35,
+        "resourceList": "1117,0,50000"
+      },
+      {
+        "targetID": 29,
+        "sequence": 4,
+        "appearDay": 4,
+        "completeCondition1": 5,
+        "completeCondition2": 38,
+        "resourceList": "1117,0,80000"
+      },
+      {
+        "targetID": 29,
+        "sequence": 5,
+        "appearDay": 4,
+        "completeCondition1": 5,
+        "completeCondition2": 40,
+        "resourceList": "1117,0,100000"
+      }
+    ],
+    "6": [
+      {
+        "targetID": 6,
+        "sequence": 1,
+        "appearDay": 4,
+        "completeCondition1": 2,
+        "completeCondition2": 3,
+        "resourceList": "1605,16050001,100"
+      },
+      {
+        "targetID": 6,
+        "sequence": 2,
+        "appearDay": 4,
+        "completeCondition1": 4,
+        "completeCondition2": 3,
+        "resourceList": "1605,16050001,200"
+      },
+      {
+        "targetID": 6,
+        "sequence": 3,
+        "appearDay": 4,
+        "completeCondition1": 2,
+        "completeCondition2": 4,
+        "resourceList": "1605,16050001,400"
+      },
+      {
+        "targetID": 6,
+        "sequence": 4,
+        "appearDay": 4,
+        "completeCondition1": 4,
+        "completeCondition2": 4,
+        "resourceList": "1605,16050001,200"
+      },
+      {
+        "targetID": 6,
+        "sequence": 5,
+        "appearDay": 4,
+        "completeCondition1": 2,
+        "completeCondition2": 5,
+        "resourceList": "1605,16050001,400"
+      },
+      {
+        "targetID": 6,
+        "sequence": 6,
+        "appearDay": 4,
+        "completeCondition1": 4,
+        "completeCondition2": 5,
+        "resourceList": "1605,16050001,600"
+      },
+      {
+        "targetID": 6,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 4,
+        "completeCondition2": 5,
+        "resourceList": "1605,16050001,100"
+      },
+      {
+        "targetID": 6,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 5,
+        "completeCondition2": 5,
+        "resourceList": "1605,16050001,100"
+      },
+      {
+        "targetID": 6,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 6,
+        "completeCondition2": 5,
+        "resourceList": "1605,16050001,200"
+      },
+      {
+        "targetID": 6,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 4,
+        "completeCondition2": 6,
+        "resourceList": "1605,16050001,200"
+      },
+      {
+        "targetID": 6,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 5,
+        "completeCondition2": 6,
+        "resourceList": "1605,16050001,300"
+      },
+      {
+        "targetID": 6,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 6,
+        "completeCondition2": 6,
+        "resourceList": "1605,16050001,300"
+      },
+      {
+        "targetID": 6,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 4,
+        "completeCondition2": 7,
+        "resourceList": "1605,16050001,400"
+      },
+      {
+        "targetID": 6,
+        "sequence": 14,
+        "appearDay": 8,
+        "completeCondition1": 5,
+        "completeCondition2": 7,
+        "resourceList": "1605,16050001,400"
+      },
+      {
+        "targetID": 6,
+        "sequence": 15,
+        "appearDay": 8,
+        "completeCondition1": 6,
+        "completeCondition2": 7,
+        "resourceList": "1605,16050001,500"
+      }
+    ],
+    "2": [
+      {
+        "targetID": 2,
+        "sequence": 1,
+        "appearDay": 4,
+        "completeCondition1": 25,
+        "completeCondition2": 0,
+        "resourceList": "1603,16030006,1"
+      },
+      {
+        "targetID": 2,
+        "sequence": 2,
+        "appearDay": 4,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1603,16030006,1"
+      },
+      {
+        "targetID": 2,
+        "sequence": 3,
+        "appearDay": 4,
+        "completeCondition1": 35,
+        "completeCondition2": 0,
+        "resourceList": "1603,16030006,1"
+      },
+      {
+        "targetID": 2,
+        "sequence": 4,
+        "appearDay": 4,
+        "completeCondition1": 38,
+        "completeCondition2": 0,
+        "resourceList": "1603,16030006,1"
+      },
+      {
+        "targetID": 2,
+        "sequence": 5,
+        "appearDay": 4,
+        "completeCondition1": 40,
+        "completeCondition2": 0,
+        "resourceList": "1603,16030006,1"
+      },
+      {
+        "targetID": 2,
+        "sequence": 6,
+        "appearDay": 4,
+        "completeCondition1": 42,
+        "completeCondition2": 0,
+        "resourceList": "1603,16030006,1"
+      },
+      {
+        "targetID": 2,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 45,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 2,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 50,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,120000"
+      },
+      {
+        "targetID": 2,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 55,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,140000"
+      },
+      {
+        "targetID": 2,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 60,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,160000"
+      },
+      {
+        "targetID": 2,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 65,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,180000"
+      },
+      {
+        "targetID": 2,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 70,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,200000"
+      }
+    ],
+    "15": [
+      {
+        "targetID": 15,
+        "sequence": 1,
+        "appearDay": 5,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040005,3"
+      },
+      {
+        "targetID": 15,
+        "sequence": 2,
+        "appearDay": 5,
+        "completeCondition1": 35,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040005,3"
+      },
+      {
+        "targetID": 15,
+        "sequence": 3,
+        "appearDay": 5,
+        "completeCondition1": 40,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040005,4"
+      },
+      {
+        "targetID": 15,
+        "sequence": 4,
+        "appearDay": 5,
+        "completeCondition1": 45,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040005,4"
+      },
+      {
+        "targetID": 15,
+        "sequence": 5,
+        "appearDay": 5,
+        "completeCondition1": 55,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040005,5"
+      },
+      {
+        "targetID": 15,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 60,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,3"
+      },
+      {
+        "targetID": 15,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 70,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,4"
+      },
+      {
+        "targetID": 15,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 80,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,5"
+      },
+      {
+        "targetID": 15,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 100,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,6"
+      },
+      {
+        "targetID": 15,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 120,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,7"
+      },
+      {
+        "targetID": 15,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 140,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,8"
+      },
+      {
+        "targetID": 15,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 160,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,9"
+      },
+      {
+        "targetID": 15,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 180,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,10"
+      },
+      {
+        "targetID": 15,
+        "sequence": 14,
+        "appearDay": 8,
+        "completeCondition1": 200,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,11"
+      },
+      {
+        "targetID": 15,
+        "sequence": 15,
+        "appearDay": 8,
+        "completeCondition1": 220,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,12"
+      },
+      {
+        "targetID": 15,
+        "sequence": 16,
+        "appearDay": 8,
+        "completeCondition1": 240,
+        "completeCondition2": 0,
+        "resourceList": "1604,16040024,13"
+      }
+    ],
+    "13": [
+      {
+        "targetID": 13,
+        "sequence": 1,
+        "appearDay": 5,
+        "completeCondition1": 3,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 2,
+        "appearDay": 5,
+        "completeCondition1": 6,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 3,
+        "appearDay": 5,
+        "completeCondition1": 9,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 4,
+        "appearDay": 5,
+        "completeCondition1": 12,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,120000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 5,
+        "appearDay": 5,
+        "completeCondition1": 15,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,150000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 140,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 160,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 180,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 200,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 220,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 240,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 260,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 280,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 14,
+        "appearDay": 8,
+        "completeCondition1": 300,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 13,
+        "sequence": 15,
+        "appearDay": 8,
+        "completeCondition1": 320,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      }
+    ],
+    "33": [
+      {
+        "targetID": 33,
+        "sequence": 1,
+        "appearDay": 5,
+        "completeCondition1": 50000,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 33,
+        "sequence": 2,
+        "appearDay": 5,
+        "completeCondition1": 80000,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050001,300"
+      },
+      {
+        "targetID": 33,
+        "sequence": 3,
+        "appearDay": 5,
+        "completeCondition1": 100000,
+        "completeCondition2": 0,
+        "resourceList": "1117,0,50000"
+      },
+      {
+        "targetID": 33,
+        "sequence": 4,
+        "appearDay": 5,
+        "completeCondition1": 150000,
+        "completeCondition2": 0,
+        "resourceList": "1402,14021304,5"
+      },
+      {
+        "targetID": 33,
+        "sequence": 5,
+        "appearDay": 5,
+        "completeCondition1": 200000,
+        "completeCondition2": 0,
+        "resourceList": "1401,14011304,5"
+      }
+    ],
+    "35": [
+      {
+        "targetID": 35,
+        "sequence": 1,
+        "appearDay": 6,
+        "completeCondition1": 800,
+        "completeCondition2": 0,
+        "resourceList": "1402,14020803,2"
+      },
+      {
+        "targetID": 35,
+        "sequence": 2,
+        "appearDay": 6,
+        "completeCondition1": 1000,
+        "completeCondition2": 0,
+        "resourceList": "1401,14010803,2"
+      },
+      {
+        "targetID": 35,
+        "sequence": 3,
+        "appearDay": 6,
+        "completeCondition1": 1200,
+        "completeCondition2": 0,
+        "resourceList": "1402,14021304,2"
+      },
+      {
+        "targetID": 35,
+        "sequence": 4,
+        "appearDay": 6,
+        "completeCondition1": 1400,
+        "completeCondition2": 0,
+        "resourceList": "1401,14011304,2"
+      },
+      {
+        "targetID": 35,
+        "sequence": 5,
+        "appearDay": 6,
+        "completeCondition1": 1800,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020007,1"
+      }
+    ],
+    "16": [
+      {
+        "targetID": 16,
+        "sequence": 1,
+        "appearDay": 6,
+        "completeCondition1": 10,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,2"
+      },
+      {
+        "targetID": 16,
+        "sequence": 2,
+        "appearDay": 6,
+        "completeCondition1": 20,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,2"
+      },
+      {
+        "targetID": 16,
+        "sequence": 3,
+        "appearDay": 6,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,3"
+      },
+      {
+        "targetID": 16,
+        "sequence": 4,
+        "appearDay": 6,
+        "completeCondition1": 40,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,3"
+      },
+      {
+        "targetID": 16,
+        "sequence": 5,
+        "appearDay": 6,
+        "completeCondition1": 60,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,4"
+      },
+      {
+        "targetID": 16,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 130,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,5"
+      },
+      {
+        "targetID": 16,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 150,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,6"
+      },
+      {
+        "targetID": 16,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 170,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,7"
+      },
+      {
+        "targetID": 16,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 190,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,8"
+      },
+      {
+        "targetID": 16,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 210,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,9"
+      },
+      {
+        "targetID": 16,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 230,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,10"
+      },
+      {
+        "targetID": 16,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 250,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,10"
+      },
+      {
+        "targetID": 16,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 300,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,12"
+      },
+      {
+        "targetID": 16,
+        "sequence": 14,
+        "appearDay": 8,
+        "completeCondition1": 400,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,12"
+      },
+      {
+        "targetID": 16,
+        "sequence": 15,
+        "appearDay": 8,
+        "completeCondition1": 600,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050010,15"
+      }
+    ],
+    "32": [
+      {
+        "targetID": 32,
+        "sequence": 1,
+        "appearDay": 6,
+        "completeCondition1": 20,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050012,2"
+      },
+      {
+        "targetID": 32,
+        "sequence": 2,
+        "appearDay": 6,
+        "completeCondition1": 40,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050012,4"
+      },
+      {
+        "targetID": 32,
+        "sequence": 3,
+        "appearDay": 6,
+        "completeCondition1": 60,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050012,6"
+      },
+      {
+        "targetID": 32,
+        "sequence": 4,
+        "appearDay": 6,
+        "completeCondition1": 80,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050012,8"
+      },
+      {
+        "targetID": 32,
+        "sequence": 5,
+        "appearDay": 6,
+        "completeCondition1": 100,
+        "completeCondition2": 0,
+        "resourceList": "1605,16050012,10"
+      }
+    ],
+    "18": [
+      {
+        "targetID": 18,
+        "sequence": 1,
+        "appearDay": 7,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,1"
+      },
+      {
+        "targetID": 18,
+        "sequence": 2,
+        "appearDay": 7,
+        "completeCondition1": 40,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,1"
+      },
+      {
+        "targetID": 18,
+        "sequence": 3,
+        "appearDay": 7,
+        "completeCondition1": 50,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,1"
+      },
+      {
+        "targetID": 18,
+        "sequence": 4,
+        "appearDay": 7,
+        "completeCondition1": 60,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,1"
+      },
+      {
+        "targetID": 18,
+        "sequence": 5,
+        "appearDay": 7,
+        "completeCondition1": 70,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,1"
+      },
+      {
+        "targetID": 18,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 70,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,2"
+      },
+      {
+        "targetID": 18,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 90,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,3"
+      },
+      {
+        "targetID": 18,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 110,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,4"
+      },
+      {
+        "targetID": 18,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 130,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020021,1"
+      },
+      {
+        "targetID": 18,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 150,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020021,2"
+      }
+    ],
+    "31": [
+      {
+        "targetID": 31,
+        "sequence": 1,
+        "appearDay": 7,
+        "completeCondition1": 400000,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 31,
+        "sequence": 2,
+        "appearDay": 7,
+        "completeCondition1": 600000,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 31,
+        "sequence": 3,
+        "appearDay": 7,
+        "completeCondition1": 800000,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 31,
+        "sequence": 4,
+        "appearDay": 7,
+        "completeCondition1": 1000000,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,120000"
+      },
+      {
+        "targetID": 31,
+        "sequence": 5,
+        "appearDay": 7,
+        "completeCondition1": 1200000,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,150000"
+      },
+      {
+        "targetID": 31,
+        "sequence": 6,
+        "appearDay": 7,
+        "completeCondition1": 1500000,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,200000"
+      }
+    ],
+    "37": [
+      {
+        "targetID": 37,
+        "sequence": 1,
+        "appearDay": 7,
+        "completeCondition1": 2,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020031,1"
+      },
+      {
+        "targetID": 37,
+        "sequence": 2,
+        "appearDay": 7,
+        "completeCondition1": 3,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020031,1"
+      }
+    ],
+    "38": [
+      {
+        "targetID": 38,
+        "sequence": 1,
+        "appearDay": 7,
+        "completeCondition1": 2,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020031,1"
+      },
+      {
+        "targetID": 38,
+        "sequence": 2,
+        "appearDay": 7,
+        "completeCondition1": 3,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020031,1"
+      }
+    ],
+    "39": [
+      {
+        "targetID": 39,
+        "sequence": 1,
+        "appearDay": 7,
+        "completeCondition1": 2,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020031,1"
+      },
+      {
+        "targetID": 39,
+        "sequence": 2,
+        "appearDay": 7,
+        "completeCondition1": 3,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020031,1"
+      }
+    ],
+    "40": [
+      {
+        "targetID": 40,
+        "sequence": 1,
+        "appearDay": 7,
+        "completeCondition1": 2,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,1"
+      },
+      {
+        "targetID": 40,
+        "sequence": 2,
+        "appearDay": 7,
+        "completeCondition1": 3,
+        "completeCondition2": 0,
+        "resourceList": "1602,16020020,2"
+      }
+    ],
+    "17": [
+      {
+        "targetID": 17,
+        "sequence": 1,
+        "appearDay": 8,
+        "completeCondition1": 70,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 17,
+        "sequence": 2,
+        "appearDay": 8,
+        "completeCondition1": 90,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 17,
+        "sequence": 3,
+        "appearDay": 8,
+        "completeCondition1": 110,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 17,
+        "sequence": 4,
+        "appearDay": 8,
+        "completeCondition1": 130,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 17,
+        "sequence": 5,
+        "appearDay": 8,
+        "completeCondition1": 150,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 17,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 170,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 17,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 190,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 17,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 210,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 17,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 230,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 17,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 250,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      }
+    ],
+    "19": [
+      {
+        "targetID": 19,
+        "sequence": 1,
+        "appearDay": 8,
+        "completeCondition1": 5000,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,80||1112,0,100000"
+      },
+      {
+        "targetID": 19,
+        "sequence": 2,
+        "appearDay": 8,
+        "completeCondition1": 7500,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,80||1112,0,100000"
+      },
+      {
+        "targetID": 19,
+        "sequence": 3,
+        "appearDay": 8,
+        "completeCondition1": 10000,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1112,0,100000"
+      },
+      {
+        "targetID": 19,
+        "sequence": 4,
+        "appearDay": 8,
+        "completeCondition1": 12500,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1112,0,100000"
+      },
+      {
+        "targetID": 19,
+        "sequence": 5,
+        "appearDay": 8,
+        "completeCondition1": 25000,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1112,0,100000"
+      },
+      {
+        "targetID": 19,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 37500,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1112,0,100000"
+      },
+      {
+        "targetID": 19,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 50000,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1112,0,100000"
+      },
+      {
+        "targetID": 19,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 62500,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,100||1112,0,100000"
+      }
+    ],
+    "22": [
+      {
+        "targetID": 22,
+        "sequence": 1,
+        "appearDay": 8,
+        "completeCondition1": 150,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 2,
+        "appearDay": 8,
+        "completeCondition1": 170,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 3,
+        "appearDay": 8,
+        "completeCondition1": 190,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 4,
+        "appearDay": 8,
+        "completeCondition1": 210,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 5,
+        "appearDay": 8,
+        "completeCondition1": 230,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 250,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 270,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 290,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 310,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 330,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 350,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 370,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 22,
+        "sequence": 13,
+        "appearDay": 8,
+        "completeCondition1": 390,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      }
+    ],
+    "23": [
+      {
+        "targetID": 23,
+        "sequence": 1,
+        "appearDay": 8,
+        "completeCondition1": 150,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030008,1"
+      },
+      {
+        "targetID": 23,
+        "sequence": 2,
+        "appearDay": 8,
+        "completeCondition1": 200,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030008,1"
+      },
+      {
+        "targetID": 23,
+        "sequence": 3,
+        "appearDay": 8,
+        "completeCondition1": 250,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030008,1"
+      },
+      {
+        "targetID": 23,
+        "sequence": 4,
+        "appearDay": 8,
+        "completeCondition1": 300,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030008,1"
+      },
+      {
+        "targetID": 23,
+        "sequence": 5,
+        "appearDay": 8,
+        "completeCondition1": 350,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030008,1"
+      },
+      {
+        "targetID": 23,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 400,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030008,1"
+      },
+      {
+        "targetID": 23,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 450,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030008,1"
+      },
+      {
+        "targetID": 23,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 500,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030008,1"
+      }
+    ],
+    "24": [
+      {
+        "targetID": 24,
+        "sequence": 1,
+        "appearDay": 8,
+        "completeCondition1": 150,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030006,1"
+      },
+      {
+        "targetID": 24,
+        "sequence": 2,
+        "appearDay": 8,
+        "completeCondition1": 200,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030006,1"
+      },
+      {
+        "targetID": 24,
+        "sequence": 3,
+        "appearDay": 8,
+        "completeCondition1": 250,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030006,1"
+      },
+      {
+        "targetID": 24,
+        "sequence": 4,
+        "appearDay": 8,
+        "completeCondition1": 300,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030006,1"
+      },
+      {
+        "targetID": 24,
+        "sequence": 5,
+        "appearDay": 8,
+        "completeCondition1": 350,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030006,1"
+      },
+      {
+        "targetID": 24,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 400,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030006,1"
+      },
+      {
+        "targetID": 24,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 450,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030006,1"
+      },
+      {
+        "targetID": 24,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 500,
+        "completeCondition2": 0,
+        "resourceList": "1111,0,30||1603,16030006,1"
+      }
+    ],
+    "25": [
+      {
+        "targetID": 25,
+        "sequence": 1,
+        "appearDay": 8,
+        "completeCondition1": 15,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,20000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 2,
+        "appearDay": 8,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,40000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 3,
+        "appearDay": 8,
+        "completeCondition1": 50,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,60000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 4,
+        "appearDay": 8,
+        "completeCondition1": 80,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 5,
+        "appearDay": 8,
+        "completeCondition1": 120,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 160,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,120000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 200,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,140000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 250,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,160000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 300,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,180000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 400,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,200000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 11,
+        "appearDay": 8,
+        "completeCondition1": 550,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,220000"
+      },
+      {
+        "targetID": 25,
+        "sequence": 12,
+        "appearDay": 8,
+        "completeCondition1": 700,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,240000"
+      }
+    ],
+    "26": [
+      {
+        "targetID": 26,
+        "sequence": 1,
+        "appearDay": 8,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 26,
+        "sequence": 2,
+        "appearDay": 8,
+        "completeCondition1": 39,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,60000"
+      },
+      {
+        "targetID": 26,
+        "sequence": 3,
+        "appearDay": 8,
+        "completeCondition1": 51,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,70000"
+      },
+      {
+        "targetID": 26,
+        "sequence": 4,
+        "appearDay": 8,
+        "completeCondition1": 66,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 26,
+        "sequence": 5,
+        "appearDay": 8,
+        "completeCondition1": 81,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,90000"
+      },
+      {
+        "targetID": 26,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 99,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 26,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 120,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,110000"
+      },
+      {
+        "targetID": 26,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 150,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,110000"
+      }
+    ],
+    "27": [
+      {
+        "targetID": 27,
+        "sequence": 1,
+        "appearDay": 8,
+        "completeCondition1": 2,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,50000"
+      },
+      {
+        "targetID": 27,
+        "sequence": 2,
+        "appearDay": 8,
+        "completeCondition1": 6,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,60000"
+      },
+      {
+        "targetID": 27,
+        "sequence": 3,
+        "appearDay": 8,
+        "completeCondition1": 12,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,70000"
+      },
+      {
+        "targetID": 27,
+        "sequence": 4,
+        "appearDay": 8,
+        "completeCondition1": 21,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,80000"
+      },
+      {
+        "targetID": 27,
+        "sequence": 5,
+        "appearDay": 8,
+        "completeCondition1": 30,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,90000"
+      },
+      {
+        "targetID": 27,
+        "sequence": 6,
+        "appearDay": 8,
+        "completeCondition1": 45,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,100000"
+      },
+      {
+        "targetID": 27,
+        "sequence": 7,
+        "appearDay": 8,
+        "completeCondition1": 60,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,110000"
+      },
+      {
+        "targetID": 27,
+        "sequence": 8,
+        "appearDay": 8,
+        "completeCondition1": 90,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,110000"
+      },
+      {
+        "targetID": 27,
+        "sequence": 9,
+        "appearDay": 8,
+        "completeCondition1": 150,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,110000"
+      },
+      {
+        "targetID": 27,
+        "sequence": 10,
+        "appearDay": 8,
+        "completeCondition1": 200,
+        "completeCondition2": 0,
+        "resourceList": "1112,0,110000"
+      }
+    ]
+  },
+  "success_time_model": {
+    "1": {
+      "id": 1,
+      "isSuccess": false,
+      "openDay": 1,
+      "endDay": 1,
+      "resourceList": "1111,0,1000"
+    },
+    "2": {
+      "id": 2,
+      "isSuccess": false,
+      "openDay": 2,
+      "endDay": 2,
+      "resourceList": "1111,0,1000"
+    },
+    "3": {
+      "id": 3,
+      "isSuccess": false,
+      "openDay": 3,
+      "endDay": 3,
+      "resourceList": "1111,0,1500"
+    },
+    "4": {
+      "id": 4,
+      "isSuccess": false,
+      "openDay": 4,
+      "endDay": 4,
+      "resourceList": "1111,0,1500"
+    },
+    "5": {
+      "id": 5,
+      "isSuccess": false,
+      "openDay": 5,
+      "endDay": 5,
+      "resourceList": "1111,0,2000"
+    },
+    "6": {
+      "id": 6,
+      "isSuccess": false,
+      "openDay": 6,
+      "endDay": 6,
+      "resourceList": "1111,0,2000"
+    },
+    "7": {
+      "id": 7,
+      "isSuccess": false,
+      "openDay": 7,
+      "endDay": 7,
+      "resourceList": "1111,0,2000"
+    },
+    "8": {
+      "id": 8,
+      "isSuccess": true,
+      "openDay": 8,
+      "endDay": 99999,
+      "resourceList": ""
+    }
+  },
+  "success_purchase_model": {
+    "1": {
+      "1": {
+        "day": 1,
+        "sequence": 1,
+        "needresourceList": "1111,0,250",
+        "resourceList": "1603,16030006,5",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 0,
+        "needLv": 1
+      },
+      "2": {
+        "day": 1,
+        "sequence": 2,
+        "needresourceList": "1111,0,300",
+        "resourceList": "1602,16020020,5",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 1,
+        "needLv": 1
+      }
+    },
+    "2": {
+      "1": {
+        "day": 2,
+        "sequence": 1,
+        "needresourceList": "1111,0,300",
+        "resourceList": "1603,16030008,10",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 0,
+        "needLv": 1
+      },
+      "2": {
+        "day": 2,
+        "sequence": 2,
+        "needresourceList": "1111,0,300",
+        "resourceList": "1602,16020007,1",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 2,
+        "needLv": 1
+      }
+    },
+    "3": {
+      "1": {
+        "day": 3,
+        "sequence": 1,
+        "needresourceList": "1111,0,488",
+        "resourceList": "1602,16020021,1",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 0,
+        "needLv": 1
+      },
+      "2": {
+        "day": 3,
+        "sequence": 2,
+        "needresourceList": "1111,0,888",
+        "resourceList": "1602,16020021,2",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 2,
+        "needLv": 1
+      }
+    },
+    "4": {
+      "1": {
+        "day": 4,
+        "sequence": 1,
+        "needresourceList": "1111,0,500",
+        "resourceList": "1605,16050001,1000",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 0,
+        "needLv": 1
+      },
+      "2": {
+        "day": 4,
+        "sequence": 2,
+        "needresourceList": "1111,0,500",
+        "resourceList": "1602,16020013,1",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 3,
+        "needLv": 1
+      }
+    },
+    "5": {
+      "1": {
+        "day": 5,
+        "sequence": 1,
+        "needresourceList": "1111,0,500",
+        "resourceList": "1602,16020029,2",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 0,
+        "needLv": 1
+      },
+      "2": {
+        "day": 5,
+        "sequence": 2,
+        "needresourceList": "1111,0,2000",
+        "resourceList": "1602,16020014,1",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 3,
+        "needLv": 1
+      }
+    },
+    "6": {
+      "1": {
+        "day": 6,
+        "sequence": 1,
+        "needresourceList": "1111,0,1000",
+        "resourceList": "1116,0,2000",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 0,
+        "needLv": 1
+      },
+      "2": {
+        "day": 6,
+        "sequence": 2,
+        "needresourceList": "1111,0,488",
+        "resourceList": "1605,16050010,60",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 4,
+        "needLv": 1
+      }
+    },
+    "7": {
+      "1": {
+        "day": 7,
+        "sequence": 1,
+        "needresourceList": "1111,0,800",
+        "resourceList": "1606,16060015,1",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 0,
+        "needLv": 1
+      },
+      "2": {
+        "day": 7,
+        "sequence": 2,
+        "needresourceList": "1111,0,1288",
+        "resourceList": "1301,13010507,1",
+        "serverMax": 999999999,
+        "singleMax": 1,
+        "needVipLv": 5,
+        "needLv": 1
+      }
     }
   }
 }

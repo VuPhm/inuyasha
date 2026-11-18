@@ -266,13 +266,217 @@ def patch_workspace(server_host_port: str) -> None:
             ),
         ],
     )
+    patch_luac_text(
+        PATCH_WORK / "assets" / "src" / "Store" / "RechargeScene.luac",
+        [
+            (
+                '                    local canPurchase = IPlatform:getInstance():isRechargeSupported()\n'
+                '                    if not canPurchase then\n'
+                '                        ui.showFlashView({parent = self, text = TR("暂不支持充值")})\n'
+                '                        return\n'
+                '                    end',
+                '                    -- Offline local revival: confirm MonthCard directly without dead billing SDK',
+            ),
+            (
+                '                local channelName = IPlatform:getInstance():getConfigItem("Channel")\n'
+                '                if channelName == "MQKK" then\n'
+                '                    self:requestTestRecharge(info.ChargePoint)\n'
+                '                    return\n'
+                '                end\n'
+                '                local canPurchase = IPlatform:getInstance():isRechargeSupported()\n'
+                '                if not canPurchase then\n'
+                '                    ui.showFlashView({parent = self, image = nil, text = TR("暂不支持充值")})\n'
+                '                    return\n'
+                '                end\n'
+                '                IPlatform:getInstance():rechargeBegin()',
+                '                -- Offline local revival: confirm diamond package directly via GenerateOrderID',
+            ),
+            (
+                'function RechargeScene:requestGenerateOrderID(moduleName, methodName, productInfo)\n'
+                '    LoadingWait:begin(self)\n'
+                '    local product = {\n'
+                '        productInfo.ProductId or productInfo.monthCardId,\n'
+                '        IPlatform:getInstance():getDeviceMAC(),\n'
+                '        IPlatform:getInstance():getDeviceUUID(),\n'
+                '        IPlatform:getInstance():getDeviceIMEI()\n'
+                '    }\n'
+                '    HttpRequest(moduleName, methodName, product, function(response)\n'
+                '        LoadingWait:ends()\n'
+                '        if response.Status == 0 then\n'
+                '            local info = {}\n'
+                '            local serverInfo = NetworkResData:getServerInfo(true)\n'
+                '            local userLoginInfo = NetworkResData:getUserLoginInfo()\n'
+                '            local isMothCard = productInfo.ProductId == nil\n\n'
+                '            info.MothCard = isMothCard and 1 or 0   -- 是否是月卡\n'
+                '            info.ProductName = TR("钻石")                                    --: 购买产品名称(钻宝、晶石)\n'
+                '            info.ProductID = productInfo.ProductId or response.Value.ProductId     --: 充值档位ID(string)\n'
+                '            info.OrderID = isMothCard and response.Value.OrderId or response.Value --: 订单ID(string)\n'
+                '            info.CurNum = self.mPlayerInfo.Diamond or 0 \t\t            --: 当前(钻宝)数目(int)\n'
+                '            info.BuyNum = productInfo.GamePoint or 1\t\t            --: 购买(钻宝)数目(int)\n'
+                '            info.PresentNum = productInfo.GiveGamePoint or 0\t            --: 赠送(钻宝)数目(int)\n'
+                '            info.Price = isMothCard and productInfo.Price or productInfo.ChargePoint or 0\t--: 价格(钻)(int)\n'
+                '            info.ServerID = serverInfo.ServerID or 0                  --: 当前服务器ID(int)\n'
+                '            info.ServerName = serverInfo.ServerName or ""\t                --: 当前服务器名称(string)\n'
+                '            info.PlayerID = self.mPlayerInfo.PlayerId \t            -- 玩家ID(string)\n'
+                '            info.PlayerLevel = self.mPlayerInfo.Lv  \t            --: 玩家等级(int)\n'
+                '            info.PlayerName = self.mPlayerInfo.PlayerName  \t        --: 玩家名称(string)\n'
+                '            info.PlayerVipLevel = self.mPlayerInfo.Vip              --: 玩家VIP等级(int)\n'
+                '            info.ExtData = userLoginInfo.ExtraData or ""                 -- 登录服务器时返回的额外信息\n'
+                '            info.NotifyUrl = serverInfo.ChargeServerUrl or ""\t\t    -- 充值回调地址\n\n'
+                '            local value = json.encode(info)\n'
+                '            dump(value)\n'
+                '            IPlatform:getInstance():recharge(value, function(result)\n'
+                '                local tempInfo = clone(productInfo)\n'
+                '                if isMothCard then\n'
+                '                    productInfo.ProductId = response.ProductId\n'
+                '                end\n'
+                '                tempInfo.OrderID = isMothCard and response.Value.OrderId or response.Value\n'
+                '                self:onPurchaseFinish(result, tempInfo)\n'
+                '            end)\n'
+                '        end\n'
+                '    end)\n'
+                'end',
+                'function RechargeScene:requestGenerateOrderID(moduleName, methodName, productInfo)\n'
+                '    LoadingWait:begin(self)\n'
+                '    local product = {\n'
+                '        productInfo.ProductId or productInfo.monthCardId,\n'
+                '        IPlatform:getInstance():getDeviceMAC(),\n'
+                '        IPlatform:getInstance():getDeviceUUID(),\n'
+                '        IPlatform:getInstance():getDeviceIMEI()\n'
+                '    }\n'
+                '    HttpRequest(moduleName, methodName, product, function(response)\n'
+                '        LoadingWait:ends()\n'
+                '        if response.Status == 0 then\n'
+                '            local isMothCard = productInfo.ProductId == nil\n'
+                '            local orderId = isMothCard and response.Value.OrderId or response.Value\n'
+                '            local desc = isMothCard and TR("Xác nhận kích hoạt Thẻ Tháng (Offline)?") or string.format(TR("Xác nhận nạp %d Kim Cương (Offline)?"), tonumber(productInfo.GamePoint) or 0)\n'
+                '            local box = require("Common.MessageBoxLayer").new({\n'
+                '                bgImage = "c_43.png",\n'
+                '                closeBtnImage = "c_15.png",\n'
+                '                title = TR("提示"),\n'
+                '                content = desc,\n'
+                '                leftBtnTitle = TR("确定"),\n'
+                '                rightBtnTitle = TR("取消"),\n'
+                '                leftBtnCallback = function(dlg)\n'
+                '                    dlg:removeFromParent()\n'
+                '                    LoadingWait:begin(self)\n'
+                '                    if isMothCard then\n'
+                '                        HttpRequest("CardInfo", "Activity", {productInfo.monthCardId, orderId}, function(res)\n'
+                '                            LoadingWait:ends()\n'
+                '                            if res.Status == 0 and res.Value then\n'
+                '                                self.mMonthCardInfo = {}\n'
+                '                                for _, item in pairs(res.Value) do\n'
+                '                                    self.mMonthCardInfo[item.CardId] = item\n'
+                '                                end\n'
+                '                                self.mPlayerVipLv = NetworkResData:getPlayerInfo().Vip\n'
+                '                                if self.mBkgLayer and self.mBkgLayer.refreshPlayerAttrs then\n'
+                '                                    self.mBkgLayer:refreshPlayerAttrs()\n'
+                '                                end\n'
+                '                                self.mLeftTabLayer:reloadPage()\n'
+                '                                ui.showFlashView({parent = self, text = TR("充值成功")})\n'
+                '                            end\n'
+                '                        end)\n'
+                '                    else\n'
+                '                        HttpRequest("PlayerCharge", "ConfirmOrder", {productInfo.ProductId, orderId}, function(res)\n'
+                '                            LoadingWait:ends()\n'
+                '                            if res.Status == 0 then\n'
+                '                                ui.showFlashView({parent = self, text = TR("充值成功")})\n'
+                '                                self.mChargeTotalInfo = nil\n'
+                '                                self.mChargeSingleInfo = nil\n'
+                '                                self.mChargeDaysInfo = nil\n'
+                '                                self:requestGetChargeList(true)\n'
+                '                            end\n'
+                '                        end)\n'
+                '                    end\n'
+                '                end,\n'
+                '                rightBtnCallback = function(dlg)\n'
+                '                    dlg:removeFromParent()\n'
+                '                end,\n'
+                '            })\n'
+                '            display.getRunningScene():addChild(box, 256)\n'
+                '        end\n'
+                '    end)\n'
+                'end',
+            ),
+        ],
+    )
+    patch_luac_text(
+        PATCH_WORK / "assets" / "src" / "ExtraActivity" / "MonthCardLayer.luac",
+        [
+            (
+                'function MonthCardLayer:handleOrderID(ok, content, id)\n'
+                '    if not ok then return end\n\n'
+                '    local config = self.model[id]\n\n'
+                '    local serverInfo    = NetworkResData:getServerInfo(true)\n'
+                '    local userLoginInfo = NetworkResData:getUserLoginInfo()\n'
+                '    local playerInfo    = NetworkResData:getPlayerInfo()\n\n'
+                '    local order = {\n'
+                '        ProductName    = config.card_name,\n'
+                '        ProductID      = content.ProductId,  -- 使用生成的产品ID\n'
+                '        OrderID        = content.OrderId,    -- 使用生成的OrderID\n'
+                '        CurNum         = 0,\n'
+                '        BuyNum         = 1,\n'
+                '        PresentNum     = 300,                   --: 赠送(元宝)数目(int)\n'
+                '        Price          = config.active_price,   --: 价格(元)(int)\n'
+                '        ServerID       = serverInfo.ServerID,   --: 当前服务器ID(int)\n'
+                '        ServerName     = serverInfo.ServerName, --: 当前服务器名称(string)\n'
+                '        PlayerID       = playerInfo.PlayerId,   -- 玩家ID(string)\n'
+                '        PlayerLevel    = playerInfo.Lv,         --: 玩家等级(int)\n'
+                '        PlayerName     = playerInfo.PlayerName, --: 玩家名称(string)\n'
+                '        PlayerVipLevel = playerInfo.Vip,        --: 玩家VIP等级(int)\n'
+                '        ExtData        = userLoginInfo.ExtraData,   -- 登录服务器时返回的额外信息\n'
+                '        NotifyUrl      = serverInfo.ChargeServerUrl,-- 充值回调地址\n'
+                '    }\n\n'
+                '    config.OrderID = content\n'
+                '    IPlatform:getInstance():recharge(json.encode(order), function(result)\n'
+                '        self:onPurchaseFinish(result, id)\n'
+                '    end)\n'
+                'end',
+                'function MonthCardLayer:handleOrderID(ok, content, id)\n'
+                '    if not ok then return end\n'
+                '    local box = require("Common.MessageBoxLayer").new({\n'
+                '        bgImage = "c_43.png",\n'
+                '        closeBtnImage = "c_15.png",\n'
+                '        title = TR("提示"),\n'
+                '        content = TR("Xác nhận kích hoạt Thẻ Tháng (Offline)?"),\n'
+                '        leftBtnTitle = TR("确定"),\n'
+                '        rightBtnTitle = TR("取消"),\n'
+                '        leftBtnCallback = function(dlg)\n'
+                '            dlg:removeFromParent()\n'
+                '            self.params.parent:newRequest({\n'
+                '                module = "CardInfo",\n'
+                '                method = "Activity",\n'
+                '                data = {id, content.OrderId},\n'
+                '                callback = function(actOk, actVal)\n'
+                '                    if actOk then\n'
+                '                        self:onPurchaseFinish("ok", id)\n'
+                '                        if self.params.parent and self.params.parent.mBkgLayer and self.params.parent.mBkgLayer.refreshPlayerAttrs then\n'
+                '                            self.params.parent.mBkgLayer:refreshPlayerAttrs()\n'
+                '                        end\n'
+                '                    end\n'
+                '                end,\n'
+                '            })\n'
+                '        end,\n'
+                '        rightBtnCallback = function(dlg)\n'
+                '            dlg:removeFromParent()\n'
+                '        end,\n'
+                '    })\n'
+                '    display.getRunningScene():addChild(box, 256)\n'
+                'end',
+            ),
+            (
+                'function MonthCardLayer:onPurchaseFinish(result, id)\n    IPlatform:getInstance():rechargeEnd()',
+                'function MonthCardLayer:onPurchaseFinish(result, id)',
+            ),
+        ],
+    )
 
 
-def build_and_sign() -> Path:
+def build_and_sign(out_name: str = "com.cmn.inuyasha_revival.apk") -> Path:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     unsigned_apk = OUT_DIR / "unsigned.apk"
     aligned_apk = OUT_DIR / "aligned.apk"
-    signed_apk = OUT_DIR / "com.cmn.inuyasha_revival.apk"
+    signed_apk = OUT_DIR / out_name
     for p in (unsigned_apk, aligned_apk, signed_apk):
         p.unlink(missing_ok=True)
     subprocess.run(["java", "-jar", str(APKTOOL_JAR), "b", str(PATCH_WORK), "-o", str(unsigned_apk)], check=True)
@@ -303,9 +507,10 @@ def build_and_sign() -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build patched VN 5.0.4.98 APK for local emulator test")
     parser.add_argument("--server", default="192.168.1.250:8080", help="Emulator host:port")
+    parser.add_argument("--out", default="com.cmn.inuyasha_revival.apk", help="Output APK filename in analysis/vn/patched/")
     args = parser.parse_args()
     patch_workspace(args.server)
-    out = build_and_sign()
+    out = build_and_sign(args.out)
     print(f"Patched & signed VN APK ready: {out} ({out.stat().st_size} bytes)")
 
 

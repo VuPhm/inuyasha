@@ -1987,6 +1987,286 @@ class EmulatorProtocolTest(unittest.TestCase):
             draw5_dup = emu2.handle_rpc({"ModuleName": "GiftLv", "MethodName": "DrawGiftBags", "Data": [5], "ServerId": 1})
             self.assertEqual(draw5_dup["Status"], -1)
 
+    def test_32_r7_4_recruit_tiers_pity_extra_rewards_and_ticket40(self) -> None:
+        """R7.4: Quality-tiered Recruit pools, Ayame tutorial, 10x Dream talisman, Soul pity & 16060005, ticket 16050056."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            prof = emu.get_profile_by_name("normal")
+            prof.state["player"]["Diamond"] = 20000
+
+            info0 = emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "RecruitInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(info0["Status"], 0)
+            self.assertEqual(info0["Value"]["OutZiCount"], 9)
+
+            # First Destiny free pull -> Ayame (12011014), cooldown blocks repeat free pull
+            d1 = emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [2, 1], "ServerId": 1})
+            self.assertEqual(d1["Status"], 0)
+            self.assertEqual(d1["Value"]["BaseGetGameResourceList"][0]["Hero"][0]["HeroModelId"], 12011014)
+            d_dup = emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [2, 1], "ServerId": 1})
+            self.assertEqual(d_dup["Status"], -1)
+
+            # Dream 10x (rtype=10) MUST spend 10x 16050003 talisman (NOT Diamonds!) and pull from banner 1 pool
+            dia_before = prof.state["player"]["Diamond"]
+            bad_d10 = emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [10, 0], "ServerId": 1})
+            self.assertEqual(bad_d10["Status"], -1)
+            prof._grant_resources_from_tuples([(1605, 16050003, 12)], source="test32", tx_prefix="t32:tal")
+            ok_d10 = emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [10, 0], "ServerId": 1})
+            self.assertEqual(ok_d10["Status"], 0)
+            self.assertEqual(prof.state["player"]["Diamond"], dia_before)
+            tal_left = next((g["Num"] for g in prof.state["goods"] if g["GoodsModelId"] == 16050003), 0)
+            self.assertEqual(tal_left, 3)  # 1 starter + 12 granted - 10 spent
+            d10_heroes = [h["HeroModelId"] for h in ok_d10["Value"]["BaseGetGameResourceList"][0]["Hero"]]
+            self.assertEqual(len(d10_heroes), 10)
+            self.assertGreater(len(set(d10_heroes)), 1)  # Varied heroes, not a static loop
+
+            # First Soul pull -> guarantees q=15 Orange + extraRewards 16060005 x1
+            s1 = emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [3, 1], "ServerId": 1})
+            self.assertEqual(s1["Status"], 0)
+            s1_hero = s1["Value"]["BaseGetGameResourceList"][0]["Hero"][0]
+            self.assertEqual(int(prof.game_data["heroes"][str(s1_hero["HeroModelId"])]["quality"]), 15)
+            s1_goods = s1["Value"]["BaseGetGameResourceList"][0].get("Goods", [])
+            self.assertEqual(s1_goods[0]["GoodsModelId"], 16060005)
+            self.assertEqual(s1_goods[0]["Num"], 1)
+            self.assertEqual(s1["Value"]["OutZiCount"], 9)
+
+            # Force OutZiCount to 0 -> next single Soul pull guarantees q=15 Orange and resets OutZiCount to 9
+            prof.state["recruit_state"]["OutZiCount"] = 0
+            pity_pull = emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [3, 0], "ServerId": 1})
+            self.assertEqual(pity_pull["Status"], 0)
+            pity_hid = pity_pull["Value"]["BaseGetGameResourceList"][0]["Hero"][0]["HeroModelId"]
+            self.assertEqual(int(prof.game_data["heroes"][str(pity_hid)]["quality"]), 15)
+            self.assertEqual(pity_pull["Value"]["OutZiCount"], 9)
+
+            # Soul 10x with ticket 16050056 (rtype=40) via Bag -> 10 heroes (at least 1 q=15) + 10x 16060005
+            prof._grant_resources_from_tuples([(1605, 16050056, 1)], source="test32", tx_prefix="t32:tick")
+            s40 = emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [40, 0], "ServerId": 1})
+            self.assertEqual(s40["Status"], 0)
+            s40_heroes = [h["HeroModelId"] for h in s40["Value"]["BaseGetGameResourceList"][0]["Hero"]]
+            self.assertEqual(len(s40_heroes), 10)
+            self.assertTrue(any(int(prof.game_data["heroes"][str(hid)]["quality"]) >= 15 for hid in s40_heroes))
+            self.assertFalse(any(int(prof.game_data["heroes"][str(hid)]["quality"]) >= 18 for hid in s40_heroes))
+            box_c = next((g["Num"] for g in prof.state["goods"] if g["GoodsModelId"] == 16060005), 0)
+            self.assertGreaterEqual(box_c, 12)
+            self.assertEqual(
+                emu.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [40, 0], "ServerId": 1})["Status"],
+                -1,
+            )
+
+            # Persistence across restart
+            emu2 = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+            r_reload = emu2.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "RecruitInfo", "Data": [], "ServerId": 1})
+            self.assertTrue(r_reload["Value"]["MidAlreadyUseResource"])
+            self.assertTrue(r_reload["Value"]["HigAlreadyUseResource"])
+            self.assertGreaterEqual(len(emu2.get_profile_by_name("normal").state["recruit_state"]["history"]), 4)
+
+    def test_33_r7_4_simulated_charge_card_idempotency_and_vip_perks(self) -> None:
+        """R7.4: Local Order -> ConfirmOrder/CardInfo idempotency, VIP upgrade, and dynamic VIP perks."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            prof = emu.get_profile_by_name("normal")
+            self.assertEqual(prof.state["player"]["Vip"], 0)
+
+            # Unknown product rejected
+            self.assertEqual(
+                emu.handle_rpc({"ModuleName": "PlayerCharge", "MethodName": "GenerateOrderID", "Data": ["com.fake.9999"], "ServerId": 1})["Status"],
+                -1,
+            )
+            self.assertEqual(
+                emu.handle_rpc({"ModuleName": "PlayerCharge", "MethodName": "ConfirmOrder", "Data": [99999], "ServerId": 1})["Status"],
+                -1,
+            )
+
+            # GenerateOrderID -> ConfirmOrder with order_id -> grants 2x first-charge + VipEXP + VIP level up
+            ord_res = emu.handle_rpc({"ModuleName": "PlayerCharge", "MethodName": "GenerateOrderID", "Data": ["com.cmn.inuyasha.gem680"], "ServerId": 1})
+            self.assertEqual(ord_res["Status"], 0)
+            oid = ord_res["Value"]
+            conf = emu.handle_rpc({"ModuleName": "PlayerCharge", "MethodName": "ConfirmOrder", "Data": ["com.cmn.inuyasha.gem680", oid], "ServerId": 1})
+            self.assertEqual(conf["Status"], 0)
+            self.assertEqual(conf["Value"]["DiamondAdded"], 1360)
+            self.assertEqual(conf["Avatar"]["VipEXP"], 680)
+            expected_vip = prof.ledger.derive_vip_level(680)
+            self.assertGreater(expected_vip, 0)
+            self.assertEqual(conf["Avatar"]["Vip"], expected_vip)
+            self.assertEqual(conf["Avatar"]["VIPLv"], expected_vip)
+
+            # Replay same order_id blocked with -1136 without double-grant
+            dia_after_first = prof.state["player"]["Diamond"]
+            replay = emu.handle_rpc({"ModuleName": "PlayerCharge", "MethodName": "ConfirmOrder", "Data": ["com.cmn.inuyasha.gem680", oid], "ServerId": 1})
+            self.assertEqual(replay["Status"], -1136)
+            self.assertEqual(prof.state["player"]["Diamond"], dia_after_first)
+
+            # Monthly card GenerateOrderID -> Activity + idempotency + DrawBuyReward & DrawDailyReward
+            c_ord = emu.handle_rpc({"ModuleName": "CardInfo", "MethodName": "GenerateOrderID", "Data": [1], "ServerId": 1})
+            self.assertEqual(c_ord["Status"], 0)
+            c_oid = c_ord["Value"]["OrderId"]
+            c_act = emu.handle_rpc({"ModuleName": "CardInfo", "MethodName": "Activity", "Data": [1, c_oid], "ServerId": 1})
+            self.assertEqual(c_act["Status"], 0)
+            self.assertEqual(prof.state["player"]["VipEXP"], 980)
+            c_replay = emu.handle_rpc({"ModuleName": "CardInfo", "MethodName": "Activity", "Data": [1, c_oid], "ServerId": 1})
+            self.assertEqual(c_replay["Status"], -1136)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "CardInfo", "MethodName": "DrawBuyReward", "Data": [1], "ServerId": 1})["Status"], 0)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "CardInfo", "MethodName": "DrawBuyReward", "Data": [1], "ServerId": 1})["Status"], -1)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "CardInfo", "MethodName": "DrawDailyReward", "Data": [1], "ServerId": 1})["Status"], 0)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "CardInfo", "MethodName": "DrawDailyReward", "Data": [1], "ServerId": 1})["Status"], -1)
+
+            # Upgraded VIP perks dynamically reflected in MysteryShop, Explore, VipWelfare
+            cur_vip = prof.state["player"]["VIPLv"]
+            vip_cfg = prof.game_data["vip_model"][str(cur_vip)]
+            ms = emu.handle_rpc({"ModuleName": "MysteryShop", "MethodName": "GetInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(ms["Value"]["RefreshMysteryShopMaxNum"], int(vip_cfg["refreshMysteryShopMaxNum"]))
+            exp = emu.handle_rpc({"ModuleName": "Explore", "MethodName": "GetInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(exp["Value"]["MaxResetNum"], int(vip_cfg["exploreMaxNum"]))
+            vw = emu.handle_rpc({"ModuleName": "VipWelfare", "MethodName": "DrawVipWelfare", "Data": [], "ServerId": 1})
+            self.assertEqual(vw["Status"], 0)
+
+    def test_34_r7_4_shop_gift_vip_packs_and_fixed_bundle_1601(self) -> None:
+        """R7.4: ShopGift 0..20 VIP packs and Goods.GoodsUse eBoxFixed (1601) granting ALL rows."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            prof = emu.get_profile_by_name("normal")
+            prof.state["player"]["Diamond"] = 5000
+
+            glist = emu.handle_rpc({"ModuleName": "ShopGift", "MethodName": "ShopGiftList", "Data": [], "ServerId": 1})
+            self.assertEqual(glist["Status"], 0)
+            self.assertEqual(len(glist["Value"]), 21)
+            self.assertEqual(glist["Value"][0]["GoodsModelId"], 16010001)
+            self.assertEqual(glist["Value"][20]["GoodsModelId"], 16010021)
+
+            # VIP 0 cannot buy VIP 5 pack (16010006)
+            too_low = emu.handle_rpc({"ModuleName": "ShopGift", "MethodName": "BuyGift", "Data": [16010006, 1], "ServerId": 1})
+            self.assertEqual(too_low["Status"], -1)
+
+            # Buy VIP 0 pack (16010001) -> adds 16010001 to bag -> GoodsUse grants ALL 3 fixed outputs
+            buy0 = emu.handle_rpc({"ModuleName": "ShopGift", "MethodName": "BuyGift", "Data": [16010001, 1], "ServerId": 1})
+            self.assertEqual(buy0["Status"], 0)
+            self.assertEqual(buy0["Value"]["BuyGiftRecord"]["Num"], 1)
+            self.assertEqual(
+                emu.handle_rpc({"ModuleName": "ShopGift", "MethodName": "BuyGift", "Data": [16010001, 1], "ServerId": 1})["Status"],
+                -1,
+            )
+            box_item = next(g for g in prof.state["goods"] if g["GoodsModelId"] == 16010001)
+            gold_before = prof.state["player"]["Gold"]
+            use0 = emu.handle_rpc({"ModuleName": "Goods", "MethodName": "GoodsUse", "Data": [box_item["Id"], 16010001, 1], "ServerId": 1})
+            self.assertEqual(use0["Status"], 0)
+            self.assertEqual(prof.state["player"]["Gold"], gold_before + 10000)
+            goods_gained = {g["GoodsModelId"]: g["Num"] for g in use0["Value"]["BaseGetGameResourceList"][0].get("Goods", [])}
+            self.assertEqual(goods_gained.get(16050010), 5)
+            self.assertEqual(goods_gained.get(16030008), 1)
+
+    def test_35_r7_4_success_target_all_rpcs_and_lv11_unlock(self) -> None:
+        """R7.4: SuccessTargetInfo GetInfo/DrawReward/DrawTotalReward/GetExchangeInfo/Exchange + 4900 RedDot."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            prof = emu.get_profile_by_name("normal")
+            prof.state["player"]["Lv"] = 11
+            prof.state["player"]["Diamond"] = 5000
+
+            init = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [], "ServerId": 1})
+            self.assertEqual(init["Avatar"]["RedDotInfo"].get("4900"), 1)
+
+            st_info = emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "GetInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(st_info["Status"], 0)
+            v = st_info["Value"]
+            self.assertEqual(v["Day"], 1)
+            self.assertEqual(len(v["TargetList"]), 42)
+            t3 = next(t for t in v["TargetList"] if t["TargetId"] == 3)
+            self.assertGreaterEqual(t3["Sequence"], 1)
+
+            # Claim Day 1 Login (tid=3, seq=1) -> blocks duplicate & locked Day 2
+            dr_ok = emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "DrawReward", "Data": [3, 1], "ServerId": 1})
+            self.assertEqual(dr_ok["Status"], 0)
+            self.assertGreaterEqual(len(dr_ok["Value"]["BaseGetGameResourceList"]), 1)
+            self.assertEqual(
+                emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "DrawReward", "Data": [3, 1], "ServerId": 1})["Status"],
+                -1,
+            )
+            self.assertEqual(
+                emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "DrawReward", "Data": [3, 2], "ServerId": 1})["Status"],
+                -1,
+            )
+
+            # ExchangeInfo & Exchange
+            ex_info = emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "GetExchangeInfo", "Data": [1], "ServerId": 1})
+            self.assertEqual(ex_info["Status"], 0)
+            self.assertEqual(len(ex_info["Value"]["ActivityList"]), 7)
+            ex_buy = emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "Exchange", "Data": [1, 1], "ServerId": 1})
+            self.assertEqual(ex_buy["Status"], 0)
+
+            # DrawTotalReward flips IfDraw to 1 and cannot replay
+            tot = emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "DrawTotalReward", "Data": [], "ServerId": 1})
+            self.assertEqual(tot["Status"], 0)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "GetInfo", "Data": [], "ServerId": 1})["Value"]["IfDraw"], 1)
+            self.assertEqual(
+                emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "DrawTotalReward", "Data": [], "ServerId": 1})["Status"],
+                -1,
+            )
+
+    def test_36_r7_4_box_choice_including_ur_quality18(self) -> None:
+        """R7.4: Goods.GoodsUseForBoxChoice for eBoxChoice (16060008 UR hero) and eFashionChoice (16080001)."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            prof = emu.get_profile_by_name("normal")
+            prof._grant_resources_from_tuples([(1606, 16060008, 1), (1608, 16080001, 1)], source="test36", tx_prefix="t36:seed")
+
+            ur_box = next(g for g in prof.state["goods"] if g["GoodsModelId"] == 16060008)
+            f_box = next(g for g in prof.state["goods"] if g["GoodsModelId"] == 16080001)
+
+            # Reject hero not inside 16060008 choice table without consuming box
+            bad = emu.handle_rpc(
+                {"ModuleName": "Goods", "MethodName": "GoodsUseForBoxChoice", "Data": [ur_box["Id"], 16060008, 12011014, 1], "ServerId": 1}
+            )
+            self.assertEqual(bad["Status"], -1)
+            self.assertTrue(any(g["GoodsModelId"] == 16060008 for g in prof.state["goods"]))
+
+            # Pick quality=18 UR InuYasha (12011004)
+            ok = emu.handle_rpc(
+                {"ModuleName": "Goods", "MethodName": "GoodsUseForBoxChoice", "Data": [ur_box["Id"], 16060008, 12011004, 1], "ServerId": 1}
+            )
+            self.assertEqual(ok["Status"], 0)
+            gained_h = ok["Value"]["BaseGetGameResourceList"][0]["Hero"][0]
+            self.assertEqual(gained_h["HeroModelId"], 12011004)
+            self.assertEqual(int(prof.game_data["heroes"]["12011004"]["quality"]), 18)
+            self.assertFalse(any(g["GoodsModelId"] == 16060008 for g in prof.state["goods"]))
+            self.assertEqual(
+                emu.handle_rpc(
+                    {"ModuleName": "Goods", "MethodName": "GoodsUseForBoxChoice", "Data": [ur_box["Id"], 16060008, 12011004, 1], "ServerId": 1}
+                )["Status"],
+                -1,
+            )
+
+            # Pick fashion from 16080001
+            ok_f = emu.handle_rpc(
+                {"ModuleName": "Goods", "MethodName": "GoodsUseForBoxChoice", "Data": [f_box["Id"], 16080001, 19010001, 1], "ServerId": 1}
+            )
+            self.assertEqual(ok_f["Status"], 0)
+            self.assertTrue(any(f["FashionModelId"] == 19010001 for f in prof.state.get("fashions", [])))
+
+    def test_37_r7_4_lvplan_canonical_cost_and_regressions(self) -> None:
+        """R7.4: Verify canonical LvPlan 100-Diamond tier fee (per LvPlanRewardModel) + clean LvPlan claim."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            prof = emu.get_profile_by_name("normal")
+            prof.state["player"]["Lv"] = 15
+            prof.state["player"]["Diamond"] = 1000
+            prof.state["player"]["Vip"] = 2
+            prof.state["player"]["VIPLv"] = 2
+
+            self.assertEqual(emu.handle_rpc({"ModuleName": "LvPlan", "MethodName": "OpenLvPlan", "Data": [], "ServerId": 1})["Status"], 0)
+            self.assertEqual(prof.state["player"]["Diamond"], 1000)
+            # Insufficient 100 Diamond cannot claim tier 10 -> after setting 100 Diamond, net gain = +100 (200 - 100)
+            prof.state["player"]["Diamond"] = 50
+            self.assertEqual(emu.handle_rpc({"ModuleName": "LvPlan", "MethodName": "ReceiveLvPlan", "Data": [10], "ServerId": 1})["Status"], -1)
+            prof.state["player"]["Diamond"] = 100
+            r10 = emu.handle_rpc({"ModuleName": "LvPlan", "MethodName": "ReceiveLvPlan", "Data": [10], "ServerId": 1})
+            self.assertEqual(r10["Status"], 0)
+            self.assertEqual(prof.state["player"]["Diamond"], 200)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

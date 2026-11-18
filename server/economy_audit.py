@@ -28,6 +28,8 @@ ALLOWED_PLAYER_RESOURCES = {
     "STA": "STA",
     "VipEXP": "VipEXP",
     "EXP": "EXP",
+    "PVPCoin": "PVPCoin",
+    "BossCoin": "BossCoin",
 }
 
 DISALLOWED_BALANCE_KEYS = {"HP", "AP", "DEF", "DAM", "DAMADD", "DAMADDR", "DAMCUT", "DAMCUTR"}

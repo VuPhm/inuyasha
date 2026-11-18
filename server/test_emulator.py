@@ -1075,6 +1075,279 @@ class EmulatorProtocolTest(unittest.TestCase):
                 srv.shutdown()
                 srv.server_close()
 
+    def test_20_boss_battle_spawn_combat_rewards_boxes_buy_and_reload(self) -> None:
+        from combat_sim import simulate_fight_info
+        import qa_runner
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td)
+            c_qa = qa_runner.QABackendClient(data_dir=data_dir, persist=True, new_player=True)
+            emu = c_qa.emu
+            assert emu is not None
+            emu.handle_rpc({"ModuleName": "Player", "MethodName": "Login", "Data": [], "ServerId": 1})
+            emu.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["BossTester", 1], "ServerId": 1})
+
+            # Below Lv 18: battles and elites must NOT trigger BossBattle
+            qa_runner.apply_preset(c_qa, "PROGRESSION", target_lv=17)
+            fi17 = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "GetFightInfo", "Data": [11, 1111, 1], "ServerId": 1})
+            c17 = simulate_fight_info(fi17["Value"]["FightInfo"], emu.game_data["attacks"])
+            b17 = emu.handle_rpc(
+                {"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1111, 1, c17.won, json.dumps(c17.verify_data)], "ServerId": 1}
+            )
+            self.assertNotIn("BossId", b17["Value"])
+            bl17 = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "GetBossList", "Data": [], "ServerId": 1})
+            self.assertEqual(bl17["Value"]["BossList"], [])
+
+            # Upgrade to Lv 18 QA preset -> trigger Boss on victory
+            qa_runner.apply_preset(c_qa, "QA_LV18")
+            fi18 = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "GetFightInfo", "Data": [11, 1111, 1], "ServerId": 1})
+            c18 = simulate_fight_info(fi18["Value"]["FightInfo"], emu.game_data["attacks"])
+            b18 = emu.handle_rpc(
+                {"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1111, 1, c18.won, json.dumps(c18.verify_data)], "ServerId": 1}
+            )
+            boss_id = b18["Value"].get("BossId")
+            self.assertIsInstance(boss_id, str)
+            self.assertEqual(len(boss_id), 36)
+
+            bl = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "GetBossList", "Data": [], "ServerId": 1})
+            self.assertEqual(bl["Status"], 0)
+            self.assertEqual(len(bl["Value"]["BossList"]), 1)
+            self.assertEqual(bl["Avatar"]["RedDotInfo"]["2203"], 1)
+            boss_item = bl["Value"]["BossList"][0]
+            self.assertEqual(boss_item["CurHP"], boss_item["TotalHP"])
+
+            # BossInfo + FriendHelp
+            binfo = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "GetBossInfo", "Data": [boss_id], "ServerId": 1})
+            self.assertEqual(binfo["Status"], 0)
+            fhelp = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "FriendHelp", "Data": [boss_id], "ServerId": 1})
+            self.assertGreater(fhelp["Value"]["CanHelpTime"], 0)
+
+            # Normal attack + optional All-Out Attack until killed
+            vit_before = emu.profiles["normal"].state["player"]["VIT"]
+            bfi = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "GetFightInfo", "Data": [boss_id, 0], "ServerId": 1})
+            self.assertEqual(bfi["Status"], 0)
+            bc = simulate_fight_info(bfi["Value"]["FightInfo"], emu.game_data["attacks"])
+            bf = emu.handle_rpc(
+                {"ModuleName": "BossBattle", "MethodName": "Fight", "Data": [boss_id, 0, bc.won, json.dumps(bc.verify_data)], "ServerId": 1}
+            )
+            self.assertEqual(bf["Status"], 0)
+            self.assertGreater(bf["Value"]["HurtValue"], 0)
+            self.assertGreater(bf["Value"]["SingleJiFen"], 0)
+            self.assertEqual(emu.profiles["normal"].state["player"]["VIT"], vit_before - 5)
+
+            while bf["Value"]["BossExist"]:
+                # Use All-Out Attack to verify 3x AP & 100 RP scaling and kill boss
+                bfi_all = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "GetFightInfo", "Data": [boss_id, 1], "ServerId": 1})
+                self.assertEqual(bfi_all["Status"], 0)
+                first_ally = next(u for u in bfi_all["Value"]["FightInfo"]["FightObjs"][0]["Heros"][:6] if u)
+                self.assertEqual(first_ally["RP"], 100)
+                bc_all = simulate_fight_info(bfi_all["Value"]["FightInfo"], emu.game_data["attacks"])
+                bf = emu.handle_rpc(
+                    {"ModuleName": "BossBattle", "MethodName": "Fight", "Data": [boss_id, 1, bc_all.won, json.dumps(bc_all.verify_data)], "ServerId": 1}
+                )
+                self.assertEqual(bf["Status"], 0)
+
+            self.assertFalse(bf["Value"]["BossExist"])
+            total_jifen = emu.profiles["normal"].state["player"]["BossCoin"]
+            self.assertGreaterEqual(total_jifen, 100)
+
+            # Box milestone claim + OneKeyDrawBox + BuyCount + Ranking
+            boxes = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "BoxList", "Data": [], "ServerId": 1})
+            self.assertEqual(len(boxes["Value"]), 35)
+            dbox = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "DrawBox", "Data": [100], "ServerId": 1})
+            self.assertEqual(dbox["Status"], 0)
+            dup_box = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "DrawBox", "Data": [100], "ServerId": 1})
+            self.assertNotEqual(dup_box["Status"], 0)
+
+            buy_res = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "BuyCount", "Data": [2], "ServerId": 1})
+            self.assertEqual(buy_res["Status"], 0)
+            self.assertEqual(buy_res["Value"]["BuyCount"], 2)
+
+            ranks = emu.handle_rpc({"ModuleName": "BossBattle", "MethodName": "JiFenRanking", "Data": [], "ServerId": 1})
+            self.assertEqual(ranks["Status"], 0)
+            self.assertGreaterEqual(len(ranks["Value"]), 5)
+
+            # Save / reload verification
+            emu2 = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+            bl2 = emu2.handle_rpc({"ModuleName": "BossBattle", "MethodName": "GetBossList", "Data": [], "ServerId": 1})
+            self.assertEqual(bl2["Value"]["BattleInfo"]["BuyCount"], 2)
+            self.assertEqual(bl2["Value"]["BattleInfo"]["JiFen"], total_jifen)
+
+    def test_21_arena_bots_genuine_win_loss_rank_swap_shop_and_guide6(self) -> None:
+        import qa_runner
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td)
+            c_qa = qa_runner.QABackendClient(data_dir=data_dir, persist=True, new_player=True)
+            emu = c_qa.emu
+            assert emu is not None
+
+            # Below Lv 20: Arena fight rejected
+            qa_runner.apply_preset(c_qa, "QA_LV18")
+            deny = emu.handle_rpc({"ModuleName": "PVP", "MethodName": "PVPFight", "Data": ["x", 1499], "ServerId": 1})
+            self.assertNotEqual(deny["Status"], 0)
+
+            # Upgrade to Lv 20 QA preset
+            qa_runner.apply_preset(c_qa, "QA_LV20")
+            pinfo = emu.handle_rpc({"ModuleName": "PVP", "MethodName": "GetPVPInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(pinfo["Status"], 0)
+            val = pinfo["Value"]
+            self.assertEqual(val["Rank"], 1500)
+            self.assertGreater(val["RewardTimeStart"], 0)
+            self.assertEqual(len(val["PVPShopInfo"]), 40)
+
+            rank_list = val["RankList"]
+            self.assertTrue(any(item["Rank"] == 1 for item in rank_list))
+            self.assertTrue(any(item["IfAllowRank"] == 1 for item in rank_list))
+
+            # Inspect bot formation via Slot.SlotFormations
+            top_bot = next(item for item in rank_list if item["Rank"] == 1)
+            self.assertEqual(len(top_bot["PlayerId"]), 36)
+            bot_form = emu.handle_rpc({"ModuleName": "Slot", "MethodName": "SlotFormations", "Data": [top_bot["PlayerId"]], "ServerId": 1})
+            self.assertEqual(bot_form["Status"], 0)
+            self.assertEqual(bot_form["Value"]["PlayerInfo"]["Name"], top_bot["Name"])
+            self.assertTrue(any(s.get("Hero") for s in bot_form["Value"]["SlotInfos"]))
+
+            # Refresh + cooldown check
+            ref1 = emu.handle_rpc({"ModuleName": "PVP", "MethodName": "Refresh", "Data": [], "ServerId": 1})
+            self.assertEqual(ref1["Status"], 0)
+            ref2 = emu.handle_rpc({"ModuleName": "PVP", "MethodName": "Refresh", "Data": [], "ServerId": 1})
+            self.assertNotEqual(ref2["Status"], 0)
+
+            # Fight Rank 1 boss-tier bot -> must NOT auto-win!
+            lose_res = emu.handle_rpc({"ModuleName": "PVP", "MethodName": "PVPFight", "Data": [top_bot["PlayerId"], 1], "ServerId": 1})
+            self.assertEqual(lose_res["Status"], 0)
+            self.assertEqual(lose_res["Value"]["IsWinFight"], 0)
+            self.assertEqual(lose_res["Value"]["Rank"], 1500)
+            self.assertGreaterEqual(lose_res["Value"]["PVPCoin"], 10)
+            self.assertTrue(lose_res["Value"]["FightInfo"]["FightObjs"][0]["IsPVP"])
+
+            # Fight beatable Rank 1499 opponent -> genuine win & rank swap
+            easy_target = max((item for item in val["RankList"] if item["IfAllowRank"] == 1), key=lambda x: x["Rank"])
+            win_res = emu.handle_rpc(
+                {"ModuleName": "PVP", "MethodName": "PVPFight", "Data": [easy_target["PlayerId"], easy_target["Rank"]], "ServerId": 1}
+            )
+            self.assertEqual(win_res["Status"], 0)
+            self.assertEqual(win_res["Value"]["IsWinFight"], 1)
+            self.assertEqual(win_res["Value"]["Rank"], easy_target["Rank"])
+            self.assertEqual(len(win_res["Value"]["ChoiceGetGameResource"]), 3)
+
+            # Top Rank list across steps 1..5
+            top_list = emu.handle_rpc({"ModuleName": "PVP", "MethodName": "GetPVPTopRankList", "Data": [], "ServerId": 1})
+            self.assertEqual(top_list["Status"], 0)
+            self.assertEqual(len(top_list["Value"]["TopRankList"]), 5)
+
+            # Climb across rank tiers into top-1000 to verify breakthrough Diamonds from PvpRankFirstRewardRelation
+            diam_before = emu.profiles["normal"].state["player"]["Diamond"]
+            cur_list = win_res["Value"]["RankList"]
+            for _ in range(3):
+                if emu.profiles["normal"].state["pvp"]["rank"] <= 980:
+                    break
+                climb_target = min((item for item in cur_list if item["IfAllowRank"] == 1), key=lambda x: x["Rank"])
+                climb_res = emu.handle_rpc(
+                    {"ModuleName": "PVP", "MethodName": "PVPFight", "Data": [climb_target["PlayerId"], climb_target["Rank"]], "ServerId": 1}
+                )
+                self.assertEqual(climb_res["Status"], 0)
+                if climb_res["Value"]["IsWinFight"] == 1:
+                    cur_list = climb_res["Value"]["RankList"]
+            self.assertLess(emu.profiles["normal"].state["pvp"]["rank"], 1000)
+            self.assertGreater(emu.profiles["normal"].state["player"]["Diamond"], diam_before)
+
+            # Verify PVPShopBuy with earned PVPCoin
+            shop_buy = emu.handle_rpc({"ModuleName": "PVPShop", "MethodName": "PVPShopBuy", "Data": [1, 1], "ServerId": 1})
+            self.assertEqual(shop_buy["Status"], 0)
+
+            # Complete Lv 20 Guide 6 using real RPC Player.AlterPlayerStepCount
+            g6 = emu.handle_rpc({"ModuleName": "Player", "MethodName": "AlterPlayerStepCount", "Data": [6, 206], "ServerId": 1})
+            self.assertEqual(g6["Status"], 0)
+
+            # Save / reload verification
+            emu2 = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+            pinfo2 = emu2.handle_rpc({"ModuleName": "PVP", "MethodName": "GetPVPInfo", "Data": [], "ServerId": 1})
+            self.assertLess(pinfo2["Value"]["Rank"], 1000)
+            self.assertEqual(emu2.profiles["normal"].state["player"]["StepCountList"]["6"], 206)
+            shop_row_1 = next(x for x in pinfo2["Value"]["PVPShopInfo"] if x["ShopId"] == 1)
+            self.assertEqual(shop_row_1["BuyNum"], 1)
+
+    def test_22_phase_d_battle_for_ten_daydayfund_startwork_fashion_and_chest(self) -> None:
+        import qa_runner
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td)
+            c_qa = qa_runner.QABackendClient(data_dir=data_dir, persist=True, new_player=True)
+            emu = c_qa.emu
+            assert emu is not None
+            qa_runner.apply_preset(c_qa, "QA_LV20")
+
+            # Debris split + chest opening (GoodsOutputRelation) + Battle.ConFight
+            c_qa.admin_grant(
+                items=[{"id": 15010006, "num": 5}, {"id": 16020020, "num": 1}, {"id": 16070004, "num": 100}],
+                source="qa_phase_d",
+            )
+            init = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [], "ServerId": 1})
+            self.assertTrue(any(g["GoodsModelId"] == 15010006 for g in init["Value"]["GoodsHeroDebrisInfo"]))
+            self.assertFalse(any(g["GoodsModelId"] == 15010006 for g in init["Value"]["GoodsPropsInfo"]))
+
+            stone = next(g for g in init["Value"]["GoodsPropsInfo"] if g["GoodsModelId"] == 16020020)
+            used = emu.handle_rpc({"ModuleName": "Goods", "MethodName": "GoodsUse", "Data": [stone["Id"], 16020020, 1], "ServerId": 1})
+            self.assertEqual(used["Status"], 0)
+            self.assertTrue(used["Value"]["BaseGetGameResourceList"])
+
+            # Daydayfund cycle
+            df0 = emu.handle_rpc({"ModuleName": "Daydayfund", "MethodName": "GetInfo", "Data": [], "ServerId": 1})
+            self.assertTrue(df0["Value"]["IfDraw"])
+            inv = emu.handle_rpc({"ModuleName": "Daydayfund", "MethodName": "Invest", "Data": [], "ServerId": 1})
+            self.assertEqual(inv["Status"], 0)
+            self.assertFalse(inv["Value"]["IfDraw"])
+            self.assertGreaterEqual(inv["Value"]["Multiple"], 30 * 20)
+            harv = emu.handle_rpc({"ModuleName": "Daydayfund", "MethodName": "Harvest", "Data": [], "ServerId": 1})
+            self.assertEqual(harv["Status"], 0)
+            self.assertTrue(harv["Value"]["IfDraw"])
+            self.assertTrue(harv["Value"]["BaseGetGameResourceList"])
+
+            # StartWorkReward RPC + RedDotInfo[2718] safety guard
+            sw_info = emu.handle_rpc({"ModuleName": "StartWorkReward", "MethodName": "GetStartworkRewardInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(sw_info["Status"], 0)
+            self.assertIn("StartWorkReward", sw_info["Value"])
+            sw_get = emu.handle_rpc({"ModuleName": "StartWorkReward", "MethodName": "GetStartworkReward", "Data": [], "ServerId": 1})
+            self.assertEqual(sw_get["Status"], 0)
+            self.assertEqual(sw_get["Avatar"]["RedDotInfo"]["2718"], 0)
+
+            # Fashion DressUp / StepUp / Resolve
+            prof = emu.profiles["normal"]
+            prof._grant_resources_from_tuples([(1901, 19010001, 2)], source="qa_fashion_grant", tx_prefix="qa_fash")
+            fashions = prof.state["fashions"]
+            self.assertEqual(len(fashions), 2)
+            dr = emu.handle_rpc({"ModuleName": "Fashion", "MethodName": "DressUp", "Data": [fashions[0]["Id"]], "ServerId": 1})
+            self.assertEqual(dr["Value"]["FashionModelId"], 19010001)
+            su = emu.handle_rpc({"ModuleName": "Fashion", "MethodName": "StepUp", "Data": [fashions[0]["Id"]], "ServerId": 1})
+            self.assertEqual(su["Status"], 0)
+            self.assertEqual(su["Value"]["FashionInfo"]["Step"], 1)
+            rs = emu.handle_rpc({"ModuleName": "Fashion", "MethodName": "Resolve", "Data": [fashions[1]["Id"]], "ServerId": 1})
+            self.assertEqual(rs["Status"], 0)
+            self.assertEqual(len(prof.state["fashions"]), 1)
+
+            # BattleForTen (Battle.ConFight) with sweep token consumption
+            emu.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1111, 1, True, None], "ServerId": 1})
+            cf = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "ConFight", "Data": [11, 1111, 1, 3, 2], "ServerId": 1})
+            self.assertEqual(cf["Status"], 0)
+            self.assertEqual(len(cf["Value"]["BaseGetGameResourceList"]), 3)
+
+    def test_23_fast_qa_presets_lv18_and_lv20_and_pvp_turn_order(self) -> None:
+        from combat_sim import PVP_ENEMY_ORDER, PVE_ENEMY_ORDER
+        import qa_runner
+
+        self.assertEqual(PVP_ENEMY_ORDER, [7, 8, 9, 10, 11, 12])
+        self.assertEqual(PVE_ENEMY_ORDER, [9, 8, 7, 12, 11, 10])
+        with tempfile.TemporaryDirectory() as td:
+            c18 = qa_runner.QABackendClient(data_dir=Path(td) / "lv18", persist=True, new_player=True)
+            res18 = qa_runner.apply_preset(c18, "QA_LV18")
+            self.assertEqual(res18["summary"]["player"]["Lv"], 18)
+
+            c20 = qa_runner.QABackendClient(data_dir=Path(td) / "lv20", persist=True, new_player=True)
+            res20 = qa_runner.apply_preset(c20, "QA_LV20")
+            self.assertEqual(res20["summary"]["player"]["Lv"], 20)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

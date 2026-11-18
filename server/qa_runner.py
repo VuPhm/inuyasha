@@ -28,24 +28,18 @@ QA_RUNS_DIR = SERVER_DIR / "qa_runs"
 GAME_DATA_PATH = SERVER_DIR / "game_data.json"
 
 sys.path.insert(0, str(SERVER_DIR))
+from combat_sim import (  # noqa: E402
+    CombatOutcome,
+    PVE_ENEMY_ORDER,
+    PVE_FRIEND_ORDER,
+    PVP_ENEMY_ORDER,
+    _apply_attack,
+    _select_targets,
+    simulate_fight_info,
+)
 from emulator import EMPTY_ENTITY_ID, GameEmulatorState  # noqa: E402
 
-PVE_FRIEND_ORDER = [1, 2, 3, 4, 5, 6]
-PVE_ENEMY_ORDER = [9, 8, 7, 12, 11, 10]
 DEFAULT_STAR_TARGET = 1  # 1★ Easy default; configurable up to 3★ Hard
-
-
-@dataclass
-class CombatOutcome:
-    """Result of evaluating FightInfo with CSCommon/FightExpression + BattleCalc rules."""
-
-    won: bool
-    waves: int
-    total_rounds: int
-    ally_alive: int
-    enemy_alive: int
-    ally_hp_pct: float
-    verify_data: dict[str, Any]
 
 
 class SafetyViolationError(RuntimeError):
@@ -210,248 +204,6 @@ class QABackendClient:
             raise RuntimeError(f"Admin {method} {path} failed ({err.code}): {err.read().decode('utf-8')}") from err
 
 
-def _select_targets(
-    attacker_pos: int,
-    attacker_camp: int,
-    units: dict[int, dict[str, Any]],
-    skill: dict[str, Any],
-    rng: random.Random,
-) -> list[int]:
-    """Select target PosIds matching CSCommon/FightEnum.lua FightEnum_Target."""
-    target_camp = int(skill.get("targetCampEnum", 2))
-    if target_camp == 3:  # eSelf
-        return [attacker_pos] if attacker_pos in units and units[attacker_pos]["HP"] > 0 else []
-    # targetCampEnum: 1=same camp, 2/0=opposing camp
-    want_ally = (attacker_camp == 1) if target_camp == 1 else (attacker_camp == 2)
-    pool = [
-        pos
-        for pos, u in units.items()
-        if u["HP"] > 0 and ((pos <= 6) == want_ally)
-    ]
-    if not pool:
-        return []
-
-    mode = int(skill.get("targetEnum", 1))
-    target_num = max(1, int(skill.get("targetNum", 1)))
-    front_positions = (1, 2, 3) if want_ally else (7, 8, 9)
-    back_positions = (4, 5, 6) if want_ally else (10, 11, 12)
-    front_alive = [p for p in front_positions if p in pool]
-    back_alive = [p for p in back_positions if p in pool]
-
-    if mode in (0, 1, 15):  # eSingleFront / eDesignatedHero
-        col = (attacker_pos - 1) % 3
-        pref = [front_positions[col], *front_positions, *back_positions]
-        first = next((p for p in pref if p in pool), pool[0])
-        return [first]
-    if mode == 2:  # eSingleBack
-        col = (attacker_pos - 1) % 3
-        pref = [back_positions[col], *back_positions, *front_positions]
-        first = next((p for p in pref if p in pool), pool[0])
-        return [first]
-    if mode == 3:  # eRowFront
-        return front_alive or back_alive
-    if mode == 4:  # eRowBack
-        return back_alive or front_alive
-    if mode == 5:  # eOneColumn
-        col = (attacker_pos - 1) % 3
-        col_pair = [front_positions[col], back_positions[col]]
-        hits = [p for p in col_pair if p in pool]
-        if not hits:
-            alt = next((p for p in (*front_positions, *back_positions) if p in pool), None)
-            if alt is not None:
-                c = (alt - 1) % 3
-                hits = [p for p in (front_positions[c], back_positions[c]) if p in pool]
-        return hits
-    if mode == 6:  # eAll
-        return sorted(pool)
-    if mode == 7:  # eRandom
-        k = min(len(pool), target_num)
-        return rng.sample(pool, k)
-    if mode == 8:  # eHPMax
-        return sorted(pool, key=lambda p: units[p]["HP"], reverse=True)[:target_num]
-    if mode == 9:  # eHPMin
-        return sorted(pool, key=lambda p: units[p]["HP"] / max(1, units[p]["TotalHp"]))[:target_num]
-    if mode == 10:  # eRPMax
-        return sorted(pool, key=lambda p: units[p]["RP"], reverse=True)[:target_num]
-    if mode == 11:  # eRPMin
-        return sorted(pool, key=lambda p: units[p]["RP"])[:target_num]
-    if mode == 12:  # eHPLossMax
-        return sorted(pool, key=lambda p: units[p]["TotalHp"] - units[p]["HP"], reverse=True)[:target_num]
-    return pool[:target_num]
-
-
-def _apply_attack(
-    atk_pos: int,
-    units: dict[int, dict[str, Any]],
-    attacks_cfg: dict[str, Any],
-    rng: random.Random,
-) -> None:
-    """Execute single hero turn using CSCommon/FightExpression.lua formulas."""
-    atk = units[atk_pos]
-    ra_id = int(atk.get("RAId", 0))
-    na_id = int(atk.get("NAId", 0))
-    ra_skill = attacks_cfg.get(str(ra_id), {})
-    na_skill = attacks_cfg.get(str(na_id), {})
-
-    need_rp = int(ra_skill.get("useRP", 100) or 100)
-    use_skill = bool(ra_skill) and int(atk["RP"]) >= need_rp
-    skill = ra_skill if use_skill else (na_skill or ra_skill)
-    atk_rp_snapshot = int(atk["RP"])
-
-    atk_camp = 1 if atk_pos <= 6 else 2
-    targets = _select_targets(atk_pos, atk_camp, units, skill, rng)
-    factor = float(skill.get("factor", 10000)) / 10000.0
-    is_heal = int(skill.get("type", 0)) == 1
-    atk_ap = float(atk.get("AP", 0))
-
-    if use_skill:
-        atk["RP"] = max(0, int(atk["RP"]) - need_rp)
-    else:
-        atk["RP"] = int(atk["RP"]) + 25
-
-    for tpos in targets:
-        vic = units[tpos]
-        if vic["HP"] <= 0:
-            continue
-        if is_heal:
-            base_heal = max(atk_ap * factor + float(atk.get("CP", 0)) + float(vic.get("BCP", 0)), 0.0)
-            cri_prob = max(0.0, float(atk.get("CRI", 0)) / 100.0)
-            is_crit = rng.uniform(0, 100) < cri_prob
-            heal_val = max(1, math.ceil(base_heal * (1.5 if is_crit else 1.0))) if base_heal > 0 else 0
-            vic["HP"] = min(int(vic["TotalHp"]), int(vic["HP"]) + heal_val)
-            continue
-
-        vic_def = float(vic.get("DEF", 0))
-        hurt_strength = max(atk_ap - vic_def, atk_ap * 0.1)
-        if use_skill:
-            org_hurt = hurt_strength * factor * max(0.1, 1.0 + (atk_rp_snapshot - need_rp) / 200.0)
-        else:
-            org_hurt = hurt_strength * factor
-        damaddr = float(atk.get("DAMADDR", 0)) / 10000.0
-        damcutr = float(vic.get("DAMCUTR", 0)) / 10000.0
-        normal_hurt = org_hurt * max(0.01, 1.0 + (damaddr - damcutr))
-
-        val_dod = max(float(vic.get("DOD", 0)) / 100.0 - float(atk.get("HIT", 10000)) / 100.0 + 100.0, 0.0)
-        val_cri = max(float(atk.get("CRI", 0)) / 100.0 - float(vic.get("TEN", 0)) / 100.0, 0.0)
-        val_blo = max(float(vic.get("BLO", 0)) / 100.0 - float(atk.get("BOG", 0)) / 100.0, 0.0)
-        roll = rng.uniform(0.0, 100.0)
-
-        if roll < val_dod:
-            dmg = 0
-        elif roll < val_dod + val_cri:
-            crit_rate = 1.5 + (float(atk.get("CRId", 0)) - float(vic.get("TEND", 0))) / 10000.0
-            dmg = max(1, math.ceil(normal_hurt * max(1.1, crit_rate)))
-        elif roll < val_dod + val_cri + val_blo:
-            dmg = max(1, math.ceil(normal_hurt * 0.5))
-        else:
-            dmg = max(1, math.ceil(normal_hurt))
-
-        if dmg > 0:
-            net_dmg = max(1, int(dmg + float(atk.get("DAMADD", 0)) - float(vic.get("DAMCUT", 0))))
-            vic["HP"] = max(0, int(vic["HP"]) - net_dmg)
-
-
-def simulate_fight_info(
-    fight_info: dict[str, Any],
-    attacks_cfg: dict[str, Any],
-    max_rounds: int = 30,
-) -> CombatOutcome:
-    """
-    Evaluate all waves of a Battle.GetFightInfo payload using real combat math.
-
-    Never rigs outcomes: weak teams genuinely lose when enemy HP outlasts or defeats allies.
-    """
-    fight_objs = fight_info.get("FightObjs", [])
-    waves_hp: list[list[dict[str, int]]] = []
-    ally_carry_hp: dict[int, int] = {}
-    ally_carry_rp: dict[int, int] = {}
-    total_rounds = 0
-    won_all = True
-    last_units: dict[int, dict[str, Any]] = {}
-
-    for w_idx, wave in enumerate(fight_objs):
-        seed = int(wave.get("RandNum", w_idx + 1))
-        rng = random.Random(seed)
-        heros_arr = wave.get("Heros", [])
-        units: dict[int, dict[str, Any]] = {}
-        for idx, obj in enumerate(heros_arr, start=1):
-            if not isinstance(obj, dict) or not obj.get("HeroModelId"):
-                continue
-            u = dict(obj)
-            u["HP"] = int(u.get("HP", 0))
-            u["TotalHp"] = int(u.get("TotalHp", max(1, u["HP"])))
-            u["RP"] = int(u.get("RP", 50))
-            if idx <= 6 and w_idx > 0 and idx in ally_carry_hp:
-                u["HP"] = ally_carry_hp[idx]
-                u["RP"] = ally_carry_rp.get(idx, u["RP"])
-            units[idx] = u
-
-        ally_total_fsp = sum(int(u.get("FSP", 0)) for p, u in units.items() if p <= 6 and u["HP"] > 0)
-        enemy_total_fsp = sum(int(u.get("FSP", 0)) for p, u in units.items() if p > 6 and u["HP"] > 0)
-        friend_first = ally_total_fsp >= enemy_total_fsp
-
-        for _rnd in range(1, max_rounds + 1):
-            total_rounds += 1
-            order = []
-            f_live = [p for p in PVE_FRIEND_ORDER if p in units and units[p]["HP"] > 0]
-            e_live = [p for p in PVE_ENEMY_ORDER if p in units and units[p]["HP"] > 0]
-            first_q, second_q = (f_live, e_live) if friend_first else (e_live, f_live)
-            max_len = max(len(first_q), len(second_q))
-            for i in range(max_len):
-                if i < len(first_q):
-                    order.append(first_q[i])
-                if i < len(second_q):
-                    order.append(second_q[i])
-
-            for pos in order:
-                if pos not in units or units[pos]["HP"] <= 0:
-                    continue
-                _apply_attack(pos, units, attacks_cfg, rng)
-                allies_up = any(units[p]["HP"] > 0 for p in units if p <= 6)
-                enemies_up = any(units[p]["HP"] > 0 for p in units if p > 6)
-                if not allies_up or not enemies_up:
-                    break
-
-            allies_up = any(units[p]["HP"] > 0 for p in units if p <= 6)
-            enemies_up = any(units[p]["HP"] > 0 for p in units if p > 6)
-            if not allies_up or not enemies_up:
-                break
-
-        wave_hp_list = [
-            {"PosId": p, "HeroModelId": int(units[p]["HeroModelId"]), "HP": int(units[p]["HP"])}
-            for p in sorted(units)
-        ]
-        waves_hp.append(wave_hp_list)
-        last_units = units
-
-        for p in range(1, 7):
-            if p in units:
-                ally_carry_hp[p] = int(units[p]["HP"])
-                ally_carry_rp[p] = int(units[p]["RP"])
-
-        allies_up = any(units[p]["HP"] > 0 for p in units if p <= 6)
-        enemies_up = any(units[p]["HP"] > 0 for p in units if p > 6)
-        if enemies_up or not allies_up:
-            won_all = False
-            break
-
-    ally_alive = sum(1 for p, u in last_units.items() if p <= 6 and u["HP"] > 0)
-    enemy_alive = sum(1 for p, u in last_units.items() if p > 6 and u["HP"] > 0)
-    ally_cur_hp = sum(u["HP"] for p, u in last_units.items() if p <= 6)
-    ally_max_hp = sum(max(1, u["TotalHp"]) for p, u in last_units.items() if p <= 6)
-    hp_pct = round(100.0 * ally_cur_hp / max(1, ally_max_hp), 2)
-
-    return CombatOutcome(
-        won=won_all,
-        waves=len(waves_hp),
-        total_rounds=total_rounds,
-        ally_alive=ally_alive,
-        enemy_alive=enemy_alive,
-        ally_hp_pct=hp_pct,
-        verify_data={"version": "201608081200", "hp": waves_hp},
-    )
-
-
 def apply_preset(client: QABackendClient, preset: str, target_lv: int | None = None) -> dict[str, Any]:
     """Prepare isolated test profile using only valid heroes, equips, and rules in game_data."""
     key = preset.upper()
@@ -518,6 +270,39 @@ def apply_preset(client: QABackendClient, preset: str, target_lv: int | None = N
             source="qa_preset_strong",
         )
         return {"preset": "STRONG", "summary": client.state_summary()}
+
+    if key in ("QA_LV18", "QA_LV20"):
+        default_lv = 18 if key == "QA_LV18" else 20
+        lv = target_lv or default_lv
+        client.admin_prepare(target_lv=lv, vip_lv=3, source=f"qa_preset_{key.lower()}")
+        client.admin_grant(
+            resources=[
+                {"type": "Gold", "amount": 600000},
+                {"type": "Diamond", "amount": 2000},
+                {"type": "HeroEXP", "amount": 100000},
+            ],
+            items=[
+                {"id": 16030006, "num": 20},
+                {"id": 16050001, "num": 200},
+                {"id": 16050011, "num": 20},
+            ],
+            heroes=[
+                {"model_id": 12011004, "lv": lv, "step": 2, "deploy": True, "slot_id": 2},
+                {"model_id": 12011005, "lv": lv, "step": 2, "deploy": True, "slot_id": 3},
+                {"model_id": 12011006, "lv": lv, "step": 2, "deploy": True, "slot_id": 4},
+                {"model_id": 12011007, "lv": lv, "step": 2, "deploy": True, "slot_id": 5},
+            ],
+            equips=[
+                {"model_id": 13010503, "lv": lv * 2, "slot_id": 1},
+                {"model_id": 13020503, "lv": lv * 2, "slot_id": 1},
+                {"model_id": 13030503, "lv": lv * 2, "slot_id": 2},
+                {"model_id": 13040503, "lv": lv * 2, "slot_id": 2},
+                {"model_id": 13010404, "lv": lv, "slot_id": 3},
+                {"model_id": 13020404, "lv": lv, "slot_id": 3},
+            ],
+            source=f"qa_preset_{key.lower()}",
+        )
+        return {"preset": key, "summary": client.state_summary()}
 
     raise ValueError(f"Unknown preset: {preset}")
 
@@ -876,7 +661,7 @@ def main() -> int:
     p_bench.add_argument("--out-dir", type=Path, default=None, help="Isolated output directory under server/qa_runs/")
 
     p_run = sub.add_parser("run", help="Run isolated progression QA for a preset")
-    p_run.add_argument("--preset", choices=["STARTER", "PROGRESSION", "STRONG", "FAILURE"], default="STARTER")
+    p_run.add_argument("--preset", choices=["STARTER", "PROGRESSION", "STRONG", "FAILURE", "QA_LV18", "QA_LV20"], default="STARTER")
     p_run.add_argument("--target-lv", type=int, default=None)
     p_run.add_argument("--target-node", type=int, default=None)
     p_run.add_argument("--max-stages", type=int, default=20)

@@ -182,6 +182,29 @@ def main() -> None:
     elite_nodes = parse_simple_lua_items(os.path.join(cfg_dir, "ElitebattleNodeModel.lua"))
     elite_config = parse_singleton_lua_item(os.path.join(cfg_dir, "ElitebattleConfig.lua"))
 
+    luckboss_config = parse_singleton_lua_item(os.path.join(cfg_dir, "LuckbossConfig.lua"))
+    luckboss_trigger = parse_singleton_lua_item(os.path.join(cfg_dir, "LuckbossTriggerRelation.lua"))
+    luckboss_value_shop = parse_simple_lua_items(os.path.join(cfg_dir, "LuckbossValueShopModel.lua"))
+
+    pvp_shop = parse_simple_lua_items(os.path.join(cfg_dir, "PvpShopModel.lua"))
+    pvp_first_reward = parse_nested_lua_items(os.path.join(cfg_dir, "PvpRankFirstRewardRelation.lua"))
+    pvp_rank_reward: dict[str, dict[str, dict[str, Any]]] = {}
+    for step in range(1, 6):
+        shard_path = os.path.join(cfg_dir, f"PvpRankRewardRelation_{step}.lua")
+        if os.path.exists(shard_path):
+            with open(shard_path, "r", encoding="utf-8") as sf:
+                shard_txt = sf.read()
+            step_rows: dict[str, dict[str, Any]] = {}
+            for m in re.finditer(r"^ {4}\[(\d+)\] = \{\n(.*?)\n {4}\}", shard_txt, re.M | re.S):
+                step_rows[m.group(1)] = _parse_fields(m.group(2), indent=8)
+            pvp_rank_reward[str(step)] = step_rows
+
+    daydayfund_model = parse_singleton_lua_item(os.path.join(cfg_dir, "DaydayfundModel.lua"))
+    daydayfund_vip = parse_simple_lua_items(os.path.join(cfg_dir, "DaydayfundVipRelation.lua"))
+    goods_output = parse_nested_lua_items(os.path.join(cfg_dir, "GoodsOutputRelation.lua"))
+    fashion_model = parse_simple_lua_items(os.path.join(cfg_dir, "FashionModel.lua"))
+    fashion_step = parse_nested_lua_items(os.path.join(cfg_dir, "FashionStepRelation.lua"))
+
     data = {
         "source": source_label,
         "counts": {
@@ -207,6 +230,13 @@ def main() -> None:
             "treasures": len(treasures),
             "treasure_debris": len(treasure_debris),
             "elite_nodes": len(elite_nodes),
+            "luckboss_value_shop": len(luckboss_value_shop),
+            "pvp_shop": len(pvp_shop),
+            "pvp_first_reward": sum(len(v) for v in pvp_first_reward.values()),
+            "pvp_rank_reward": sum(len(v) for v in pvp_rank_reward.values()),
+            "daydayfund_vip": len(daydayfund_vip),
+            "goods_output": len(goods_output),
+            "fashion_model": len(fashion_model),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -217,6 +247,9 @@ def main() -> None:
         "explore_config": explore_config,
         "treasure_loot_config": treasure_loot_config,
         "elite_config": elite_config,
+        "luckboss_config": luckboss_config,
+        "luckboss_trigger": luckboss_trigger,
+        "luckboss_value_shop": luckboss_value_shop,
         "player_lv": player_lv,
         "hero_lv": hero_lv,
         "hero_step": hero_step,
@@ -249,6 +282,14 @@ def main() -> None:
         "treasures": treasures,
         "treasure_debris": treasure_debris,
         "elite_nodes": elite_nodes,
+        "pvp_shop": pvp_shop,
+        "pvp_first_reward": pvp_first_reward,
+        "pvp_rank_reward": pvp_rank_reward,
+        "daydayfund_model": daydayfund_model,
+        "daydayfund_vip": daydayfund_vip,
+        "goods_output": goods_output,
+        "fashion_model": fashion_model,
+        "fashion_step": fashion_step,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

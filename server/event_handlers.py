@@ -142,10 +142,10 @@ class EventHandlersMixin(R79EventHandlersMixin):
 
         tuples: list[tuple[int, int, int]] = []
         for row in to_claim:
-            row["Claimed"] = True
-            row["ClaimedAt"] = now
             for r in row.get("ResourceList", []):
                 tuples.append((int(r["ResourceTypeSub"]), int(r["ModelId"]), int(r["Count"])))
+        if not self._check_hero_capacity(sum(count for rtype, _, count in tuples if rtype == 1201)):
+            return {}
 
         old_lv = int(self.state["player"]["Lv"])
         base_res = self._grant_resources_from_tuples(
@@ -153,6 +153,9 @@ class EventHandlersMixin(R79EventHandlersMixin):
             source="reward_center",
             tx_prefix=f"rc:{self.profile_name}:{'_'.join(sorted(req_ids))}",
         )
+        for row in to_claim:
+            row["Claimed"] = True
+            row["ClaimedAt"] = now
         old_lv2, new_lv2 = self._sync_level_from_exp()
         if new_lv2 != old_lv2 or new_lv2 != old_lv:
             self._last_rpc_context["lv_changed"] = True

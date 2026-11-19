@@ -3535,7 +3535,7 @@ class EmulatorProtocolTest(unittest.TestCase):
             prof = emu.get_profile_by_name("normal")
             prof.admin_prepare_account(target_lv=25)
             prof.state["player"]["Diamond"] = 5000
-            prof.state["heroes"].extend(prof._build_hero_instance(12011014) for _ in range(198))
+            prof.state["heroes"].extend(prof._build_hero_instance(12011014) for _ in range(298))
             prof._grant_resources_from_tuples([(1606, 16060008, 1)], source="test56", tx_prefix="test56")
 
             def rpc(module, method, *args):
@@ -3544,8 +3544,8 @@ class EmulatorProtocolTest(unittest.TestCase):
             self.assertEqual(rpc("HeroRecruit", "Recruit", 30, 0)["Status"], -2005)
             self.assertEqual(rpc("TimedRecruitInfo", "Recruit", 30, 81)["Status"], -2005)
             self.assertEqual(prof.state["player"]["Diamond"], 5000)
-            self.assertEqual(rpc("Bag", "BagExpand", 5)["Value"], {"BagModelId": 5, "Size": 205, "ExpandNum": 1})
-            self.assertEqual(rpc("Bag", "BagExpand", 5)["Value"]["Size"], 210)
+            self.assertEqual(rpc("Bag", "BagExpand", 5)["Value"], {"BagModelId": 5, "Size": 305, "ExpandNum": 1})
+            self.assertEqual(rpc("Bag", "BagExpand", 5)["Value"]["Size"], 310)
             self.assertEqual(prof.state["player"]["Diamond"], 4970)
             self.assertEqual(rpc("TimedRecruitInfo", "Recruit", 30, 81)["Status"], 0)
             chest = rpc("TimedRecruitInfo", "DrawCreditReward", 60, 81)
@@ -3566,7 +3566,7 @@ class EmulatorProtocolTest(unittest.TestCase):
             self.assertEqual(len([r for r in prof.state["rewards_center"] if r["SourceKey"] == f"tr_pending_ur:{ev.instance_id}"]), 1)
             prof.save()
             reloaded = GameEmulatorState(persist=True, data_dir=data_dir).get_profile_by_name("normal")
-            self.assertEqual(reloaded._bag_info(5)["Size"], 210)
+            self.assertEqual(reloaded._bag_info(5)["Size"], 310)
             self.assertTrue(any(h["HeroModelId"] == 12011004 for h in reloaded.state["heroes"]))
 
     def test_57_r7_10_slot_vn_ticket_recharge_and_multiplier(self) -> None:
@@ -3751,6 +3751,159 @@ class EmulatorProtocolTest(unittest.TestCase):
                 self.assertEqual((a["IsNewPlayer"], b["IsNewPlayer"]), (1, 1))
                 self.assertEqual((sample["PlayerName"], sample["Lv"], sample["Vip"]), ("Mẫu S1", 20, 3))
                 self.assertEqual(len({a["PlayerId"], sample["PlayerId"], b["PlayerId"]}), 3)
+
+
+class R712DeltaTest(unittest.TestCase):
+    @staticmethod
+    def rpc(profile, module, method, *data):
+        return profile.handle_rpc({"ModuleName": module, "MethodName": method, "Data": list(data)})
+
+    @staticmethod
+    def emulator(root, *, new_player=False):
+        return GameEmulatorState(
+            env="dev", persist=True, new_player=new_player, data_dir=root, trace_path=root / "trace.log",
+        )
+
+    def test_unsupported_bag_output_preserves_item_after_reload(self):
+        with tempfile.TemporaryDirectory() as dest:
+            emu = self.emulator(Path(dest), new_player=True)
+            prof = emu.get_profile_by_name("normal")
+            prof.admin_prepare_account(target_lv=44)
+            order = self.rpc(prof, "PlayerCharge", "GenerateOrderID", 6480)["Value"]
+            self.assertEqual(self.rpc(prof, "PlayerCharge", "ConfirmOrder", 6480, order)["Status"], 0)
+            for _ in range(8):
+                self.assertEqual(self.rpc(prof, "Timespike", "ReceivedReward")["Status"], 0)
+            item = next(g for g in prof.state["goods"] if g["GoodsModelId"] == 16020039)
+            self.assertEqual(item["Num"], 3)
+            for count in (1, 3):
+                rejected = self.rpc(prof, "Goods", "GoodsUse", item["Id"], 16020039, count)
+                self.assertEqual(rejected["Status"], -2009)
+                self.assertNotIn("GoodsInfo", rejected["Avatar"])
+                self.assertEqual(prof._get_goods_qty(16020039), 3)
+            self.assertEqual(self.rpc(prof, "HeroRecruit", "Recruit", 1, 0)["Status"], 0)
+            reloaded = self.emulator(Path(dest)).get_profile_by_name("normal")
+            self.assertEqual(reloaded._get_goods_qty(16020039), 3)
+
+    def test_hero_bag_boundaries_reward_claim_and_legacy_expansions(self):
+        with tempfile.TemporaryDirectory() as dest:
+            root = Path(dest)
+            prof = self.emulator(root, new_player=True).get_profile_by_name("normal")
+            prof.admin_prepare_account(target_lv=23)
+            prof.state["player"]["Diamond"] = 5000
+            prof.state["heroes"].extend(prof._build_hero_instance(12011014) for _ in range(299))
+            deployed_ids = {s["HeroId"] for s in prof.state["slots"]}
+            self.assertEqual(sum(h["Id"] not in deployed_ids for h in prof.state["heroes"]), 299)
+            self.assertEqual(prof._bag_info(5)["Size"], 300)
+            self.assertEqual(self.rpc(prof, "HeroRecruit", "Recruit", 1, 0)["Status"], 0)
+            gold, diamond = (prof.state["player"][field] for field in ("Gold", "Diamond"))
+            self.assertEqual(self.rpc(prof, "HeroRecruit", "Recruit", 1, 0)["Status"], -2005)
+            self.assertEqual(prof.state["player"]["Diamond"], diamond)
+
+            prof._grant_resources_from_tuples([(1606, 16060008, 1)], source="test", tx_prefix="test:chest")
+            chest = next(g for g in prof.state["goods"] if g["GoodsModelId"] == 16060008)
+            self.assertEqual(self.rpc(prof, "Goods", "GoodsUseForBoxChoice", chest["Id"], 16060008, 12011004)["Status"], -2005)
+            self.assertEqual(prof._get_goods_qty(16060008), 1)
+            prof._push_reward_center_entry(
+                source_key="capacity", title="Test", content="Test",
+                res_tuples=[(1112, 0, 10), (1201, 12011004, 1)],
+            )
+            reward = prof.state["rewards_center"][-1]
+            self.assertEqual(self.rpc(prof, "Reward", "DrawGiftBags", [reward["Id"]])["Status"], -2005)
+            self.assertEqual(prof.state["player"]["Gold"], gold)
+            self.assertFalse(reward["Claimed"])
+
+            # R7.11 saves hold only the purchased expansions; reload twice across the new code.
+            prof.state["bag_expansions"] = {"5": 2, "4": 1}
+            prof.save()
+            expected_hero_ids = [h["Id"] for h in prof.state["heroes"]]
+            for _ in range(2):
+                prof = self.emulator(root).get_profile_by_name("normal")
+                self.assertEqual(prof._bag_info(5), {"BagModelId": 5, "Size": 310, "ExpandNum": 2})
+                self.assertEqual(prof._bag_info(4)["Size"], 205)
+                self.assertEqual([h["Id"] for h in prof.state["heroes"]], expected_hero_ids)
+                prof.save()
+            self.assertEqual(self.rpc(prof, "Reward", "DrawGiftBags", [reward["Id"]])["Status"], 0)
+            self.assertEqual(self.rpc(prof, "Goods", "GoodsUseForBoxChoice", chest["Id"], 16060008, 12011004)["Status"], 0)
+            for expansion in range(3, 21):
+                result = self.rpc(prof, "Bag", "BagExpand", 5)
+                self.assertEqual(result["Value"]["Size"], 300 + expansion * 5)
+            balance = prof.state["player"]["Diamond"]
+            self.assertNotEqual(self.rpc(prof, "Bag", "BagExpand", 5)["Status"], 0)
+            self.assertEqual(prof.state["player"]["Diamond"], balance)
+            self.assertEqual(prof._bag_info(5)["Size"], 400)
+            self.assertEqual(prof.game_data["module_subs"]["1500"]["openLv"], 24)
+
+    def test_pray_tree_qualifies_by_confirmed_in_period_charge(self):
+        with tempfile.TemporaryDirectory() as dest:
+            root = Path(dest)
+            emu = self.emulator(root, new_player=True)
+            emu.clock.set_fixed(1795136400 + 3600)
+            prof = emu.get_profile_by_name("normal")
+            start = emu.clock.midnight_ts(emu.clock.now())
+            orders = prof.state["charge_state"]["orders"]
+            for key, tier, status, stamp in (
+                ("past", 6480, "completed", start - 1),
+                ("current", 180, "completed", start + 1),
+                ("pending", 6480, "pending", start + 1),
+            ):
+                orders[key] = {"ProductId": f"com.cmn.inuyasha.gem{tier}", "status": status, "completed_at": stamp}
+            prof.state["stats"].update({"recharged_diamonds": 6660, "spent_diamonds": 9000})
+            prof.state["player"]["VipEXP"] = 6660
+            prof.save()
+            emu2 = self.emulator(root)
+            emu2.clock.set_fixed(emu.clock.now())
+            prof = emu2.get_profile_by_name("normal")
+
+            def info():
+                return self.rpc(prof, "TimedHopetreeInfo", "GetInfo")["Value"]
+
+            self.assertEqual(info()["Num"], 180)
+            self.assertEqual(info()["RewardList"][0]["CanDraw"], 0)
+            self.assertNotEqual(self.rpc(prof, "TimedHopetreeInfo", "DrawReward", 1)["Status"], 0)
+            for expected in (240, 300):
+                order = self.rpc(prof, "PlayerCharge", "GenerateOrderID", 60)["Value"]
+                self.assertEqual(self.rpc(prof, "PlayerCharge", "ConfirmOrder", 60, order)["Status"], 0)
+                self.assertNotEqual(self.rpc(prof, "PlayerCharge", "ConfirmOrder", 60, order)["Status"], 0)
+                self.assertEqual(info()["Num"], expected)
+            self.assertEqual(info()["RewardList"][0]["CanDraw"], 1)
+            self.assertEqual(self.rpc(prof, "TimedHopetreeInfo", "DrawReward", 1)["Status"], 0)
+            self.assertNotEqual(self.rpc(prof, "TimedHopetreeInfo", "DrawReward", 1)["Status"], 0)
+            reloaded = self.emulator(root)
+            reloaded.clock.set_fixed(emu2.clock.now())
+            prof = reloaded.get_profile_by_name("normal")
+            self.assertEqual(info()["Num"], 300)
+            self.assertEqual(info()["RewardList"][0]["Days"], 2)
+            reloaded.clock.set_fixed(reloaded.clock.next_midnight_ts())
+            self.assertEqual(info()["Num"], 0)
+            self.assertNotEqual(self.rpc(prof, "TimedHopetreeInfo", "DrawReward", 1)["Status"], 0)
+            card = self.rpc(prof, "CardInfo", "GenerateOrderID", 1)["Value"]
+            self.assertEqual(self.rpc(prof, "CardInfo", "Activity", 1, card["OrderId"])["Status"], 0)
+            self.assertEqual(info()["Num"], 300)
+            self.assertEqual(self.rpc(prof, "TimedHopetreeInfo", "DrawReward", 1)["Status"], 0)
+
+    def test_treasure_one_key_obeys_vn_gate_and_only_targets_missing_material(self):
+        profile = GameEmulatorState(persist=False, new_player=True).get_profile_by_name("normal")
+        profile.admin_prepare_account(target_lv=44)
+        profile.state["player"]["STA"] = 20
+        def loot(treasure):
+            return self.rpc(profile, "TreasureLoot", "TreasureLootForOneKey", treasure)
+        self.assertEqual(loot(14010501)["Status"], -5902)
+        self.assertEqual(profile.state["player"]["STA"], 20)
+        profile.admin_prepare_account(target_lv=14, vip_lv=7)
+        profile.state["player"]["STA"] = 20
+        received = loot(14010501)
+        self.assertEqual(received["Status"], 0)
+        value = received["Value"]
+        self.assertEqual(value["TotalLootCount"], 3)
+        self.assertEqual(set(value["LootInfo"].values()), {15032101, 15032102, 15032103})
+        self.assertEqual(len(value["ChoiceGameResource"]), 3)
+        self.assertEqual(profile.state["player"]["STA"], 14)
+        self.assertEqual(loot(14010501)["Status"], -2010)
+        self.assertEqual(self.rpc(profile, "TreasureDebris", "TreasureDebrisCompose", 14010501)["Status"], 0)
+        profile.state["player"]["STA"] = 2
+        value = loot(14020502)["Value"]
+        self.assertEqual(list(value["LootInfo"].values()), [15040201])
+        self.assertEqual(loot(14020502)["Status"], -1120)
 
 
 if __name__ == "__main__":

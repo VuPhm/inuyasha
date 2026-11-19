@@ -366,20 +366,27 @@ class R79EventHandlersMixin:
         self._sync_events()
         ev = self.event_runtime.evaluate("timed_pray_tree", self.state["player"])
         inst = self.event_runtime.get_instance(ev.instance_id) if ev.instance_id else None
-        if inst is None:
+        if not ev.eligible or inst is None:
             return ev, {}
         prog = inst.setdefault("progress", {})
         prog.setdefault("claimed_days", [])
+        if "recharged_diamonds" not in prog:
+            start = int(ev.start_ts or 0)
+            if ev.instance_id.rsplit(":", 1)[-1].startswith("r"):
+                start = max(start, int(inst["created_at"]))
+            now_exclusive = self.now_ts() + 1
+            end = min(now_exclusive, ev.end_ts or now_exclusive)
+            prog["recharged_diamonds"] = self._legacy_pray_tree_recharge(start, end)
         return ev, prog
 
-    def _pray_tree_current_diamond(self) -> int:
-        recharged = self._player_total_recharged_diamonds()
-        vip_lv = int(self.state.get("player", {}).get("Vip", 0))
-        return max(recharged, self.PRAY_TREE_NEED_DIAMOND if vip_lv >= 1 else 0)
+    def _record_pray_tree_recharge(self, diamonds: int) -> None:
+        ev, prog = self._ensure_pray_tree_prog()
+        if ev.eligible:
+            prog["recharged_diamonds"] += diamonds
 
     def _build_pray_tree_reward_list(self, ev: Any, prog: dict[str, Any]) -> list[dict[str, Any]]:
         claimed = set(int(x) for x in prog.get("claimed_days", []))
-        activated = self._pray_tree_current_diamond() >= self.PRAY_TREE_NEED_DIAMOND
+        activated = prog.get("recharged_diamonds", 0) >= self.PRAY_TREE_NEED_DIAMOND
         out: list[dict[str, Any]] = []
         for day_num, res_str in self.PRAY_TREE_DAYS:
             if day_num in claimed or (ev.instance_id and self.event_runtime.is_claimed(ev.instance_id, f"day:{day_num}")):
@@ -406,7 +413,7 @@ class R79EventHandlersMixin:
             return {}
         out = {
             "NeedNum": self.PRAY_TREE_NEED_DIAMOND,
-            "Num": self._pray_tree_current_diamond(),
+            "Num": prog["recharged_diamonds"],
             "RewardNum": len(self.PRAY_TREE_DAYS),
             "EndTime": int(ev.end_ts or self.clock.next_midnight_ts()),
             "RewardList": self._build_pray_tree_reward_list(ev, prog),
@@ -417,7 +424,7 @@ class R79EventHandlersMixin:
     def _rpc_timed_hopetree_draw_reward(self, data: Any) -> dict[str, Any]:
         day_id = int(data[0]) if isinstance(data, list) and data else 0
         ev, prog = self._ensure_pray_tree_prog()
-        if not ev.eligible or self._pray_tree_current_diamond() < self.PRAY_TREE_NEED_DIAMOND:
+        if not ev.eligible or prog["recharged_diamonds"] < self.PRAY_TREE_NEED_DIAMOND:
             self._last_rpc_context["status"] = -1
             return {}
         res_str = next((rs for d, rs in self.PRAY_TREE_DAYS if d == day_id), None)

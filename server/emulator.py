@@ -1788,6 +1788,7 @@ class ProfileStore(EventHandlersMixin):
             "TreasureLoot.TreasureDebrisTargetList": self._rpc_treasure_target_list,
             "TreasureLoot.TreasureLoot": self._rpc_treasure_loot,
             "TreasureLoot.TreasureLootForCount": self._rpc_treasure_loot_count,
+            "TreasureLoot.TreasureLootForOneKey": self._rpc_treasure_loot_one_key,
             "TreasureDebris.TreasureDebrisCompose": self._rpc_treasure_compose,
             "EliteBattle.GetBattleInfo": self._rpc_elite_get_battle_info,
             "EliteBattle.GetFightInfo": self._rpc_elite_get_fight_info,
@@ -2203,9 +2204,10 @@ class ProfileStore(EventHandlersMixin):
         return True
 
     def _bag_info(self, bag_id: int) -> dict[str, int]:
-        # Preserve R7.9's base capacity for existing saves. VN expansions add five slots.
+        # Saves store purchases only. Derive Size for old and new accounts alike.
+        base = 300 if bag_id == 5 else 200
         expanded = int(self.state.get("bag_expansions", {}).get(str(bag_id), 0))
-        return {"BagModelId": bag_id, "Size": 200 + 5 * expanded, "ExpandNum": expanded}
+        return {"BagModelId": bag_id, "Size": base + 5 * expanded, "ExpandNum": expanded}
 
     def _rpc_bag_expand(self, data: Any) -> dict[str, Any]:
         bag_id = int(data[0]) if isinstance(data, list) and data else 0
@@ -2234,6 +2236,12 @@ class ProfileStore(EventHandlersMixin):
             self._last_rpc_context["status"] = -2005  # VN ServerMessage: hero bag full
             return False
         return True
+
+    def _can_receive_goods_outputs(self, rewards: list[tuple[int, int, int]]) -> bool:
+        if any(not self._is_valid_resource(rtype, model) for rtype, model, count in rewards if count > 0):
+            self._last_rpc_context["status"] = -2009  # Standalone client: unsupported reward, item kept.
+            return False
+        return self._check_hero_capacity(sum(count for rtype, _, count in rewards if rtype == 1201))
 
     def _rpc_recruit_info(self, _data: Any) -> dict[str, Any]:
         now = self.now_ts()
@@ -3813,7 +3821,7 @@ class ProfileStore(EventHandlersMixin):
         if not tuples:
             self._last_rpc_context["status"] = -1
             return {}
-        if not self._check_hero_capacity(sum(num for rtype, _, num in tuples if rtype == 1201)):
+        if not self._can_receive_goods_outputs(tuples):
             return {}
         item["Num"] = int(item["Num"]) - consume
         if item["Num"] <= 0:
@@ -3877,7 +3885,7 @@ class ProfileStore(EventHandlersMixin):
             int(chosen.get("outputModelID", 0)),
             max(1, int(chosen.get("outputNum", 1))) * count,
         )
-        if reward[0] == 1201 and not self._check_hero_capacity(reward[2]):
+        if not self._can_receive_goods_outputs([reward]):
             return {}
 
         item["Num"] = int(item["Num"]) - count
@@ -4107,6 +4115,57 @@ class ProfileStore(EventHandlersMixin):
         return {
             "IsWinLootSuccess": got_loot,
             "BaseGameResource": base_last,
+            "ChoiceGameResource": choices,
+        }
+
+    def _rpc_treasure_loot_one_key(self, data: Any) -> dict[str, Any]:
+        player = self.state["player"]
+        gate = self.game_data["module_subs"]["2506"]
+        level = int(player["Lv"])
+        vip = int(player.get("Vip", 0))
+        if level < int(gate["openLv"]) and not (
+            vip >= int(gate["advancedOpenVIPLv"]) and level >= int(gate["VIPNeedLv"])
+        ):
+            self._last_rpc_context["status"] = -5902
+            return {}
+
+        treasure_id = int(data[0]) if isinstance(data, list) and data else 0
+        treasure = self.game_data["treasures"].get(str(treasure_id), {})
+        owned = {
+            int(row["TreasureDebrisModelId"])
+            for row in self.state["treasure_debris"] if int(row["Num"]) > 0
+        }
+        missing = [mid for mid in treasure.get("debrisModelIds", []) if mid not in owned]
+        if not missing:
+            self._last_rpc_context["status"] = -2010
+            return {}
+
+        sta_cost = int(self.game_data["sta_config"]["perUseNum"])
+        choices = []
+        loot_info = {}
+        base = []
+        debris_id = missing[0]
+        for missing_id in missing:
+            debris_id = missing_id
+            target = self._build_treasure_robots(debris_id)[0]["LootPlayerId"]
+            while int(player["STA"]) >= sta_cost:
+                result = self._execute_single_treasure_loot(target, treasure_id, debris_id)
+                base = result["BaseGetGameResourceList"]
+                choices.append(next(card for card in result["ChoiceGetGameResource"] if card["IsDrop"] == 1))
+                if result["IsWinLootSuccess"]:
+                    loot_info[str(len(choices))] = debris_id
+                    break
+            if int(player["STA"]) < sta_cost:
+                break
+        if not choices:
+            self._last_rpc_context["status"] = -1120
+            return {}
+        self.save()
+        return {
+            "TotalLootCount": len(choices),
+            "LootInfo": loot_info,
+            "LastTreasureModelId": debris_id,
+            "BaseGameResource": base,
             "ChoiceGameResource": choices,
         }
 
@@ -4490,6 +4549,30 @@ class ProfileStore(EventHandlersMixin):
         self.save()
         return order_id
 
+    def _legacy_pray_tree_recharge(self, start: int, end: int) -> int:
+        """Recover dated R7.11 purchases for the current instance."""
+        charge = self.state.get("charge_state", {})
+
+        def completed_in_window(order: dict[str, Any]) -> bool:
+            return (
+                order.get("status") == "completed"
+                and not order.get("pray_tree_tracked")
+                and start <= int(order.get("completed_at") or 0) < end
+            )
+
+        diamonds = 0
+        for order in charge.get("orders", {}).values():
+            if completed_in_window(order):
+                tier = self._resolve_charge_tier(order.get("ProductId"))
+                if tier:
+                    diamonds += int(tier["GamePoint"])
+        for order in charge.get("card_orders", {}).values():
+            if completed_in_window(order):
+                card = CARD_MODEL_CFG.get(int(order.get("CardId", 0)))
+                if card:
+                    diamonds += int(card["price"])
+        return diamonds
+
     def _apply_simulated_charge(
         self,
         tier: dict[str, Any],
@@ -4528,6 +4611,7 @@ class ProfileStore(EventHandlersMixin):
         )
         p["ChargeNum"] = int(p.get("ChargeNum", 0)) + base_diamonds
         self._inc_stat("recharged_diamonds", base_diamonds)
+        self._record_pray_tree_recharge(base_diamonds)
         self._record_slot_recharge(base_diamonds)
         if is_first:
             bought.append(pid)
@@ -4565,6 +4649,7 @@ class ProfileStore(EventHandlersMixin):
                 return {}
             ord_entry["status"] = "completed"
             ord_entry["completed_at"] = int(time.time())
+            ord_entry["pray_tree_tracked"] = True
             tx_key = f"order:{self.profile_name}:{order_id}"
         return self._apply_simulated_charge(
             tier,
@@ -4631,6 +4716,7 @@ class ProfileStore(EventHandlersMixin):
                 return []
             ord_entry["status"] = "completed"
             ord_entry["completed_at"] = int(time.time())
+            ord_entry["pray_tree_tracked"] = True
             tx_key = f"cardact:{self.profile_name}:{order_id}"
         now = int(time.time())
         cards = self.state.setdefault("month_cards", {})
@@ -4653,6 +4739,7 @@ class ProfileStore(EventHandlersMixin):
         )
         p["ChargeNum"] = int(p.get("ChargeNum", 0)) + int(cfg["price"])
         self._inc_stat("recharged_diamonds", int(cfg["price"]))
+        self._record_pray_tree_recharge(int(cfg["price"]))
         self._record_slot_recharge(int(cfg["price"]))
         self._sync_player_recover_times(p)
         self.save()

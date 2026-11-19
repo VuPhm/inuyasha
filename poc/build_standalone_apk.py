@@ -1047,6 +1047,8 @@ def patch_standalone_workspace(
         [("local pos = slot:get_cur_pos(cursors[i])", "local pos = slot:get_cur_pos(i)")],
     )
 
+    patch_r712_lua(STANDALONE_WORK / "assets" / "src")
+
     # 6b. Bundle VN-adapted TW 1.4 Config/*.lua tables missing from VN 5.0.4.98 APK
     for cfg_name in (
         "XssbModel",
@@ -1069,6 +1071,210 @@ def patch_standalone_workspace(
     # 8. Merge OBB res/* directly into assets/res/* for 1-file installation
     merged_n = merge_obb_into_assets(STANDALONE_WORK)
     print(f"Merged {merged_n} OBB resource files directly into APK assets/res/")
+
+
+def patch_r712_lua(src: Path) -> None:
+    patch_luac_text(src / "TimedActivity" / "TimedEquipRankLayer.luac", [
+        (
+            '        onCloseCallback = function(self)\n'
+            '            if self.onCloseCallback then\n'
+            '                self.onCloseCallback(self)\n'
+            '            else\n'
+            '                self:removeFromParent()\n'
+            '            end\n'
+            '        end,\n',
+            '',
+        ),
+    ])
+    patch_luac_text(src / "Network" / "ServerMessage.luac", [
+        (
+            '[-2008] = TR("战灵背包已满"),',
+            '[-2008] = TR("战灵背包已满"),\n'
+            '\t[-2009] = "Phần thưởng này chưa được hỗ trợ. Vật phẩm vẫn còn trong túi.",\n'
+            '\t[-2010] = "Không còn mảnh bảo vật phù hợp để tìm.",',
+        ),
+    ])
+    patch_luac_text(src / "Config" / "BagModel.luac", [
+        ('name = "Tướng",\n            initSize = 100,', 'name = "Tướng",\n            initSize = 300,'),
+    ])
+    patch_luac_text(src / "Bag" / "BagExpandTipLayer.luac", [
+        (
+            '    local expandNum = bagData.ExpandNum\n'
+            '    if expandNum >= table.maxn(BagExpandUseRelation.items)  then\n'
+            '        expandNum = (table.maxn(BagExpandUseRelation.items) - 1)\n'
+            '    end',
+            '    local nextExpansion = BagExpandUseRelation.items[bagData.ExpandNum + 1]',
+        ),
+        (
+            'local expandCharge = BagExpandUseRelation.items[expandNum + 1].useDiamondNum',
+            'local expandCharge = nextExpansion and nextExpansion.useDiamondNum or 0',
+        ),
+        (
+            '    text = string.format(TR("你确定要花费',
+            '    text = not nextExpansion and "Túi đã đạt sức chứa tối đa." or string.format(TR("你确定要花费',
+        ),
+        ('if not BagExpandUseRelation.items[expandNum + 1] then', 'if not nextExpansion then'),
+        ('if not BagExpandUseRelation.items[expandNum + 1] then', 'if not nextExpansion then'),
+    ])
+    patch_luac_text(src / "Hero" / "HeroUpdateScene.luac", [
+        (
+            'function HeroUpdateScene:createHeroBreakthrough(step)',
+            '''function HeroUpdateScene:openBreakthroughTreasure(resourceType, modelId)
+    local isOpen, info = NetworkResData:modulePlayerIsOpen(ModuleSub.eChallengeGrab)
+    if not isOpen then
+        ui.showFlashView({parent = self, text = info.openMessage})
+        return
+    end
+    local hero = self.mHero
+    local returnCallback = self.returnCallback
+    game.replaceScene(require("Grab.GrabTreasureScene").new({
+        selectType = resourceType == ResourcetypeSub.eBook and 2 or 1,
+        treasureId = modelId,
+        onCloseCallback = function()
+            local currentHero = NetworkResData:getHero(hero.Id) or hero
+            game.replaceScene(require("Hero.HeroUpdateScene").new(HeroEnhance.eBreakthrough, currentHero, returnCallback))
+        end,
+    }), "CCtransitionCrossFade", 0)
+end
+
+function HeroUpdateScene:createHeroBreakthrough(step)''',
+        ),
+        (
+            '''                    local call = function()
+                        local hero = self.mHero
+
+                        local isOpen, retInfo = NetworkResData:modulePlayerIsOpen(ModuleSub.eChallengeGrab)
+                        if not isOpen then
+                            ui.showFlashView({parent = self, text = retInfo.openMessage,})
+                            return
+                        end
+
+                        local returnCallback = self.returnCallback
+                        if tonumber(material[1]) == ResourcetypeSub.eBook then
+                            game.replaceScene(require("Grab.GrabTreasureScene").new({ selectType = 2, treasureId = tonumber(material[2]), onCloseCallback = function()
+                                game.replaceScene(require("Hero.HeroUpdateScene").new(HeroEnhance.eBreakthrough, hero, returnCallback))
+                            end}), "CCtransitionCrossFade", 0.0)
+                        else
+                            game.replaceScene(require("Grab.GrabTreasureScene").new({ selectType = 1, treasureId = tonumber(material[2]), onCloseCallback = function()
+                                game.replaceScene(require("Hero.HeroUpdateScene").new(HeroEnhance.eBreakthrough, hero, returnCallback))
+                            end}), "CCtransitionCrossFade", 0.0)
+                        end
+
+                    end''',
+            '''                    local call = function()
+                        self:openBreakthroughTreasure(tonumber(material[1]), tonumber(material[2]))
+                    end''',
+        ),
+    ])
+    patch_luac_text(src / "Grab" / "GrabTreasureScene.luac", [
+        ('local grabCloseCallback = nil\n', ''),
+        (
+            '    if pargrams and pargrams.onCloseCallback then    -- add by liaoyuangang 解决从队伍页面调用夺宝，合成后关闭夺宝页面不能回到队伍页面的问题。\n'
+            '        grabCloseCallback = pargrams.onCloseCallback\n'
+            '    end',
+            '    self.mPargrams = pargrams',
+        ),
+        (
+            '            if grabCloseCallback then  -- modify by liaoyuangang 解决从队伍页面调用夺宝，合成后关闭夺宝页面不能回到队伍页面的问题。\n'
+            '                grabCloseCallback()\n'
+            '                grabCloseCallback = nil',
+            '            local callback = self.mPargrams and self.mPargrams.onCloseCallback\n'
+            '            if callback then\n'
+            '                callback()',
+        ),
+        ('    self.mParentSprite = self.bgLayer:getBackgroundSprite()\n    self.mPargrams = pargrams',
+         '    self.mParentSprite = self.bgLayer:getBackgroundSprite()'),
+        (
+            '    for i, v1 in pairs(allTreasureTable) do\n        if v1.ifBase and v1.typeID == resourceType then',
+            '    local targetId = self.mPargrams and self.mPargrams.treasureId\n'
+            '    for i, v1 in pairs(allTreasureTable) do\n'
+            '        if (v1.ifBase or v1.ID == targetId) and v1.typeID == resourceType then',
+        ),
+    ])
+    patch_luac_text(src / "Grab" / "TreasureDebrisLayer.luac", [
+        (
+            '                    local callFunc =function()\n                        local type = TreasureModel.items[treasureModel.ID].typeID',
+            '                    local grabScene = self:getParent():getParent():getParent():getParent()\n'
+            '                    local onClose = grabScene.mPargrams and grabScene.mPargrams.onCloseCallback\n'
+            '                    local callFunc =function()\n                        local type = TreasureModel.items[treasureModel.ID].typeID',
+        ),
+        (
+            'treasureId = treasureModel.ID, selectType = selectType}',
+            'treasureId = treasureModel.ID, selectType = selectType, onCloseCallback = onClose}',
+        ),
+    ])
+    patch_luac_text(src / "TimedActivity" / "TimedPrayTree.luac", [
+        ('local CacheData = require("Common.PlayerCacheData")\n', ''),
+        (
+            '''    local cache = CacheData:get("TimedPrayTree")
+
+    if not cache  then
+        self:requestTreeData()
+    else
+        self.mNeedDiamond = cache.NeedNum
+        self.mCurrentDiamond = cache.Num
+        self.mTotalDay = cache.RewardNum
+        self:refreshUi(cache.EndTime, cache.NeedNum, cache.Num, self.mTotalDay)
+        self:createListView(cache.RewardList)
+    end''',
+            '    self:requestTreeData()',
+        ),
+        ('        CacheData:set("TimedPrayTree", event.Value)\n', ''),
+        (
+            '    self:addChild(rechargeButton, 1)',
+            '    self:addChild(rechargeButton, 1)\n'
+            '    self.mRechargeButton = rechargeButton\n'
+            '    rechargeButton:setVisible(false)',
+        ),
+        (
+            '        text        = string.format(TR("活动期间，累计充满{fbfe00}%d{db_1111.png}{ffffff}可激活许愿树，领取{fbfe00}%d{ffffff}天许愿奖励"),0,0),',
+            '        text        = "",',
+        ),
+        (
+            '''function TimedPrayTree:refreshUi(missTime, needDiamond, currentDiamond,day)
+    if needDiamond > currentDiamond then
+        self.mChargeLabel:setString(string.format("{db_1111.png}%d",currentDiamond))
+    else
+        self.mChargeLabel:setString(string.format("{db_1111.png}%d",currentDiamond))
+    end
+    self.mTishi:setString(string.format(TR("活动期间，累计充满{fbfe00}%d{db_1111.png}{ffffff}可激活许愿树，领取{fbfe00}%d{ffffff}天许愿奖励"),needDiamond,day))''',
+            '''function TimedPrayTree:refreshEligibility(rewards)
+    local canRecharge = #rewards > 0 and self.mCurrentDiamond < self.mNeedDiamond
+    self.mRechargeButton:setVisible(canRecharge)
+    if #rewards == 0 then
+        self.mTishi:setString("Đã nhận đủ quà Cây Ước trong kỳ này.")
+    elseif canRecharge then
+        self.mTishi:setString(string.format("Nạp đủ {fbfe00}%d{db_1111.png}{ffffff} trong kỳ để kích hoạt Cây Ước.", self.mNeedDiamond))
+    else
+        self.mTishi:setString("Cây Ước đã kích hoạt. Hãy nhận quà còn lại.")
+    end
+end
+
+function TimedPrayTree:refreshUi(missTime, needDiamond, currentDiamond, rewards)
+    self.mChargeLabel:setString(string.format("{db_1111.png}%d/%d", currentDiamond, needDiamond))
+    self:refreshEligibility(rewards)''',
+        ),
+        (
+            'self:refreshUi(self.mEndTime, self.mNeedDiamond, self.mCurrentDiamond, self.mTotalDay)',
+            'self:refreshUi(self.mEndTime, self.mNeedDiamond, self.mCurrentDiamond, event.Value.RewardList)',
+        ),
+        (
+            '        self.mListview:removeItem(self.mIndex)',
+            '        self.mListview:removeItem(self.mIndex)\n'
+            '        self:refreshEligibility(event.Value.RewardList)',
+        ),
+        (
+            '''        local cache ={}
+        cache.NeedNum = self.mNeedDiamond
+        cache.Num = self.mCurrentDiamond
+        cache.RewardNum = self.mTotalDay
+        cache.EndTime = self.mEndTime
+        cache.RewardList = event.Value.RewardList
+
+        CacheData:set("TimedPrayTree", cache)''',
+            '',
+        ),
+    ])
 
 
 def build_and_sign_release(out_name: str) -> Path:

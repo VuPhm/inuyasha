@@ -168,6 +168,28 @@ class R79EventHandlersMixin:
                     out.append(prof)
         return out
 
+    def _s1_event_scores(self, instance_id: str, progress_key: str, my_score: int) -> list[tuple[str, str, int]]:
+        rows = []
+        for prof in self._s1_account_profiles():
+            player = prof.state["player"]
+            # Read by instance ID so rollover/reset does not advance another profile or mix periods.
+            inst = prof.event_runtime.get_instance(instance_id) or {}
+            score = my_score if prof is self else int(inst.get("progress", {}).get(progress_key, 0))
+            rows.append((str(player["PlayerId"]), str(player.get("PlayerName", "Hero")), score))
+        return rows
+
+    def _event_rank_payload(
+        self, rows: list[tuple[str, str, int]], *, name_key: str, score_key: str, limit: int,
+    ) -> tuple[int, list[dict[str, Any]]]:
+        # At equal scores, real S1 accounts precede bots. Identity breaks ties consistently for every viewer.
+        rows.sort(key=lambda row: (-row[2], row[0].startswith("npc:"), row[0]))
+        my_id = str(self.state["player"]["PlayerId"])
+        my_rank = next((rank for rank, row in enumerate(rows, 1) if row[0] == my_id), 0)
+        return my_rank, [
+            {"Rank": rank, name_key: name, score_key: score}
+            for rank, (_, name, score) in enumerate(rows[:limit], 1)
+        ]
+
     # -------------------- 1. TimedMoneyTreeLayer (4432, Cây Tiền May Mắn) --------------------
 
     MONEY_TREE_SHOW_REWARDS: list[tuple[int, int, int]] = [
@@ -312,6 +334,22 @@ class R79EventHandlersMixin:
         prog["drawn_nums"] = sorted(drawn)
         self.save()
         return self._build_money_tree_payload(prog, base_res=base_res)
+
+    def _settle_money_tree_milestones(self, inst: dict[str, Any]) -> None:
+        if not self.event_runtime.archive_cfg.get("settle_unclaimed_credit", True):
+            return
+        prog = inst.get("progress", {})
+        claimed = {int(n) for n in prog.get("drawn_nums", [])}
+        for num, resources in self.MONEY_TREE_MILESTONES:
+            if num <= int(prog.get("num", 0)) and num not in claimed:
+                if self.event_runtime.is_claimed(inst["instance_id"], f"milestone:{num}"):
+                    continue
+                self._push_reward_center_entry(
+                    source_key=f"money_tree:{inst['instance_id']}:{num}",
+                    title=f"Cây Tiền May Mắn — Mốc {num} Lượt",
+                    content="Phần thưởng mốc đã đạt ở kỳ trước.",
+                    res_tuples=resources,
+                )
 
     # -------------------- 2. TimedPrayTree (4409, Cây Ước Nguyện) --------------------
 
@@ -464,29 +502,25 @@ class R79EventHandlersMixin:
         if not ev.eligible:
             self._last_rpc_context["status"] = -1
             return {}
-        records = list(prog.get("records", []))
-        # Include other local S1 accounts + deterministic peers so record ticker is lively offline
-        for idx, prof in enumerate(self._s1_account_profiles()):
-            p_info = prof.state.get("player", {})
-            records.append(
-                {
-                    "Type": 1,
-                    "PlayerId": str(p_info.get("PlayerId", f"s1-{idx}")),
-                    "Name": str(p_info.get("PlayerName", "Hero")),
-                    "Reward": self.SMASH_EGG_POOL[idx % len(self.SMASH_EGG_POOL)][0],
-                }
-            )
+        local_records = list(prog.get("records", []))
+        for prof in self._s1_account_profiles():
+            if prof is not self:
+                inst = prof.event_runtime.get_instance(ev.instance_id) or {}
+                local_records.extend(inst.get("progress", {}).get("records", []))
+        local_records.sort(key=lambda row: (int(row.get("TimeTick", 0)), str(row.get("PlayerId", ""))))
+
+        records = []
         for idx, peer_name in enumerate(["KhuyểnDạXoa", "BạchSát", "TửVu", "NgọcTứHồn"]):
             records.append(
                 {
                     "Type": 1,
                     "PlayerId": f"bot-{idx + 1}",
-                    "Name": peer_name,
+                    "Name": f"{peer_name} (NPC)",
                     "Reward": self.SMASH_EGG_POOL[(idx + 2) % len(self.SMASH_EGG_POOL)][0],
                 }
             )
         self.save()
-        return {"TimedSmashingRecord": records[-20:]}
+        return {"TimedSmashingRecord": (records + local_records)[-20:]}
 
     def _rpc_timed_smash_egg_smash(self, data: Any) -> dict[str, Any]:
         req_count = int(data[0]) if isinstance(data, list) and data else 1
@@ -514,6 +548,7 @@ class R79EventHandlersMixin:
                     "PlayerId": str(p_info.get("PlayerId", "")),
                     "Name": str(p_info.get("PlayerName", "Hero")),
                     "Reward": r_str,
+                    "TimeTick": self.now_ts(),
                 }
             )
         if len(records) > 30:
@@ -619,35 +654,30 @@ class R79EventHandlersMixin:
             return 0
         return int(not prog.get("vn_tickets_seeded") or self._get_goods_qty(self.LOTTERY_TICKET_MODEL_ID) > 0)
 
-    def _build_slot_rank_list(self, my_integral: int) -> tuple[int, list[dict[str, Any]]]:
-        me_name = str(self.state["player"].get("PlayerName", "Hero"))
-        entries: list[dict[str, Any]] = []
-        for prof in self._s1_account_profiles():
-            pname = str(prof.state.get("player", {}).get("PlayerName", "Hero"))
-            if prof.profile_name == self.profile_name:
-                score = int(my_integral)
-                is_me = True
-            else:
-                p_ev = prof.event_runtime.evaluate("timed_slot", prof.state.get("player"))
-                p_inst = prof.event_runtime.get_instance(p_ev.instance_id) if p_ev.instance_id else None
-                score = int((p_inst or {}).get("progress", {}).get("integral", 0))
-                is_me = False
-            if score > 0:
-                entries.append({"Name": pname, "Integral": score, "is_me": is_me})
-        for idx, (bname, bscore) in enumerate([("BạchSát", 50), ("KhuyểnDạXoa", 35), ("TửVu", 20), ("NgọcTứHồn", 10)]):
-            entries.append({"Name": bname, "Integral": bscore, "is_me": False})
-        entries.sort(key=lambda r: (-int(r["Integral"]), 0 if r["is_me"] else 1, r["Name"]))
-        my_rank = 0
-        rank_list: list[dict[str, Any]] = []
-        for idx, row in enumerate(entries[:5], start=1):
-            if row["is_me"]:
-                my_rank = idx
-            rank_list.append({"Rank": idx, "Name": row["Name"], "Integral": int(row["Integral"])})
-        return my_rank, rank_list
+    def _build_slot_rank_list(self, instance_id: str, my_integral: int) -> tuple[int, list[dict[str, Any]]]:
+        entries = [row for row in self._s1_event_scores(instance_id, "integral", my_integral) if row[2] > 0]
+        for name, score in [("BạchSát", 50), ("KhuyểnDạXoa", 35), ("TửVu", 20), ("NgọcTứHồn", 10)]:
+            entries.append((f"npc:{name}", f"{name} (NPC)", score))
+        return self._event_rank_payload(entries, name_key="Name", score_key="Integral", limit=5)
+
+    def _settle_slot_rank(self, inst: dict[str, Any]) -> None:
+        points = int(inst.get("progress", {}).get("integral", 0))
+        if points <= 0:
+            return
+        rank, _ = self._build_slot_rank_list(inst["instance_id"], points)
+        inst.setdefault("settlement", {})["rank"] = rank
+        reward = next((row for row in self.SLOT_RANK_RETURN if row["Rank"] == rank), None)
+        if reward:
+            self._push_reward_center_entry(
+                source_key=f"slot_rank:{inst['instance_id']}",
+                title=f"Kho Báu Quay Thưởng — Hạng {rank}",
+                content=f"Thưởng xếp hạng với {points} điểm ở kỳ trước.",
+                res_tuples=_parse_res_tuples(reward["ReturnResource"]),
+            )
 
     def _build_slot_payload(self, ev: Any, prog: dict[str, Any]) -> dict[str, Any]:
         my_int = int(prog.get("integral", 0))
-        my_rank, rank_list = self._build_slot_rank_list(my_int)
+        my_rank, rank_list = self._build_slot_rank_list(ev.instance_id, my_int)
         ratio_map = {r["Rank"]: r["Ratio"] for r in self.SLOT_RANK_RETURN}
         return {
             "EndDate": int(ev.end_ts or self.clock.next_midnight_ts()),

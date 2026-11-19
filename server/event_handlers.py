@@ -33,7 +33,8 @@ class EventHandlersMixin(R79EventHandlersMixin):
 
     def _sync_events(self) -> None:
         """Advance/archive ended timed events and settle end-of-period rewards once."""
-        self.event_runtime.check_and_finalize_ended_timed(on_ended=self._on_timed_event_ended)
+        if self.event_runtime.check_and_finalize_ended_timed(on_ended=self._on_timed_event_ended):
+            self.save()
 
     def _on_timed_event_ended(self, inst: dict[str, Any]) -> None:
         event_id = str(inst.get("event_id", ""))
@@ -53,6 +54,10 @@ class EventHandlersMixin(R79EventHandlersMixin):
                     res_tuples=[(1606, box_id, 1)],
                     expire_sec=0,
                 )
+        elif event_id == "timed_slot":
+            self._settle_slot_rank(inst)
+        elif event_id == "timed_money_tree":
+            self._settle_money_tree_milestones(inst)
 
     def _active_reward_center_entries(self) -> list[dict[str, Any]]:
         now = self.now_ts()
@@ -508,7 +513,7 @@ class EventHandlersMixin(R79EventHandlersMixin):
         prog.setdefault("history", [])
         return prog
 
-    def _timed_recruit_synthetic_peers(self, act_id: int, instance_id: str) -> list[dict[str, Any]]:
+    def _timed_recruit_synthetic_peers(self, act_id: int, instance_id: str) -> list[tuple[str, str, int]]:
         """Deterministic synthetic NPC leaderboard peers per event instance (modeled)."""
         rng = random.Random(f"tr_peers:{instance_id}:{act_id}")
         npc_names = [
@@ -520,27 +525,14 @@ class EventHandlersMixin(R79EventHandlersMixin):
         ]
         # Clean stepped distribution from ~1800 down to 510 so Rank 1 is competitively reachable
         base_scores = sorted([510 + idx * 52 + rng.randint(0, 20) for idx in range(len(npc_names))], reverse=True)
-        return [
-            {"PlayerName": name, "Credit": score, "is_player": False}
-            for name, score in zip(npc_names, base_scores)
-        ]
+        return [(f"npc:{name}", f"{name} (NPC)", score) for name, score in zip(npc_names, base_scores)]
 
     def _timed_recruit_rank_and_list(self, act_id: int, instance_id: str, my_credit: int) -> tuple[int, list[dict[str, Any]]]:
         cfg = self.game_data.get("timed_recruit_model", {}).get(str(act_id), {})
         limit_num = int(cfg.get("limitNum", 500))
-        player_name = str(self.state["player"].get("PlayerName", "Hero"))
         entries = self._timed_recruit_synthetic_peers(act_id, instance_id)
-        if my_credit >= limit_num:
-            entries.append({"PlayerName": player_name, "Credit": int(my_credit), "is_player": True})
-        entries.sort(key=lambda r: (-int(r["Credit"]), 0 if r["is_player"] else 1, r["PlayerName"]))
-
-        rank_list: list[dict[str, Any]] = []
-        my_rank = 0
-        for idx, row in enumerate(entries[:50], start=1):
-            if row["is_player"]:
-                my_rank = idx
-            rank_list.append({"Rank": idx, "PlayerName": row["PlayerName"], "Credit": int(row["Credit"])})
-        return my_rank, rank_list
+        entries.extend(row for row in self._s1_event_scores(instance_id, "my_credit", my_credit) if row[2] >= limit_num)
+        return self._event_rank_payload(entries, name_key="PlayerName", score_key="Credit", limit=50)
 
     def _settle_timed_recruit_rank(self, inst: dict[str, Any]) -> None:
         prog = inst.get("progress", {})
@@ -548,6 +540,7 @@ class EventHandlersMixin(R79EventHandlersMixin):
         my_credit = int(prog.get("my_credit", 0))
         iid = str(inst["instance_id"])
         my_rank, _ = self._timed_recruit_rank_and_list(act_id, iid, my_credit)
+        inst.setdefault("settlement", {})["rank"] = my_rank
         if my_rank <= 0:
             return
         rank_rows = self.game_data.get("timed_recruit_rank", {}).get(str(act_id), [])

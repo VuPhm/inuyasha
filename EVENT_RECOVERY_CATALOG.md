@@ -6,6 +6,8 @@
 
 **Delta R7.10:** Vé Slot VN `16050027`, rút 10 lần và popup thưởng, Cây Tiền và nhận mốc trên Pixel. Quyền chọn UR chưa dùng được gửi vào Trung Tâm Thưởng khi đổi kỳ. Các khóa nhận thưởng và phát vé gắn tài khoản S1. Xem [báo cáo R7.10](R7_10_ACCEPTANCE_REPORT.md) để phân biệt bằng chứng UI, RPC và nguồn của bảng thưởng.
 
+**Delta R7.11:** Slot `4412` và Thần Tướng `9300` lấy điểm thực của TK S1 trong đúng kỳ và đánh dấu NPC. Đập Trứng `4426` đọc lịch sử chơi của các TK khác. Slot kết toán thưởng hạng, Cây Tiền chuyển mốc chưa nhận vào Trung Tâm Thưởng. Event Archive áp dụng chuyển pity theo banner đã cấu hình, đồng thời lưu ID và kết quả của kỳ đóng. Xem [báo cáo R7.11](R7_11_ACCEPTANCE_REPORT.md).
+
 ---
 
 ## 1. Objective for R7.5+

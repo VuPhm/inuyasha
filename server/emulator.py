@@ -7661,7 +7661,8 @@ class GameEmulatorState:
             seed_dir = Path(seed_dir_env)
             olina_seed = seed_dir / "seed_olinahugh.json"
             acct2_file = self.data_dir / "s1_acct_2.json"
-            if olina_seed.exists() and not acct2_file.exists():
+            new_sample = not acct2_file.exists()
+            if olina_seed.exists() and new_sample:
                 try:
                     raw_seed = json.loads(olina_seed.read_text(encoding="utf-8"))
                     pvp_st = raw_seed.setdefault("pvp", {})
@@ -7671,6 +7672,10 @@ class GameEmulatorState:
                 except Exception:
                     pass
             self.ensure_s1_account_slots(3)
+            if new_sample and not olina_seed.exists():
+                sample = self.s1_accounts["acct_2"]
+                sample.state["player"].update({"PlayerName": "Mẫu S1", "StepCountList": {"1": 999}})
+                sample.admin_prepare_account(target_lv=20, vip_lv=3, source="standalone_sample")
             return
 
         if self.persist and self.accounts_index_path.exists():
@@ -8346,6 +8351,7 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                                 "period_overrides",
                                 "carry_over_pity",
                                 "carry_over_policy",
+                                "settle_unclaimed_credit",
                                 "rotation_pool",
                                 "rotation_duration_sec",
                                 "rotation_anchor_ts",
@@ -8375,7 +8381,7 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                         elif action == "reset":
                             prof.event_runtime.manual_reset_event(
                                 str(payload["event_id"]),
-                                confirm=bool(payload.get("confirm", False)),
+                                confirm=payload.get("confirm", False),
                                 on_ended=prof._on_timed_event_ended,
                                 player=prof.state["player"],
                             )

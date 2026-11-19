@@ -6,7 +6,7 @@ Features:
   - Application ID: com.cmn.inuyasha.revival (coexists safely with com.cmn.inuyasha STABLE).
   - Embeds 32-bit ARM CPython 3.11 runtime + libinubackend.so PIE launcher in lib/armeabi/.
   - Packages canonical Python backend (emulator.py, event_handlers.py, event_runtime.py,
-    combat_sim.py, economy_audit.py, game_data.json) + preserved OlinaHugh seed in assets/inubackend/.
+    combat_sim.py, economy_audit.py, game_data.json) in assets/inubackend/.
   - Merges OBB resources (main.98.com.cmn.inuyasha.obb) directly into assets/res/ for 1-file install.
   - Injects LocalBackendManager & LocalBackendService lifecycle supervisor (auto-start on launch,
     127.0.0.1:18082 loopback-only bind, watchdog auto-restart, save mirror, clean shutdown).
@@ -320,12 +320,6 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
             if not src.exists():
                 raise FileNotFoundError(f"Missing server file: {src}")
             zf.write(src, arcname=fname)
-        # Include preserved OlinaHugh Lv 20 profile as TK 2 preset seed
-        olina_src = server_dir / "dev_saves" / "normal_profile.json"
-        if not olina_src.exists():
-            olina_src = server_dir / "saves" / "normal_profile.json"
-        if olina_src.exists():
-            zf.write(olina_src, arcname="seeds/seed_olinahugh.json")
 
 
 def bundle_embedded_python(work_dir: Path, version_tag: str) -> None:

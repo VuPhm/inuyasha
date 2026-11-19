@@ -564,7 +564,6 @@ class EventRuntime:
         end_ts: int | None,
         *,
         mode: str = "scheduled",
-        initial_progress: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         """Return active instance for instance_id and list of newly ended old instances."""
         rt = self.rt
@@ -572,11 +571,20 @@ class EventRuntime:
         active_map = rt["active_instance_by_event"]
         now = self.clock.now()
         ended_previous: list[dict[str, Any]] = []
+        initial_progress: dict[str, Any] = {}
 
         prev_id = active_map.get(event_id)
         if prev_id and prev_id != instance_id and prev_id in instances:
             self._finalize_instance_to_history(prev_id, "period_rotated", now)
-            ended_previous.append(instances[prev_id])
+            previous = instances[prev_id]
+            ended_previous.append(previous)
+            if event_id.startswith("timed_recruit:") and self.is_carry_over_pity(event_id):
+                progress = previous.get("progress", {})
+                initial_progress = {
+                    key: progress[key]
+                    for key in ("out_zi_count", "bless_num", "bless_r", "bless_unlocked")
+                    if key in progress
+                }
 
         # Only close other same-module events in exclusive single-banner archive modes
         ev_def = self.registry.get(event_id)
@@ -599,7 +607,7 @@ class EventRuntime:
                 "started_at": int(start_ts if start_ts is not None else now),
                 "end_at": int(end_ts) if end_ts is not None else None,
                 "created_at": now,
-                "progress": copy.deepcopy(initial_progress) if initial_progress else {},
+                "progress": initial_progress,
                 "claimed": [],
                 "claim_meta": {},
                 "settled": False,
@@ -673,13 +681,13 @@ class EventRuntime:
                 slot_start = anchor
                 slot_end = anchor + dur
                 if pool[0] == event_id:
-                    return STATUS_UPCOMING, f"{event_id}:rot:0", slot_start, slot_end, "rotating"
+                    return STATUS_UPCOMING, f"{event_id}:rot:0{seq_suffix}", slot_start, slot_end, "rotating"
                 return STATUS_ENDED, None, None, None, "rotating"
             slot_idx = (now - anchor) // dur
             active_eid = pool[slot_idx % len(pool)]
             slot_start = anchor + slot_idx * dur
             slot_end = slot_start + dur
-            iid = f"{event_id}:rot:{slot_idx}"
+            iid = f"{event_id}:rot:{slot_idx}{seq_suffix}"
             if active_eid == event_id:
                 return STATUS_ACTIVE, iid, slot_start, slot_end, "rotating"
             # Not currently the active slot
@@ -691,7 +699,7 @@ class EventRuntime:
         if isinstance(win, dict) and win.get("enabled", True):
             s_ts = int(win.get("start_ts", 0))
             e_ts = int(win.get("end_ts", 0))
-            iid = str(win.get("instance_id") or f"{event_id}:sched:{s_ts}:{e_ts}")
+            iid = str(win.get("instance_id") or f"{event_id}:sched:{s_ts}:{e_ts}") + seq_suffix
             if now < s_ts:
                 return STATUS_UPCOMING, iid, s_ts, e_ts, "scheduled"
             if e_ts > 0 and now >= e_ts:
@@ -700,7 +708,7 @@ class EventRuntime:
         if ev_def.default_start_ts is not None and ev_def.default_end_ts is not None:
             s_ts = int(ev_def.default_start_ts)
             e_ts = int(ev_def.default_end_ts)
-            iid = f"{event_id}:sched:{s_ts}:{e_ts}"
+            iid = f"{event_id}:sched:{s_ts}:{e_ts}{seq_suffix}"
             if now < s_ts:
                 return STATUS_UPCOMING, iid, s_ts, e_ts, "scheduled"
             if now >= e_ts:
@@ -861,6 +869,8 @@ class EventRuntime:
             for snap in self.rt["archive_history"]:
                 if snap.get("instance_id") == iid:
                     snap["settled"] = True
+                    if "settlement" in inst:
+                        snap["settlement"] = copy.deepcopy(inst["settlement"])
 
     def check_and_finalize_ended_timed(self, on_ended: Callable[[dict[str, Any]], None] | None = None) -> list[dict[str, Any]]:
         """Evaluate timed events so ended/expired periods transition cleanly and settle once."""
@@ -918,19 +928,10 @@ class EventRuntime:
         old_iid = active_map.get(event_id)
         old_inst = self.rt["instances"].get(old_iid) if old_iid else None
 
-        carry_progress: dict[str, Any] | None = None
         if old_inst is not None:
             if not old_inst.get("archived"):
                 self._finalize_instance_to_history(str(old_iid), "manual_reset", now)
             self._record_archived_settlement(old_inst, on_ended)
-            if self.is_carry_over_pity(event_id):
-                old_prog = old_inst.get("progress", {})
-                if "out_zi_count" in old_prog or "bless_num" in old_prog:
-                    carry_progress = {
-                        "out_zi_count": old_prog.get("out_zi_count"),
-                        "bless_num": old_prog.get("bless_num", 0),
-                        "bless_unlocked": old_prog.get("bless_unlocked", False),
-                    }
 
         seqs = self.archive_cfg.setdefault("manual_reset_seq", {})
         seqs[event_id] = int(seqs.get(event_id, 0)) + 1
@@ -949,15 +950,6 @@ class EventRuntime:
                     "end_ts": now + dur,
                 }
 
-        ev = self.evaluate(event_id, player)
-        if ev.instance_id and carry_progress:
-            new_inst = self.get_instance(ev.instance_id)
-            if new_inst is not None:
-                prog = new_inst.setdefault("progress", {})
-                if carry_progress.get("out_zi_count") is not None:
-                    prog["out_zi_count"] = carry_progress["out_zi_count"]
-                prog["bless_num"] = carry_progress.get("bless_num", 0)
-                prog["bless_unlocked"] = carry_progress.get("bless_unlocked", False)
         return self.describe_archive(player)
 
     # ------------------------- Milestone Claim Guard -------------------------
@@ -1026,6 +1018,8 @@ class EventRuntime:
             ac["carry_over_pity"] = bool(kwargs["carry_over_pity"])
         if "carry_over_policy" in kwargs and isinstance(kwargs["carry_over_policy"], dict):
             ac.setdefault("carry_over_policy", {}).update(kwargs["carry_over_policy"])
+        if isinstance(kwargs.get("settle_unclaimed_credit"), bool):
+            ac["settle_unclaimed_credit"] = kwargs["settle_unclaimed_credit"]
 
         if mode == "concurrent":
             if "concurrent_events" in kwargs and isinstance(kwargs["concurrent_events"], list):

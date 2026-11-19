@@ -3639,5 +3639,119 @@ class EmulatorProtocolTest(unittest.TestCase):
                 self.assertEqual(prof._get_goods_qty(16050027), 10)
 
 
+    def test_59_r7_11_shared_s1_rank_reconciles_once_at_midnight(self) -> None:
+        from datetime import datetime, timedelta, timezone
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td)
+            emu = GameEmulatorState(persist=True, new_player=True, data_dir=data_dir)
+            emu.clock.set_fixed(int(datetime(2026, 11, 20, 23, 59, 30, tzinfo=timezone(timedelta(hours=7))).timestamp()))
+            emu.create_s1_account()
+            alpha, beta = (emu.get_profile_by_name(name) for name in ("normal", "acct_2"))
+
+            def rpc(prof, module, method, *args):
+                return emu.handle_rpc({
+                    "ModuleName": module, "MethodName": method, "Data": list(args),
+                    "ServerId": 1, "PlayerId": prof.state["player"]["PlayerId"],
+                })
+
+            for prof, name in ((alpha, "DeltaAlpha"), (beta, "DeltaBeta")):
+                rpc(prof, "Player", "NewPlayer", name, 1)
+                prof.admin_prepare_account(target_lv=30)
+                prof.state["player"]["Diamond"] = 5000
+                with patch("r79_event_handlers.random.choice", return_value=prof.SLOT_NORMAL_REWARDS[0]):
+                    self.assertEqual(rpc(prof, "TimedLuckdrawInfo", "Luckdraw", 1, 10)["Status"], 0)
+
+            slot_a = rpc(alpha, "TimedLuckdrawInfo", "GetInfo")["Value"]
+            slot_b = rpc(beta, "TimedLuckdrawInfo", "GetInfo")["Value"]
+            self.assertEqual(slot_a["RankList"], slot_b["RankList"])
+            self.assertNotEqual(slot_a["TimedLuckdrawInfo"]["Rank"], slot_b["TimedLuckdrawInfo"]["Rank"])
+            self.assertEqual({r["Name"] for r in slot_a["RankList"][-2:]}, {"DeltaAlpha", "DeltaBeta"})
+
+            self.assertEqual(rpc(beta, "TimedSmashingeggsInfo", "SmashingEggs", 1)["Status"], 0)
+            records = rpc(alpha, "TimedSmashingeggsInfo", "GetSmashingRecord")["Value"]["TimedSmashingRecord"]
+            self.assertEqual([r["Name"] for r in records if not r["PlayerId"].startswith("bot-")], ["DeltaBeta"])
+
+            self.assertEqual(rpc(alpha, "TimedMoneyTree", "ShakeTree", 4432, 10)["Status"], 0)
+            self.assertEqual(rpc(alpha, "TimedMoneyTree", "DrawReward", 4432, 5)["Status"], 0)
+            worlds = []
+            for prof, credit in ((alpha, 650), (beta, 660)):
+                ev = prof.event_runtime.evaluate("timed_recruit:81", prof.state["player"])
+                worlds.append(ev.instance_id)
+                active = prof._ensure_timed_recruit_prog(81, ev.instance_id)
+                active.update({"my_credit": credit, "out_zi_count": 4, "bless_num": 340})
+                prof.save()
+            self.assertEqual(worlds[0], worlds[1])
+            self.assertEqual(
+                rpc(alpha, "TimedRecruitInfo", "GetTimedRecruitInfo", 81)["Value"]["RankList"],
+                rpc(beta, "TimedRecruitInfo", "GetTimedRecruitInfo", 81)["Value"]["RankList"],
+            )
+            alpha.event_runtime.configure_archive_mode("concurrent", carry_over_policy={"timed_recruit:81": {"pity": True}})
+            emu.clock.advance(60)
+            pending = {}
+            for prof in (alpha, beta):
+                mail = rpc(prof, "Reward", "Rewars")["Value"]
+                self.assertEqual(len([r for r in mail if r["Title"].startswith("Kho Báu Quay Thưởng")]), 1)
+                self.assertEqual(rpc(prof, "TimedLuckdrawInfo", "GetInfo")["Value"]["TimedLuckdrawInfo"]["Integral"], 0)
+                pending[prof.profile_name] = mail
+            self.assertEqual([r["Title"] for r in pending["normal"] if "Cây Tiền" in r["Title"]], ["Cây Tiền May Mắn — Mốc 10 Lượt"])
+            self.assertEqual(rpc(alpha, "TimedRecruitInfo", "GetTimedRecruitInfo", 81)["Value"]["OutputHighHeroIntervalNum"], 4)
+            self.assertEqual(rpc(beta, "TimedRecruitInfo", "GetTimedRecruitInfo", 81)["Value"]["OutputHighHeroIntervalNum"], 9)
+            self.assertEqual(rpc(alpha, "TimedRecruitInfo", "GetTimedRecruitInfo", 82)["Value"]["OutputHighHeroIntervalNum"], 9)
+
+            after_midnight = emu.clock.now()
+            emu = GameEmulatorState(persist=True, data_dir=data_dir)
+            emu.clock.set_fixed(after_midnight)
+            for name in ("normal", "acct_2"):
+                prof = emu.get_profile_by_name(name)
+                self.assertEqual(rpc(prof, "Reward", "Rewars")["Value"], pending[name])
+                slot_mail = next(r for r in pending[name] if r["Title"].startswith("Kho Báu Quay Thưởng"))
+                self.assertEqual(rpc(prof, "Reward", "DrawGiftBags", [slot_mail["Id"]])["Status"], 0)
+                self.assertNotEqual(rpc(prof, "Reward", "DrawGiftBags", [slot_mail["Id"]])["Status"], 0)
+                archived = next(r for r in prof.event_runtime.rt["archive_history"] if r["event_id"] == "timed_slot")
+                self.assertIn(archived["settlement"]["rank"], (4, 5))
+
+    def test_60_r7_11_scheduled_and_rotating_resets_keep_banner_isolation(self) -> None:
+        for mode in ("scheduled", "rotating"):
+            with self.subTest(mode=mode):
+                emu = GameEmulatorState(persist=False, new_player=True)
+                prof = emu.get_profile_by_name("normal")
+                prof.admin_prepare_account(target_lv=30)
+                rt = prof.event_runtime
+                now = emu.clock.now()
+                id81, id82 = "timed_recruit:81", "timed_recruit:82"
+                if mode == "scheduled":
+                    rt.set_scheduled_window(id81, now - 60, now + 600)
+                    rt.set_scheduled_window(id82, now - 60, now + 600)
+                else:
+                    rt.configure_archive_mode("rotating", rotation_pool=[id81, id82], rotation_anchor_ts=now - 60, rotation_duration_sec=600)
+                rt.configure_archive_mode(mode, carry_over_policy={id81: {"pity": True}}, settle_unclaimed_credit=False)
+                player = prof.state["player"]
+                event81 = rt.evaluate(id81, player)
+                event82 = rt.evaluate(id82, player)
+                old = prof._ensure_timed_recruit_prog(81, event81.instance_id)
+                old.update({"my_credit": 100, "out_zi_count": 2, "bless_num": 350, "bless_r": 0.4})
+                with self.assertRaises(ValueError):
+                    rt.manual_reset_event(id81, confirm="false", player=player)
+                self.assertEqual(rt.evaluate(id81, player).instance_id, event81.instance_id)
+                rt.manual_reset_event(id81, confirm=True, player=player, on_ended=prof._on_timed_event_ended)
+                new81 = rt.evaluate(id81, player)
+                self.assertNotEqual(new81.instance_id, event81.instance_id)
+                self.assertEqual(rt.evaluate(id82, player).instance_id, event82.instance_id)
+                new = prof._ensure_timed_recruit_prog(81, new81.instance_id)
+                self.assertEqual((new["my_credit"], new["out_zi_count"], new["bless_num"], new["bless_r"]), (0, 2, 350, 0.4))
+                self.assertTrue(rt.get_instance(event81.instance_id)["archived"])
+                self.assertFalse(any("tr_unclaimed_credit:" in r["SourceKey"] for r in prof.state.get("rewards_center", [])))
+
+    def test_61_r7_11_fresh_standalone_generates_independent_sample_without_save_seed(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            with patch.dict("os.environ", {"INUYASHA_SEED_DIR": str(Path(td) / "unbundled")}):
+                emu = GameEmulatorState(persist=True, data_dir=Path(td) / "saves")
+                a, sample, b = emu.list_s1_accounts()["Accounts"]
+                self.assertEqual((a["IsNewPlayer"], b["IsNewPlayer"]), (1, 1))
+                self.assertEqual((sample["PlayerName"], sample["Lv"], sample["Vip"]), ("Mẫu S1", 20, 3))
+                self.assertEqual(len({a["PlayerId"], sample["PlayerId"], b["PlayerId"]}), 3)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

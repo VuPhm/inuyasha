@@ -1,6 +1,6 @@
 # InuYasha: Seek Jade (VN 5.0.4.98) — Event Archive & R7.5+ Activity Recovery Catalog
 
-**Status:** Planning & Dependency Inventory completed in R7.4 (Implementation queued for R7.5+)  
+**Status:** Baseline Event Runtime/Archive + 4 playable activities shipped in R7.5 (`checkpoint-vn-r7.5`); updated Multi-Banner & Daily `00:00 UTC+7` Event Archive rules tracked in [PROJECT_ROADMAP.md](file:///Users/vup/Documents/agy/inuyasha/PROJECT_ROADMAP.md) & [R7_5_EVENT_CATALOG.md](file:///Users/vup/Documents/agy/inuyasha/R7_5_EVENT_CATALOG.md)  
 **Canonical Client:** `com.cmn.inuyasha v5.0.4.98` (VN Lua + Config tables in [analysis/vn/decompiled_src/](file:///Users/vup/Documents/agy/inuyasha/analysis/vn/decompiled_src))  
 **Prior Audit Reference:** [R7_3_FULL_RECOVERY_AUDIT.md](file:///Users/vup/Documents/agy/inuyasha/R7_3_FULL_RECOVERY_AUDIT.md)
 
@@ -49,11 +49,11 @@ Verified in [TimedActivityScene.lua](file:///Users/vup/Documents/agy/inuyasha/an
 ## 3. Event Archive Architecture Design (For R7.5+)
 
 1. **`TimedActivityOpenInfo` Broadcast Channel:**
-   - Currently `emulator.py` returns `"TimedActivityOpenInfo": {}` in `Player.GetInitData` and `Avatar` updates ([emulator.py](file:///Users/vup/Documents/agy/inuyasha/server/emulator.py#L1775-L1787)).
-   - Populate `TimedActivityOpenInfo` dynamically from an explicit `event_archive` registry in state + `extract_game_data.py` extracted tables.
-2. **Dual Scheduling Modes (Single-Player Friendly):**
-   - **Auto-Rotation Schedule:** Deterministic weekly/multi-day cycle indexed by player start date or local clock so events rotate naturally without external servers.
-   - **Manual Event Archive Activation:** Admin/local toggle allowing the player to activate/pin specific classic events (e.g., UR `TimedRecruit` Banner #1..#6, `TimedMoneyTree`, `TimedSmashEgg`, `TimedChargeTotal`) for solo completion.
+   - Implemented in R7.5 (`EventHandlersMixin._build_timed_activity_open_info`): populated dynamically in `Player.GetInitData` and `Avatar` updates from active `EventRuntime` instances; R7.6 expands this to emit multiple concurrent banners cleanly.
+2. **Scheduling & Multi-Banner Modes (Single-Player & Archive-First, Updated for R7.6+):**
+   - **Default Daily Reset (`00:00 UTC+7`) + Custom Per-Event Period:** Local `EventClock` resets daily activities/banners at `00:00 UTC+7` by default, with per-event cycle overrides and zero Internet requirement.
+   - **Concurrent Multi-Banner & Multi-Event Activation:** Allow standard (`HeroRecruit`) + multiple limited banners (e.g., `81`, `82`, future complete banners) and events to run simultaneously with fully isolated pools, costs, counters, credits, pity (`OutZiCount` / Bless), and rewards (using compatible banner selection where legacy Lua UI only displays one same-type slot).
+   - **Manual Reset & Archive Replay:** Allow players to manually reopen or reset individual restored events with explicit confirmation, settling eligible rewards, archiving old instances without losing characters/items/history, and never pre-unlocking rewards.
 3. **Config Extraction Delta for `extract_game_data.py`:**
    - Expand extraction to cover: `TimedRecruitCreditrewardRelation`, `TimedRecruitRankrewardModel`, `TimedRecruitRatioOddsRelation`, `TimedRecruitBlessoddsModel`, `LimitthebountyModel`, `ActiverankingModel`, `TeambattleNodeModel`, `TeambattleShopModel`, `GuildBossModel`, `GuildFbNodeModel`, `GuildShopModel`, `GddhShopModel`, `GoddomainShopModel`, `RebornLvActiveModel`, and `DailyTask` / `MonthSign` tables.
 4. **Synthetic Peers & Economy Guardrails:**

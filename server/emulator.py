@@ -42,6 +42,8 @@ from typing import Any
 
 from combat_sim import simulate_fight_info
 from economy_audit import ResourceLedger
+from event_handlers import EventHandlersMixin
+from event_runtime import EventClock, EventRuntime, build_default_event_registry
 
 SERVER_DIR = Path(__file__).resolve().parent
 _default_root = SERVER_DIR.parent
@@ -336,8 +338,8 @@ def _parse_resource_str(res_str: str) -> list[tuple[int, int, int]]:
     return out
 
 
-class ProfileStore:
-    """Single-profile game state & RPC engine backed by extracted EN 5.1.1 config."""
+class ProfileStore(EventHandlersMixin):
+    """Single-profile game state & RPC engine backed by extracted VN/EN config."""
 
     DEBUG_STARTER_HERO_IDS = ["12011004", "12011005", "12012005", "12011006"]
     EQUIP_TYPE_TO_SLOT_KEY = {
@@ -357,6 +359,7 @@ class ProfileStore:
         reset: bool = False,
         legacy_seed_path: Path | None = None,
         trace_path: Path | None = RPC_TRACE_PATH,
+        clock: EventClock | None = None,
     ) -> None:
         self.profile_name = profile_name  # "normal" or "debug"
         self.game_data = game_data
@@ -365,8 +368,17 @@ class ProfileStore:
         self.persist = persist
         self.legacy_seed_path = legacy_seed_path
         self.trace_path = trace_path
+        self.clock = clock if clock is not None else EventClock()
         self._lock = threading.RLock()
         self.state = self._load_or_init(reset=reset)
+        self.event_runtime = EventRuntime(
+            self.clock,
+            build_default_event_registry(self.game_data),
+            self.state,
+        )
+
+    def now_ts(self) -> int:
+        return self.clock.now()
 
     @staticmethod
     def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
@@ -534,6 +546,9 @@ class ProfileStore:
         p.setdefault("PVPCoin", 0)
         p.setdefault("BossCoin", int(boss_state.get("jifen", 0)))
         p.setdefault("FashionModelId", 0)
+        data.setdefault("rewards_center", [])
+        data.setdefault("xxbz_lifetime", {})
+        EventRuntime.ensure_state(data)
         self._sync_player_recover_times(p)
         for h in data.get("heroes", []):
             h.setdefault("WarfareColorLv", 0)
@@ -708,7 +723,7 @@ class ProfileStore:
     def _sync_player_recover_times(self, player: dict[str, Any] | None = None) -> None:
         """Normalize VITMaxNum/STAMaxNum, VIP sync, and recover timestamps."""
         p = player if player is not None else self.state["player"]
-        now = int(time.time())
+        now = self.now_ts()
         vip_exp = int(p.get("VipEXP", 0))
         derived_vip = self.ledger.derive_vip_level(vip_exp) if vip_exp > 0 else 0
         vip_lv = max(int(p.get("Vip", 0)), int(p.get("VIPLv", 0)), derived_vip)
@@ -1754,12 +1769,41 @@ class ProfileStore:
             "SuccessTargetInfo.DrawTotalReward": self._rpc_success_target_draw_total_reward,
             "SuccessTargetInfo.GetExchangeInfo": self._rpc_success_target_get_exchange_info,
             "SuccessTargetInfo.Exchange": self._rpc_success_target_exchange,
-            "Reward.Rewars": lambda _d: [],
+            "Reward.Rewars": self._rpc_reward_rewars,
+            "Reward.DrawGiftBags": self._rpc_reward_draw_gift_bags,
+            "PlayerVIT.ReceiveVIT": self._rpc_player_vit_receive_vit,
+            "DailyTaskInfo.GetDaliyTaskInfo": self._rpc_daily_task_get_info,
+            "DailyTaskInfo.GetCredit": self._rpc_daily_task_get_credit,
+            "DailyTaskInfo.DrawReward": self._rpc_daily_task_draw_reward,
+            "DailyTaskInfo.OneKeyDone": self._rpc_daily_task_one_key_done,
+            "DailyTaskInfo.OneKeyAllDone": self._rpc_daily_task_one_key_all_done,
+            "TimedRecruitInfo.GetTimedRecruitInfo": self._rpc_timed_recruit_get_info,
+            "TimedRecruitInfo.Recruit": self._rpc_timed_recruit_pull,
+            "TimedRecruitInfo.DrawCreditReward": self._rpc_timed_recruit_draw_credit,
+            "TimedRecruitInfo.DrawGoldHero": self._rpc_timed_recruit_draw_gold_hero,
+            "Xxbz.GetInfo": self._rpc_xxbz_get_info,
+            "Xxbz.GetFightInfo": self._rpc_xxbz_get_fight_info,
+            "Xxbz.Fight": self._rpc_xxbz_fight,
+            "Xxbz.DrawReward": self._rpc_xxbz_draw_reward,
+            "XxbzInfo.BuyCount": self._rpc_xxbz_buy_count,
         }
         fn = handlers.get(key)
         handled = fn is not None
+        self._sync_events()
+        before_diamond = int(self.state.get("player", {}).get("Diamond", 0))
         value = fn(data) if fn else {}
         status = int(self._last_rpc_context.get("status", 0))
+        if status == 0:
+            dia_spent = before_diamond - int(self.state.get("player", {}).get("Diamond", 0))
+            if dia_spent > 0 and key not in ("DailyTaskInfo.OneKeyDone", "DailyTaskInfo.OneKeyAllDone"):
+                self._record_daily_task_progress(23, dia_spent)
+                self.save()
+            elif dia_spent > 0 and key in ("DailyTaskInfo.OneKeyDone", "DailyTaskInfo.OneKeyAllDone"):
+                self._record_daily_task_progress(23, dia_spent)
+                if isinstance(value, dict) and "TasksInfo" in value:
+                    value = self._build_daily_task_payload()
+                self.save()
+        self._sync_events()
         self._sync_player_recover_times()
 
         if self.persist and self.trace_path:
@@ -1769,10 +1813,11 @@ class ProfileStore:
                     f"handled={handled} status={status} data={json.dumps(data, ensure_ascii=False)}\n"
                 )
 
+        timed_open = self._build_timed_activity_open_info()
         if key in {"Player.Login", "Player.Login_ForTest", "Player.NewPlayer"}:
             avatar: dict[str, Any] = {}
         elif key == "Player.GetInitData":
-            avatar = {"TimedActivityOpenInfo": {}, "RedDotInfo": self._compute_red_dot_info()}
+            avatar = {"TimedActivityOpenInfo": timed_open, "RedDotInfo": self._compute_red_dot_info()}
         else:
             avatar = {k: v for k, v in self.state["player"].items() if k != "Lv"}
             if self._last_rpc_context.get("lv_changed"):
@@ -1784,19 +1829,20 @@ class ProfileStore:
                 avatar["GoodsInfo"] = self._last_rpc_context["goods_changed"]
             if self._last_rpc_context.get("treasure_debris_changed") is not None:
                 avatar["TreasureDebrisInfo"] = self._last_rpc_context["treasure_debris_changed"]
-            avatar["TimedActivityOpenInfo"] = {}
+            avatar["TimedActivityOpenInfo"] = timed_open
             avatar["RedDotInfo"] = self._compute_red_dot_info()
 
         return {
             "Status": status,
-            "TimeTick": int(time.time()),
+            "TimeTick": self.now_ts(),
             "Avatar": avatar,
             "Value": value,
         }
 
     def _rpc_login(self, _data: Any) -> dict[str, Any]:
-        self.state["player"]["LastLoginTime"] = int(time.time())
-        today = time.strftime("%Y-%m-%d")
+        self._sync_events()
+        self.state["player"]["LastLoginTime"] = self.now_ts()
+        today = self.clock.today_str()
         gl = self.state.setdefault(
             "gift_login",
             {"login_days": 1, "last_login_date": today, "claimed": []},
@@ -1842,7 +1888,9 @@ class ProfileStore:
         return {"PlayerId": self.state["player"]["PlayerId"]}
 
     def _rpc_get_init_data(self, _data: Any) -> dict[str, Any]:
+        self._sync_events()
         self._sync_player_recover_times()
+        timed_open = self._build_timed_activity_open_info()
         module_subs = self.game_data.get("module_subs", {})
         if module_subs:
             open_submodules = sorted(
@@ -1851,7 +1899,11 @@ class ProfileStore:
         else:
             open_submodules = [1000, 1100, 1200, 1300, 1400, 2200, 2201, 3800, 3801]
         modules = [
-            {"SubModuleId": mid, "OrderNum": idx, "IfOpen": 1}
+            {
+                "SubModuleId": mid,
+                "OrderNum": idx,
+                "IfOpen": 0 if (mid in (4400, 6300, 6400) and str(mid) not in timed_open) else 1,
+            }
             for idx, mid in enumerate(open_submodules, start=1)
         ]
         all_goods = self.state.get("goods", [])
@@ -2383,6 +2435,7 @@ class ProfileStore:
         eq["Lv"] = cur_lv + 1
         eq["Gold"] = int(eq.get("Gold", 0)) + cost
         self._inc_stat("equip_lvup_count", 1)
+        self._record_daily_task_progress(27, 1)
         return True
 
     def _sync_slot_equips(self) -> None:
@@ -2763,6 +2816,7 @@ class ProfileStore:
             source=f"battle_victory:{node_id}",
             tx_prefix=f"battle:{self.profile_name}:{node_id}:{uuid.uuid4()}",
         )
+        self._record_daily_task_progress(1, 1)
         old_lv, new_lv = self._sync_level_from_exp()
         if new_lv != old_lv:
             self._last_rpc_context["lv_changed"] = True
@@ -3024,6 +3078,8 @@ class ProfileStore:
             return {}
 
         self._recalc_all_slots_and_fap()
+        self._inc_stat("hero_lvup_count", leveled)
+        self._record_daily_task_progress(28, leveled)
         self._last_rpc_context["slots_changed"] = True
         self.save()
         return hero
@@ -3101,6 +3157,7 @@ class ProfileStore:
         exp_st["RemainNum"] = int(exp_st.get("RemainNum", 0)) - 1
         exp_st["DailyNum"] = int(exp_st.get("DailyNum", 0)) + 1
         self._inc_stat("explore_count", 1)
+        self._record_daily_task_progress(17, 1)
         roll = random.randint(1, 10000)
         reward_id = 1
         mult = 1
@@ -3246,6 +3303,7 @@ class ProfileStore:
             exp_st["MaxNum"] = int(exp_st.get("MaxNum", 25)) + xunyu_add
             exp_st["RemainNum"] = int(exp_st.get("RemainNum", 0)) + xunyu_add
         self._inc_stat("lighten_star_count", 1)
+        self._record_daily_task_progress(4, 1)
         return True
 
     def _rpc_lighten_star_up(self, _data: Any) -> dict[str, Any]:
@@ -3354,6 +3412,12 @@ class ProfileStore:
             source=f"shop_buy:{gid}",
             tx_prefix=f"shop_buy:{self.profile_name}:{gid}:{uuid.uuid4()}",
         )
+        g_cfg = self.game_data.get("goods_model", {}).get(str(gid), {})
+        if int(g_cfg.get("typeID", 0)) == 1603:
+            if int(g_cfg.get("outputTypeID", 0)) == 1102:
+                self._record_daily_task_progress(13, count)
+            elif int(g_cfg.get("outputTypeID", 0)) == 1103:
+                self._record_daily_task_progress(22, count)
         self._mark_goods_changed(gid)
         self.save()
         return self._build_shop_goods_entry(gid)
@@ -3503,8 +3567,10 @@ class ProfileStore:
         if type_id == 1603:
             if out_type == 1102:
                 self._inc_stat("vit_pills_used", consume)
+                self._record_daily_task_progress(13, consume)
             elif out_type == 1103:
                 self._inc_stat("sta_pills_used", consume)
+                self._record_daily_task_progress(22, consume)
         self._mark_goods_changed(gid)
         self.save()
         return {"BaseGetGameResourceList": base_res}
@@ -3710,6 +3776,7 @@ class ProfileStore:
         if not base_res:
             base_res = [{"PlayerAttr": [{"ResourceTypeSub": 1112, "Num": 0}, {"ResourceTypeSub": 1101, "Num": 0}]}]
 
+        self._record_daily_task_progress(3, 1)
         if loot_success == 1:
             self._inc_stat("treasure_loot_wins", 1)
         old_lv, new_lv = self._sync_level_from_exp()
@@ -3943,6 +4010,7 @@ class ProfileStore:
             if new_lv2 != old_lv2:
                 self._last_rpc_context["lv_changed"] = True
                 self._last_rpc_context["slots_changed"] = True
+            self._record_daily_task_progress(2, 1)
 
         node_list = self._sync_elite_nodes()
         cur_node = next((n for n in node_list if n["NodeModelId"] == elite_id), {"NodeModelId": elite_id, "Flag": int(st["Flag"]), "PassTime": int(st["PassTime"]), "CanDraw": st["CanDraw"]})
@@ -4330,8 +4398,8 @@ class ProfileStore:
     def _rpc_card_draw_daily(self, data: Any) -> dict[str, Any]:
         cid = int(data[0]) if isinstance(data, list) and data else 1
         cfg = CARD_MODEL_CFG.get(cid)
-        now = int(time.time())
-        today = time.strftime("%Y-%m-%d")
+        now = self.now_ts()
+        today = self.clock.today_str()
         cards = self.state.setdefault("month_cards", {})
         entry = cards.get(str(cid))
         if not cfg or not entry or int(entry.get("ExpireTime", 0)) <= now or entry.get("LastDailyDate") == today:
@@ -4369,9 +4437,9 @@ class ProfileStore:
     # ------------------------------------------------------------------
 
     def _compute_red_dot_info(self) -> dict[str, int]:
-        """Compute module red-dot flags (including StartWork 2718 on Mon-Thu until claimed)."""
+        """Compute module red-dot flags (including StartWork 2718 and R7.5 events)."""
         lv = int(self.state.get("player", {}).get("Lv", 1))
-        now = int(time.time())
+        now = self.now_ts()
         boss_state = self.state.get("boss_battle", {})
         alive_boss = any(
             int(b.get("CurHP", 0)) > 0 and int(b.get("AwayTime", 0)) > now
@@ -4385,8 +4453,8 @@ class ProfileStore:
         )
         df = self.state.get("daydayfund", {})
         can_fund = lv >= 19 and (bool(df.get("if_draw", True)) or now >= int(df.get("cooled_time", 0)))
-        today = time.strftime("%Y-%m-%d")
-        is_workday_window = time.localtime().tm_wday in (0, 1, 2, 3)
+        today = self.clock.today_str()
+        is_workday_window = self.clock.weekday() in (1, 2, 3, 4)
         claimed_days = self.state.get("startwork", {}).get("claimed_days", [])
         can_startwork = is_workday_window and (today not in claimed_days)
 
@@ -4417,9 +4485,14 @@ class ProfileStore:
             "1405": 1 if can_compose_equip else 0,
             "2203": 1 if (lv >= 18 and alive_boss) else 0,
             "2205": 1 if (lv >= 18 and claimable_box) else 0,
+            "2400": 1 if len(self._active_reward_center_entries()) > 0 else 0,
+            "2706": self._dinner_red_dot(),
             "2710": 1 if can_fund else 0,
             "2718": 1 if can_startwork else 0,
+            "3000": self._daily_task_red_dot(),
+            "4600": self._xxbz_red_dot(),
             "4900": 1 if has_success_claim else 0,
+            "9300": self._timed_recruit_red_dot(),
         }
 
     # ------------------------- R7.4: SuccessTargetInfo (4900) -------------------------
@@ -5022,6 +5095,7 @@ class ProfileStore:
             self._last_rpc_context["slots_changed"] = True
 
         self._inc_stat("boss_fights", need_atk)
+        self._record_daily_task_progress(7, need_atk)
         self.save()
         return {
             "HurtValue": hurt,
@@ -5582,6 +5656,7 @@ class ProfileStore:
         outcome = simulate_fight_info(fight_info, self.game_data["attacks"])
         is_win = 1 if outcome.won else 0
         self._inc_stat("pvp_fights", 1)
+        self._record_daily_task_progress(5, 1)
         if is_win:
             self._inc_stat("pvp_wins", 1)
 
@@ -5837,12 +5912,12 @@ class ProfileStore:
 
     def _rpc_startwork_get_reward(self, _data: Any) -> dict[str, Any]:
         sw = self.state["startwork"]
-        today = time.strftime("%Y-%m-%d")
+        today = self.clock.today_str()
         claimed = sw.setdefault("claimed_days", [])
         if today in claimed:
             self._last_rpc_context["status"] = -1
             return {}
-        wday = time.localtime().tm_wday + 1  # 1=Mon .. 4=Thu
+        wday = self.clock.weekday()  # 1=Mon .. 7=Sun
         sched = self._startwork_schedule()
         entry = sched.get(str(wday if 1 <= wday <= 4 else 1))
         tuples = [(1111, 0, int(entry["Diamond"]) * int(entry["Multiple"]))]
@@ -6199,6 +6274,7 @@ class ProfileStore:
             source=f"mystery_buy:{item['SellGoodsModelId']}",
             tx_prefix=f"mystery_buy:{self.profile_name}:{goods_id}",
         )
+        self._record_daily_task_progress(24, 1)
         self.save()
         return {"BaseGetGameResourceList": base_res}
 
@@ -6737,6 +6813,14 @@ class GameEmulatorState:
         resolved_audit = Path(audit_path) if audit_path is not None else (resolved_dir / "audit_ledger.jsonl")
         self.trace_path = Path(trace_path) if trace_path is not None else Path(preset["trace_path"])
         self.game_data = json.loads(GAME_DATA_PATH.read_text(encoding="utf-8"))
+        self.clock_path = resolved_dir / "clock_state.json"
+        if persist and self.clock_path.exists():
+            try:
+                self.clock = EventClock.from_dict(json.loads(self.clock_path.read_text(encoding="utf-8")))
+            except (ValueError, OSError):
+                self.clock = EventClock()
+        else:
+            self.clock = EventClock()
         self.ledger = ResourceLedger(
             audit_log_path=resolved_audit if persist else None,
             vip_model=self.game_data.get("vip_model", {}),
@@ -6750,6 +6834,7 @@ class GameEmulatorState:
                 persist=persist,
                 reset=new_player,
                 trace_path=self.trace_path if persist else None,
+                clock=self.clock,
             ),
             "debug": ProfileStore(
                 "debug",
@@ -6760,8 +6845,13 @@ class GameEmulatorState:
                 reset=False,
                 legacy_seed_path=LEGACY_SAVE_STATE_PATH if self.env == "stable" else None,
                 trace_path=self.trace_path if persist else None,
+                clock=self.clock,
             ),
         }
+
+    def save_clock(self) -> None:
+        if self.persist:
+            ProfileStore._write_json_atomic(self.clock_path, self.clock.to_dict())
 
     def get_profile_by_name(self, name: str) -> ProfileStore:
         if name not in self.profiles:
@@ -6874,6 +6964,25 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
             txs = self.server.emu.ledger.list_transactions(account_id=acc, limit=limit)
             self._send_json(200, {"ok": True, "env": self.server.emu.env, "transactions": txs})
             return
+        if path == "/admin/clock":
+            if not self._require_local_admin():
+                return
+            self._send_json(200, {"ok": True, "env": self.server.emu.env, "clock": self.server.emu.clock.to_dict()})
+            return
+        if path == "/admin/events":
+            if not self._require_local_admin():
+                return
+            prof_name = (qs.get("profile") or [self.server.emu.default_profile])[0]
+            try:
+                prof = self.server.emu.get_profile_by_name(prof_name)
+                with prof._lock:
+                    prof._sync_events()
+                    info = prof.event_runtime.describe_archive(prof.state["player"])
+                    prof.save()
+                self._send_json(200, {"ok": True, "env": self.server.emu.env, "profile": prof_name, **info})
+            except ValueError as exc:
+                self._send_json(400, {"error": str(exc)})
+            return
 
         if path in ("/", "/poc", "/poc/"):
             self._serve_poc_file("index.html")
@@ -6984,6 +7093,57 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                         source=str(payload.get("source") or "admin_prepare"),
                     )
                     self._send_json(200, {"ok": True, "env": self.server.emu.env, **res})
+                    return
+                if path == "/admin/clock":
+                    action = str(payload.get("action") or "status")
+                    clk = self.server.emu.clock
+                    if action == "realtime":
+                        clk.set_realtime()
+                    elif action == "fixed":
+                        clk.set_fixed(int(payload.get("fixed_ts", clk.now())))
+                    elif action == "offset":
+                        clk.set_offset(int(payload.get("offset_sec", 0)))
+                    elif action == "advance":
+                        clk.advance(int(payload.get("delta_sec", 0)))
+                    elif action == "config":
+                        clk.apply_config(payload)
+                    if "tz_offset_hours" in payload and action != "config":
+                        clk.set_tz_offset(int(payload["tz_offset_hours"]))
+                    self.server.emu.save_clock()
+                    for p_store in self.server.emu.profiles.values():
+                        with p_store._lock:
+                            p_store._sync_events()
+                            p_store._sync_player_recover_times()
+                            p_store.save()
+                    self._send_json(200, {"ok": True, "env": self.server.emu.env, "clock": clk.to_dict()})
+                    return
+                if path == "/admin/events":
+                    action = str(payload.get("action") or "status")
+                    with prof._lock:
+                        prof._sync_events()
+                        if action == "mode":
+                            mode = str(payload.get("mode", "rotating"))
+                            kwargs: dict[str, Any] = {}
+                            for k in ("rotation_pool", "rotation_duration_sec", "rotation_anchor_ts", "scheduled_windows", "event_id", "duration_sec"):
+                                if k in payload:
+                                    kwargs[k] = payload[k]
+                            prof.event_runtime.configure_archive_mode(mode, **kwargs)
+                        elif action == "activate":
+                            prof.event_runtime.activate_manual_event(
+                                str(payload["event_id"]),
+                                duration_sec=int(payload["duration_sec"]) if payload.get("duration_sec") is not None else None,
+                            )
+                        elif action == "schedule":
+                            prof.event_runtime.set_scheduled_window(
+                                str(payload["event_id"]),
+                                int(payload["start_ts"]),
+                                int(payload["end_ts"]),
+                                enabled=bool(payload.get("enabled", True)),
+                            )
+                        prof._sync_events()
+                        info = prof.event_runtime.describe_archive(prof.state["player"])
+                        prof.save()
+                    self._send_json(200, {"ok": True, "env": self.server.emu.env, "profile": prof_name, **info})
                     return
                 self._send_json(404, {"error": f"Unknown admin endpoint: {path}"})
             except (ValueError, KeyError, json.JSONDecodeError) as exc:

@@ -118,8 +118,21 @@ def parse_vip_buy_limit(path: str) -> dict[str, dict[str, dict[str, Any]]]:
     return out
 
 
-def parse_success_target_rewards(path: str) -> dict[str, list[dict[str, Any]]]:
-    """Parse 3-level `SuccessTargetRewardRelation` `[targetID][sequence][appearDay]` into `{targetID: [rows...]}`."""
+def parse_array_lua_list(path: str) -> list[dict[str, Any]]:
+    """Parse `Model = { ... items = { { k = v, ... }, ... } }` into a list preserving order."""
+    if not os.path.exists(path):
+        return []
+    text = open(path, "r", encoding="utf-8", errors="replace").read()
+    m = re.search(r"\bitems\s*=\s*\{", text)
+    if not m:
+        return []
+    body = text[m.end() :]
+    block_re = re.compile(r"^\s{8}\{(.*?)^\s{8}\}", re.M | re.S)
+    return [_parse_fields(bm.group(1), indent=12) for bm in block_re.finditer(body)]
+
+
+def parse_3level_lua_items(path: str, group_key: str) -> dict[str, list[dict[str, Any]]]:
+    """Parse 3-level `[k1][k2][k3] = { ... }` tables grouped by `group_key`."""
     if not os.path.exists(path):
         return {}
     text = open(path, "r", encoding="utf-8", errors="replace").read()
@@ -128,12 +141,18 @@ def parse_success_target_rewards(path: str) -> dict[str, list[dict[str, Any]]]:
         return {}
     body = text[m.end() :]
     leaf_re = re.compile(r"^\s{16}\[\d+\]\s*=\s*\{(.*?)^\s{16}\}", re.M | re.S)
-    by_target: dict[str, list[dict[str, Any]]] = {}
+    grouped: dict[str, list[dict[str, Any]]] = {}
     for lm in leaf_re.finditer(body):
         fields = _parse_fields(lm.group(1), indent=20)
-        tid = fields.get("targetID")
-        if tid is not None:
-            by_target.setdefault(str(int(tid)), []).append(fields)
+        gk = fields.get(group_key)
+        if gk is not None:
+            grouped.setdefault(str(int(gk)), []).append(fields)
+    return grouped
+
+
+def parse_success_target_rewards(path: str) -> dict[str, list[dict[str, Any]]]:
+    """Parse 3-level `SuccessTargetRewardRelation` `[targetID][sequence][appearDay]` into `{targetID: [rows...]}`."""
+    by_target = parse_3level_lua_items(path, "targetID")
     for rows in by_target.values():
         rows.sort(key=lambda r: (int(r.get("appearDay", 0)), int(r.get("sequence", 0))))
     return by_target
@@ -240,10 +259,35 @@ def main() -> None:
     charge_config = parse_array_lua_items(os.path.join(cfg_dir, "ChargeConfig.lua"), id_key="num")
     card_model = parse_simple_lua_items(os.path.join(cfg_dir, "CardModel.lua"))
     timed_recruit_model = parse_simple_lua_items(os.path.join(cfg_dir, "TimedRecruitModel.lua"))
+    timed_recruit_credit = parse_simple_lua_items(os.path.join(cfg_dir, "TimedRecruitCreditrewardRelation.lua"))
+    timed_recruit_rank = parse_3level_lua_items(os.path.join(cfg_dir, "TimedRecruitRankrewardModel.lua"), "activityEnumID")
+    for rows in timed_recruit_rank.values():
+        rows.sort(key=lambda r: int(r.get("rankMin", 0)))
+    timed_recruit_bless = parse_simple_lua_items(os.path.join(cfg_dir, "TimedRecruitBlessoddsModel.lua"))
+    timed_recruit_ratio = parse_simple_lua_items(os.path.join(cfg_dir, "TimedRecruitRatioOddsRelation.lua"))
     success_target_model = parse_simple_lua_items(os.path.join(cfg_dir, "SuccessTargetModel.lua"))
     success_target_reward = parse_success_target_rewards(os.path.join(cfg_dir, "SuccessTargetRewardRelation.lua"))
     success_time_model = parse_simple_lua_items(os.path.join(cfg_dir, "SuccessTimeModel.lua"))
     success_purchase_model = parse_nested_lua_items(os.path.join(cfg_dir, "SuccessPurchaseModel.lua"))
+
+    dailytask_config = parse_singleton_lua_item(os.path.join(cfg_dir, "DailytaskConfig.lua"))
+    dailytask_model = parse_simple_lua_items(os.path.join(cfg_dir, "DailytaskModel.lua"))
+    dailytask_reward = parse_simple_lua_items(os.path.join(cfg_dir, "DailytaskRewardModel.lua"))
+    dailytask_exp = parse_simple_lua_items(os.path.join(cfg_dir, "DailytaskExpRelation.lua"))
+
+    xxbz_config = parse_singleton_lua_item(os.path.join(cfg_dir, "XxbzConfig.lua"))
+    xxbz_model = parse_array_lua_items(os.path.join(cfg_dir, "XxbzModel.lua"), id_key="ID")
+    xxbz_reward_base = parse_array_lua_list(os.path.join(cfg_dir, "XxbzRewardBaseRelation.lua"))
+    xxbz_reward_cond = parse_array_lua_list(os.path.join(cfg_dir, "XxbzRewardConditionRelation.lua"))
+    xxbz_del_cd = parse_simple_lua_items(os.path.join(cfg_dir, "XxbzDelCdRelation.lua"))
+
+    zcsf_type = parse_simple_lua_items(os.path.join(cfg_dir, "ZcsfTypeModel.lua"))
+    zcsf_use = parse_simple_lua_items(os.path.join(cfg_dir, "ZcsfUseRelation.lua"))
+    limitthebounty = parse_simple_lua_items(os.path.join(cfg_dir, "LimitthebountyModel.lua"))
+    timespike = parse_simple_lua_items(os.path.join(cfg_dir, "TimespikeModel.lua"))
+    activeranking = parse_simple_lua_items(os.path.join(cfg_dir, "ActiverankingModel.lua"))
+    opencontest_project = parse_simple_lua_items(os.path.join(cfg_dir, "OpencontestProject.lua"))
+    opencontest_rank = parse_3level_lua_items(os.path.join(cfg_dir, "OpencontestRankingrewards.lua"), "days")
 
     data = {
         "source": source_label,
@@ -289,10 +333,28 @@ def main() -> None:
             "charge_config": len(charge_config),
             "card_model": len(card_model),
             "timed_recruit_model": len(timed_recruit_model),
+            "timed_recruit_credit": len(timed_recruit_credit),
+            "timed_recruit_rank": sum(len(v) for v in timed_recruit_rank.values()),
+            "timed_recruit_bless": len(timed_recruit_bless),
+            "timed_recruit_ratio": len(timed_recruit_ratio),
             "success_target_model": len(success_target_model),
             "success_target_reward": sum(len(v) for v in success_target_reward.values()),
             "success_time_model": len(success_time_model),
             "success_purchase_model": sum(len(v) for v in success_purchase_model.values()),
+            "dailytask_model": len(dailytask_model),
+            "dailytask_reward": len(dailytask_reward),
+            "dailytask_exp": len(dailytask_exp),
+            "xxbz_model": len(xxbz_model),
+            "xxbz_reward_base": len(xxbz_reward_base),
+            "xxbz_reward_cond": len(xxbz_reward_cond),
+            "xxbz_del_cd": len(xxbz_del_cd),
+            "zcsf_type": len(zcsf_type),
+            "zcsf_use": len(zcsf_use),
+            "limitthebounty": len(limitthebounty),
+            "timespike": len(timespike),
+            "activeranking": len(activeranking),
+            "opencontest_project": len(opencontest_project),
+            "opencontest_rank": sum(len(v) for v in opencontest_rank.values()),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -359,10 +421,30 @@ def main() -> None:
         "charge_config": charge_config,
         "card_model": card_model,
         "timed_recruit_model": timed_recruit_model,
+        "timed_recruit_credit": timed_recruit_credit,
+        "timed_recruit_rank": timed_recruit_rank,
+        "timed_recruit_bless": timed_recruit_bless,
+        "timed_recruit_ratio": timed_recruit_ratio,
         "success_target_model": success_target_model,
         "success_target_reward": success_target_reward,
         "success_time_model": success_time_model,
         "success_purchase_model": success_purchase_model,
+        "dailytask_config": dailytask_config,
+        "dailytask_model": dailytask_model,
+        "dailytask_reward": dailytask_reward,
+        "dailytask_exp": dailytask_exp,
+        "xxbz_config": xxbz_config,
+        "xxbz_model": xxbz_model,
+        "xxbz_reward_base": xxbz_reward_base,
+        "xxbz_reward_cond": xxbz_reward_cond,
+        "xxbz_del_cd": xxbz_del_cd,
+        "zcsf_type": zcsf_type,
+        "zcsf_use": zcsf_use,
+        "limitthebounty": limitthebounty,
+        "timespike": timespike,
+        "activeranking": activeranking,
+        "opencontest_project": opencontest_project,
+        "opencontest_rank": opencontest_rank,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

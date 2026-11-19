@@ -2267,6 +2267,438 @@ class EmulatorProtocolTest(unittest.TestCase):
             self.assertEqual(r10["Status"], 0)
             self.assertEqual(prof.state["player"]["Diamond"], 200)
 
+    def test_38_r7_5_event_clock_and_archive_modes(self) -> None:
+        """R7.5: EventClock (UTC+7/fixed/advance/TimeTick) & EventArchive (scheduled/rotating/manual) + instance isolation."""
+        import datetime as _dt
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            # Anchor at 2026-01-01 12:30:00 UTC+7
+            vn_tz = _dt.timezone(_dt.timedelta(hours=7))
+            ts_day1 = int(_dt.datetime(2026, 1, 1, 12, 30, 0, tzinfo=vn_tz).timestamp())
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            emu.clock.set_fixed(ts_day1)
+            prof = emu.get_profile_by_name("normal")
+            prof.admin_prepare_account(target_lv=28)
+
+            # TimeTick follows EventClock cleanly
+            init_res = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [], "ServerId": 1})
+            self.assertEqual(init_res["TimeTick"], ts_day1)
+            mods = {m["SubModuleId"]: m["IfOpen"] for m in init_res["Value"]["ModulesInfo"]}
+            self.assertEqual(mods.get(4400), 0)
+            self.assertEqual(mods.get(6300), 0)
+            self.assertEqual(mods.get(6400), 0)
+            self.assertEqual(init_res["Avatar"]["TimedActivityOpenInfo"]["9300"][0]["ActivityId"], 81)
+
+            # Scheduled mode: upcoming -> active -> ended
+            prof.event_runtime.set_scheduled_window("timed_recruit:82", ts_day1 + 1000, ts_day1 + 5000)
+            ev_up = prof.event_runtime.evaluate("timed_recruit:82", prof.state["player"])
+            self.assertEqual(ev_up.status, "upcoming")
+            self.assertEqual(prof._build_timed_activity_open_info(), {})
+            emu.clock.set_fixed(ts_day1 + 1500)
+            ev_act = prof.event_runtime.evaluate("timed_recruit:82", prof.state["player"])
+            self.assertEqual(ev_act.status, "active")
+            self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 82)
+            emu.clock.set_fixed(ts_day1 + 6000)
+            ev_end = prof.event_runtime.evaluate("timed_recruit:82", prof.state["player"])
+            self.assertEqual(ev_end.status, "ended")
+            self.assertEqual(prof._build_timed_activity_open_info(), {})
+
+            # Manual archive: activate 81, earn credit, activate 82, then reactivate 81 -> new instance_id, old history preserved, zero auto-unlocks
+            prof.event_runtime.activate_manual_event("timed_recruit:81", duration_sec=3600)
+            iid1 = prof.event_runtime.evaluate("timed_recruit:81", prof.state["player"]).instance_id
+            emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "Recruit", "Data": [1], "ServerId": 1})
+            self.assertEqual(prof.event_runtime.get_instance(iid1)["progress"]["my_credit"], 10)
+
+            prof.event_runtime.activate_manual_event("timed_recruit:82", duration_sec=3600)
+            self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 82)
+            emu.clock.advance(10)
+            prof.event_runtime.activate_manual_event("timed_recruit:81", duration_sec=3600)
+            iid2 = prof.event_runtime.evaluate("timed_recruit:81", prof.state["player"]).instance_id
+            self.assertNotEqual(iid1, iid2)
+            self.assertEqual(prof.event_runtime.get_instance(iid2)["progress"].get("my_credit", 0), 0)
+            hist_iids = {h["instance_id"]: h for h in prof.state["event_runtime"]["archive_history"]}
+            self.assertIn(iid1, hist_iids)
+            self.assertEqual(hist_iids[iid1]["progress"]["my_credit"], 10)
+
+            # Rotating mode alternates 81 -> 82 -> 81
+            anchor = int(_dt.datetime(2026, 1, 1, 0, 0, 0, tzinfo=vn_tz).timestamp())
+            prof.event_runtime.configure_archive_mode("rotating", rotation_anchor_ts=anchor, rotation_duration_sec=259200)
+            emu.clock.set_fixed(anchor + 100)
+            self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 81)
+            emu.clock.set_fixed(anchor + 259200 + 100)
+            self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 82)
+            emu.clock.set_fixed(anchor + 2 * 259200 + 100)
+            self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 81)
+
+    def test_39_r7_5_daily_dinner_vit_windows(self) -> None:
+        """R7.5: PlayerVIT.ReceiveVIT enforces VN time windows (12-14, 18-20, 21-22), anti-duplicate & daily reset."""
+        import datetime as _dt
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            vn_tz = _dt.timezone(_dt.timedelta(hours=7))
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            prof = emu.get_profile_by_name("normal")
+            prof._sync_player_recover_times()
+            vit0 = int(prof.state["player"]["VIT"])
+            sta0 = int(prof.state["player"]["STA"])
+
+            # 10:00 -> outside window
+            emu.clock.set_fixed(int(_dt.datetime(2026, 2, 1, 10, 0, 0, tzinfo=vn_tz).timestamp()))
+            r_out = emu.handle_rpc({"ModuleName": "PlayerVIT", "MethodName": "ReceiveVIT", "Data": [], "ServerId": 1})
+            self.assertEqual(r_out["Status"], -1)
+            self.assertEqual(r_out["Avatar"]["RedDotInfo"]["2706"], 0)
+
+            # 12:30 -> noon window active, claim once then block duplicate
+            emu.clock.set_fixed(int(_dt.datetime(2026, 2, 1, 12, 30, 0, tzinfo=vn_tz).timestamp()))
+            chk = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [], "ServerId": 1})
+            self.assertEqual(chk["Avatar"]["RedDotInfo"]["2706"], 1)
+            r_win0 = emu.handle_rpc({"ModuleName": "PlayerVIT", "MethodName": "ReceiveVIT", "Data": [], "ServerId": 1})
+            self.assertEqual(r_win0["Status"], 0)
+            self.assertEqual(r_win0["Avatar"]["RedDotInfo"]["2706"], 0)
+            self.assertEqual(prof.state["player"]["VIT"], vit0 + 50)
+            self.assertEqual(prof.state["player"]["STA"], sta0 + 20)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "PlayerVIT", "MethodName": "ReceiveVIT", "Data": [], "ServerId": 1})["Status"], -1)
+
+            # 18:30 -> second window active; 21:15 -> third window active
+            emu.clock.set_fixed(int(_dt.datetime(2026, 2, 1, 18, 30, 0, tzinfo=vn_tz).timestamp()))
+            self.assertEqual(emu.handle_rpc({"ModuleName": "PlayerVIT", "MethodName": "ReceiveVIT", "Data": [], "ServerId": 1})["Status"], 0)
+            emu.clock.set_fixed(int(_dt.datetime(2026, 2, 1, 21, 15, 0, tzinfo=vn_tz).timestamp()))
+            self.assertEqual(emu.handle_rpc({"ModuleName": "PlayerVIT", "MethodName": "ReceiveVIT", "Data": [], "ServerId": 1})["Status"], 0)
+            self.assertEqual(prof.state["player"]["VIT"], vit0 + 150)
+
+            # Next day 12:30 -> resets cleanly
+            emu.clock.set_fixed(int(_dt.datetime(2026, 2, 2, 12, 30, 0, tzinfo=vn_tz).timestamp()))
+            self.assertEqual(emu.handle_rpc({"ModuleName": "PlayerVIT", "MethodName": "ReceiveVIT", "Data": [], "ServerId": 1})["Status"], 0)
+
+    def test_40_r7_5_daily_task_full_flow_and_reset(self) -> None:
+        """R7.5: DailyTaskInfo progression via real gameplay, GetCredit, DrawReward EXP/level, OneKey, persistence & daily reset."""
+        import datetime as _dt
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            vn_tz = _dt.timezone(_dt.timedelta(hours=7))
+            ts_d1 = int(_dt.datetime(2026, 3, 10, 14, 0, 0, tzinfo=vn_tz).timestamp())
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            emu.clock.set_fixed(ts_d1)
+            prof = emu.get_profile_by_name("normal")
+
+            # Locked below Lv 25
+            self.assertEqual(
+                emu.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "GetDaliyTaskInfo", "Data": [], "ServerId": 1})["Status"],
+                -1,
+            )
+
+            prof.admin_prepare_account(target_lv=25)
+            sample_eq = next(int(k) for k in prof.game_data["equips"])
+            prof.admin_grant(
+                resources=[
+                    {"type": "Diamond", "amount": 5000},
+                    {"type": "Gold", "amount": 500000},
+                    {"type": "HeroEXP", "amount": 100000},
+                    {"type": "VIT", "amount": 100},
+                    {"type": "STA", "amount": 50},
+                ],
+                equips=[{"model_id": sample_eq, "slot_id": 1}],
+            )
+            prof.state["battle"]["StarCount"] = 50
+            prof.state["player"]["StarId"] = 0
+
+            dt_info = emu.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "GetDaliyTaskInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(dt_info["Status"], 0)
+            self.assertEqual(len(dt_info["Value"]["TasksInfo"]), 25)
+            self.assertEqual(len(dt_info["Value"]["RewardInfo"]), 5)
+
+            # Perform real actions: LightenStar (#4), EquipLvUpForCount (#27), HeroLvUp (#28), TimedRecruit 10x -> spends >300 Dia (#23)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "LightenStar", "MethodName": "LightenStar", "Data": [], "ServerId": 1})["Status"], 0)
+            eq_id = prof.state["equips"][0]["Id"]
+            self.assertEqual(emu.handle_rpc({"ModuleName": "Equip", "MethodName": "EquipLvUpForCount", "Data": [eq_id, 1], "ServerId": 1})["Status"], 0)
+            hid = prof.state["heroes"][0]["Id"]
+            prof.state["heroes"][0]["Lv"] = 1
+            self.assertEqual(emu.handle_rpc({"ModuleName": "Hero", "MethodName": "HeroLvUp", "Data": [hid, 1], "ServerId": 1})["Status"], 0)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "Recruit", "Data": [30], "ServerId": 1})["Status"], 0)
+
+            after_act = emu.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "GetDaliyTaskInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(after_act["Avatar"]["RedDotInfo"]["3000"], 1)
+            by_id = {t["Id"]: t for t in after_act["Value"]["TasksInfo"]}
+            for check_tid in (4, 27, 28, 23):
+                self.assertEqual(by_id[check_tid]["Status"], 1, f"task {check_tid} should complete")
+                self.assertTrue(by_id[check_tid]["CanDrawCredit"])
+
+            # Claim credits -> TotalCredit reaches 40 (5 + 10 + 5 + 20) >= 30 chest!
+            gold_before = int(prof.state["player"]["Gold"])
+            for tid in (4, 27, 28, 23):
+                c_res = emu.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "GetCredit", "Data": [tid], "ServerId": 1})
+                self.assertEqual(c_res["Status"], 0)
+            # Duplicate credit claim rejected
+            self.assertEqual(emu.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "GetCredit", "Data": [23], "ServerId": 1})["Status"], -1)
+            self.assertGreater(int(prof.state["player"]["Gold"]), gold_before)
+
+            cur = emu.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "GetDaliyTaskInfo", "Data": [], "ServerId": 1})["Value"]
+            self.assertEqual(cur["TotalCredit"], 40)
+            chest30 = next(r for r in cur["RewardInfo"] if r["NeedCredit"] == 30)
+            self.assertEqual(chest30["Status"], 1)
+
+            # Claim chest 30 -> EXP gain & items & anti-duplicate
+            exp_before = int(prof.state["player"]["EXP"])
+            dr = emu.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "DrawReward", "Data": [30], "ServerId": 1})
+            self.assertEqual(dr["Status"], 0)
+            self.assertGreater(int(prof.state["player"]["EXP"]), exp_before)
+            self.assertEqual(
+                next(r for r in dr["Value"]["RewardInfo"] if r["NeedCredit"] == 30)["Status"],
+                2,
+            )
+            self.assertEqual(emu.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "DrawReward", "Data": [30], "ServerId": 1})["Status"], -1)
+
+            # OneKeyDone on Task 24 (cost 10 Dia) -> sets Status=1, CanDrawCredit=True
+            dia_pre = int(prof.state["player"]["Diamond"])
+            ok1 = emu.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "OneKeyDone", "Data": [24], "ServerId": 1})
+            self.assertEqual(ok1["Status"], 0)
+            self.assertEqual(int(prof.state["player"]["Diamond"]), dia_pre - 10)
+            self.assertTrue(next(t for t in ok1["Value"]["TasksInfo"] if t["Id"] == 24)["CanDrawCredit"])
+
+            # Persistence across reload
+            emu2 = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+            emu2.clock.set_fixed(ts_d1)
+            reloaded = emu2.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "GetDaliyTaskInfo", "Data": [], "ServerId": 1})["Value"]
+            self.assertEqual(reloaded["TotalCredit"], 40)
+            self.assertEqual(next(r for r in reloaded["RewardInfo"] if r["NeedCredit"] == 30)["Status"], 2)
+
+            # Advance +1 day -> fresh daily instance (TotalCredit=0, tasks=0), yesterday archived!
+            emu2.clock.set_fixed(ts_d1 + 86400)
+            next_day = emu2.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "GetDaliyTaskInfo", "Data": [], "ServerId": 1})["Value"]
+            self.assertEqual(next_day["TotalCredit"], 0)
+            self.assertEqual(next(r for r in next_day["RewardInfo"] if r["NeedCredit"] == 30)["Status"], 0)
+            hist_ids = [h["instance_id"] for h in emu2.get_profile_by_name("normal").state["event_runtime"]["archive_history"]]
+            self.assertIn("daily_task:2026-03-10", hist_ids)
+
+    def test_41_r7_5_timed_recruit_full_cycle_bless_rank_and_rotation(self) -> None:
+        """R7.5: TimedRecruit 81->82 free CD, 10x Orange pity, 6 credit chests, Bless->UR ChoiceBox, rank settlement->RewardCenter, expiry block."""
+        import datetime as _dt
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            vn_tz = _dt.timezone(_dt.timedelta(hours=7))
+            anchor = int(_dt.datetime(2026, 4, 1, 0, 0, 0, tzinfo=vn_tz).timestamp())
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            emu.clock.set_fixed(anchor + 100)
+            prof = emu.get_profile_by_name("normal")
+            prof.admin_prepare_account(target_lv=15)
+            prof.event_runtime.configure_archive_mode("rotating", rotation_anchor_ts=anchor, rotation_duration_sec=259200)
+            prof.admin_grant(resources=[{"type": "Diamond", "amount": 60000}])
+
+            info0 = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "GetTimedRecruitInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(info0["Status"], 0)
+            self.assertEqual(info0["Value"]["ActivityEnumId"], 81)
+            self.assertEqual(info0["Value"]["MyRank"], 0)
+            self.assertEqual(len(info0["Value"]["RankList"]), 25)
+
+            # Free summon once, blocks during 72000s CD
+            p_free = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "Recruit", "Data": [1], "ServerId": 1})
+            self.assertEqual(p_free["Status"], 0)
+            self.assertEqual(p_free["Value"]["RecruitInfo"]["MyCredit"], 10)
+            self.assertEqual(p_free["Value"]["RecruitInfo"]["CooledTime"], anchor + 100 + 72000)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "Recruit", "Data": [1], "ServerId": 1})["Status"], -1)
+
+            # 10x pulls until credit >= 600; verify Orange (q=15) hero included and MyRank updates
+            dia0 = int(prof.state["player"]["Diamond"])
+            for _ in range(6):
+                p10 = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "Recruit", "Data": [30], "ServerId": 1})
+                self.assertEqual(p10["Status"], 0)
+                pulled_hids = [h["HeroModelId"] for h in p10["Value"]["BaseGetGameResourceList"][0]["Hero"]]
+                self.assertTrue(any(int(prof.game_data["heroes"][str(hid)]["quality"]) >= 15 for hid in pulled_hids))
+            self.assertEqual(int(prof.state["player"]["Diamond"]), dia0 - 6 * 2800)
+
+            snap = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "GetTimedRecruitInfo", "Data": [], "ServerId": 1})["Value"]
+            self.assertEqual(snap["MyCredit"], 610)
+            self.assertGreater(snap["MyRank"], 0)
+
+            # Sequential credit chests 60 -> 600 unlock Bless
+            self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "DrawCreditReward", "Data": [200], "ServerId": 1})["Status"], -1)
+            for thresh in (60, 200, 300, 400, 500, 600):
+                cr = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "DrawCreditReward", "Data": [thresh], "ServerId": 1})
+                self.assertEqual(cr["Status"], 0)
+                self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "DrawCreditReward", "Data": [thresh], "ServerId": 1})["Status"], -1)
+            self.assertEqual(cr["Value"]["BlessNum"], 320)
+
+            # Pull until Bless triggers DrawGoldHero == 0 (320 + 79*5 = 715 -> floor(715*0.7) >= 500 deterministic) -> claim Sesshomaru (12012005, quality=18)
+            for _ in range(90):
+                cur_s = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "GetTimedRecruitInfo", "Data": [], "ServerId": 1})["Value"]
+                if cur_s["DrawGoldHero"] == 0:
+                    break
+                r1 = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "Recruit", "Data": [3], "ServerId": 1})
+                self.assertEqual(r1["Status"], 0)
+                if r1["Value"]["RecruitInfo"]["DrawGoldHero"] == 0:
+                    break
+            self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "GetTimedRecruitInfo", "Data": [], "ServerId": 1})["Value"]["DrawGoldHero"], 0)
+
+            # Reject hero outside 16060008 before granting valid UR
+            self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "DrawGoldHero", "Data": [12011002], "ServerId": 1})["Status"], -1)
+            ur_ok = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "DrawGoldHero", "Data": [12012005], "ServerId": 1})
+            self.assertEqual(ur_ok["Status"], 0)
+            self.assertEqual(ur_ok["Value"]["RecruitInfo"]["DrawGoldHero"], 1)
+            self.assertTrue(any(int(h["HeroModelId"]) == 12012005 for h in prof.state["heroes"]))
+
+            # Rotate to Banner 82 -> Period 1 (Banner 81) settles Rank Reward into RewardCenter ONCE!
+            emu.clock.set_fixed(anchor + 259200 + 100)
+            info_b2 = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "GetTimedRecruitInfo", "Data": [], "ServerId": 1})
+            self.assertEqual(info_b2["Status"], 0)
+            self.assertEqual(info_b2["Value"]["ActivityEnumId"], 82)
+            self.assertEqual(info_b2["Value"]["MyCredit"], 0)
+            self.assertEqual(info_b2["Avatar"]["TimedActivityOpenInfo"]["9300"][0]["ActivityId"], 82)
+            self.assertEqual(info_b2["Avatar"]["RedDotInfo"]["2400"], 1)
+
+            rc_list = emu.handle_rpc({"ModuleName": "Reward", "MethodName": "Rewars", "Data": [], "ServerId": 1})["Value"]
+            self.assertEqual(len(rc_list), 1)
+            rc_id = rc_list[0]["Id"]
+            rc_claim = emu.handle_rpc({"ModuleName": "Reward", "MethodName": "DrawGiftBags", "Data": [[rc_id]], "ServerId": 1})
+            self.assertEqual(rc_claim["Status"], 0)
+            self.assertEqual(rc_claim["Avatar"]["RedDotInfo"]["2400"], 0)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "Reward", "MethodName": "DrawGiftBags", "Data": [[rc_id]], "ServerId": 1})["Status"], -1)
+
+            # Expired scheduled event blocks all actions
+            prof.event_runtime.set_scheduled_window("timed_recruit:82", anchor, anchor + 3600)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "GetTimedRecruitInfo", "Data": [], "ServerId": 1})["Status"], -1)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "Recruit", "Data": [3], "ServerId": 1})["Status"], -1)
+
+    def test_42_r7_5_xxbz_combat_damage_milestones_buy_and_reset(self) -> None:
+        """R7.5: Xxbz 3 bosses, Lv 28/30 gates, TreasureId in FightInfo, damage->Gold formula, 100-Dia milestones, VIP BuyCount & daily reset."""
+        import datetime as _dt
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            vn_tz = _dt.timezone(_dt.timedelta(hours=7))
+            ts_d1 = int(_dt.datetime(2026, 5, 1, 15, 0, 0, tzinfo=vn_tz).timestamp())
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            emu.clock.set_fixed(ts_d1)
+            prof = emu.get_profile_by_name("normal")
+
+            self.assertEqual(emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "GetInfo", "Data": [], "ServerId": 1})["Status"], -1)
+            prof.admin_prepare_account(target_lv=28, vip_lv=6)
+            prof.admin_grant(resources=[{"type": "Diamond", "amount": 500}, {"type": "Gold", "amount": 10000}])
+
+            # Boss 3 requires Lv 30 -> rejected at Lv 28
+            self.assertEqual(emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "GetFightInfo", "Data": [3], "ServerId": 1})["Status"], -1)
+
+            x_info = emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "GetInfo", "Data": [], "ServerId": 1})["Value"]
+            self.assertEqual(x_info["RemainNum"], 3)
+            self.assertEqual([b["TreasureId"] for b in x_info["XxbzList"]], [1, 2, 3])
+
+            fi = emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "GetFightInfo", "Data": [1], "ServerId": 1})
+            self.assertEqual(fi["Status"], 0)
+            self.assertEqual(fi["Value"]["FightInfo"]["TreasureId"], 1)
+
+            # Submit Fight with verified boss PosId=8 HP loss = 120,000 dmg
+            gold0 = int(prof.state["player"]["Gold"])
+            verify_payload = json.dumps({"hp": [[{"PosId": 8, "HP": 25_000_000 - 120_000}]]})
+            fg = emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "Fight", "Data": [1, 1, verify_payload, 120_000, 0, False], "ServerId": 1})
+            self.assertEqual(fg["Status"], 0)
+            expected_gold = prof._calc_xxbz_damage_reward(1, 120_000)
+            self.assertEqual(int(prof.state["player"]["Gold"]), gold0 + expected_gold)
+            self.assertTrue(any(g["GoodsModelId"] == 16050092 and g["Num"] >= 2 for g in prof.state["goods"]))
+            b1 = next(b for b in fg["Value"]["XxbzList"] if b["TreasureId"] == 1)
+            self.assertEqual(b1["HighestHurt"], 120_000)
+            self.assertEqual(b1["RemainCount"], 0)
+            # Hooks to DailyTask #30 & SuccessTarget #26/#33
+            self.assertEqual(prof.state["stats"]["mystery_treasure_count"], 1)
+            self.assertEqual(prof.state["stats"]["mystery_treasure_max_dmg"], 120_000)
+            dt_list = emu.handle_rpc({"ModuleName": "DailyTaskInfo", "MethodName": "GetDaliyTaskInfo", "Data": [], "ServerId": 1})["Value"]["TasksInfo"]
+            self.assertEqual(next(t for t in dt_list if t["Id"] == 30)["Status"], 1)
+
+            # Milestone claims (30k & 60k grant 100 Dia each, 200k rejected) + anti-duplicate
+            dia0 = int(prof.state["player"]["Diamond"])
+            self.assertEqual(emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "DrawReward", "Data": [1, 30000], "ServerId": 1})["Status"], 0)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "DrawReward", "Data": [1, 60000], "ServerId": 1})["Status"], 0)
+            self.assertEqual(int(prof.state["player"]["Diamond"]), dia0 + 200)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "DrawReward", "Data": [1, 60000], "ServerId": 1})["Status"], -1)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "DrawReward", "Data": [1, 200000], "ServerId": 1})["Status"], -1)
+
+            # VIP 6 allows 1 BuyCount (20 Dia), blocks 2nd buy
+            self.assertEqual(emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "GetFightInfo", "Data": [1], "ServerId": 1})["Status"], -1)
+            buy1 = emu.handle_rpc({"ModuleName": "XxbzInfo", "MethodName": "BuyCount", "Data": [1], "ServerId": 1})
+            self.assertEqual(buy1["Status"], 0)
+            self.assertEqual(buy1["Value"]["XxbzInfo"]["BuyCount"], 1)
+            self.assertEqual(int(prof.state["player"]["Diamond"]), dia0 + 180)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "XxbzInfo", "MethodName": "BuyCount", "Data": [1], "ServerId": 1})["Status"], -1)
+
+            # Next day resets RemainCount & BuyCount while lifetime HighestHurt/DrawnMaxNum stay!
+            emu.clock.set_fixed(ts_d1 + 86400)
+            x_next = emu.handle_rpc({"ModuleName": "Xxbz", "MethodName": "GetInfo", "Data": [], "ServerId": 1})["Value"]
+            self.assertEqual(x_next["XxbzInfo"]["BuyCount"], 0)
+            self.assertEqual(x_next["RemainNum"], 3)
+            b1_next = next(b for b in x_next["XxbzList"] if b["TreasureId"] == 1)
+            self.assertEqual(b1_next["HighestHurt"], 120_000)
+            self.assertEqual(b1_next["DrawnMaxNum"], 60_000)
+
+    def test_43_r7_5_http_admin_clock_and_events_integration(self) -> None:
+        """R7.5: Live HTTP /admin/clock and /admin/events endpoints + auth guard + persistence across server restart."""
+        import http.client
+
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "dev_saves"
+            srv1 = ThreadingEmulatorServer(
+                ("127.0.0.1", 0),
+                persist=True,
+                quiet=True,
+                new_player=True,
+                env="dev",
+                data_dir=data_dir,
+                trace_path=data_dir / "trace.log",
+                admin_token="r75_test_tok",
+            )
+            t1 = threading.Thread(target=srv1.serve_forever, daemon=True)
+            t1.start()
+            try:
+                port = srv1.server_port
+
+                # Unauthorized admin clock POST blocked (401)
+                c_unauth = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                c_unauth.request("POST", "/admin/clock", body=b'{"action":"advance","delta_sec":3600}', headers={"Content-Type": "application/json"})
+                self.assertEqual(c_unauth.getresponse().status, 401)
+                c_unauth.close()
+
+                # Set fixed clock & activate manual event 82
+                c = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                hdrs = {"Content-Type": "application/json", "X-Admin-Token": "r75_test_tok"}
+                c.request("POST", "/admin/clock", body=json.dumps({"action": "fixed", "fixed_ts": 1770000000}).encode(), headers=hdrs)
+                clk_res = json.loads(c.getresponse().read())
+                self.assertTrue(clk_res["ok"])
+                self.assertEqual(clk_res["clock"]["now"], 1770000000)
+
+                c.request("POST", "/admin/events", body=json.dumps({"action": "activate", "event_id": "timed_recruit:82", "duration_sec": 7200}).encode(), headers=hdrs)
+                ev_res = json.loads(c.getresponse().read())
+                self.assertEqual(ev_res["archive_config"]["mode"], "manual")
+                self.assertEqual(ev_res["events"]["timed_recruit:82"]["status"], "active")
+                c.close()
+            finally:
+                srv1.shutdown()
+                srv1.server_close()
+
+            # Restart server -> persisted clock & manual archive intact
+            srv2 = ThreadingEmulatorServer(
+                ("127.0.0.1", 0),
+                persist=True,
+                quiet=True,
+                new_player=False,
+                env="dev",
+                data_dir=data_dir,
+                trace_path=data_dir / "trace.log",
+                admin_token="r75_test_tok",
+            )
+            t2 = threading.Thread(target=srv2.serve_forever, daemon=True)
+            t2.start()
+            try:
+                c2 = http.client.HTTPConnection("127.0.0.1", srv2.server_port, timeout=5)
+                c2.request("GET", "/admin/events", headers={"X-Admin-Token": "r75_test_tok"})
+                st_res = json.loads(c2.getresponse().read())
+                self.assertEqual(st_res["clock"]["now"], 1770000000)
+                self.assertEqual(st_res["events"]["timed_recruit:82"]["status"], "active")
+                c2.close()
+            finally:
+                srv2.shutdown()
+                srv2.server_close()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

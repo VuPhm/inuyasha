@@ -42,10 +42,28 @@
     "charge_config": 3,
     "card_model": 1,
     "timed_recruit_model": 6,
+    "timed_recruit_credit": 36,
+    "timed_recruit_rank": 24,
+    "timed_recruit_bless": 6,
+    "timed_recruit_ratio": 11,
     "success_target_model": 42,
     "success_target_reward": 327,
     "success_time_model": 8,
-    "success_purchase_model": 14
+    "success_purchase_model": 14,
+    "dailytask_model": 25,
+    "dailytask_reward": 5,
+    "dailytask_exp": 100,
+    "xxbz_model": 3,
+    "xxbz_reward_base": 27,
+    "xxbz_reward_cond": 28,
+    "xxbz_del_cd": 2,
+    "zcsf_type": 6,
+    "zcsf_use": 10,
+    "limitthebounty": 6,
+    "timespike": 8,
+    "activeranking": 12,
+    "opencontest_project": 7,
+    "opencontest_rank": 21
   },
   "player_config": {
     "initLv": 1,
@@ -265529,6 +265547,494 @@
       "btnPic": ""
     }
   },
+  "timed_recruit_credit": {
+    "1": {
+      "ID": 1,
+      "activityEnumID": 81,
+      "needCredit": 60,
+      "creditReward": "1606,16060024,5||1603,16030003,10||1605,16050001,500||1112,0,200000"
+    },
+    "2": {
+      "ID": 2,
+      "activityEnumID": 81,
+      "needCredit": 200,
+      "creditReward": "1606,16060024,5"
+    },
+    "3": {
+      "ID": 3,
+      "activityEnumID": 81,
+      "needCredit": 300,
+      "creditReward": "1606,16060024,5"
+    },
+    "4": {
+      "ID": 4,
+      "activityEnumID": 81,
+      "needCredit": 400,
+      "creditReward": "1606,16060024,8"
+    },
+    "5": {
+      "ID": 5,
+      "activityEnumID": 81,
+      "needCredit": 500,
+      "creditReward": "1606,16060024,12"
+    },
+    "6": {
+      "ID": 6,
+      "activityEnumID": 81,
+      "needCredit": 600,
+      "creditReward": "1606,16060024,15"
+    },
+    "7": {
+      "ID": 7,
+      "activityEnumID": 82,
+      "needCredit": 60,
+      "creditReward": "1606,16060025,5||1603,16030003,10||1605,16050001,500||1112,0,200000"
+    },
+    "8": {
+      "ID": 8,
+      "activityEnumID": 82,
+      "needCredit": 200,
+      "creditReward": "1606,16060025,5"
+    },
+    "9": {
+      "ID": 9,
+      "activityEnumID": 82,
+      "needCredit": 300,
+      "creditReward": "1606,16060025,5"
+    },
+    "10": {
+      "ID": 10,
+      "activityEnumID": 82,
+      "needCredit": 400,
+      "creditReward": "1606,16060025,8"
+    },
+    "11": {
+      "ID": 11,
+      "activityEnumID": 82,
+      "needCredit": 500,
+      "creditReward": "1606,16060025,12"
+    },
+    "12": {
+      "ID": 12,
+      "activityEnumID": 82,
+      "needCredit": 600,
+      "creditReward": "1606,16060025,15"
+    },
+    "13": {
+      "ID": 13,
+      "activityEnumID": 83,
+      "needCredit": 60,
+      "creditReward": "1606,16060033,5||1603,16030003,10||1605,16050001,500||1112,0,200000"
+    },
+    "14": {
+      "ID": 14,
+      "activityEnumID": 83,
+      "needCredit": 200,
+      "creditReward": "1606,16060033,5"
+    },
+    "15": {
+      "ID": 15,
+      "activityEnumID": 83,
+      "needCredit": 300,
+      "creditReward": "1606,16060033,5"
+    },
+    "16": {
+      "ID": 16,
+      "activityEnumID": 83,
+      "needCredit": 400,
+      "creditReward": "1606,16060033,8"
+    },
+    "17": {
+      "ID": 17,
+      "activityEnumID": 83,
+      "needCredit": 500,
+      "creditReward": "1606,16060033,12"
+    },
+    "18": {
+      "ID": 18,
+      "activityEnumID": 83,
+      "needCredit": 600,
+      "creditReward": "1606,16060033,15"
+    },
+    "19": {
+      "ID": 19,
+      "activityEnumID": 84,
+      "needCredit": 60,
+      "creditReward": "1606,16060040,5||1603,16030003,10||1605,16050001,500||1112,0,200000"
+    },
+    "20": {
+      "ID": 20,
+      "activityEnumID": 84,
+      "needCredit": 200,
+      "creditReward": "1606,16060040,5"
+    },
+    "21": {
+      "ID": 21,
+      "activityEnumID": 84,
+      "needCredit": 300,
+      "creditReward": "1606,16060040,5"
+    },
+    "22": {
+      "ID": 22,
+      "activityEnumID": 84,
+      "needCredit": 400,
+      "creditReward": "1606,16060040,8"
+    },
+    "23": {
+      "ID": 23,
+      "activityEnumID": 84,
+      "needCredit": 500,
+      "creditReward": "1606,16060040,12"
+    },
+    "24": {
+      "ID": 24,
+      "activityEnumID": 84,
+      "needCredit": 600,
+      "creditReward": "1606,16060040,15"
+    },
+    "25": {
+      "ID": 25,
+      "activityEnumID": 85,
+      "needCredit": 60,
+      "creditReward": "1606,16060041,5||1603,16030003,10||1605,16050001,500||1112,0,200000"
+    },
+    "26": {
+      "ID": 26,
+      "activityEnumID": 85,
+      "needCredit": 200,
+      "creditReward": "1606,16060041,5"
+    },
+    "27": {
+      "ID": 27,
+      "activityEnumID": 85,
+      "needCredit": 300,
+      "creditReward": "1606,16060041,5"
+    },
+    "28": {
+      "ID": 28,
+      "activityEnumID": 85,
+      "needCredit": 400,
+      "creditReward": "1606,16060041,8"
+    },
+    "29": {
+      "ID": 29,
+      "activityEnumID": 85,
+      "needCredit": 500,
+      "creditReward": "1606,16060041,12"
+    },
+    "30": {
+      "ID": 30,
+      "activityEnumID": 85,
+      "needCredit": 600,
+      "creditReward": "1606,16060041,15"
+    },
+    "31": {
+      "ID": 31,
+      "activityEnumID": 86,
+      "needCredit": 60,
+      "creditReward": "1606,16060042,5||1603,16030003,10||1605,16050001,500||1112,0,200000"
+    },
+    "32": {
+      "ID": 32,
+      "activityEnumID": 86,
+      "needCredit": 200,
+      "creditReward": "1606,16060042,5"
+    },
+    "33": {
+      "ID": 33,
+      "activityEnumID": 86,
+      "needCredit": 300,
+      "creditReward": "1606,16060042,5"
+    },
+    "34": {
+      "ID": 34,
+      "activityEnumID": 86,
+      "needCredit": 400,
+      "creditReward": "1606,16060042,8"
+    },
+    "35": {
+      "ID": 35,
+      "activityEnumID": 86,
+      "needCredit": 500,
+      "creditReward": "1606,16060042,12"
+    },
+    "36": {
+      "ID": 36,
+      "activityEnumID": 86,
+      "needCredit": 600,
+      "creditReward": "1606,16060042,15"
+    }
+  },
+  "timed_recruit_rank": {
+    "81": [
+      {
+        "activityEnumID": 81,
+        "rankMin": 1,
+        "rankMax": 1,
+        "resourceList": "1606,16060008,1||1606,16060010,1||1602,16020015,1"
+      },
+      {
+        "activityEnumID": 81,
+        "rankMin": 2,
+        "rankMax": 3,
+        "resourceList": "1606,16060008,1||1606,16060010,1"
+      },
+      {
+        "activityEnumID": 81,
+        "rankMin": 4,
+        "rankMax": 20,
+        "resourceList": "1606,16060008,1"
+      },
+      {
+        "activityEnumID": 81,
+        "rankMin": 21,
+        "rankMax": 50,
+        "resourceList": "1602,16020013,1"
+      }
+    ],
+    "82": [
+      {
+        "activityEnumID": 82,
+        "rankMin": 1,
+        "rankMax": 1,
+        "resourceList": "1606,16060009,1||1606,16060011,1||1602,16020015,1"
+      },
+      {
+        "activityEnumID": 82,
+        "rankMin": 2,
+        "rankMax": 3,
+        "resourceList": "1606,16060009,1||1606,16060011,1"
+      },
+      {
+        "activityEnumID": 82,
+        "rankMin": 4,
+        "rankMax": 20,
+        "resourceList": "1606,16060009,1"
+      },
+      {
+        "activityEnumID": 82,
+        "rankMin": 21,
+        "rankMax": 50,
+        "resourceList": "1602,16020013,1"
+      }
+    ],
+    "83": [
+      {
+        "activityEnumID": 83,
+        "rankMin": 1,
+        "rankMax": 1,
+        "resourceList": "1606,16060034,1||1606,16060011,1||1602,16020015,1"
+      },
+      {
+        "activityEnumID": 83,
+        "rankMin": 2,
+        "rankMax": 3,
+        "resourceList": "1606,16060034,1||1606,16060011,1"
+      },
+      {
+        "activityEnumID": 83,
+        "rankMin": 4,
+        "rankMax": 20,
+        "resourceList": "1606,16060034,1"
+      },
+      {
+        "activityEnumID": 83,
+        "rankMin": 21,
+        "rankMax": 50,
+        "resourceList": "1602,16020013,1"
+      }
+    ],
+    "84": [
+      {
+        "activityEnumID": 84,
+        "rankMin": 1,
+        "rankMax": 1,
+        "resourceList": "1606,16060037,1||1606,16060010,1||1602,16020015,1"
+      },
+      {
+        "activityEnumID": 84,
+        "rankMin": 2,
+        "rankMax": 3,
+        "resourceList": "1606,16060037,1||1606,16060010,1"
+      },
+      {
+        "activityEnumID": 84,
+        "rankMin": 4,
+        "rankMax": 20,
+        "resourceList": "1606,16060037,1"
+      },
+      {
+        "activityEnumID": 84,
+        "rankMin": 21,
+        "rankMax": 50,
+        "resourceList": "1602,16020013,1"
+      }
+    ],
+    "85": [
+      {
+        "activityEnumID": 85,
+        "rankMin": 1,
+        "rankMax": 1,
+        "resourceList": "1606,16060038,1||1606,16060011,1||1602,16020015,1"
+      },
+      {
+        "activityEnumID": 85,
+        "rankMin": 2,
+        "rankMax": 3,
+        "resourceList": "1606,16060038,1||1606,16060011,1"
+      },
+      {
+        "activityEnumID": 85,
+        "rankMin": 4,
+        "rankMax": 20,
+        "resourceList": "1606,16060038,1"
+      },
+      {
+        "activityEnumID": 85,
+        "rankMin": 21,
+        "rankMax": 50,
+        "resourceList": "1602,16020013,1"
+      }
+    ],
+    "86": [
+      {
+        "activityEnumID": 86,
+        "rankMin": 1,
+        "rankMax": 1,
+        "resourceList": "1606,16060039,1||1606,16060011,1||1602,16020015,1"
+      },
+      {
+        "activityEnumID": 86,
+        "rankMin": 2,
+        "rankMax": 3,
+        "resourceList": "1606,16060039,1||1606,16060011,1"
+      },
+      {
+        "activityEnumID": 86,
+        "rankMin": 4,
+        "rankMax": 20,
+        "resourceList": "1606,16060039,1"
+      },
+      {
+        "activityEnumID": 86,
+        "rankMin": 21,
+        "rankMax": 50,
+        "resourceList": "1602,16020013,1"
+      }
+    ]
+  },
+  "timed_recruit_bless": {
+    "81": {
+      "activityEnumID": 81,
+      "blessNum": 5,
+      "rounds": 3,
+      "oddsMin": 9501,
+      "oddsMax": 10000
+    },
+    "82": {
+      "activityEnumID": 82,
+      "blessNum": 5,
+      "rounds": 3,
+      "oddsMin": 9501,
+      "oddsMax": 10000
+    },
+    "83": {
+      "activityEnumID": 83,
+      "blessNum": 5,
+      "rounds": 3,
+      "oddsMin": 9501,
+      "oddsMax": 10000
+    },
+    "84": {
+      "activityEnumID": 84,
+      "blessNum": 5,
+      "rounds": 3,
+      "oddsMin": 9501,
+      "oddsMax": 10000
+    },
+    "85": {
+      "activityEnumID": 85,
+      "blessNum": 5,
+      "rounds": 3,
+      "oddsMin": 9501,
+      "oddsMax": 10000
+    },
+    "86": {
+      "activityEnumID": 86,
+      "blessNum": 5,
+      "rounds": 3,
+      "oddsMin": 9501,
+      "oddsMax": 10000
+    }
+  },
+  "timed_recruit_ratio": {
+    "1": {
+      "ID": 1,
+      "ratio": 0.7,
+      "oddsMin": 1,
+      "oddsMax": 1333
+    },
+    "2": {
+      "ID": 2,
+      "ratio": 0.72,
+      "oddsMin": 1334,
+      "oddsMax": 2666
+    },
+    "3": {
+      "ID": 3,
+      "ratio": 0.74,
+      "oddsMin": 2667,
+      "oddsMax": 3999
+    },
+    "4": {
+      "ID": 4,
+      "ratio": 0.76,
+      "oddsMin": 4000,
+      "oddsMax": 5332
+    },
+    "5": {
+      "ID": 5,
+      "ratio": 0.78,
+      "oddsMin": 5333,
+      "oddsMax": 5999
+    },
+    "6": {
+      "ID": 6,
+      "ratio": 0.8,
+      "oddsMin": 6000,
+      "oddsMax": 6666
+    },
+    "7": {
+      "ID": 7,
+      "ratio": 0.82,
+      "oddsMin": 6667,
+      "oddsMax": 7333
+    },
+    "8": {
+      "ID": 8,
+      "ratio": 0.84,
+      "oddsMin": 7334,
+      "oddsMax": 8000
+    },
+    "9": {
+      "ID": 9,
+      "ratio": 0.86,
+      "oddsMin": 8001,
+      "oddsMax": 8667
+    },
+    "10": {
+      "ID": 10,
+      "ratio": 0.88,
+      "oddsMin": 8668,
+      "oddsMax": 9334
+    },
+    "11": {
+      "ID": 11,
+      "ratio": 0.9,
+      "oddsMin": 9335,
+      "oddsMax": 10000
+    }
+  },
   "success_target_model": {
     "1": {
       "targetID": 1,
@@ -268764,5 +269270,1713 @@
         "needLv": 1
       }
     }
+  },
+  "dailytask_config": {
+    "randomTaskNum": 0,
+    "oneKeyAllDaliyTask": "1111,0,200"
+  },
+  "dailytask_model": {
+    "1": {
+      "ID": 1,
+      "name": "Ải Thường",
+      "ifFixedTask": true,
+      "intro": "30 lần chiến Ải Thường",
+      "pic": "rcrw_6",
+      "outputCredit": 20,
+      "loopNum": 30,
+      "moduleID": 2201,
+      "goldFactor": 65,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "2": {
+      "ID": 2,
+      "name": "Ải Tinh Anh",
+      "ifFixedTask": true,
+      "intro": "3 lần chiến Ải Tinh Anh",
+      "pic": "sy_26",
+      "outputCredit": 15,
+      "loopNum": 3,
+      "moduleID": 2202,
+      "goldFactor": 50,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "3": {
+      "ID": 3,
+      "name": "Đoạt Bảo",
+      "ifFixedTask": true,
+      "intro": "5 lần Đoạt Bảo",
+      "pic": "sy_26",
+      "outputCredit": 10,
+      "loopNum": 5,
+      "moduleID": 2501,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "4": {
+      "ID": 4,
+      "name": "Ngộ Đạo",
+      "ifFixedTask": true,
+      "intro": "1 lần thắp sao Ngộ Đạo",
+      "pic": "sy_3",
+      "outputCredit": 5,
+      "loopNum": 1,
+      "moduleID": 2302,
+      "goldFactor": 15,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "5": {
+      "ID": 5,
+      "name": "Quyết Đấu",
+      "ifFixedTask": true,
+      "intro": "5 lần Quyết Đấu",
+      "pic": "sy_22",
+      "outputCredit": 10,
+      "loopNum": 5,
+      "moduleID": 2502,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "6": {
+      "ID": 6,
+      "name": "Đấu Võ",
+      "ifFixedTask": true,
+      "intro": "3 lần Đấu Võ",
+      "pic": "sy_3",
+      "outputCredit": 5,
+      "loopNum": 3,
+      "moduleID": 2503,
+      "goldFactor": 15,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "7": {
+      "ID": 7,
+      "name": "Yêu Vương",
+      "ifFixedTask": true,
+      "intro": "4 lần khiêu chiến Yêu Vương",
+      "pic": "sy_3",
+      "outputCredit": 10,
+      "loopNum": 4,
+      "moduleID": 2203,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "8": {
+      "ID": 8,
+      "name": "Ước",
+      "ifFixedTask": true,
+      "intro": "5 lần Ước",
+      "pic": "sy_26",
+      "outputCredit": 10,
+      "loopNum": 5,
+      "moduleID": 2303,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "9": {
+      "ID": 9,
+      "name": "Kho Vàng",
+      "ifFixedTask": true,
+      "intro": "1 lần khiêu chiến Kho Vàng",
+      "pic": "sy_25",
+      "outputCredit": 10,
+      "loopNum": 1,
+      "moduleID": 2504,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "10": {
+      "ID": 10,
+      "name": "Lính Thuê",
+      "ifFixedTask": true,
+      "intro": "Cung cấp 1 Lính Thuê cho Công Hội",
+      "pic": "zdjs_8",
+      "outputCredit": 5,
+      "loopNum": 1,
+      "moduleID": 3400,
+      "goldFactor": 15,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "11": {
+      "ID": 11,
+      "name": "Tặng Hoạt Lực",
+      "ifFixedTask": true,
+      "intro": "Tặng Hoạt Lực cho 10 người bạn",
+      "pic": "sy_26",
+      "outputCredit": 5,
+      "loopNum": 10,
+      "moduleID": 1700,
+      "goldFactor": 15,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "12": {
+      "ID": 12,
+      "name": "Điện Tứ Hồn",
+      "ifFixedTask": true,
+      "intro": "1 lần tăng cấp Điện Tứ Hồn",
+      "pic": "sy_4",
+      "outputCredit": 5,
+      "loopNum": 1,
+      "moduleID": 2301,
+      "goldFactor": 15,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "13": {
+      "ID": 13,
+      "name": "Mua Thể Lực",
+      "ifFixedTask": true,
+      "intro": "5 lần mua Thể Lực",
+      "pic": "sy_21",
+      "outputCredit": 10,
+      "loopNum": 5,
+      "moduleID": 2002,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "15": {
+      "ID": 15,
+      "name": "Xây Dựng Công Hội",
+      "ifFixedTask": true,
+      "intro": "1 lần xây dựng Công Hội",
+      "pic": "sy_19",
+      "outputCredit": 10,
+      "loopNum": 1,
+      "moduleID": 3400,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "16": {
+      "ID": 16,
+      "name": "Chiêu Tài",
+      "ifFixedTask": true,
+      "intro": "3 lần Chiêu Tài",
+      "pic": "sy_4",
+      "outputCredit": 10,
+      "loopNum": 3,
+      "moduleID": 2711,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "17": {
+      "ID": 17,
+      "name": "Tầm Ngọc",
+      "ifFixedTask": true,
+      "intro": "40 lần Tầm Ngọc",
+      "pic": "sy_4",
+      "outputCredit": 10,
+      "loopNum": 40,
+      "moduleID": 5200,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "21": {
+      "ID": 21,
+      "name": "Mộ Thần Binh",
+      "ifFixedTask": true,
+      "intro": "1 lần khiêu chiến Mộ Thần Binh",
+      "pic": "sy_4",
+      "outputCredit": 10,
+      "loopNum": 1,
+      "moduleID": 2507,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "22": {
+      "ID": 22,
+      "name": "Mua Hoạt Lực",
+      "ifFixedTask": true,
+      "intro": "5 lần mua Hoạt Lực",
+      "pic": "sy_4",
+      "outputCredit": 10,
+      "loopNum": 5,
+      "moduleID": 2002,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "23": {
+      "ID": 23,
+      "name": "Dùng KC",
+      "ifFixedTask": true,
+      "intro": "Dùng 300 Kim Cương",
+      "pic": "sy_4",
+      "outputCredit": 20,
+      "loopNum": 300,
+      "moduleID": 2002,
+      "goldFactor": 65,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "24": {
+      "ID": 24,
+      "name": "Shop Bí Ẩn",
+      "ifFixedTask": true,
+      "intro": "1 lần mua tại Shop Bí Ẩn",
+      "pic": "sy_4",
+      "outputCredit": 5,
+      "loopNum": 1,
+      "moduleID": 2100,
+      "goldFactor": 15,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "26": {
+      "ID": 26,
+      "name": "Shop Giờ Vàng",
+      "ifFixedTask": true,
+      "intro": "1 lần mua tại Shop Giờ Vàng",
+      "pic": "sy_4",
+      "outputCredit": 10,
+      "loopNum": 1,
+      "moduleID": 4300,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "27": {
+      "ID": 27,
+      "name": "Cường Hóa TB",
+      "ifFixedTask": true,
+      "intro": "1 lần cường hóa Trang Bị",
+      "pic": "sy_4",
+      "outputCredit": 10,
+      "loopNum": 1,
+      "moduleID": 1401,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "28": {
+      "ID": 28,
+      "name": "Tăng Lv Nhân Vật",
+      "ifFixedTask": true,
+      "intro": "1 lần tăng LV Tướng",
+      "pic": "sy_4",
+      "outputCredit": 5,
+      "loopNum": 1,
+      "moduleID": 1200,
+      "goldFactor": 15,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "30": {
+      "ID": 30,
+      "name": "Kho Báu Bí Ẩn",
+      "ifFixedTask": true,
+      "intro": "1 lần khiêu chiến Kho Báu Bí Ẩn",
+      "pic": "sy_4",
+      "outputCredit": 10,
+      "loopNum": 1,
+      "moduleID": 4600,
+      "goldFactor": 35,
+      "oneKeySingleTask": "1111,0,10"
+    },
+    "34": {
+      "ID": 34,
+      "name": "PB Tổ Đội",
+      "ifFixedTask": true,
+      "intro": "1 lần tham gia phụ bản Tổ Đội",
+      "pic": "sy_4",
+      "outputCredit": 5,
+      "loopNum": 1,
+      "moduleID": 2319,
+      "goldFactor": 15,
+      "oneKeySingleTask": "1111,0,10"
+    }
+  },
+  "dailytask_reward": {
+    "30": {
+      "needCredit": 30,
+      "resourceList": "1111,0,5||1605,16050011,5",
+      "playerEXPFactor": 10,
+      "needLV": 1,
+      "outputGuildFund": 50,
+      "outputContribution": 100,
+      "pic": "dj_20005"
+    },
+    "80": {
+      "needCredit": 80,
+      "resourceList": "1111,0,10||1117,0,5000||1605,16050011,5",
+      "playerEXPFactor": 25,
+      "needLV": 1,
+      "outputGuildFund": 70,
+      "outputContribution": 140,
+      "pic": "dj_20003"
+    },
+    "130": {
+      "needCredit": 130,
+      "resourceList": "1111,0,20||1605,16050016,1||1604,16040003,1||1117,0,5000",
+      "playerEXPFactor": 45,
+      "needLV": 1,
+      "outputGuildFund": 100,
+      "outputContribution": 200,
+      "pic": "dj_20001"
+    },
+    "170": {
+      "needCredit": 170,
+      "resourceList": "1111,0,40||1605,16050011,5",
+      "playerEXPFactor": 55,
+      "needLV": 1,
+      "outputGuildFund": 130,
+      "outputContribution": 260,
+      "pic": "dj_001"
+    },
+    "220": {
+      "needCredit": 220,
+      "resourceList": "1111,0,80||1605,16050013,1",
+      "playerEXPFactor": 75,
+      "needLV": 1,
+      "outputGuildFund": 150,
+      "outputContribution": 300,
+      "pic": "dj_002"
+    }
+  },
+  "dailytask_exp": {
+    "1": {
+      "playerLV": 1,
+      "baseEXP": 0
+    },
+    "2": {
+      "playerLV": 2,
+      "baseEXP": 0
+    },
+    "3": {
+      "playerLV": 3,
+      "baseEXP": 0
+    },
+    "4": {
+      "playerLV": 4,
+      "baseEXP": 0
+    },
+    "5": {
+      "playerLV": 5,
+      "baseEXP": 0
+    },
+    "6": {
+      "playerLV": 6,
+      "baseEXP": 0
+    },
+    "7": {
+      "playerLV": 7,
+      "baseEXP": 0
+    },
+    "8": {
+      "playerLV": 8,
+      "baseEXP": 0
+    },
+    "9": {
+      "playerLV": 9,
+      "baseEXP": 0
+    },
+    "10": {
+      "playerLV": 10,
+      "baseEXP": 0
+    },
+    "11": {
+      "playerLV": 11,
+      "baseEXP": 0
+    },
+    "12": {
+      "playerLV": 12,
+      "baseEXP": 0
+    },
+    "13": {
+      "playerLV": 13,
+      "baseEXP": 0
+    },
+    "14": {
+      "playerLV": 14,
+      "baseEXP": 0
+    },
+    "15": {
+      "playerLV": 15,
+      "baseEXP": 0
+    },
+    "16": {
+      "playerLV": 16,
+      "baseEXP": 0
+    },
+    "17": {
+      "playerLV": 17,
+      "baseEXP": 0
+    },
+    "18": {
+      "playerLV": 18,
+      "baseEXP": 0
+    },
+    "19": {
+      "playerLV": 19,
+      "baseEXP": 0
+    },
+    "20": {
+      "playerLV": 20,
+      "baseEXP": 0
+    },
+    "21": {
+      "playerLV": 21,
+      "baseEXP": 0
+    },
+    "22": {
+      "playerLV": 22,
+      "baseEXP": 3
+    },
+    "23": {
+      "playerLV": 23,
+      "baseEXP": 4
+    },
+    "24": {
+      "playerLV": 24,
+      "baseEXP": 5
+    },
+    "25": {
+      "playerLV": 25,
+      "baseEXP": 7
+    },
+    "26": {
+      "playerLV": 26,
+      "baseEXP": 9
+    },
+    "27": {
+      "playerLV": 27,
+      "baseEXP": 11
+    },
+    "28": {
+      "playerLV": 28,
+      "baseEXP": 13
+    },
+    "29": {
+      "playerLV": 29,
+      "baseEXP": 18
+    },
+    "30": {
+      "playerLV": 30,
+      "baseEXP": 22
+    },
+    "31": {
+      "playerLV": 31,
+      "baseEXP": 29
+    },
+    "32": {
+      "playerLV": 32,
+      "baseEXP": 37
+    },
+    "33": {
+      "playerLV": 33,
+      "baseEXP": 49
+    },
+    "34": {
+      "playerLV": 34,
+      "baseEXP": 58
+    },
+    "35": {
+      "playerLV": 35,
+      "baseEXP": 69
+    },
+    "36": {
+      "playerLV": 36,
+      "baseEXP": 81
+    },
+    "37": {
+      "playerLV": 37,
+      "baseEXP": 96
+    },
+    "38": {
+      "playerLV": 38,
+      "baseEXP": 112
+    },
+    "39": {
+      "playerLV": 39,
+      "baseEXP": 131
+    },
+    "40": {
+      "playerLV": 40,
+      "baseEXP": 153
+    },
+    "41": {
+      "playerLV": 41,
+      "baseEXP": 179
+    },
+    "42": {
+      "playerLV": 42,
+      "baseEXP": 208
+    },
+    "43": {
+      "playerLV": 43,
+      "baseEXP": 241
+    },
+    "44": {
+      "playerLV": 44,
+      "baseEXP": 279
+    },
+    "45": {
+      "playerLV": 45,
+      "baseEXP": 322
+    },
+    "46": {
+      "playerLV": 46,
+      "baseEXP": 371
+    },
+    "47": {
+      "playerLV": 47,
+      "baseEXP": 428
+    },
+    "48": {
+      "playerLV": 48,
+      "baseEXP": 493
+    },
+    "49": {
+      "playerLV": 49,
+      "baseEXP": 566
+    },
+    "50": {
+      "playerLV": 50,
+      "baseEXP": 650
+    },
+    "51": {
+      "playerLV": 51,
+      "baseEXP": 746
+    },
+    "52": {
+      "playerLV": 52,
+      "baseEXP": 804
+    },
+    "53": {
+      "playerLV": 53,
+      "baseEXP": 865
+    },
+    "54": {
+      "playerLV": 54,
+      "baseEXP": 929
+    },
+    "55": {
+      "playerLV": 55,
+      "baseEXP": 997
+    },
+    "56": {
+      "playerLV": 56,
+      "baseEXP": 1069
+    },
+    "57": {
+      "playerLV": 57,
+      "baseEXP": 1144
+    },
+    "58": {
+      "playerLV": 58,
+      "baseEXP": 1224
+    },
+    "59": {
+      "playerLV": 59,
+      "baseEXP": 1307
+    },
+    "60": {
+      "playerLV": 60,
+      "baseEXP": 1395
+    },
+    "61": {
+      "playerLV": 61,
+      "baseEXP": 2104
+    },
+    "62": {
+      "playerLV": 62,
+      "baseEXP": 2239
+    },
+    "63": {
+      "playerLV": 63,
+      "baseEXP": 2380
+    },
+    "64": {
+      "playerLV": 64,
+      "baseEXP": 2528
+    },
+    "65": {
+      "playerLV": 65,
+      "baseEXP": 2683
+    },
+    "66": {
+      "playerLV": 66,
+      "baseEXP": 2845
+    },
+    "67": {
+      "playerLV": 67,
+      "baseEXP": 3014
+    },
+    "68": {
+      "playerLV": 68,
+      "baseEXP": 3191
+    },
+    "69": {
+      "playerLV": 69,
+      "baseEXP": 3375
+    },
+    "70": {
+      "playerLV": 70,
+      "baseEXP": 3809
+    },
+    "71": {
+      "playerLV": 71,
+      "baseEXP": 4254
+    },
+    "72": {
+      "playerLV": 72,
+      "baseEXP": 4710
+    },
+    "73": {
+      "playerLV": 73,
+      "baseEXP": 5176
+    },
+    "74": {
+      "playerLV": 74,
+      "baseEXP": 5654
+    },
+    "75": {
+      "playerLV": 75,
+      "baseEXP": 6143
+    },
+    "76": {
+      "playerLV": 76,
+      "baseEXP": 6642
+    },
+    "77": {
+      "playerLV": 77,
+      "baseEXP": 7153
+    },
+    "78": {
+      "playerLV": 78,
+      "baseEXP": 7675
+    },
+    "79": {
+      "playerLV": 79,
+      "baseEXP": 8207
+    },
+    "80": {
+      "playerLV": 80,
+      "baseEXP": 8751
+    },
+    "81": {
+      "playerLV": 81,
+      "baseEXP": 9083
+    },
+    "82": {
+      "playerLV": 82,
+      "baseEXP": 9421
+    },
+    "83": {
+      "playerLV": 83,
+      "baseEXP": 9764
+    },
+    "84": {
+      "playerLV": 84,
+      "baseEXP": 10112
+    },
+    "85": {
+      "playerLV": 85,
+      "baseEXP": 10466
+    },
+    "86": {
+      "playerLV": 86,
+      "baseEXP": 10826
+    },
+    "87": {
+      "playerLV": 87,
+      "baseEXP": 11191
+    },
+    "88": {
+      "playerLV": 88,
+      "baseEXP": 11561
+    },
+    "89": {
+      "playerLV": 89,
+      "baseEXP": 11937
+    },
+    "90": {
+      "playerLV": 90,
+      "baseEXP": 12319
+    },
+    "91": {
+      "playerLV": 91,
+      "baseEXP": 12706
+    },
+    "92": {
+      "playerLV": 92,
+      "baseEXP": 13098
+    },
+    "93": {
+      "playerLV": 93,
+      "baseEXP": 13496
+    },
+    "94": {
+      "playerLV": 94,
+      "baseEXP": 13900
+    },
+    "95": {
+      "playerLV": 95,
+      "baseEXP": 14309
+    },
+    "96": {
+      "playerLV": 96,
+      "baseEXP": 14724
+    },
+    "97": {
+      "playerLV": 97,
+      "baseEXP": 15144
+    },
+    "98": {
+      "playerLV": 98,
+      "baseEXP": 15569
+    },
+    "99": {
+      "playerLV": 99,
+      "baseEXP": 16000
+    },
+    "100": {
+      "playerLV": 100,
+      "baseEXP": 16436
+    }
+  },
+  "xxbz_config": {
+    "needVIT": 0,
+    "freeFightNums": 1,
+    "fightCD": 0
+  },
+  "xxbz_model": {
+    "1": {
+      "ID": 1,
+      "treasureName": "KB Vàng",
+      "needVIP": 0,
+      "PIC": "12010012",
+      "NPCWord": "Vàng không phải là tất cả, nhưng không có Vàng là không có gì cả",
+      "rewardTypeID": 1112,
+      "rewardModelID": 0,
+      "dinnerBeginTime": 0,
+      "dinnerEndTime": 0.999988425926,
+      "heroName": "Naraku Yokai",
+      "needLv": 28,
+      "extraOutput": "1605,16050092,2"
+    },
+    "2": {
+      "ID": 2,
+      "treasureName": "KB Đột Phá",
+      "needVIP": 0,
+      "PIC": "12010011",
+      "NPCWord": "Muốn đoạt kho báu của ta, đâu có dễ ăn!",
+      "rewardTypeID": 1605,
+      "rewardModelID": 16050001,
+      "dinnerBeginTime": 0,
+      "dinnerEndTime": 0.999988425926,
+      "heroName": "Tama Kiyko",
+      "needLv": 28,
+      "extraOutput": "1605,16050092,2"
+    },
+    "3": {
+      "ID": 3,
+      "treasureName": "KB Magatama",
+      "needVIP": 0,
+      "PIC": "12010014",
+      "NPCWord": "Muốn nhận Tướng lợi hại hơn? Đến đúng chỗ rồi đấy",
+      "rewardTypeID": 1116,
+      "rewardModelID": 0,
+      "dinnerBeginTime": 0,
+      "dinnerEndTime": 0.999988425926,
+      "heroName": "Quỷ Đá",
+      "needLv": 30,
+      "extraOutput": "1605,16050092,2"
+    }
+  },
+  "xxbz_reward_base": [
+    {
+      "treasureID": 1,
+      "needLower": 30000,
+      "rewardNum": 84000,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 1,
+      "needLower": 60000,
+      "rewardNum": 101000,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 1,
+      "needLower": 100000,
+      "rewardNum": 118000,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 1,
+      "needLower": 200000,
+      "rewardNum": 135000,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 1,
+      "needLower": 350000,
+      "rewardNum": 152000,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 1,
+      "needLower": 700000,
+      "rewardNum": 169000,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 1,
+      "needLower": 1100000,
+      "rewardNum": 186000,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 1,
+      "needLower": 2000000,
+      "rewardNum": 203000,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 1,
+      "needLower": 12000000,
+      "rewardNum": 203000,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 2,
+      "needLower": 30000,
+      "rewardNum": 34,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 2,
+      "needLower": 60000,
+      "rewardNum": 41,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 2,
+      "needLower": 100000,
+      "rewardNum": 47,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 2,
+      "needLower": 200000,
+      "rewardNum": 54,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 2,
+      "needLower": 350000,
+      "rewardNum": 61,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 2,
+      "needLower": 700000,
+      "rewardNum": 68,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 2,
+      "needLower": 1100000,
+      "rewardNum": 75,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 2,
+      "needLower": 2000000,
+      "rewardNum": 81,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 2,
+      "needLower": 12000000,
+      "rewardNum": 81,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 3,
+      "needLower": 30000,
+      "rewardNum": 40,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 3,
+      "needLower": 60000,
+      "rewardNum": 48,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 3,
+      "needLower": 100000,
+      "rewardNum": 55,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 3,
+      "needLower": 200000,
+      "rewardNum": 63,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 3,
+      "needLower": 350000,
+      "rewardNum": 71,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 3,
+      "needLower": 700000,
+      "rewardNum": 79,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 3,
+      "needLower": 1100000,
+      "rewardNum": 87,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 3,
+      "needLower": 2000000,
+      "rewardNum": 95,
+      "onceRewardNum": 100
+    },
+    {
+      "treasureID": 3,
+      "needLower": 12000000,
+      "rewardNum": 95,
+      "onceRewardNum": 100
+    }
+  ],
+  "xxbz_reward_cond": [
+    {
+      "treasureID": 1,
+      "conditionType": 1,
+      "conditionLower": 0,
+      "rewardNumR": 1732852,
+      "baseNum": 0
+    },
+    {
+      "treasureID": 1,
+      "conditionType": 1,
+      "conditionLower": 30000,
+      "rewardNumR": 433213,
+      "baseNum": 38989
+    },
+    {
+      "treasureID": 1,
+      "conditionType": 1,
+      "conditionLower": 60000,
+      "rewardNumR": 216607,
+      "baseNum": 51986
+    },
+    {
+      "treasureID": 1,
+      "conditionType": 1,
+      "conditionLower": 100000,
+      "rewardNumR": 43321,
+      "baseNum": 69314
+    },
+    {
+      "treasureID": 1,
+      "conditionType": 1,
+      "conditionLower": 200000,
+      "rewardNumR": 21661,
+      "baseNum": 73646
+    },
+    {
+      "treasureID": 1,
+      "conditionType": 1,
+      "conditionLower": 350000,
+      "rewardNumR": 4332,
+      "baseNum": 79711
+    },
+    {
+      "treasureID": 1,
+      "conditionType": 1,
+      "conditionLower": 700000,
+      "rewardNumR": 2166,
+      "baseNum": 81227
+    },
+    {
+      "treasureID": 1,
+      "conditionType": 1,
+      "conditionLower": 1100000,
+      "rewardNumR": 433,
+      "baseNum": 83134
+    },
+    {
+      "treasureID": 1,
+      "conditionType": 1,
+      "conditionLower": 2000000,
+      "rewardNumR": 217,
+      "baseNum": 83567
+    },
+    {
+      "treasureID": 1,
+      "conditionType": 1,
+      "conditionLower": 12000000,
+      "rewardNumR": 217,
+      "baseNum": 83567
+    },
+    {
+      "treasureID": 2,
+      "conditionType": 1,
+      "conditionLower": 0,
+      "rewardNumR": 696,
+      "baseNum": 0
+    },
+    {
+      "treasureID": 2,
+      "conditionType": 1,
+      "conditionLower": 30000,
+      "rewardNumR": 174,
+      "baseNum": 16
+    },
+    {
+      "treasureID": 2,
+      "conditionType": 1,
+      "conditionLower": 60000,
+      "rewardNumR": 87,
+      "baseNum": 21
+    },
+    {
+      "treasureID": 2,
+      "conditionType": 1,
+      "conditionLower": 100000,
+      "rewardNumR": 17,
+      "baseNum": 28
+    },
+    {
+      "treasureID": 2,
+      "conditionType": 1,
+      "conditionLower": 200000,
+      "rewardNumR": 9,
+      "baseNum": 30
+    },
+    {
+      "treasureID": 2,
+      "conditionType": 1,
+      "conditionLower": 350000,
+      "rewardNumR": 2,
+      "baseNum": 32
+    },
+    {
+      "treasureID": 2,
+      "conditionType": 1,
+      "conditionLower": 700000,
+      "rewardNumR": 1,
+      "baseNum": 33
+    },
+    {
+      "treasureID": 2,
+      "conditionType": 1,
+      "conditionLower": 1100000,
+      "rewardNumR": 0,
+      "baseNum": 33
+    },
+    {
+      "treasureID": 2,
+      "conditionType": 1,
+      "conditionLower": 2000000,
+      "rewardNumR": 0,
+      "baseNum": 34
+    },
+    {
+      "treasureID": 3,
+      "conditionType": 1,
+      "conditionLower": 0,
+      "rewardNumR": 812,
+      "baseNum": 0
+    },
+    {
+      "treasureID": 3,
+      "conditionType": 1,
+      "conditionLower": 30000,
+      "rewardNumR": 203,
+      "baseNum": 18
+    },
+    {
+      "treasureID": 3,
+      "conditionType": 1,
+      "conditionLower": 60000,
+      "rewardNumR": 102,
+      "baseNum": 24
+    },
+    {
+      "treasureID": 3,
+      "conditionType": 1,
+      "conditionLower": 100000,
+      "rewardNumR": 20,
+      "baseNum": 32
+    },
+    {
+      "treasureID": 3,
+      "conditionType": 1,
+      "conditionLower": 200000,
+      "rewardNumR": 10,
+      "baseNum": 35
+    },
+    {
+      "treasureID": 3,
+      "conditionType": 1,
+      "conditionLower": 350000,
+      "rewardNumR": 2,
+      "baseNum": 37
+    },
+    {
+      "treasureID": 3,
+      "conditionType": 1,
+      "conditionLower": 700000,
+      "rewardNumR": 1,
+      "baseNum": 38
+    },
+    {
+      "treasureID": 3,
+      "conditionType": 1,
+      "conditionLower": 1100000,
+      "rewardNumR": 0,
+      "baseNum": 39
+    },
+    {
+      "treasureID": 3,
+      "conditionType": 1,
+      "conditionLower": 2000000,
+      "rewardNumR": 0,
+      "baseNum": 39
+    }
+  ],
+  "xxbz_del_cd": {
+    "1": {
+      "num": 1,
+      "useDiamond": 20
+    },
+    "2": {
+      "num": 2,
+      "useDiamond": 50
+    }
+  },
+  "zcsf_type": {
+    "1": {
+      "ID": 1,
+      "addValueR": 10000,
+      "rawGold": 1300,
+      "upOdds": 9000
+    },
+    "2": {
+      "ID": 2,
+      "addValueR": 12000,
+      "rawGold": 1600,
+      "upOdds": 7000
+    },
+    "3": {
+      "ID": 3,
+      "addValueR": 14000,
+      "rawGold": 1850,
+      "upOdds": 5000
+    },
+    "4": {
+      "ID": 4,
+      "addValueR": 16000,
+      "rawGold": 2100,
+      "upOdds": 3000
+    },
+    "5": {
+      "ID": 5,
+      "addValueR": 20000,
+      "rawGold": 2650,
+      "upOdds": 1000
+    },
+    "6": {
+      "ID": 6,
+      "addValueR": 30000,
+      "rawGold": 3950,
+      "upOdds": 0
+    }
+  },
+  "zcsf_use": {
+    "1": {
+      "ID": 1,
+      "useDiamond": 10
+    },
+    "2": {
+      "ID": 2,
+      "useDiamond": 20
+    },
+    "3": {
+      "ID": 3,
+      "useDiamond": 30
+    },
+    "4": {
+      "ID": 4,
+      "useDiamond": 40
+    },
+    "5": {
+      "ID": 5,
+      "useDiamond": 50
+    },
+    "6": {
+      "ID": 6,
+      "useDiamond": 60
+    },
+    "7": {
+      "ID": 7,
+      "useDiamond": 70
+    },
+    "8": {
+      "ID": 8,
+      "useDiamond": 80
+    },
+    "9": {
+      "ID": 9,
+      "useDiamond": 90
+    },
+    "10": {
+      "ID": 10,
+      "useDiamond": 100
+    }
+  },
+  "limitthebounty": {
+    "1": {
+      "ID": 1,
+      "triggerLV": 12,
+      "receiveLV": 15,
+      "reward": "1111,0,288||1112,0,58888||1301,13010314,1||1304,13040314,1",
+      "continuedTime": 90000,
+      "des": 8888
+    },
+    "2": {
+      "ID": 2,
+      "triggerLV": 15,
+      "receiveLV": 20,
+      "reward": "1112,0,88888||1602,16020020,2||1605,16050003,5||1603,16030008,1",
+      "continuedTime": 90000,
+      "des": 8888
+    },
+    "3": {
+      "ID": 3,
+      "triggerLV": 20,
+      "receiveLV": 22,
+      "reward": "1112,0,128888||1602,16020009,1||1602,16020010,1||1603,16030006,1",
+      "continuedTime": 90000,
+      "des": 8888
+    },
+    "4": {
+      "ID": 4,
+      "triggerLV": 22,
+      "receiveLV": 25,
+      "reward": "1111,0,388||1112,0,188888||1605,16050001,300||1605,16050010,10||1604,16040001,2",
+      "continuedTime": 90000,
+      "des": 8888
+    },
+    "5": {
+      "ID": 5,
+      "triggerLV": 25,
+      "receiveLV": 32,
+      "reward": "1111,0,688||1112,0,218888||1602,16020013,1||1602,16020021,1",
+      "continuedTime": 90000,
+      "des": 8888
+    },
+    "6": {
+      "ID": 6,
+      "triggerLV": 32,
+      "receiveLV": 36,
+      "reward": "1111,0,888||1112,0,268888||1602,16020007,1||1602,16020022,1",
+      "continuedTime": 90000,
+      "des": 8888
+    }
+  },
+  "timespike": {
+    "1": {
+      "ID": 1,
+      "triggerLV": 11,
+      "receiveCondition": 6,
+      "reward": "1602,16020013,1||1112,0,880000",
+      "continuedTime": 360,
+      "buyPrice": 299,
+      "des": 2990
+    },
+    "2": {
+      "ID": 2,
+      "triggerLV": 17,
+      "receiveCondition": 6,
+      "reward": "1402,14021304,3||1401,14011304,3||1606,16060014,1",
+      "continuedTime": 720,
+      "buyPrice": 399,
+      "des": 3990
+    },
+    "3": {
+      "ID": 3,
+      "triggerLV": 27,
+      "receiveCondition": 48,
+      "reward": "1606,16060019,1||1605,16050001,200",
+      "continuedTime": 720,
+      "buyPrice": 599,
+      "des": 5990
+    },
+    "4": {
+      "ID": 4,
+      "triggerLV": 30,
+      "receiveCondition": 98,
+      "reward": "1301,13010510,1||1304,13040510,1",
+      "continuedTime": 720,
+      "buyPrice": 888,
+      "des": 8880
+    },
+    "5": {
+      "ID": 5,
+      "triggerLV": 33,
+      "receiveCondition": 98,
+      "reward": "1606,16060008,1||1605,16050001,300",
+      "continuedTime": 720,
+      "buyPrice": 999,
+      "des": 9990
+    },
+    "6": {
+      "ID": 6,
+      "triggerLV": 36,
+      "receiveCondition": 98,
+      "reward": "1602,16020023,1||1116,0,100||1605,16050010,5",
+      "continuedTime": 720,
+      "buyPrice": 888,
+      "des": 8880
+    },
+    "7": {
+      "ID": 7,
+      "triggerLV": 41,
+      "receiveCondition": 98,
+      "reward": "1606,16060009,1||1603,16030008,3",
+      "continuedTime": 720,
+      "buyPrice": 999,
+      "des": 9990
+    },
+    "8": {
+      "ID": 8,
+      "triggerLV": 44,
+      "receiveCondition": 98,
+      "reward": "1606,16060032,1||1602,16020039,3",
+      "continuedTime": 720,
+      "buyPrice": 999,
+      "des": 9990
+    }
+  },
+  "activeranking": {
+    "1": {
+      "ID": 1,
+      "name": "冒險",
+      "moduleId": 2201,
+      "points": 1,
+      "des": "挑戰成功一次獲得1積分（包括掛機，掃蕩）"
+    },
+    "2": {
+      "ID": 2,
+      "name": "精英關卡",
+      "moduleId": 2202,
+      "points": 2,
+      "des": "挑戰成功一次獲得3積分"
+    },
+    "3": {
+      "ID": 3,
+      "name": "妖王來襲",
+      "moduleId": 2203,
+      "points": 1,
+      "des": "消耗1次挑戰次數獲得1積分"
+    },
+    "4": {
+      "ID": 4,
+      "name": "噩夢副本",
+      "moduleId": 7200,
+      "points": 3,
+      "des": "挑戰成功一次獲得3積分（包括掛機，掃蕩）"
+    },
+    "5": {
+      "ID": 5,
+      "name": "奪寶",
+      "moduleId": 2501,
+      "points": 1,
+      "des": "挑戰成功一次獲得1積分（包括十連戰，一鍵奪寶）"
+    },
+    "6": {
+      "ID": 6,
+      "name": "決鬥",
+      "moduleId": 2502,
+      "points": 1,
+      "des": "挑戰一次獲得1積分"
+    },
+    "7": {
+      "ID": 7,
+      "name": "勇闖金庫",
+      "moduleId": 2504,
+      "points": 2,
+      "des": "挑戰一次獲得2積分"
+    },
+    "8": {
+      "ID": 8,
+      "name": "神兵地穴",
+      "moduleId": 2507,
+      "points": 1,
+      "des": "挑戰成功一次獲得1積分（包括一鍵3星）"
+    },
+    "9": {
+      "ID": 9,
+      "name": "鬥武大會",
+      "moduleId": 2503,
+      "points": 1,
+      "des": "挑戰一次獲得1積分"
+    },
+    "10": {
+      "ID": 10,
+      "name": "神秘寶藏",
+      "moduleId": 4600,
+      "points": 3,
+      "des": "挑戰一次獲得3積分"
+    },
+    "11": {
+      "ID": 11,
+      "name": "組隊副本",
+      "moduleId": 2319,
+      "points": 3,
+      "des": "挑戰一次獲得3積分"
+    },
+    "12": {
+      "ID": 12,
+      "name": "跨服戰",
+      "moduleId": 6100,
+      "points": 2,
+      "des": "挑戰一次獲得2積分"
+    }
+  },
+  "opencontest_project": {
+    "1": {
+      "days": 1,
+      "name": "Lv",
+      "specialCode": "Level",
+      "personalCondition": 25,
+      "personalRewards": "1603,16030006,20",
+      "rankCondition": 30
+    },
+    "2": {
+      "days": 2,
+      "name": "Tổng Sao Ải",
+      "specialCode": "BattleStar",
+      "personalCondition": 200,
+      "personalRewards": "1603,16030008,30",
+      "rankCondition": 250
+    },
+    "3": {
+      "days": 3,
+      "name": "XH Quyết Đấu",
+      "specialCode": "Ranking",
+      "personalCondition": 500,
+      "personalRewards": "1602,16020012,1",
+      "rankCondition": 50
+    },
+    "4": {
+      "days": 4,
+      "name": "Cấp Trang Bị",
+      "specialCode": "EquipPoint",
+      "personalCondition": 5000,
+      "personalRewards": "1606,16060002,1",
+      "rankCondition": 10000
+    },
+    "5": {
+      "days": 5,
+      "name": "ST Kho Báu Bí Ẩn",
+      "specialCode": "MaximumDamage",
+      "personalCondition": 100000,
+      "personalRewards": "1605,16050001,500",
+      "rankCondition": 300000
+    },
+    "6": {
+      "days": 6,
+      "name": "Sao Mộ Thần Binh",
+      "specialCode": "MaxStars",
+      "personalCondition": 30,
+      "personalRewards": "1602,16020022,1",
+      "rankCondition": 60
+    },
+    "7": {
+      "days": 7,
+      "name": "Tổng Chiến Lực",
+      "specialCode": "PowerSum",
+      "personalCondition": 500000,
+      "personalRewards": "1605,16050066,1",
+      "rankCondition": 1000000
+    }
+  },
+  "opencontest_rank": {
+    "1": [
+      {
+        "days": 1,
+        "rankMin": 1,
+        "rankMax": 1,
+        "rewards": "1606,16060019,2",
+        "rewardPic": "bp1-1.png",
+        "describe": "Nhận Quà Tướng khủng, chọn 2 Tướng Cam bất kì"
+      },
+      {
+        "days": 1,
+        "rankMin": 2,
+        "rankMax": 2,
+        "rewards": "1606,16060019,1",
+        "rewardPic": "bp1-2.png",
+        "describe": "Nhận Quà Tướng khủng, chọn 1 Tướng Cam bất kì"
+      },
+      {
+        "days": 1,
+        "rankMin": 3,
+        "rankMax": 3,
+        "rewards": "1602,16020015,1",
+        "rewardPic": "bp1-3.png",
+        "describe": "Quà tướng cam ngẫu nhiên, nhận 1 tướng cam ngẫu nhiên"
+      }
+    ],
+    "2": [
+      {
+        "days": 2,
+        "rankMin": 1,
+        "rankMax": 1,
+        "rewards": "1301,13010602,1",
+        "rewardPic": "bp2-1.png",
+        "describe": "Nhận 1 Vũ Khí  6 Sao dùng cho Tướng"
+      },
+      {
+        "days": 2,
+        "rankMin": 2,
+        "rankMax": 2,
+        "rewards": "1301,13010503,1",
+        "rewardPic": "bp2-2.png",
+        "describe": "Nhận 1 Vũ Khí 5 Sao dùng cho Tướng"
+      },
+      {
+        "days": 2,
+        "rankMin": 3,
+        "rankMax": 3,
+        "rewards": "1304,13040503,1",
+        "rewardPic": "bp2-3.png",
+        "describe": "Nhận 1 Dây 5 Sao dùng cho Tướng"
+      }
+    ],
+    "3": [
+      {
+        "days": 3,
+        "rankMin": 1,
+        "rankMax": 1,
+        "rewards": "1606,16060003,1",
+        "rewardPic": "bp3-1.png",
+        "describe": "Chọn Thú Cưỡi Cam bất kì*1."
+      },
+      {
+        "days": 3,
+        "rankMin": 2,
+        "rankMax": 2,
+        "rewards": "1602,16020014,1",
+        "rewardPic": "bp3-2.png",
+        "describe": "Nhận ngẫu nhiên Mảnh Bảo Vật cam*1."
+      },
+      {
+        "days": 3,
+        "rankMin": 3,
+        "rankMax": 3,
+        "rewards": "1606,16060001,2",
+        "rewardPic": "bp3-3.png",
+        "describe": "Chọn Thú Cưỡi Tím bất kì*2."
+      }
+    ],
+    "4": [
+      {
+        "days": 4,
+        "rankMin": 1,
+        "rankMax": 1,
+        "rewards": "1606,16060004,1",
+        "rewardPic": "bp4-1.png",
+        "describe": "Chọn Sách Cam bất kì*1."
+      },
+      {
+        "days": 4,
+        "rankMin": 2,
+        "rankMax": 2,
+        "rewards": "1602,16020014,1",
+        "rewardPic": "bp4-2.png",
+        "describe": "Nhận ngẫu nhiên Mảnh Bảo Vật cam*1."
+      },
+      {
+        "days": 4,
+        "rankMin": 3,
+        "rankMax": 3,
+        "rewards": "1606,16060002,2",
+        "rewardPic": "bp4-3.png",
+        "describe": "Chọn Sách Tím*2."
+      }
+    ],
+    "5": [
+      {
+        "days": 5,
+        "rankMin": 1,
+        "rankMax": 1,
+        "rewards": "1605,16050001,10000",
+        "rewardPic": "bp5-1.png",
+        "describe": "Chứa đan thuốc thần kì, dùng đột phá Tướng"
+      },
+      {
+        "days": 5,
+        "rankMin": 2,
+        "rankMax": 2,
+        "rewards": "1605,16050001,5000",
+        "rewardPic": "bp5-2.png",
+        "describe": "Chứa đan thuốc thần kì, dùng đột phá Tướng"
+      },
+      {
+        "days": 5,
+        "rankMin": 3,
+        "rankMax": 3,
+        "rewards": "1605,16050001,3000",
+        "rewardPic": "bp5-3.png",
+        "describe": "Chứa đan thuốc thần kì, dùng đột phá Tướng"
+      }
+    ],
+    "6": [
+      {
+        "days": 6,
+        "rankMin": 1,
+        "rankMax": 1,
+        "rewards": "1602,16020023,3",
+        "rewardPic": "bp6-1.png",
+        "describe": "Đá Trang Bị Hồng*3"
+      },
+      {
+        "days": 6,
+        "rankMin": 2,
+        "rankMax": 2,
+        "rewards": "1602,16020023,1",
+        "rewardPic": "bp6-2.png",
+        "describe": "Đá Trang Bị Hồng*1"
+      },
+      {
+        "days": 6,
+        "rankMin": 3,
+        "rankMax": 3,
+        "rewards": "1602,16020022,3",
+        "rewardPic": "bp6-3.png",
+        "describe": "Đá Trang Bị Cam*3"
+      }
+    ],
+    "7": [
+      {
+        "days": 7,
+        "rankMin": 1,
+        "rankMax": 1,
+        "rewards": "1606,16060009,1",
+        "rewardPic": "bp7-1.png",
+        "describe": "Quà Thần Tướng B*1"
+      },
+      {
+        "days": 7,
+        "rankMin": 2,
+        "rankMax": 2,
+        "rewards": "1606,16060025,100",
+        "rewardPic": "bp7-2.png",
+        "describe": "Quà Mảnh Thần B ©*100"
+      },
+      {
+        "days": 7,
+        "rankMin": 3,
+        "rankMax": 3,
+        "rewards": "1606,16060025,50",
+        "rewardPic": "bp7-3.png",
+        "describe": "Quà Mảnh Thần B ©*50"
+      }
+    ]
   }
 }

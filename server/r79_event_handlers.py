@@ -40,7 +40,8 @@ class R79EventHandlersMixin:
     """Mixin implementing R7.9 historical events, lucky minigames, milestone activities & multi-region recovery."""
 
     GOLDEN_HAMMER_MODEL_ID = 16050061   # Búa Vàng (TimedSmashEggLayer.lua:19)
-    LOTTERY_TICKET_MODEL_ID = 16050055  # Vé Rút Thưởng (TimedSlotLayer.lua)
+    LOTTERY_TICKET_MODEL_ID = 16050027  # Vé Rút Thưởng (VN GoodsModel)
+    SLOT_RECHARGE_QUOTA = 60
 
     # -------------------- TimedActivityOpenInfo (9300 + 4401..4432) --------------------
 
@@ -247,7 +248,8 @@ class R79EventHandlersMixin:
     def _rpc_timed_money_tree_shake(self, data: Any) -> dict[str, Any]:
         shake_times = int(data[1]) if isinstance(data, list) and len(data) >= 2 else (int(data[0]) if isinstance(data, list) and data else 1)
         if shake_times not in (1, 10):
-            shake_times = 1
+            self._last_rpc_context["status"] = -1
+            return {}
         ev, prog = self._ensure_money_tree_prog()
         if not ev.eligible:
             self._last_rpc_context["status"] = -1
@@ -266,6 +268,7 @@ class R79EventHandlersMixin:
                 -cost,
                 source=f"timed_money_tree:x{shake_times}",
             )
+            self._last_rpc_context["diamond_spent"] = cost
         if shake_times == 1 and free_avail:
             prog["free_used"] = True
 
@@ -581,21 +584,40 @@ class R79EventHandlersMixin:
         prog.setdefault("ordinary_ratio", 1)
         prog.setdefault("senior_ratio", 1)
         prog.setdefault("spin_count", 0)
-        if not prog.get("starter_tickets_seeded"):
-            prog["starter_tickets_seeded"] = True
-            if self._get_goods_qty(self.LOTTERY_TICKET_MODEL_ID) == 0:
-                self._grant_resources_from_tuples(
-                    [(1605, self.LOTTERY_TICKET_MODEL_ID, 10)],
-                    source="timed_slot_starter_tickets",
-                    tx_prefix=f"evt:{self.profile_name}:{self.state['player']['PlayerId']}:{ev.instance_id}:starter_tickets",
-                )
         return ev, prog
 
+    def _seed_slot_tickets(self, ev: Any, prog: dict[str, Any]) -> None:
+        # R7.9 seeded a different item. Keep that stack and issue the correct ticket once.
+        if prog.get("vn_tickets_seeded"):
+            return
+        prog["vn_tickets_seeded"] = True
+        if self._get_goods_qty(self.LOTTERY_TICKET_MODEL_ID) == 0:
+            self._grant_resources_from_tuples(
+                [(1605, self.LOTTERY_TICKET_MODEL_ID, 10)],
+                source="timed_slot_starter_tickets",
+                tx_prefix=f"evt:{ev.instance_id}:vn_starter_tickets",
+            )
+        self.save()
+
+    def _record_slot_recharge(self, amount: int) -> None:
+        ev, prog = self._ensure_slot_prog()
+        if not ev.eligible:
+            return
+        self._seed_slot_tickets(ev, prog)
+        tickets, remainder = divmod(int(prog.get("recharge_remainder", 0)) + amount, self.SLOT_RECHARGE_QUOTA)
+        if tickets:
+            self._grant_resources_from_tuples(
+                [(1605, self.LOTTERY_TICKET_MODEL_ID, tickets)],
+                source="timed_slot_recharge",
+                tx_prefix=f"evt:{ev.instance_id}:recharge:{self._player_total_recharged_diamonds()}",
+            )
+        prog["recharge_remainder"] = remainder
+
     def _slot_red_dot(self) -> int:
-        ev, _prog = self._ensure_slot_prog()
+        ev, prog = self._ensure_slot_prog()
         if not ev.eligible:
             return 0
-        return 1 if self._get_goods_qty(self.LOTTERY_TICKET_MODEL_ID) > 0 else 0
+        return int(not prog.get("vn_tickets_seeded") or self._get_goods_qty(self.LOTTERY_TICKET_MODEL_ID) > 0)
 
     def _build_slot_rank_list(self, my_integral: int) -> tuple[int, list[dict[str, Any]]]:
         me_name = str(self.state["player"].get("PlayerName", "Hero"))
@@ -630,7 +652,7 @@ class R79EventHandlersMixin:
         return {
             "EndDate": int(ev.end_ts or self.clock.next_midnight_ts()),
             "LuckdrawConfig": {
-                "ExchangeQuota": 60,
+                "ExchangeQuota": self.SLOT_RECHARGE_QUOTA,
                 "ExchangeResource": f"1605,{self.LOTTERY_TICKET_MODEL_ID},1",
                 "OrdinaryUseResource": f"1605,{self.LOTTERY_TICKET_MODEL_ID},1",
                 "SeniorUseResource": f"1605,{self.LOTTERY_TICKET_MODEL_ID},5",
@@ -640,7 +662,7 @@ class R79EventHandlersMixin:
             "LuckdrawRewardConfig": copy.deepcopy(self.SLOT_NORMAL_REWARDS + self.SLOT_PRETTY_REWARDS),
             "TimedLuckdrawInfo": {
                 "Integral": my_int,
-                "RechargeNum": self._player_total_recharged_diamonds() % 60,
+                "RechargeNum": int(prog.get("recharge_remainder", 0)),
                 "OrdinaryPlusRatio": int(prog.get("ordinary_ratio", 1)),
                 "SeniorPlusRatio": int(prog.get("senior_ratio", 1)),
                 "Rank": my_rank,
@@ -653,6 +675,7 @@ class R79EventHandlersMixin:
         if not ev.eligible:
             self._last_rpc_context["status"] = -1
             return {}
+        self._seed_slot_tickets(ev, prog)
         out = self._build_slot_payload(ev, prog)
         self.save()
         return out
@@ -668,6 +691,7 @@ class R79EventHandlersMixin:
             self._last_rpc_context["status"] = -1
             return {}
 
+        self._seed_slot_tickets(ev, prog)
         per_cost = 1 if slot_type == 1 else 5
         total_tickets = per_cost * count
         if not self._consume_goods_qty(self.LOTTERY_TICKET_MODEL_ID, total_tickets):

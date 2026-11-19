@@ -1736,6 +1736,7 @@ class ProfileStore(EventHandlersMixin):
             "Player.AvatarInfo": self._rpc_sync_avatar,
             "Player.AlterPlayerStepCount": self._rpc_alter_step_count,
             "Player.GetStepCountReward": self._rpc_get_step_count_reward,
+            "Bag.BagExpand": self._rpc_bag_expand,
             "HeroRecruit.RecruitInfo": self._rpc_recruit_info,
             "HeroRecruit.Recruit": self._rpc_recruit,
             "Hero.HeroLvUp": self._rpc_hero_lv_up,
@@ -1957,7 +1958,9 @@ class ProfileStore(EventHandlersMixin):
         value = fn(data) if fn else {}
         status = int(self._last_rpc_context.get("status", 0))
         if status == 0:
-            dia_spent = before_diamond - int(self.state.get("player", {}).get("Diamond", 0))
+            dia_spent = self._last_rpc_context.get(
+                "diamond_spent", before_diamond - int(self.state.get("player", {}).get("Diamond", 0)),
+            )
             if dia_spent > 0 and key not in ("DailyTaskInfo.OneKeyDone", "DailyTaskInfo.OneKeyAllDone"):
                 self._inc_stat("spent_diamonds", dia_spent)
                 self._record_daily_task_progress(23, dia_spent)
@@ -2097,7 +2100,7 @@ class ProfileStore(EventHandlersMixin):
             "GoodsEquipDebrisInfo": equip_debris,
             "GoodsPropsInfo": props_goods,
             "TreasureDebrisInfo": self.state.get("treasure_debris", []),
-            "BagInfo": [{"BagModelId": bid, "Size": 200, "ExpandNum": 0} for bid in range(1, 10)],
+            "BagInfo": [self._bag_info(bid) for bid in range(1, 10)],
             "SkillList": [],
             "ModulesInfo": modules,
             "StarSignInfo": [],
@@ -2199,8 +2202,41 @@ class ProfileStore(EventHandlersMixin):
         self._mark_goods_changed(goods_model_id)
         return True
 
+    def _bag_info(self, bag_id: int) -> dict[str, int]:
+        # Preserve R7.9's base capacity for existing saves. VN expansions add five slots.
+        expanded = int(self.state.get("bag_expansions", {}).get(str(bag_id), 0))
+        return {"BagModelId": bag_id, "Size": 200 + 5 * expanded, "ExpandNum": expanded}
+
+    def _rpc_bag_expand(self, data: Any) -> dict[str, Any]:
+        bag_id = int(data[0]) if isinstance(data, list) and data else 0
+        if bag_id not in range(1, 9):  # BagModel.items in the VN client
+            self._last_rpc_context["status"] = -1
+            return {}
+        expansion = self._bag_info(bag_id)["ExpandNum"] + 1
+        if expansion > 20:
+            self._last_rpc_context["status"] = -1
+            return {}
+        cost = 10 * expansion  # BagExpandUseRelation, rows 1–20
+        if int(self.state["player"].get("Diamond", 0)) < cost:
+            self._last_rpc_context["status"] = -1105
+            return {}
+        self.ledger.apply_player_delta(self.state["player"], self.profile_name, "Diamond", -cost, source=f"bag_expand:{bag_id}")
+        self.state.setdefault("bag_expansions", {})[str(bag_id)] = expansion
+        self.save()
+        return self._bag_info(bag_id)
+
+    def _check_hero_capacity(self, incoming: int) -> bool:
+        if incoming <= 0:
+            return True
+        deployed = {str(slot.get("HeroId")) for slot in self.state["slots"]}
+        used = sum(str(hero["Id"]) not in deployed for hero in self.state["heroes"])
+        if used + incoming > self._bag_info(5)["Size"]:
+            self._last_rpc_context["status"] = -2005  # VN ServerMessage: hero bag full
+            return False
+        return True
+
     def _rpc_recruit_info(self, _data: Any) -> dict[str, Any]:
-        now = int(time.time())
+        now = self.now_ts()
         rs = self.state.setdefault(
             "recruit_state",
             {"MidAlreadyUseResource": False, "HigAlreadyUseResource": False, "OutZiCount": 9, "history": []},
@@ -2246,11 +2282,14 @@ class ProfileStore(EventHandlersMixin):
     def _rpc_recruit(self, data: Any) -> dict[str, Any]:
         rtype = int(data[0]) if isinstance(data, list) and len(data) >= 1 else 2
         is_free = int(data[1]) if isinstance(data, list) and len(data) >= 2 else 1
-        if rtype not in (1, 10, 2, 3, 30, 40):
+        if rtype not in (1, 10, 2, 3, 30, 40) or is_free not in (0, 1):
             self._last_rpc_context["status"] = -1
             return {}
+        count = 10 if rtype in (10, 30, 40) else 1
+        if not self._check_hero_capacity(count):
+            return {}
 
-        now = int(time.time())
+        now = self.now_ts()
         rs = self.state.setdefault(
             "recruit_state",
             {"MidAlreadyUseResource": False, "HigAlreadyUseResource": False, "OutZiCount": 9, "history": []},
@@ -2299,7 +2338,6 @@ class ProfileStore(EventHandlersMixin):
             self._last_rpc_context["status"] = -1
             return {}
 
-        count = 10 if rtype in (10, 30, 40) else 1
         heroes_cfg = self.game_data.get("heroes", {})
         chosen_hids: list[int] = []
         out_zi = int(rs.get("OutZiCount", 9))
@@ -3712,14 +3750,13 @@ class ProfileStore(EventHandlersMixin):
         if count <= 0:
             self._last_rpc_context["status"] = -1
             return {}
-        if gid == 16050056:
-            return self._rpc_recruit([40, 0])
-
-        item = next(
-            (g for g in self.state.get("goods", []) if g["Id"] == entity_id or int(g["GoodsModelId"]) == gid),
-            None,
-        )
+        item = next((g for g in self.state.get("goods", []) if g["Id"] == entity_id and int(g["GoodsModelId"]) == gid), None)
         if not item or int(item.get("Num", 0)) < count:
+            self._last_rpc_context["status"] = -1
+            return {}
+        if gid == 16050056:
+            if count == 1:
+                return self._rpc_recruit([40, 0])
             self._last_rpc_context["status"] = -1
             return {}
 
@@ -3773,6 +3810,11 @@ class ProfileStore(EventHandlersMixin):
         elif out_type > 0 and out_num > 0:
             tuples.append((out_type, out_model, out_num * count))
 
+        if not tuples:
+            self._last_rpc_context["status"] = -1
+            return {}
+        if not self._check_hero_capacity(sum(num for rtype, _, num in tuples if rtype == 1201)):
+            return {}
         item["Num"] = int(item["Num"]) - consume
         if item["Num"] <= 0:
             self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != item["Id"]]
@@ -3809,9 +3851,6 @@ class ProfileStore(EventHandlersMixin):
         item = next(
             (g for g in self.state.get("goods", []) if g["Id"] == entity_id and int(g["GoodsModelId"]) == box_gid),
             None,
-        ) or next(
-            (g for g in self.state.get("goods", []) if int(g["GoodsModelId"]) == box_gid),
-            None,
         )
         if not item or int(item.get("Num", 0)) < count:
             self._last_rpc_context["status"] = -1
@@ -3833,18 +3872,20 @@ class ProfileStore(EventHandlersMixin):
             self._last_rpc_context["status"] = -1
             return {}
 
+        reward = (
+            int(chosen.get("outputTypeID", 0)),
+            int(chosen.get("outputModelID", 0)),
+            max(1, int(chosen.get("outputNum", 1))) * count,
+        )
+        if reward[0] == 1201 and not self._check_hero_capacity(reward[2]):
+            return {}
+
         item["Num"] = int(item["Num"]) - count
         if item["Num"] <= 0:
             self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != item["Id"]]
 
         base_res = self._grant_resources_from_tuples(
-            [
-                (
-                    int(chosen.get("outputTypeID", 0)),
-                    int(chosen.get("outputModelID", 0)),
-                    max(1, int(chosen.get("outputNum", 1))) * count,
-                )
-            ],
+            [reward],
             source=f"box_choice:{box_gid}:{selected_model_id}",
             tx_prefix=f"boxchoice:{self.profile_name}:{box_gid}:{selected_model_id}:{uuid.uuid4()}",
         )
@@ -4487,6 +4528,7 @@ class ProfileStore(EventHandlersMixin):
         )
         p["ChargeNum"] = int(p.get("ChargeNum", 0)) + base_diamonds
         self._inc_stat("recharged_diamonds", base_diamonds)
+        self._record_slot_recharge(base_diamonds)
         if is_first:
             bought.append(pid)
         self._sync_player_recover_times(p)
@@ -4611,6 +4653,7 @@ class ProfileStore(EventHandlersMixin):
         )
         p["ChargeNum"] = int(p.get("ChargeNum", 0)) + int(cfg["price"])
         self._inc_stat("recharged_diamonds", int(cfg["price"]))
+        self._record_slot_recharge(int(cfg["price"]))
         self._sync_player_recover_times(p)
         self.save()
         return self._card_list_payload()

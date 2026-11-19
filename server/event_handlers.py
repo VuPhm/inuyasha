@@ -40,6 +40,19 @@ class EventHandlersMixin(R79EventHandlersMixin):
         if event_id.startswith("timed_recruit:"):
             self._settle_timed_recruit_rank(inst)
             self._settle_timed_recruit_unclaimed_credits(inst)
+            if inst.get("progress", {}).get("pending_gold_hero"):
+                act_id = event_id.split(":")[-1]
+                cfg = self.game_data.get("timed_recruit_model", {}).get(act_id, {})
+                box_id = int(cfg.get("goldHeroModelID", 0))
+                if not box_id:
+                    return
+                self._push_reward_center_entry(
+                    source_key=f"tr_pending_ur:{inst['instance_id']}",
+                    title="Quà Chọn Thần Tướng",
+                    content="Hãy mở rương trong túi để chọn Thần Tướng đã chiêu mộ.",
+                    res_tuples=[(1606, box_id, 1)],
+                    expire_sec=0,
+                )
 
     def _active_reward_center_entries(self) -> list[dict[str, Any]]:
         now = self.now_ts()
@@ -72,7 +85,7 @@ class EventHandlersMixin(R79EventHandlersMixin):
             "Title": title,
             "Content": content,
             "SendTime": now,
-            "ExpireTime": now + max(60, int(expire_sec)),
+            "ExpireTime": 0 if expire_sec == 0 else now + max(60, int(expire_sec)),
             "ResourceList": [
                 {"ResourceTypeSub": int(rt), "ModelId": int(rm), "Count": int(rn)}
                 for rt, rm, rn in res_tuples
@@ -693,6 +706,8 @@ class EventHandlersMixin(R79EventHandlersMixin):
             return {"RecruitInfo": snap, "BaseGetGameResourceList": []}
 
         count = 10 if rtype == 30 else 1
+        if not self._check_hero_capacity(count):
+            return {}
         if rtype == 1:
             if now < int(prog.get("cooled_time", 0)):
                 self._last_rpc_context["status"] = -1
@@ -855,6 +870,8 @@ class EventHandlersMixin(R79EventHandlersMixin):
         }
         if hero_model_id not in valid_hids:
             self._last_rpc_context["status"] = -1
+            return {}
+        if not self._check_hero_capacity(1):
             return {}
 
         seq = int(prog.get("ur_grant_seq", 0)) + 1

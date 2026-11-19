@@ -1048,6 +1048,11 @@ def patch_standalone_workspace(
         ACCOUNT_SWITCH_LAYER_LUA,
     )
 
+    patch_luac_text(
+        STANDALONE_WORK / "assets" / "src" / "TimedActivity" / "TimedSlotLayer.luac",
+        [("local pos = slot:get_cur_pos(cursors[i])", "local pos = slot:get_cur_pos(i)")],
+    )
+
     # 6b. Bundle VN-adapted TW 1.4 Config/*.lua tables missing from VN 5.0.4.98 APK
     for cfg_name in (
         "XssbModel",

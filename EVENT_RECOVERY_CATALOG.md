@@ -4,6 +4,8 @@
 **Canonical Client:** `com.cmn.inuyasha v5.0.4.98` (VN Lua + Config tables in [analysis/vn/decompiled_src/](file:///Users/vup/Documents/agy/inuyasha/analysis/vn/decompiled_src))  
 **Prior Audit Reference:** [R7_3_FULL_RECOVERY_AUDIT.md](file:///Users/vup/Documents/agy/inuyasha/R7_3_FULL_RECOVERY_AUDIT.md)
 
+**Delta R7.10:** Vé Slot VN `16050027`, rút 10 lần và popup thưởng, Cây Tiền và nhận mốc trên Pixel. Quyền chọn UR chưa dùng được gửi vào Trung Tâm Thưởng khi đổi kỳ. Các khóa nhận thưởng và phát vé gắn tài khoản S1. Xem [báo cáo R7.10](R7_10_ACCEPTANCE_REPORT.md) để phân biệt bằng chứng UI, RPC và nguồn của bảng thưởng.
+
 ---
 
 ## 1. Objective for R7.5+

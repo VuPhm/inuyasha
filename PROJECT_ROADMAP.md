@@ -1,10 +1,10 @@
 # Lộ Trình Phục Hồi Dự Án — InuYasha: Seek Jade (`VN 5.0.4.98`)
 
-**Mốc hiện tại:** `checkpoint-vn-r7.9` trên `master` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
+**Mốc hiện tại:** `checkpoint-vn-r7.10` trên `master` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
 
 ---
 
-## I. Hiện trạng Baseline Đã Đạt (`R1 – R7.9`)
+## I. Hiện trạng Baseline Đã Đạt (`R1 – R7.10`)
 
 | Mốc | Trạng thái | Thành phần đã khôi phục & kiểm chứng |
 | :--- | :---: | :--- |
@@ -14,7 +14,8 @@
 | **`R7.5` (`checkpoint-vn-r7.5`)** | Đã xong | Lõi **`EventClock`** (`UTC+7`, `realtime`/`offset`/`fixed`), **`EventRuntime`**, **`EventArchive`** (`scheduled`/`rotating`/`manual`), **`RewardCenter (2400)`**, và khôi phục chơi thật **`DailyTaskInfo (3000)`**, **`Dinner (2706)`**, **`TimedRecruit (9300 - Banner 81 & 82)`**, **`Xxbz (4600)`** (`43/43` unit test PASS + nghiệm thu Pixel 3 XL trên DEV `:8082`) |
 | **`R7.6` (`checkpoint-vn-r7.6`)** | Đã xong | Mở rộng gameplay **`Zcsf (2711)`**, **`Xhzw (2303)`**, **`Limitthebounty (6900)`**, **`Treasure LvUp/StepUp (1402/1404)`**, **`Hero/Equip/Treasure Rebirth`** + sửa scale boss/chương xa (`Ch 15..80`) + **Multi-Banner `81+82` đồng thời** (`SelectBanner` tab UI) + **Reset tự động `00:00 UTC+7` & Reset thủ công có xác nhận** (`48/48` unit test PASS) |
 | **`R7.7–R7.8` (`checkpoint-vn-r7.8`)** | Ship Beta (giữ nguyên) | **Android Standalone Beta** (`com.cmn.inuyasha.revival`, `versionCode=780`, `5.0.4.98-r7.8-beta`), Python 3.11 nhúng `libinubackend.so`, nhiều tài khoản S1, Arena đấu đội hình S1, sao lưu/xuất-nhập save (`50/50` unit test PASS) |
-| **`R7.9` (`checkpoint-vn-r7.9`)** | **Mốc hiện tại** | **Khôi phục 30 sự kiện & đa quốc gia (`TW 1.4 -> VN`)**: Cây Tiền (`4432`), Cây Cầu Nguyện (`4409`), Slot (`4412`), Đoạt Bảo (`7800`), Đập Trứng (`4426`), Thần Binh (`4410`, TW 1.4 `XssbModel`), Online (`3700`), Điểm Danh Tháng (`2712`), Lì Xì (`5501`), Giờ Vàng (`6800`), Trùm Mua Sắm (`7000`), 10 Vạn KC (`8200`), Chuỗi Nạp/Tiêu/Đổi/Shop Điểm (`4401..4430`), NV Hạn Giờ (`4700`, TW 1.4), Thương Nhân (`4300`, TW 1.4), NV Tăng Cấp (`2600`, TW 1.4), Đua Top SV Mới 7 Ngày (`7900`), Giftcode (`2716`), Chia Sẻ (`2705`) + **`55/55` unit test PASS** + nâng cấp tại chỗ `780 -> 790` trên Pixel 3 XL giữ nguyên save |
+| **`R7.9` (`checkpoint-vn-r7.9`)** | Đã xong | **Khôi phục 30 sự kiện & đa quốc gia (`TW 1.4 -> VN`)**: Cây Tiền (`4432`), Cây Cầu Nguyện (`4409`), Slot (`4412`), Đoạt Bảo (`7800`), Đập Trứng (`4426`), Thần Binh (`4410`, TW 1.4 `XssbModel`), Online (`3700`), Điểm Danh Tháng (`2712`), Lì Xì (`5501`), Giờ Vàng (`6800`), Trùm Mua Sắm (`7000`), 10 Vạn KC (`8200`), Chuỗi Nạp/Tiêu/Đổi/Shop Điểm (`4401..4430`), NV Hạn Giờ (`4700`, TW 1.4), Thương Nhân (`4300`, TW 1.4), NV Tăng Cấp (`2600`, TW 1.4), Đua Top SV Mới 7 Ngày (`7900`), Giftcode (`2716`), Chia Sẻ (`2705`) + **`55/55` unit test PASS** + nâng cấp tại chỗ `780 -> 790` trên Pixel 3 XL giữ nguyên save |
+| **`R7.10` (`checkpoint-vn-r7.10`)** | **Mốc hiện tại** | Cây Tiền, Slot và rương banner đã được kiểm thử delta. Vé quay đúng ID VN, nới túi tướng, giữ quyền chọn UR khi đổi kỳ và chống trùng khóa nhận thưởng giữa TK S1. Xem [báo cáo R7.10](R7_10_ACCEPTANCE_REPORT.md). |
 
 ---
 
@@ -100,4 +101,5 @@ R7.6 triển khai theo hướng cân bằng — **không** dồn toàn bộ roun
 | :--- | :--- | :--- |
 | **R7.6** *(Đã xong)* | **`Zcsf (2711)`**, **`Xhzw (2303)`**, **`Limitthebounty (6900)`**, **`TreasureLvUp/StepUp`**, **`Hero/Equip/Treasure Rebirth`**, sửa combat chương xa (`Ch 15..80`) + **Multi-Banner `81+82` đồng thời** + **Reset `00:00 UTC+7` & Reset thủ công** + **POC Android Standalone** | Hoàn tất `checkpoint-vn-r7.6`; xem [R7_6_ACCEPTANCE_REPORT.md](file:///Users/vup/Documents/agy/inuyasha/R7_6_ACCEPTANCE_REPORT.md) |
 | **R7.7 → R7.8** *(Baseline hiện tại)* | **Android Standalone Beta (Ship Candidate `com.cmn.inuyasha.revival`)**: Nhúng CPython `3.11.17` 32-bit + `libinubackend.so` + `LocalBackendManager`/`LocalBackendService` (`127.0.0.1:18082` loopback-only) + Gộp toàn bộ `3,672` file OBB vào 1 APK duy nhất + **Đa tài khoản S1 độc lập & Đấu Arena phòng thủ giữa các TK S1** + **Sao lưu/Khôi phục SHA-256** + **Nâng cấp phiên bản giữ Save (`770 -> 780`)** | Hoàn tất `checkpoint-vn-r7.8` (`50/50` unit test PASS); xem [R7_7_R7_8_STANDALONE_BETA_REPORT.md](file:///Users/vup/Documents/agy/inuyasha/R7_7_R7_8_STANDALONE_BETA_REPORT.md) |
-| **R7.9+** *(Kế tiếp)* | **`BddInfo (2507 - Mộ Thần Binh)` + Guild cục bộ (`3400`) + Co-op NPC (`Teambattle 2319`) + Preset Sự kiện Thiếu Config** | Mở rộng dần các hoạt động phụ thông qua bản cập nhật APK giữ nguyên save |
+| **R7.11** *(Kế tiếp)* | Xếp hạng sự kiện cùng S1, bot cục bộ, kết toán đúng kỳ và hoàn thiện Event Archive | Nâng cấp standalone trên Pixel, Test the Delta |
+| **Round sau** | `BddInfo (2507 - Mộ Thần Binh)`, Guild cục bộ (`3400`), Co-op NPC (`Teambattle 2319`) | Mở rộng khi đã đối chiếu đủ cấu hình và luồng UI |

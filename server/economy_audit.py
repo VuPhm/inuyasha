@@ -69,7 +69,7 @@ class ResourceLedger:
         self.audit_log_path = audit_log_path
         self.vip_model = vip_model or {}
         self._lock = threading.RLock()
-        self._applied_keys: set[str] = set()
+        self._applied_keys: set[tuple[str, str]] = set()
         self._memory_log: list[dict[str, Any]] = []
         if self.audit_log_path and self.audit_log_path.exists():
             for line in self.audit_log_path.read_text(encoding="utf-8").splitlines():
@@ -77,8 +77,8 @@ class ResourceLedger:
                     continue
                 try:
                     rec = json.loads(line)
-                    if rec.get("idempotency_key"):
-                        self._applied_keys.add(rec["idempotency_key"])
+                    if rec.get("account_id") and rec.get("idempotency_key"):
+                        self._applied_keys.add((str(rec["account_id"]), rec["idempotency_key"]))
                 except json.JSONDecodeError:
                     continue
 
@@ -122,7 +122,7 @@ class ResourceLedger:
 
         with self._lock:
             idem_key = idempotency_key or f"auto:{uuid.uuid4()}"
-            if idem_key in self._applied_keys:
+            if (account_id, idem_key) in self._applied_keys:
                 if allow_duplicate_noop:
                     return None
                 raise DuplicateTransactionError(f"Duplicate idempotency_key: {idem_key}")
@@ -167,7 +167,7 @@ class ResourceLedger:
         """Record an item/hero/equip grant transaction in the audit ledger."""
         with self._lock:
             idem_key = idempotency_key or f"auto:{uuid.uuid4()}"
-            if idem_key in self._applied_keys:
+            if (str(account_id), idem_key) in self._applied_keys:
                 raise DuplicateTransactionError(f"Duplicate idempotency_key: {idem_key}")
             return self._record(
                 account_id=account_id,
@@ -210,7 +210,7 @@ class ResourceLedger:
             actor=actor,
             metadata=metadata,
         )
-        self._applied_keys.add(idempotency_key)
+        self._applied_keys.add((str(account_id), idempotency_key))
         entry = asdict(tx)
         self._memory_log.append(entry)
         if self.audit_log_path:

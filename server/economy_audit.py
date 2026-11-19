@@ -12,6 +12,7 @@ Provides:
 from __future__ import annotations
 
 import json
+import threading
 import time
 import uuid
 from dataclasses import asdict, dataclass
@@ -67,6 +68,7 @@ class ResourceLedger:
     def __init__(self, audit_log_path: Path | None = None, vip_model: dict[str, Any] | None = None) -> None:
         self.audit_log_path = audit_log_path
         self.vip_model = vip_model or {}
+        self._lock = threading.RLock()
         self._applied_keys: set[str] = set()
         self._memory_log: list[dict[str, Any]] = []
         if self.audit_log_path and self.audit_log_path.exists():
@@ -118,36 +120,37 @@ class ResourceLedger:
         if not account_id:
             raise ResourceTransactionError("PlayerId missing from player state")
 
-        idem_key = idempotency_key or f"auto:{uuid.uuid4()}"
-        if idem_key in self._applied_keys:
-            if allow_duplicate_noop:
-                return None
-            raise DuplicateTransactionError(f"Duplicate idempotency_key: {idem_key}")
+        with self._lock:
+            idem_key = idempotency_key or f"auto:{uuid.uuid4()}"
+            if idem_key in self._applied_keys:
+                if allow_duplicate_noop:
+                    return None
+                raise DuplicateTransactionError(f"Duplicate idempotency_key: {idem_key}")
 
-        current = int(player.get(resource_type, 0))
-        new_val = current + amount
-        if new_val < 0:
-            raise ResourceTransactionError(
-                f"Insufficient {resource_type}: balance={current}, delta={amount}"
+            current = int(player.get(resource_type, 0))
+            new_val = current + amount
+            if new_val < 0:
+                raise ResourceTransactionError(
+                    f"Insufficient {resource_type}: balance={current}, delta={amount}"
+                )
+
+            player[resource_type] = new_val
+            if resource_type == "VipEXP" and self.vip_model:
+                vip_lv = self.derive_vip_level(new_val)
+                player["Vip"] = vip_lv
+                player["VIPLv"] = vip_lv
+
+            return self._record(
+                account_id=account_id,
+                profile=profile,
+                resource_type=resource_type,
+                amount=amount,
+                balance_after=new_val,
+                source=source.strip(),
+                idempotency_key=idem_key,
+                actor=actor,
+                metadata=metadata,
             )
-
-        player[resource_type] = new_val
-        if resource_type == "VipEXP" and self.vip_model:
-            vip_lv = self.derive_vip_level(new_val)
-            player["Vip"] = vip_lv
-            player["VIPLv"] = vip_lv
-
-        return self._record(
-            account_id=account_id,
-            profile=profile,
-            resource_type=resource_type,
-            amount=amount,
-            balance_after=new_val,
-            source=source.strip(),
-            idempotency_key=idem_key,
-            actor=actor,
-            metadata=metadata,
-        )
 
     def record_grant_event(
         self,
@@ -162,20 +165,21 @@ class ResourceLedger:
         metadata: dict[str, Any] | None = None,
     ) -> ResourceTransaction | None:
         """Record an item/hero/equip grant transaction in the audit ledger."""
-        idem_key = idempotency_key or f"auto:{uuid.uuid4()}"
-        if idem_key in self._applied_keys:
-            raise DuplicateTransactionError(f"Duplicate idempotency_key: {idem_key}")
-        return self._record(
-            account_id=account_id,
-            profile=profile,
-            resource_type=resource_type,
-            amount=amount,
-            balance_after=balance_after,
-            source=source.strip(),
-            idempotency_key=idem_key,
-            actor=actor,
-            metadata=metadata,
-        )
+        with self._lock:
+            idem_key = idempotency_key or f"auto:{uuid.uuid4()}"
+            if idem_key in self._applied_keys:
+                raise DuplicateTransactionError(f"Duplicate idempotency_key: {idem_key}")
+            return self._record(
+                account_id=account_id,
+                profile=profile,
+                resource_type=resource_type,
+                amount=amount,
+                balance_after=balance_after,
+                source=source.strip(),
+                idempotency_key=idem_key,
+                actor=actor,
+                metadata=metadata,
+            )
 
     def _record(
         self,

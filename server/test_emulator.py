@@ -3107,6 +3107,127 @@ class EmulatorProtocolTest(unittest.TestCase):
                 srv2.shutdown()
                 srv2.server_close()
 
+    def test_49_r7_7_standalone_seed_and_loopback_account_routing(self) -> None:
+        """R7.7: Standalone seed initialization (TK1 fresh Lv1 + TK2 OlinaHugh preset + TK3 fresh) & loopback routing."""
+        import os
+
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            seed_dir = base / "seeds"
+            seed_dir.mkdir(parents=True, exist_ok=True)
+            data_dir = base / "standalone_saves"
+            # Prepare an OlinaHugh-like Lv 20 seed profile
+            seed_emu = GameEmulatorState(persist=False, new_player=True, default_profile="normal")
+            seed_emu.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["OlinaHugh", True], "ServerId": 1})
+            seed_prof = seed_emu.get_profile(1)
+            seed_prof.admin_prepare_account(target_lv=20, vip_lv=3)
+            seed_prof.state["player"]["PlayerId"] = "200010"
+            (seed_dir / "seed_olinahugh.json").write_text(
+                json.dumps(seed_prof.state, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            prev_env = os.environ.get("INUYASHA_SEED_DIR")
+            os.environ["INUYASHA_SEED_DIR"] = str(seed_dir)
+            try:
+                emu = GameEmulatorState(persist=True, new_player=False, default_profile="normal", data_dir=data_dir)
+                info = emu.list_s1_accounts(ensure_slots=3)
+                self.assertEqual(info["ActiveAccountId"], "acct_1")
+                self.assertEqual(len(info["Accounts"]), 3)
+                a1, a2, a3 = info["Accounts"]
+                self.assertEqual(a1["IsNewPlayer"], 1)
+                self.assertEqual(a2["PlayerName"], "OlinaHugh")
+                self.assertEqual(a2["Lv"], 20)
+                self.assertEqual(a2["IsNewPlayer"], 0)
+                self.assertEqual(a3["IsNewPlayer"], 1)
+                self.assertNotEqual(a1["PlayerId"], a2["PlayerId"])
+                self.assertNotEqual(a2["PlayerId"], a3["PlayerId"])
+            finally:
+                if prev_env is None:
+                    os.environ.pop("INUYASHA_SEED_DIR", None)
+                else:
+                    os.environ["INUYASHA_SEED_DIR"] = prev_env
+
+    def test_50_r7_8_s1_multi_account_arena_defense_and_save_backup_restore(self) -> None:
+        """R7.8: S1 multi-account isolation, shared S1 Arena defense fight & rank swap, and save export/import."""
+        with tempfile.TemporaryDirectory() as td:
+            data_dir = Path(td) / "saves"
+            emu = GameEmulatorState(persist=True, new_player=True, default_profile="normal", data_dir=data_dir)
+            emu.ensure_s1_account_slots(3)
+
+            # Account 1: create HeroAlpha and advance to Lv 22
+            r_login1 = emu.handle_rpc({"ModuleName": "Player", "MethodName": "Login", "Data": ["A", "1", 1, "x", "{}", "100001"], "ServerId": 1})
+            pid1 = r_login1["Value"]["PlayerId"]
+            emu.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["HeroAlpha", True], "ServerId": 1, "PlayerId": pid1})
+            prof1 = emu.get_profile(1, player_id=pid1)
+            prof1.admin_prepare_account(target_lv=22, vip_lv=2)
+            prof1.state["pvp"]["rank"] = 1480
+            prof1.save()
+
+            # Switch to Account 2: create HeroBeta, deploy 2nd hero & equip so its lineup beats HeroAlpha
+            sw2 = emu.switch_s1_account("acct_2")
+            self.assertEqual(sw2["ActiveAccountId"], "acct_2")
+            r_login2 = emu.handle_rpc({"ModuleName": "Player", "MethodName": "Login", "Data": ["A", "1", 1, "x", "{}", "100001"], "ServerId": 1})
+            pid2 = r_login2["Value"]["PlayerId"]
+            self.assertNotEqual(pid1, pid2)
+            self.assertEqual(r_login2["Value"]["IsNewPlayer"], 1)
+            emu.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["HeroBeta", False], "ServerId": 1, "PlayerId": pid2})
+            prof2 = emu.get_profile(1, player_id=pid2)
+            prof2.admin_prepare_account(target_lv=25, vip_lv=4)
+            prof2.admin_grant(heroes=[{"model_id": 12011004, "count": 1}, {"model_id": 12011005, "count": 1}])
+            h2_id = [h["Id"] for h in prof2.state["heroes"] if int(h["HeroModelId"]) == 12011004][0]
+            h3_id = [h["Id"] for h in prof2.state["heroes"] if int(h["HeroModelId"]) == 12011005][0]
+            emu.handle_rpc({"ModuleName": "Slot", "MethodName": "HeroCombat", "Data": [2, h2_id], "ServerId": 1, "PlayerId": pid2})
+            emu.handle_rpc({"ModuleName": "Slot", "MethodName": "HeroCombat", "Data": [3, h3_id], "ServerId": 1, "PlayerId": pid2})
+            prof2.state["pvp"]["rank"] = 1500
+            prof2.save()
+
+            # Verify Account 1 was NOT overwritten
+            self.assertEqual(prof1.state["player"]["PlayerName"], "HeroAlpha")
+            self.assertEqual(prof1.state["player"]["Lv"], 22)
+            self.assertEqual(prof2.state["player"]["PlayerName"], "HeroBeta")
+            self.assertEqual(prof2.state["player"]["Lv"], 25)
+
+            # Account 2 opens Arena -> sees Account 1 ("HeroAlpha") at rank 1480 in RankList
+            pvp_info2 = emu.handle_rpc({"ModuleName": "PVP", "MethodName": "GetPVPInfo", "Data": [], "ServerId": 1, "PlayerId": pid2})["Value"]
+            rank_list2 = pvp_info2["RankList"]
+            peer_rows = [r for r in rank_list2 if r["PlayerId"] == pid1]
+            self.assertEqual(len(peer_rows), 1)
+            self.assertEqual(peer_rows[0]["Name"], "HeroAlpha")
+            self.assertEqual(peer_rows[0]["Rank"], 1480)
+
+            # Account 2 inspects Account 1's defense formation via Slot.SlotFormations
+            f_view = emu.handle_rpc({"ModuleName": "Slot", "MethodName": "SlotFormations", "Data": [pid1], "ServerId": 1, "PlayerId": pid2})["Value"]
+            self.assertEqual(f_view["PlayerInfo"]["Name"], "HeroAlpha")
+            self.assertEqual(f_view["PlayerInfo"]["PlayerId"], pid1)
+
+            # Account 2 challenges Account 1's defense formation in Arena -> wins and swaps rank 1500 <-> 1480
+            fight_res = emu.handle_rpc({"ModuleName": "PVP", "MethodName": "PVPFight", "Data": [pid1, 1480], "ServerId": 1, "PlayerId": pid2})["Value"]
+            self.assertEqual(fight_res["IsWinFight"], 1)
+            self.assertEqual(fight_res["Rank"], 1480)
+            self.assertEqual(prof1.state["pvp"]["rank"], 1500)
+            self.assertEqual(prof2.state["pvp"]["rank"], 1480)
+
+            # Create Account 4 dynamically & export save bundle
+            created = emu.create_s1_account(label="TK 4")
+            self.assertEqual(created["ActiveAccountId"], "acct_4")
+            exp_res = emu.export_save_bundle()
+            self.assertTrue(exp_res["ok"])
+            self.assertEqual(exp_res["AccountCount"], 4)
+            self.assertTrue(Path(exp_res["BackupPath"]).exists())
+
+            # Mutate Account 1 diamond & import backup -> restores Account 1 & all 4 accounts intact
+            orig_dia1 = int(prof1.state["player"]["Diamond"])
+            prof1.state["player"]["Diamond"] = 999999
+            prof1.save()
+            with self.assertRaises(ValueError):
+                emu.import_save_bundle(confirm=False)
+            imp_res = emu.import_save_bundle(confirm=True)
+            self.assertTrue(imp_res["ok"])
+            self.assertEqual(imp_res["RestoredCount"], 4)
+            self.assertEqual(int(emu.get_profile(1, player_id=pid1).state["player"]["Diamond"]), orig_dia1)
+            self.assertTrue(Path(imp_res["SafetyBackupPath"]).exists())
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

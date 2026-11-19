@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import hmac
 import http.server
 import json
@@ -365,8 +366,12 @@ class ProfileStore(EventHandlersMixin):
         legacy_seed_path: Path | None = None,
         trace_path: Path | None = RPC_TRACE_PATH,
         clock: EventClock | None = None,
+        default_player_id: str | None = None,
+        default_arena_rank: int = 1500,
+        peer_profiles_fn: Any = None,
+        account_manager: Any = None,
     ) -> None:
-        self.profile_name = profile_name  # "normal" or "debug"
+        self.profile_name = profile_name  # "normal", "s1_acct_N", or "debug"
         self.game_data = game_data
         self.ledger = ledger
         self.state_path = state_path
@@ -374,6 +379,10 @@ class ProfileStore(EventHandlersMixin):
         self.legacy_seed_path = legacy_seed_path
         self.trace_path = trace_path
         self.clock = clock if clock is not None else EventClock()
+        self.default_player_id = default_player_id
+        self.default_arena_rank = int(default_arena_rank)
+        self.peer_profiles_fn = peer_profiles_fn
+        self.account_manager = account_manager
         self._lock = threading.RLock()
         self.state = self._load_or_init(reset=reset)
         self.event_runtime = EventRuntime(
@@ -408,10 +417,13 @@ class ProfileStore(EventHandlersMixin):
         if self.profile_name == "debug":
             state = self._create_debug_default_state()
         else:
-            next_pid = "200001"
+            next_pid = self.default_player_id or "200001"
             if reset and prev_player_id and prev_player_id.isdigit():
                 next_pid = str(max(200001, int(prev_player_id) + 1))
             state = self._create_normal_default_state(player_id=next_pid)
+            pvp_st = state.setdefault("pvp", {})
+            pvp_st["rank"] = int(self.default_arena_rank)
+            pvp_st["history_max_rank"] = int(self.default_arena_rank)
         if self.persist and self.state_path:
             self._write_json_atomic(self.state_path, state)
         return state
@@ -1872,6 +1884,11 @@ class ProfileStore(EventHandlersMixin):
             "Xhzw.ReceiveRewardForOneKey": self._rpc_xhzw_receive_reward_for_one_key,
             "Limitthebounty.GetInfo": self._rpc_limitthebounty_get_info,
             "Limitthebounty.ReceivedReward": self._rpc_limitthebounty_received_reward,
+            "Account.List": self._rpc_account_list,
+            "Account.Switch": self._rpc_account_switch,
+            "Account.Create": self._rpc_account_create,
+            "Account.Export": self._rpc_account_export,
+            "Account.Import": self._rpc_account_import,
         }
         fn = handlers.get(key)
         handled = fn is not None
@@ -2382,28 +2399,63 @@ class ProfileStore(EventHandlersMixin):
             enriched["Hero"] = dict(hero)
         return enriched
 
+    def _own_slot_formations_view(self) -> dict[str, Any]:
+        p = self.state["player"]
+        heroes_by_id = {str(h["Id"]): h for h in self.state.get("heroes", [])}
+        slot_infos = [self._enrich_slot_for_view(s, heroes_by_id) for s in self.state["slots"]]
+        return {
+            "PlayerInfo": {
+                "PlayerId": p["PlayerId"],
+                "Name": p.get("PlayerName", ""),
+                "Lv": int(p.get("Lv", 1)),
+                "StarId": int(p.get("StarId", 0)),
+                "FashionModelId": int(p.get("FashionModelId", 0)),
+                "FAP": int(p.get("FAP", 0)),
+            },
+            "SlotInfo": self.state["slots"],
+            "SlotInfos": slot_infos,
+            "MateInfos": [],
+            "SlotFormationInfo": self.state["embattle"],
+            "SkillInfos": [],
+            "CombatPet": None,
+        }
+
+    def _get_peer_s1_profiles(self) -> list[ProfileStore]:
+        if not callable(self.peer_profiles_fn):
+            return []
+        my_pid = str(self.state.get("player", {}).get("PlayerId", ""))
+        out: list[ProfileStore] = []
+        for peer in self.peer_profiles_fn(self) or []:
+            p_info = peer.state.get("player", {})
+            if str(p_info.get("PlayerId", "")) != my_pid and int(p_info.get("IsNewPlayer", 0)) == 0:
+                out.append(peer)
+        return out
+
+    def _find_peer_by_player_id(self, target_id: str) -> ProfileStore | None:
+        tid = str(target_id)
+        for peer in self._get_peer_s1_profiles():
+            if str(peer.state.get("player", {}).get("PlayerId", "")) == tid:
+                return peer
+        return None
+
+    def _find_peer_by_arena_rank(self, rank: int) -> ProfileStore | None:
+        target_r = int(rank)
+        my_r = int(self.state.get("pvp", {}).get("rank", 1500))
+        if target_r == my_r:
+            return None
+        for peer in self._get_peer_s1_profiles():
+            peer_r = int(peer.state.get("pvp", {}).get("rank", -1))
+            if peer_r == target_r:
+                return peer
+        return None
+
     def _rpc_slot_formations(self, data: Any) -> dict[str, Any]:
         target_id = str(data[0]) if isinstance(data, list) and data and data[0] else str(self.state["player"]["PlayerId"])
         if target_id == str(self.state["player"]["PlayerId"]):
-            p = self.state["player"]
-            heroes_by_id = {str(h["Id"]): h for h in self.state.get("heroes", [])}
-            slot_infos = [self._enrich_slot_for_view(s, heroes_by_id) for s in self.state["slots"]]
-            return {
-                "PlayerInfo": {
-                    "PlayerId": p["PlayerId"],
-                    "Name": p.get("PlayerName", ""),
-                    "Lv": int(p.get("Lv", 1)),
-                    "StarId": int(p.get("StarId", 0)),
-                    "FashionModelId": int(p.get("FashionModelId", 0)),
-                    "FAP": int(p.get("FAP", 0)),
-                },
-                "SlotInfo": self.state["slots"],
-                "SlotInfos": slot_infos,
-                "MateInfos": [],
-                "SlotFormationInfo": self.state["embattle"],
-                "SkillInfos": [],
-                "CombatPet": None,
-            }
+            return self._own_slot_formations_view()
+        peer = self._find_peer_by_player_id(target_id)
+        if peer is not None:
+            return peer._own_slot_formations_view()
         bot_view = self._bot_slot_formations(target_id)
         if bot_view is not None:
             return bot_view
@@ -5584,31 +5636,42 @@ class ProfileStore(EventHandlersMixin):
         }
 
     def _build_arena_rank_list(self, step: int, player_rank: int, refresh_seed: int) -> list[dict[str, Any]]:
-        ranks = self._candidate_arena_ranks(player_rank, refresh_seed)
+        ranks_set = set(self._candidate_arena_ranks(player_rank, refresh_seed))
+        for peer in self._get_peer_s1_profiles():
+            pr = int(peer.state.get("pvp", {}).get("rank", 1500))
+            if 1 <= pr <= 2000:
+                ranks_set.add(pr)
+        ranks = sorted(ranks_set)
         out: list[dict[str, Any]] = []
         for r in ranks:
             if r == player_rank:
                 out.append(self._self_arena_entry(r))
             else:
-                bot = self._arena_bot_profile(r, step)
                 allow = 1 if (r < player_rank and (r >= 4 or player_rank <= 20)) else 0
-                out.append(
-                    {
-                        "PlayerId": bot["PlayerId"],
-                        "Lv": bot["Lv"],
-                        "Name": bot["Name"],
-                        "FAP": bot["FAP"],
-                        "Rank": r,
-                        "Guild": bot["Guild"],
-                        "FashionModelId": bot["FashionModelId"],
-                        "IfAllowRank": allow,
-                        "SlotHeroModelIdList": [
-                            {"Id": int(s["SlotId"]), "HeroModelId": int(s["HeroModelId"])}
-                            for s in bot["Slots"]
-                            if int(s.get("HeroModelId", 0)) > 0
-                        ],
-                    }
-                )
+                peer = self._find_peer_by_arena_rank(r)
+                if peer is not None:
+                    entry = peer._self_arena_entry(r)
+                    entry["IfAllowRank"] = allow
+                    out.append(entry)
+                else:
+                    bot = self._arena_bot_profile(r, step)
+                    out.append(
+                        {
+                            "PlayerId": bot["PlayerId"],
+                            "Lv": bot["Lv"],
+                            "Name": bot["Name"],
+                            "FAP": bot["FAP"],
+                            "Rank": r,
+                            "Guild": bot["Guild"],
+                            "FashionModelId": bot["FashionModelId"],
+                            "IfAllowRank": allow,
+                            "SlotHeroModelIdList": [
+                                {"Id": int(s["SlotId"]), "HeroModelId": int(s["HeroModelId"])}
+                                for s in bot["Slots"]
+                                if int(s.get("HeroModelId", 0)) > 0
+                            ],
+                        }
+                    )
         out.sort(key=lambda item: int(item["Rank"]))
         return out
 
@@ -5721,18 +5784,29 @@ class ProfileStore(EventHandlersMixin):
             return {}
 
         step = self._pvp_step_for_lv(lv)
-        bot = self._arena_bot_profile(target_rank, step)
-        if bot["PlayerId"] != target_id:
-            # Resolve matching bot rank if client sent slightly stale rank
-            for probe in self._candidate_arena_ranks(int(pvp.get("rank", 1500)), int(pvp.get("refresh_seed", 1))):
-                cand = self._arena_bot_profile(probe, step)
-                if cand["PlayerId"] == target_id:
-                    bot = cand
-                    target_rank = probe
-                    break
+        peer = self._find_peer_by_player_id(target_id) or self._find_peer_by_arena_rank(target_rank)
+        if peer is not None:
+            target_rank = int(peer.state.get("pvp", {}).get("rank", target_rank))
+            target_pid = str(peer.state["player"]["PlayerId"])
+            target_name = str(peer.state["player"].get("PlayerName", "Peer"))
+            target_fap = int(peer.state["player"].get("FAP", 0))
+            enemies = peer._build_ally_fight_objs()
+        else:
+            bot = self._arena_bot_profile(target_rank, step)
+            if bot["PlayerId"] != target_id:
+                # Resolve matching bot rank if client sent slightly stale rank
+                for probe in self._candidate_arena_ranks(int(pvp.get("rank", 1500)), int(pvp.get("refresh_seed", 1))):
+                    cand = self._arena_bot_profile(probe, step)
+                    if cand["PlayerId"] == target_id:
+                        bot = cand
+                        target_rank = probe
+                        break
+            target_pid = str(bot["PlayerId"])
+            target_name = str(bot["Name"])
+            target_fap = int(bot["FAP"])
+            enemies = self._arena_bot_fight_objs(bot)
 
         allies = self._build_ally_fight_objs()
-        enemies = self._arena_bot_fight_objs(bot)
         ally_fsp = sum(int(u.get("FSP", 0)) for u in allies if u)
         enemy_fsp = sum(int(u.get("FSP", 0)) for u in enemies if u)
         fight_info = {
@@ -5741,7 +5815,7 @@ class ProfileStore(EventHandlersMixin):
                     "Heros": allies + enemies,
                     "TeamData": [
                         {"Fsp": ally_fsp, "Fap": int(p.get("FAP", 0))},
-                        {"Fsp": enemy_fsp, "Fap": int(bot["FAP"])},
+                        {"Fsp": enemy_fsp, "Fap": target_fap},
                     ],
                     "Pets": [],
                     "RandNum": random.randint(1, 999999),
@@ -5762,6 +5836,11 @@ class ProfileStore(EventHandlersMixin):
         old_max_rank = int(pvp.get("history_max_rank", old_rank))
         new_rank = min(old_rank, target_rank) if is_win else old_rank
         pvp["rank"] = new_rank
+        if is_win and peer is not None and target_rank < old_rank:
+            with peer._lock:
+                peer_pvp = peer.state.setdefault("pvp", {})
+                peer_pvp["rank"] = old_rank
+                peer.save()
 
         breakthrough_diamond = 0
         if is_win and new_rank < old_max_rank:
@@ -5805,8 +5884,8 @@ class ProfileStore(EventHandlersMixin):
         history.append(
             {
                 "Timestamp": int(time.time()),
-                "TargetPlayerId": bot["PlayerId"],
-                "TargetName": bot["Name"],
+                "TargetPlayerId": target_pid,
+                "TargetName": target_name,
                 "TargetRank": target_rank,
                 "OldRank": old_rank,
                 "NewRank": new_rank,
@@ -5843,26 +5922,64 @@ class ProfileStore(EventHandlersMixin):
                 if st == my_step and r == my_rank:
                     rank_entries.append(self._self_arena_entry(r))
                 else:
-                    bot = self._arena_bot_profile(r, st)
-                    rank_entries.append(
-                        {
-                            "PlayerId": bot["PlayerId"],
-                            "Lv": bot["Lv"],
-                            "Name": bot["Name"],
-                            "FAP": bot["FAP"],
-                            "Rank": r,
-                            "Guild": bot["Guild"],
-                            "FashionModelId": 0,
-                            "IfAllowRank": 0,
-                            "SlotHeroModelIdList": [
-                                {"Id": int(s["SlotId"]), "HeroModelId": int(s["HeroModelId"])}
-                                for s in bot["Slots"]
-                                if int(s.get("HeroModelId", 0)) > 0
-                            ],
-                        }
-                    )
+                    peer = self._find_peer_by_arena_rank(r) if st == my_step else None
+                    if peer is not None:
+                        rank_entries.append(peer._self_arena_entry(r))
+                    else:
+                        bot = self._arena_bot_profile(r, st)
+                        rank_entries.append(
+                            {
+                                "PlayerId": bot["PlayerId"],
+                                "Lv": bot["Lv"],
+                                "Name": bot["Name"],
+                                "FAP": bot["FAP"],
+                                "Rank": r,
+                                "Guild": bot["Guild"],
+                                "FashionModelId": 0,
+                                "IfAllowRank": 0,
+                                "SlotHeroModelIdList": [
+                                    {"Id": int(s["SlotId"]), "HeroModelId": int(s["HeroModelId"])}
+                                    for s in bot["Slots"]
+                                    if int(s.get("HeroModelId", 0)) > 0
+                                ],
+                            }
+                        )
             top_steps.append({"RankList": rank_entries})
         return {"TopRankList": top_steps}
+
+    def _rpc_account_list(self, _data: Any) -> dict[str, Any]:
+        if self.account_manager is None:
+            return {"ActiveAccountId": "acct_1", "Accounts": []}
+        return self.account_manager.list_s1_accounts(ensure_slots=3)
+
+    def _rpc_account_switch(self, data: Any) -> dict[str, Any]:
+        if self.account_manager is None:
+            self._last_rpc_context["status"] = -1
+            return {}
+        target_acct = str(data[0]) if isinstance(data, list) and data else "acct_1"
+        return self.account_manager.switch_s1_account(target_acct)
+
+    def _rpc_account_create(self, data: Any) -> dict[str, Any]:
+        if self.account_manager is None:
+            self._last_rpc_context["status"] = -1
+            return {}
+        label = str(data[0]) if isinstance(data, list) and data and data[0] else None
+        return self.account_manager.create_s1_account(label=label)
+
+    def _rpc_account_export(self, data: Any) -> dict[str, Any]:
+        if self.account_manager is None:
+            self._last_rpc_context["status"] = -1
+            return {}
+        dest = str(data[0]) if isinstance(data, list) and data and data[0] else None
+        return self.account_manager.export_save_bundle(dest_path=dest)
+
+    def _rpc_account_import(self, data: Any) -> dict[str, Any]:
+        if self.account_manager is None:
+            self._last_rpc_context["status"] = -1
+            return {}
+        src = str(data[0]) if isinstance(data, list) and data and data[0] else None
+        confirm = bool(data[1]) if isinstance(data, list) and len(data) > 1 else True
+        return self.account_manager.import_save_bundle(source_path=src, confirm=confirm)
 
     def _rpc_pvp_shop_buy(self, data: Any) -> dict[str, Any]:
         if not isinstance(data, list) or len(data) < 2:
@@ -7355,35 +7472,423 @@ class GameEmulatorState:
             audit_log_path=resolved_audit if persist else None,
             vip_model=self.game_data.get("vip_model", {}),
         )
-        self.profiles: dict[str, ProfileStore] = {
-            "normal": ProfileStore(
-                "normal",
-                self.game_data,
-                self.ledger,
-                state_path=resolved_normal,
-                persist=persist,
-                reset=new_player,
-                trace_path=self.trace_path if persist else None,
-                clock=self.clock,
-            ),
-            "debug": ProfileStore(
-                "debug",
-                self.game_data,
-                self.ledger,
-                state_path=resolved_debug,
-                persist=persist,
-                reset=False,
-                legacy_seed_path=LEGACY_SAVE_STATE_PATH if self.env == "stable" else None,
-                trace_path=self.trace_path if persist else None,
-                clock=self.clock,
-            ),
+        self._acct_lock = threading.RLock()
+        self.accounts_index_path = resolved_dir / "accounts_index.json"
+        self.active_account_id = "acct_1"
+        self.s1_meta: dict[str, dict[str, Any]] = {
+            "acct_1": {
+                "account_id": "acct_1",
+                "user_id": "100001",
+                "slot": 1,
+                "file": resolved_normal.name,
+                "label": "TK 1",
+                "default_player_id": "200001",
+                "default_arena_rank": 1500,
+            }
         }
+        normal_store = ProfileStore(
+            "normal",
+            self.game_data,
+            self.ledger,
+            state_path=resolved_normal,
+            persist=persist,
+            reset=new_player,
+            trace_path=self.trace_path if persist else None,
+            clock=self.clock,
+            default_player_id="200001",
+            default_arena_rank=1500,
+            peer_profiles_fn=self.get_s1_peer_profiles,
+            account_manager=self,
+        )
+        debug_store = ProfileStore(
+            "debug",
+            self.game_data,
+            self.ledger,
+            state_path=resolved_debug,
+            persist=persist,
+            reset=False,
+            legacy_seed_path=LEGACY_SAVE_STATE_PATH if self.env == "stable" else None,
+            trace_path=self.trace_path if persist else None,
+            clock=self.clock,
+            account_manager=self,
+        )
+        self.profiles: dict[str, ProfileStore] = {
+            "normal": normal_store,
+            "debug": debug_store,
+        }
+        self.s1_accounts: dict[str, ProfileStore] = {
+            "acct_1": normal_store,
+        }
+        self._init_s1_accounts()
+
+    def _init_s1_accounts(self) -> None:
+        seed_dir_env = os.environ.get("INUYASHA_SEED_DIR", "").strip()
+        if self.persist and seed_dir_env and not self.accounts_index_path.exists():
+            seed_dir = Path(seed_dir_env)
+            olina_seed = seed_dir / "seed_olinahugh.json"
+            acct2_file = self.data_dir / "s1_acct_2.json"
+            if olina_seed.exists() and not acct2_file.exists():
+                try:
+                    raw_seed = json.loads(olina_seed.read_text(encoding="utf-8"))
+                    pvp_st = raw_seed.setdefault("pvp", {})
+                    if int(pvp_st.get("rank", 1500)) == 1500:
+                        pvp_st["rank"] = 1488
+                    ProfileStore._write_json_atomic(acct2_file, raw_seed)
+                except Exception:
+                    pass
+            self.ensure_s1_account_slots(3)
+            return
+
+        if self.persist and self.accounts_index_path.exists():
+            try:
+                idx_data = json.loads(self.accounts_index_path.read_text(encoding="utf-8"))
+                for meta in idx_data.get("accounts", []):
+                    aid = str(meta.get("account_id", ""))
+                    if not aid or aid == "acct_1":
+                        if aid == "acct_1" and meta.get("label"):
+                            self.s1_meta["acct_1"]["label"] = str(meta["label"])
+                        continue
+                    self._materialize_s1_account(meta)
+                active_id = str(idx_data.get("active_account_id", "acct_1"))
+                if active_id in self.s1_accounts:
+                    self.active_account_id = active_id
+            except Exception:
+                pass
+
+    def _materialize_s1_account(self, meta: dict[str, Any], reset: bool = False) -> ProfileStore:
+        aid = str(meta["account_id"])
+        slot = int(meta.get("slot", len(self.s1_meta) + 1))
+        uid = str(meta.get("user_id", str(100000 + slot)))
+        fname = str(meta.get("file", f"s1_{aid}.json"))
+        def_pid = str(meta.get("default_player_id", str(200010 + slot)))
+        def_rank = int(meta.get("default_arena_rank", max(100, 1500 - (slot - 1) * 12)))
+        norm_meta = {
+            "account_id": aid,
+            "user_id": uid,
+            "slot": slot,
+            "file": fname,
+            "label": str(meta.get("label") or f"TK {slot}"),
+            "default_player_id": def_pid,
+            "default_arena_rank": def_rank,
+        }
+        self.s1_meta[aid] = norm_meta
+        if aid in self.s1_accounts and not reset:
+            return self.s1_accounts[aid]
+        store = ProfileStore(
+            aid,
+            self.game_data,
+            self.ledger,
+            state_path=self.data_dir / fname,
+            persist=self.persist,
+            reset=reset,
+            trace_path=self.trace_path if self.persist else None,
+            clock=self.clock,
+            default_player_id=def_pid,
+            default_arena_rank=def_rank,
+            peer_profiles_fn=self.get_s1_peer_profiles,
+            account_manager=self,
+        )
+        # Ensure distinct player_id & initial arena rank across S1 accounts
+        used_pids = {
+            str(p.state["player"]["PlayerId"])
+            for k, p in self.s1_accounts.items()
+            if k != aid
+        }
+        if str(store.state["player"]["PlayerId"]) in used_pids:
+            store.state["player"]["PlayerId"] = def_pid
+            store.save()
+        used_ranks = {
+            int(p.state.get("pvp", {}).get("rank", 1500))
+            for k, p in self.s1_accounts.items()
+            if k != aid
+        }
+        cur_rank = int(store.state.get("pvp", {}).get("rank", 1500))
+        if cur_rank in used_ranks:
+            cand_r = def_rank
+            while cand_r in used_ranks and cand_r > 50:
+                cand_r -= 7
+            store.state.setdefault("pvp", {})["rank"] = cand_r
+            store.save()
+        self.s1_accounts[aid] = store
+        self.profiles[aid] = store
+        return store
+
+    def _save_accounts_index(self) -> None:
+        if not self.persist:
+            return
+        ordered = sorted(self.s1_meta.values(), key=lambda m: int(m.get("slot", 1)))
+        payload = {
+            "schema_version": 1,
+            "active_account_id": self.active_account_id,
+            "accounts": ordered,
+            "updated_at": int(time.time()),
+        }
+        ProfileStore._write_json_atomic(self.accounts_index_path, payload)
+
+    def ensure_s1_account_slots(self, min_slots: int = 3) -> None:
+        with self._acct_lock:
+            changed = False
+            for slot in range(2, min_slots + 1):
+                aid = f"acct_{slot}"
+                if aid not in self.s1_accounts:
+                    self._materialize_s1_account(
+                        {
+                            "account_id": aid,
+                            "user_id": str(100000 + slot),
+                            "slot": slot,
+                            "file": f"s1_acct_{slot}.json",
+                            "label": f"TK {slot}",
+                            "default_player_id": str(200010 + slot),
+                            "default_arena_rank": max(100, 1500 - (slot - 1) * 12),
+                        }
+                    )
+                    changed = True
+            if changed or (self.persist and not self.accounts_index_path.exists()):
+                self._save_accounts_index()
+
+    def get_s1_peer_profiles(self, caller: ProfileStore | None = None) -> list[ProfileStore]:
+        with self._acct_lock:
+            return [p for p in self.s1_accounts.values() if p is not caller]
+
+    def _summarize_s1_account(self, aid: str) -> dict[str, Any]:
+        meta = self.s1_meta[aid]
+        store = self.s1_accounts[aid]
+        p = store.state.get("player", {})
+        is_new = int(p.get("IsNewPlayer", 1))
+        pname = str(p.get("PlayerName", "")) if is_new == 0 else ""
+        lv = int(p.get("Lv", 1))
+        vip = int(p.get("Vip", 0))
+        fap = int(p.get("FAP", 0))
+        rank = int(store.state.get("pvp", {}).get("rank", 1500))
+        slot = int(meta.get("slot", 1))
+        if is_new == 0 and pname:
+            display = f"TK{slot}: {pname} (Lv.{lv})"
+        else:
+            display = f"TK{slot}: (Tạo nhân vật mới)"
+        return {
+            "account_id": aid,
+            "user_id": str(meta["user_id"]),
+            "slot": slot,
+            "label": str(meta.get("label", f"TK {slot}")),
+            "display": display,
+            "active": aid == self.active_account_id,
+            "PlayerId": str(p.get("PlayerId", "")),
+            "PlayerName": pname,
+            "Lv": lv,
+            "Vip": vip,
+            "FAP": fap,
+            "Diamond": int(p.get("Diamond", 0)),
+            "Gold": int(p.get("Gold", 0)),
+            "IsNewPlayer": is_new,
+            "HeroCount": len(store.state.get("heroes", [])),
+            "MaxNodeId": int(store.state.get("battle", {}).get("MaxNodeId", 0)),
+            "ArenaRank": rank,
+        }
+
+    def list_s1_accounts(self, ensure_slots: int = 3) -> dict[str, Any]:
+        with self._acct_lock:
+            if ensure_slots > 1:
+                self.ensure_s1_account_slots(ensure_slots)
+            ordered_ids = [
+                m["account_id"]
+                for m in sorted(self.s1_meta.values(), key=lambda x: int(x.get("slot", 1)))
+                if m["account_id"] in self.s1_accounts
+            ]
+            summaries = [self._summarize_s1_account(aid) for aid in ordered_ids]
+            active_sum = self._summarize_s1_account(self.active_account_id)
+            backup_file = self.data_dir / "backups" / "inuyasha_save_backup_latest.json"
+            return {
+                "ok": True,
+                "ActiveAccountId": self.active_account_id,
+                "ActiveUserId": active_sum["user_id"],
+                "ActiveDisplay": active_sum["display"],
+                "Accounts": summaries,
+                "BackupAvailable": backup_file.exists(),
+                "BackupPath": str(backup_file),
+            }
+
+    def switch_s1_account(self, account_id: str) -> dict[str, Any]:
+        with self._acct_lock:
+            aid = str(account_id).strip()
+            # Also allow switching by user_id or slot number
+            if aid not in self.s1_accounts:
+                for cand_id, meta in self.s1_meta.items():
+                    if str(meta.get("user_id")) == aid or f"acct_{aid}" == cand_id:
+                        aid = cand_id
+                        break
+            if aid not in self.s1_accounts:
+                m = re.match(r"^acct_(\d+)$", aid)
+                if m:
+                    slot = int(m.group(1))
+                    if 1 <= slot <= 20:
+                        self.ensure_s1_account_slots(slot)
+            if aid not in self.s1_accounts:
+                raise ValueError(f"Unknown S1 account: {account_id}")
+            self.active_account_id = aid
+            self._save_accounts_index()
+            info = self.list_s1_accounts(ensure_slots=max(3, len(self.s1_accounts)))
+            info["SwitchedAccount"] = self._summarize_s1_account(aid)
+            return info
+
+    def create_s1_account(self, label: str | None = None) -> dict[str, Any]:
+        with self._acct_lock:
+            max_slot = max((int(m.get("slot", 1)) for m in self.s1_meta.values()), default=1)
+            next_slot = max_slot + 1
+            aid = f"acct_{next_slot}"
+            self._materialize_s1_account(
+                {
+                    "account_id": aid,
+                    "user_id": str(100000 + next_slot),
+                    "slot": next_slot,
+                    "file": f"s1_acct_{next_slot}.json",
+                    "label": label or f"TK {next_slot}",
+                    "default_player_id": str(200010 + next_slot),
+                    "default_arena_rank": max(100, 1500 - (next_slot - 1) * 12),
+                },
+                reset=True,
+            )
+            self.active_account_id = aid
+            self._save_accounts_index()
+            info = self.list_s1_accounts(ensure_slots=next_slot)
+            info["CreatedAccount"] = self._summarize_s1_account(aid)
+            return info
+
+    def export_save_bundle(self, dest_path: str | Path | None = None) -> dict[str, Any]:
+        with self._acct_lock:
+            accounts_payload: dict[str, Any] = {}
+            for aid, store in self.s1_accounts.items():
+                with store._lock:
+                    store.save()
+                    accounts_payload[aid] = {
+                        "meta": copy.deepcopy(self.s1_meta[aid]),
+                        "state": copy.deepcopy(store.state),
+                    }
+            raw_json = json.dumps(accounts_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+            checksum = hashlib.sha256(raw_json).hexdigest()
+            now_ts = int(time.time())
+            bundle = {
+                "bundle_format": "inuyasha_seek_jade_standalone_save_v1",
+                "exported_at": now_ts,
+                "exported_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                "active_account_id": self.active_account_id,
+                "clock": self.clock.to_dict(),
+                "sha256": checksum,
+                "accounts": accounts_payload,
+            }
+            backups_dir = self.data_dir / "backups"
+            backups_dir.mkdir(parents=True, exist_ok=True)
+            latest_path = backups_dir / "inuyasha_save_backup_latest.json"
+            ts_path = backups_dir / f"inuyasha_save_backup_{time.strftime('%Y%m%d_%H%M%S')}.json"
+            ProfileStore._write_json_atomic(latest_path, bundle)
+            ProfileStore._write_json_atomic(ts_path, bundle)
+            written_paths = [str(latest_path), str(ts_path)]
+            ext_export = os.environ.get("INUYASHA_PUBLIC_BACKUP_PATH", "").strip()
+            for extra in ([dest_path] if dest_path else []) + ([ext_export] if ext_export else []):
+                try:
+                    ep = Path(extra)
+                    ProfileStore._write_json_atomic(ep, bundle)
+                    written_paths.append(str(ep))
+                except OSError:
+                    pass
+            return {
+                "ok": True,
+                "BackupPath": str(latest_path),
+                "TimestampedPath": str(ts_path),
+                "WrittenPaths": written_paths,
+                "AccountCount": len(accounts_payload),
+                "SizeBytes": latest_path.stat().st_size if latest_path.exists() else len(raw_json),
+                "Sha256": checksum,
+                "ExportedAt": now_ts,
+            }
+
+    def import_save_bundle(
+        self,
+        source_path: str | Path | None = None,
+        bundle_data: dict[str, Any] | None = None,
+        confirm: bool = False,
+    ) -> dict[str, Any]:
+        if not confirm:
+            raise ValueError("Save import requires confirm=True")
+        with self._acct_lock:
+            if bundle_data is None:
+                candidates: list[Path] = []
+                if source_path:
+                    candidates.append(Path(source_path))
+                ext_export = os.environ.get("INUYASHA_PUBLIC_BACKUP_PATH", "").strip()
+                if ext_export:
+                    candidates.append(Path(ext_export))
+                candidates.append(self.data_dir / "backups" / "inuyasha_save_backup_latest.json")
+                chosen: Path | None = None
+                for c in candidates:
+                    if c.exists() and c.is_file():
+                        chosen = c
+                        break
+                if chosen is None:
+                    raise ValueError("Không tìm thấy tệp sao lưu để khôi phục")
+                bundle_data = json.loads(chosen.read_text(encoding="utf-8"))
+
+            if not isinstance(bundle_data, dict) or bundle_data.get("bundle_format") != "inuyasha_seek_jade_standalone_save_v1":
+                raise ValueError("Định dạng tệp sao lưu không hợp lệ")
+            accounts_payload = bundle_data.get("accounts")
+            if not isinstance(accounts_payload, dict) or "acct_1" not in accounts_payload:
+                raise ValueError("Tệp sao lưu thiếu dữ liệu tài khoản S1 (acct_1)")
+            expected_sha = str(bundle_data.get("sha256", ""))
+            if expected_sha:
+                actual_sha = hashlib.sha256(
+                    json.dumps(accounts_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+                ).hexdigest()
+                if actual_sha != expected_sha:
+                    raise ValueError("Checksum SHA-256 của bản sao lưu không khớp")
+
+            # Safety snapshot before overwriting any save
+            backups_dir = self.data_dir / "backups"
+            backups_dir.mkdir(parents=True, exist_ok=True)
+            safety_path = backups_dir / "pre_import_safety_backup.json"
+            self.export_save_bundle(dest_path=safety_path)
+
+            for aid, entry in accounts_payload.items():
+                meta = dict(entry.get("meta") or {})
+                state_obj = copy.deepcopy(entry.get("state") or {})
+                if aid == "acct_1":
+                    meta["account_id"] = "acct_1"
+                    meta["user_id"] = "100001"
+                    meta["slot"] = 1
+                    meta["file"] = self.s1_meta["acct_1"]["file"]
+                    store = self.s1_accounts["acct_1"]
+                    with store._lock:
+                        store.state = store._normalize_loaded_state(state_obj)
+                        store.event_runtime = EventRuntime(
+                            self.clock,
+                            build_default_event_registry(self.game_data),
+                            store.state,
+                        )
+                        store.save()
+                    self.s1_meta["acct_1"].update(meta)
+                else:
+                    meta.setdefault("account_id", aid)
+                    fname = str(meta.get("file") or f"s1_{aid}.json")
+                    meta["file"] = fname
+                    if self.persist:
+                        ProfileStore._write_json_atomic(self.data_dir / fname, state_obj)
+                    if aid in self.s1_accounts:
+                        del self.s1_accounts[aid]
+                    self._materialize_s1_account(meta)
+
+            restored_active = str(bundle_data.get("active_account_id", "acct_1"))
+            self.active_account_id = restored_active if restored_active in self.s1_accounts else "acct_1"
+            self._save_accounts_index()
+            res = self.list_s1_accounts(ensure_slots=max(3, len(self.s1_accounts)))
+            res["RestoredCount"] = len(accounts_payload)
+            res["SafetyBackupPath"] = str(safety_path)
+            return res
 
     def save_clock(self) -> None:
         if self.persist:
             ProfileStore._write_json_atomic(self.clock_path, self.clock.to_dict())
 
     def get_profile_by_name(self, name: str) -> ProfileStore:
+        if name in self.s1_accounts:
+            return self.s1_accounts[name]
         if name not in self.profiles:
             raise ValueError(f"Unknown profile: {name}")
         return self.profiles[name]
@@ -7391,22 +7896,57 @@ class GameEmulatorState:
     @property
     def state(self) -> dict[str, Any]:
         """Expose active default profile state for backward-compatible callers/tests."""
+        if self.default_profile == "normal":
+            return self.s1_accounts[self.active_account_id].state
         return self.profiles[self.default_profile].state
 
-    def get_profile(self, server_id: Any = None) -> ProfileStore:
+    def get_profile(
+        self,
+        server_id: Any = None,
+        player_id: str | None = None,
+        user_id: str | None = None,
+    ) -> ProfileStore:
         if server_id is not None:
             try:
                 sid = int(server_id)
                 if sid == 2:
                     return self.profiles["debug"]
-                if sid == 1:
-                    return self.profiles["normal"]
             except (TypeError, ValueError):
                 pass
-        return self.profiles[self.default_profile]
+        if self.default_profile == "debug" and server_id is None:
+            return self.profiles["debug"]
+
+        with self._acct_lock:
+            if player_id:
+                pid_str = str(player_id).strip()
+                for store in self.s1_accounts.values():
+                    if str(store.state.get("player", {}).get("PlayerId", "")) == pid_str:
+                        return store
+            if user_id:
+                uid_str = str(user_id).strip()
+                # If non-default UserID is explicitly sent, resolve its matching S1 account
+                if uid_str and uid_str != "100001":
+                    for aid, meta in self.s1_meta.items():
+                        if str(meta.get("user_id")) == uid_str and aid in self.s1_accounts:
+                            return self.s1_accounts[aid]
+            return self.s1_accounts.get(self.active_account_id, self.profiles["normal"])
 
     def handle_rpc(self, req: dict[str, Any]) -> dict[str, Any]:
-        profile = self.get_profile(req.get("ServerId"))
+        req_pid = str(req.get("PlayerId") or "").strip() or None
+        req_uid: str | None = None
+        if req.get("ModuleName") == "Player" and req.get("MethodName") in ("Login", "Login_ForTest"):
+            data = req.get("Data")
+            if isinstance(data, list) and len(data) >= 6 and data[5]:
+                req_uid = str(data[5]).strip()
+                # If an explicit non-100001 user_id logs in, make that account active
+                if req_uid != "100001":
+                    with self._acct_lock:
+                        for aid, meta in self.s1_meta.items():
+                            if str(meta.get("user_id")) == req_uid and aid in self.s1_accounts:
+                                self.active_account_id = aid
+                                self._save_accounts_index()
+                                break
+        profile = self.get_profile(req.get("ServerId"), player_id=req_pid, user_id=req_uid)
         return profile.handle_rpc(req)
 
 
@@ -7555,6 +8095,9 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                 {"State": 1, "UserID": "100001", "sessionId": "local-revival-session-0001", "Message": "OK"},
             )
             return
+        if path == "/account":
+            self._send_json(200, self.server.emu.list_s1_accounts(ensure_slots=3))
+            return
         if path == "/health":
             self._send_json(
                 200,
@@ -7565,6 +8108,7 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                     "data_dir": str(self.server.emu.data_dir),
                     "game": "InuYasha: Seek Jade",
                     "default_profile": self.server.emu.default_profile,
+                    "active_account_id": self.server.emu.active_account_id,
                     "profiles": {
                         name: {
                             "PlayerId": p.state["player"]["PlayerId"],
@@ -7711,6 +8255,37 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                 self._send_json(400, {"error": str(exc)})
             return
 
+        if path == "/account":
+            try:
+                payload = json.loads(body.decode("utf-8") or "{}")
+                action = str(payload.get("action") or "list")
+                if action == "list":
+                    self._send_json(200, self.server.emu.list_s1_accounts(ensure_slots=int(payload.get("ensure_slots", 3))))
+                    return
+                if action == "switch":
+                    self._send_json(200, self.server.emu.switch_s1_account(str(payload["account_id"])))
+                    return
+                if action == "create":
+                    self._send_json(200, self.server.emu.create_s1_account(label=payload.get("label")))
+                    return
+                if action == "export":
+                    self._send_json(200, self.server.emu.export_save_bundle(dest_path=payload.get("dest_path")))
+                    return
+                if action == "import":
+                    self._send_json(
+                        200,
+                        self.server.emu.import_save_bundle(
+                            source_path=payload.get("source_path"),
+                            bundle_data=payload.get("bundle_data"),
+                            confirm=bool(payload.get("confirm", False)),
+                        ),
+                    )
+                    return
+                self._send_json(400, {"ok": False, "error": f"Unknown account action: {action}"})
+            except (ValueError, KeyError, json.JSONDecodeError) as exc:
+                self._send_json(400, {"ok": False, "error": str(exc)})
+            return
+
         if path in ("/api/report.ashx", "/api/stepnew.ashx"):
             self._append_trace(f"{time.strftime('%H:%M:%S')} STEP_POST {path} body={body[:300]!r}")
             self._send_json(200, {"Code": 0, "Message": "OK"})
@@ -7726,6 +8301,8 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
             host = self.headers.get("Host") or f"127.0.0.1:{self.server.server_port}"
             host_ip = host.split(":", 1)[0]
             default_sid = 2 if self.server.emu.default_profile == "debug" else 1
+            active_sum = self.server.emu._summarize_s1_account(self.server.emu.active_account_id)
+            s1_name = f"S1 Normal ({active_sum['display']})"
             self._send_client_json(
                 200,
                 {
@@ -7734,7 +8311,7 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                         "Server": [
                             {
                                 "ServerID": 1,
-                                "ServerName": "S1 Normal Revival (Lv1)",
+                                "ServerName": s1_name,
                                 "ServerState": 1,
                                 "ServerHeat": 2 if default_sid == 1 else 1,
                                 "ServerUrl": f"http://{host}",
@@ -7756,7 +8333,7 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                         "ServerHistory": [default_sid],
                         "Resource": {},
                         "UserInfo": {
-                            "UserID": "100001",
+                            "UserID": active_sum["user_id"],
                             "PartnerId": "1001",
                             "LoginInfo": "{}",
                         },

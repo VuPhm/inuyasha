@@ -1,6 +1,6 @@
 # Lộ Trình Phục Hồi Dự Án — InuYasha: Seek Jade (`VN 5.0.4.98`)
 
-**Mốc hiện tại:** `checkpoint-vn-r7.6` trên `master` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
+**Mốc hiện tại:** `checkpoint-vn-r7.8` trên `master` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
 
 ---
 
@@ -97,5 +97,5 @@ R7.6 triển khai theo hướng cân bằng — **không** dồn toàn bộ roun
 | Giai đoạn | Trọng tâm chính | Ghi chú kỹ thuật |
 | :--- | :--- | :--- |
 | **R7.6** *(Đã xong)* | **`Zcsf (2711)`**, **`Xhzw (2303)`**, **`Limitthebounty (6900)`**, **`TreasureLvUp/StepUp`**, **`Hero/Equip/Treasure Rebirth`**, sửa combat chương xa (`Ch 15..80`) + **Multi-Banner `81+82` đồng thời** + **Reset `00:00 UTC+7` & Reset thủ công** + **POC Android Standalone** | Hoàn tất `checkpoint-vn-r7.6`; xem [R7_6_ACCEPTANCE_REPORT.md](file:///Users/vup/Documents/agy/inuyasha/R7_6_ACCEPTANCE_REPORT.md) |
-| **R7.7** *(Kế tiếp)* | **`BddInfo (2507 - Mộ Thần Binh)` + Multi-Account `ServerId = 1` + PvP Bất đồng bộ + Co-op NPC** (`MULTI_ACCOUNT_ARCHITECTURE.md`, `Teambattle 2319` dùng `TeambattlePlayerNpc`, `GGZJ 2504`, `OpenContest 7900`) | Hỗ trợ nhiều nhân vật cùng chung BXH, Lãnh địa và Tổ đội cục bộ trên 1 thiết bị |
-| **R7.8+** | **Guild cục bộ (`3400`), Preset Sự kiện Thiếu Config (`MonthSignInfo`/`OnlineReward`/`TimedMoneyTree`...), UI Event Archive & Đóng gói Android Standalone** | Phân tách rạch ròi Preset mô phỏng với Config gốc; cài đặt 1-chạm hoàn toàn offline trên Android |
+| **R7.7 → R7.8** *(Baseline hiện tại)* | **Android Standalone Beta (Ship Candidate `com.cmn.inuyasha.revival`)**: Nhúng CPython `3.11.17` 32-bit + `libinubackend.so` + `LocalBackendManager`/`LocalBackendService` (`127.0.0.1:18082` loopback-only) + Gộp toàn bộ `3,672` file OBB vào 1 APK duy nhất + **Đa tài khoản S1 độc lập & Đấu Arena phòng thủ giữa các TK S1** + **Sao lưu/Khôi phục SHA-256** + **Nâng cấp phiên bản giữ Save (`770 -> 780`)** | Hoàn tất `checkpoint-vn-r7.8` (`50/50` unit test PASS); xem [R7_7_R7_8_STANDALONE_BETA_REPORT.md](file:///Users/vup/Documents/agy/inuyasha/R7_7_R7_8_STANDALONE_BETA_REPORT.md) |
+| **R7.9+** *(Kế tiếp)* | **`BddInfo (2507 - Mộ Thần Binh)` + Guild cục bộ (`3400`) + Co-op NPC (`Teambattle 2319`) + Preset Sự kiện Thiếu Config** | Mở rộng dần các hoạt động phụ thông qua bản cập nhật APK giữ nguyên save |

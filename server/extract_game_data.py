@@ -289,6 +289,21 @@ def main() -> None:
     opencontest_project = parse_simple_lua_items(os.path.join(cfg_dir, "OpencontestProject.lua"))
     opencontest_rank = parse_3level_lua_items(os.path.join(cfg_dir, "OpencontestRankingrewards.lua"), "days")
 
+    xhzw_config = parse_singleton_lua_item(os.path.join(cfg_dir, "XhzwConfig.lua"))
+    xhzw_lip = parse_simple_lua_items(os.path.join(cfg_dir, "XhzwLipRelation.lua"))
+    xhzw_reward = parse_simple_lua_items(os.path.join(cfg_dir, "XhzwRewardModel.lua"))
+    xhzw_reward_refresh_price = parse_simple_lua_items(
+        os.path.join(cfg_dir, "XhzwRewardRefreshPriceRelation.lua")
+    )
+    treasure_lv = parse_simple_lua_items(os.path.join(cfg_dir, "TreasureLvRelation.lua"))
+    treasure_lv_active = parse_simple_lua_items(os.path.join(cfg_dir, "TreasureLvActiveRelation.lua"))
+    treasure_step = parse_simple_lua_items(os.path.join(cfg_dir, "TreasureStepRelation.lua"))
+    treasure_step_attr = parse_simple_lua_items(os.path.join(cfg_dir, "TreasureStepAttrRelation.lua"))
+    hero_rebirth = parse_nested_lua_items(os.path.join(cfg_dir, "HeroRebirthRelation.lua"))
+    equip_rebirth = parse_nested_lua_items(os.path.join(cfg_dir, "EquipRebirthRelation.lua"))
+    treasure_rebirth = parse_nested_lua_items(os.path.join(cfg_dir, "TreasureRebirthRelation.lua"))
+    reborn_lv = parse_simple_lua_items(os.path.join(cfg_dir, "RebornLvModel.lua"))
+
     data = {
         "source": source_label,
         "counts": {
@@ -355,6 +370,17 @@ def main() -> None:
             "activeranking": len(activeranking),
             "opencontest_project": len(opencontest_project),
             "opencontest_rank": sum(len(v) for v in opencontest_rank.values()),
+            "xhzw_lip": len(xhzw_lip),
+            "xhzw_reward": len(xhzw_reward),
+            "xhzw_reward_refresh_price": len(xhzw_reward_refresh_price),
+            "treasure_lv": len(treasure_lv),
+            "treasure_lv_active": len(treasure_lv_active),
+            "treasure_step": len(treasure_step),
+            "treasure_step_attr": len(treasure_step_attr),
+            "hero_rebirth": sum(len(v) for v in hero_rebirth.values()),
+            "equip_rebirth": sum(len(v) for v in equip_rebirth.values()),
+            "treasure_rebirth": sum(len(v) for v in treasure_rebirth.values()),
+            "reborn_lv": len(reborn_lv),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -445,6 +471,18 @@ def main() -> None:
         "activeranking": activeranking,
         "opencontest_project": opencontest_project,
         "opencontest_rank": opencontest_rank,
+        "xhzw_config": xhzw_config,
+        "xhzw_lip": xhzw_lip,
+        "xhzw_reward": xhzw_reward,
+        "xhzw_reward_refresh_price": xhzw_reward_refresh_price,
+        "treasure_lv": treasure_lv,
+        "treasure_lv_active": treasure_lv_active,
+        "treasure_step": treasure_step,
+        "treasure_step_attr": treasure_step_attr,
+        "hero_rebirth": hero_rebirth,
+        "equip_rebirth": equip_rebirth,
+        "treasure_rebirth": treasure_rebirth,
+        "reborn_lv": reborn_lv,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

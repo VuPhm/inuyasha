@@ -252,6 +252,24 @@ def build_default_event_registry(game_data: dict[str, Any]) -> dict[str, EventDe
             source_origin="verified_original",
             duration_sec=86400,
         ),
+        "lucky_cat": EventDefinition(
+            event_id="lucky_cat",
+            module_sub=2711,
+            name="Chiêu Tài Miêu",
+            schedule_type="daily",
+            open_lv=_parse_module_open_lv(game_data, 2711, 21),
+            source_origin="verified_original",
+            duration_sec=86400,
+        ),
+        "goddess_kiss": EventDefinition(
+            event_id="goddess_kiss",
+            module_sub=2303,
+            name="Hứa Nguyện (Goddess Kiss)",
+            schedule_type="daily",
+            open_lv=_parse_module_open_lv(game_data, 2303, 30),
+            source_origin="verified_original",
+            duration_sec=86400,
+        ),
     }
 
     # Verified TimedRecruit banners from TimedRecruitModel (9300).
@@ -322,7 +340,16 @@ class EventRuntime:
     def ensure_state(cls, state: dict[str, Any]) -> dict[str, Any]:
         rt = state.setdefault("event_runtime", {})
         ac = rt.setdefault("archive_config", {})
-        ac.setdefault("mode", "rotating")  # rotating keeps restored TimedRecruit playable out-of-the-box
+        ac.setdefault("mode", "concurrent")  # R7.6 default: concurrent multi-banner + 00:00 UTC+7 daily reset
+        ac.setdefault("r76_migrated", True)
+        ac.setdefault("concurrent_events", ["timed_recruit:81", "timed_recruit:82"])
+        ac.setdefault("period_mode", "daily_utc7")
+        ac.setdefault("period_sec", 86400)
+        ac.setdefault("period_anchor_ts", cls.DEFAULT_ROTATION_ANCHOR_TS)
+        ac.setdefault("period_overrides", {})
+        ac.setdefault("carry_over_pity", False)
+        ac.setdefault("carry_over_policy", {})
+        ac.setdefault("manual_reset_seq", {})
         ac.setdefault("rotation_pool", ["timed_recruit:81", "timed_recruit:82"])
         ac.setdefault("rotation_duration_sec", 259200)
         ac.setdefault("rotation_anchor_ts", cls.DEFAULT_ROTATION_ANCHOR_TS)
@@ -378,9 +405,9 @@ class EventRuntime:
             self._finalize_instance_to_history(prev_id, "period_rotated", now)
             ended_previous.append(instances[prev_id])
 
-        # Also check any other unarchived instances for archive-exclusive timed events
+        # Only close other same-module events in exclusive single-banner archive modes
         ev_def = self.registry.get(event_id)
-        if ev_def and ev_def.schedule_type == "timed":
+        if ev_def and ev_def.schedule_type == "timed" and mode in ("rotating", "manual"):
             for other_ev, other_iid in list(active_map.items()):
                 if other_ev != event_id and other_iid != instance_id:
                     other_def = self.registry.get(other_ev)
@@ -416,7 +443,33 @@ class EventRuntime:
 
     def _resolve_timed_window(self, event_id: str, ev_def: EventDefinition, now: int) -> tuple[str, str | None, int | None, int | None, str]:
         ac = self.archive_cfg
-        mode = str(ac.get("mode", "rotating"))
+        mode = str(ac.get("mode", "concurrent"))
+        reset_seq = int(ac.get("manual_reset_seq", {}).get(event_id, 0))
+        seq_suffix = f":r{reset_seq}" if reset_seq > 0 else ""
+
+        if mode == "concurrent":
+            active_list = [str(eid) for eid in ac.get("concurrent_events", ["timed_recruit:81", "timed_recruit:82"])]
+            if event_id not in active_list:
+                prev_iid = self.rt["active_instance_by_event"].get(event_id)
+                return STATUS_ENDED, prev_iid, None, None, "concurrent"
+            overrides = ac.get("period_overrides", {})
+            period_mode = str(ac.get("period_mode", "daily_utc7"))
+            custom_dur = overrides.get(event_id)
+            if custom_dur is None and period_mode == "fixed_sec":
+                custom_dur = ac.get("period_sec", 86400)
+            if custom_dur is not None:
+                dur = max(60, int(custom_dur))
+                anchor = int(ac.get("period_anchor_ts", self.DEFAULT_ROTATION_ANCHOR_TS))
+                slot_idx = max(0, (now - anchor) // dur) if now >= anchor else 0
+                s_ts = anchor + slot_idx * dur
+                e_ts = s_ts + dur
+                iid = f"{event_id}:p{dur}:{slot_idx}{seq_suffix}"
+            else:
+                day_str = self.clock.today_str(now)
+                s_ts = self.clock.midnight_ts(now)
+                e_ts = self.clock.next_midnight_ts(now)
+                iid = f"{event_id}:d:{day_str}{seq_suffix}"
+            return STATUS_ACTIVE, iid, s_ts, e_ts, "concurrent"
 
         if mode == "manual":
             manual = ac.get("manual_active")
@@ -530,7 +583,8 @@ class EventRuntime:
             day_str = self.clock.today_str(now)
             s_ts = self.clock.midnight_ts(now)
             e_ts = self.clock.next_midnight_ts(now)
-            iid = f"{event_id}:{day_str}"
+            reset_seq = int(self.archive_cfg.get("manual_reset_seq", {}).get(event_id, 0))
+            iid = f"{event_id}:{day_str}" + (f":r{reset_seq}" if reset_seq > 0 else "")
             self._get_or_create_instance(event_id, iid, s_ts, e_ts, mode=mode)
 
             win_idx: int | None = None
@@ -625,6 +679,16 @@ class EventRuntime:
                 out.append((ev_def, ev))
         return out
 
+    def _record_archived_settlement(self, inst: dict[str, Any], on_ended: Callable[[dict[str, Any]], None] | None) -> None:
+        iid = str(inst.get("instance_id", ""))
+        if not inst.get("settled"):
+            if on_ended is not None:
+                on_ended(inst)
+            inst["settled"] = True
+            for snap in self.rt["archive_history"]:
+                if snap.get("instance_id") == iid:
+                    snap["settled"] = True
+
     def check_and_finalize_ended_timed(self, on_ended: Callable[[dict[str, Any]], None] | None = None) -> list[dict[str, Any]]:
         """Evaluate timed events so ended/expired periods transition cleanly and settle once."""
         now = self.clock.now()
@@ -646,15 +710,82 @@ class EventRuntime:
                 if not inst.get("archived"):
                     self._finalize_instance_to_history(iid, "expired", now)
                 if not inst.get("settled"):
-                    if on_ended is not None:
-                        on_ended(inst)
-                    inst["settled"] = True
-                    # Update archived snapshot too
+                    self._record_archived_settlement(inst, on_ended)
+                    ended_now.append(inst)
+                elif any(s.get("instance_id") == iid and not s.get("settled") for s in self.rt["archive_history"]):
                     for snap in self.rt["archive_history"]:
                         if snap.get("instance_id") == iid:
                             snap["settled"] = True
-                    ended_now.append(inst)
         return ended_now
+
+    def is_carry_over_pity(self, event_id: str) -> bool:
+        ac = self.archive_cfg
+        policy = ac.get("carry_over_policy", {}).get(event_id, {})
+        if isinstance(policy, dict) and "pity" in policy:
+            return bool(policy["pity"])
+        return bool(ac.get("carry_over_pity", False))
+
+    def manual_reset_event(
+        self,
+        event_id: str,
+        *,
+        confirm: bool = False,
+        on_ended: Callable[[dict[str, Any]], None] | None = None,
+        player: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Reset ONLY the chosen event/banner after explicit confirmation, preserving history & other events."""
+        if confirm is not True:
+            raise ValueError("Manual reset requires explicit confirmation (confirm=True)")
+        ev_def = self.registry.get(event_id)
+        if not ev_def:
+            raise KeyError(f"Unknown event_id: {event_id}")
+
+        now = self.clock.now()
+        active_map = self.rt["active_instance_by_event"]
+        old_iid = active_map.get(event_id)
+        old_inst = self.rt["instances"].get(old_iid) if old_iid else None
+
+        carry_progress: dict[str, Any] | None = None
+        if old_inst is not None:
+            if not old_inst.get("archived"):
+                self._finalize_instance_to_history(str(old_iid), "manual_reset", now)
+            self._record_archived_settlement(old_inst, on_ended)
+            if self.is_carry_over_pity(event_id):
+                old_prog = old_inst.get("progress", {})
+                if "out_zi_count" in old_prog or "bless_num" in old_prog:
+                    carry_progress = {
+                        "out_zi_count": old_prog.get("out_zi_count"),
+                        "bless_num": old_prog.get("bless_num", 0),
+                        "bless_unlocked": old_prog.get("bless_unlocked", False),
+                    }
+
+        seqs = self.archive_cfg.setdefault("manual_reset_seq", {})
+        seqs[event_id] = int(seqs.get(event_id, 0)) + 1
+
+        if self.archive_cfg.get("mode") == "manual":
+            manual = self.archive_cfg.get("manual_active")
+            if isinstance(manual, dict) and manual.get("event_id") == event_id:
+                dur = int(ev_def.duration_sec or 86400)
+                seq = int(self.archive_cfg.get("manual_seq", 0)) + 1
+                self.archive_cfg["manual_seq"] = seq
+                new_iid = f"{event_id}:manual:{seq}:{now}"
+                self.archive_cfg["manual_active"] = {
+                    "event_id": event_id,
+                    "instance_id": new_iid,
+                    "start_ts": now,
+                    "end_ts": now + dur,
+                }
+
+        ev = self.evaluate(event_id, player)
+        if ev.instance_id and carry_progress:
+            new_inst = self.get_instance(ev.instance_id)
+            if new_inst is not None:
+                prog = new_inst.setdefault("progress", {})
+                if carry_progress.get("out_zi_count") is not None:
+                    prog["out_zi_count"] = carry_progress["out_zi_count"]
+                prog["bless_num"] = carry_progress.get("bless_num", 0)
+                prog["bless_unlocked"] = carry_progress.get("bless_unlocked", False)
+        return self.describe_archive(player)
 
     # ------------------------- Milestone Claim Guard -------------------------
 
@@ -701,11 +832,34 @@ class EventRuntime:
     # ------------------------- Event Archive Controls -------------------------
 
     def configure_archive_mode(self, mode: str, **kwargs: Any) -> dict[str, Any]:
-        if mode not in ("scheduled", "rotating", "manual"):
+        if mode not in ("concurrent", "scheduled", "rotating", "manual"):
             raise ValueError(f"Invalid archive mode: {mode}")
         ac = self.archive_cfg
         ac["mode"] = mode
-        if mode == "rotating":
+        if "period_mode" in kwargs and str(kwargs["period_mode"]) in ("daily_utc7", "fixed_sec"):
+            ac["period_mode"] = str(kwargs["period_mode"])
+        if "period_sec" in kwargs:
+            ac["period_sec"] = max(60, int(kwargs["period_sec"]))
+        if "period_anchor_ts" in kwargs:
+            ac["period_anchor_ts"] = int(kwargs["period_anchor_ts"])
+        if "period_overrides" in kwargs and isinstance(kwargs["period_overrides"], dict):
+            ov = ac.setdefault("period_overrides", {})
+            for eid, dur in kwargs["period_overrides"].items():
+                if dur is None:
+                    ov.pop(str(eid), None)
+                else:
+                    ov[str(eid)] = max(60, int(dur))
+        if "carry_over_pity" in kwargs:
+            ac["carry_over_pity"] = bool(kwargs["carry_over_pity"])
+        if "carry_over_policy" in kwargs and isinstance(kwargs["carry_over_policy"], dict):
+            ac.setdefault("carry_over_policy", {}).update(kwargs["carry_over_policy"])
+
+        if mode == "concurrent":
+            if "concurrent_events" in kwargs and isinstance(kwargs["concurrent_events"], list):
+                ac["concurrent_events"] = [str(x) for x in kwargs["concurrent_events"] if str(x) in self.registry]
+            elif "events" in kwargs and isinstance(kwargs["events"], list):
+                ac["concurrent_events"] = [str(x) for x in kwargs["events"] if str(x) in self.registry]
+        elif mode == "rotating":
             if "rotation_pool" in kwargs and isinstance(kwargs["rotation_pool"], list):
                 ac["rotation_pool"] = [str(x) for x in kwargs["rotation_pool"] if str(x) in self.registry]
             if "rotation_duration_sec" in kwargs:

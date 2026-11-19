@@ -38,6 +38,7 @@ class EventHandlersMixin:
         event_id = str(inst.get("event_id", ""))
         if event_id.startswith("timed_recruit:"):
             self._settle_timed_recruit_rank(inst)
+            self._settle_timed_recruit_unclaimed_credits(inst)
 
     def _active_reward_center_entries(self) -> list[dict[str, Any]]:
         now = self.now_ts()
@@ -142,24 +143,27 @@ class EventHandlersMixin:
         return {"BaseGetGameResourceList": base_res}
 
     def _build_timed_activity_open_info(self) -> dict[str, list[dict[str, Any]]]:
-        """Build Avatar.TimedActivityOpenInfo strictly from active EventRuntime timed events."""
+        """Build Avatar.TimedActivityOpenInfo with all simultaneously active EventRuntime timed events."""
         p = self.state["player"]
-        active_tr = self.event_runtime.get_active_timed_events(9300, p)
+        active_tr = sorted(
+            self.event_runtime.get_active_timed_events(9300, p),
+            key=lambda pair: int(pair[0].metadata.get("activity_id", 0)),
+        )
         if not active_tr:
             return {}
-        ev_def, ev = active_tr[0]
-        act_id = int(ev_def.metadata.get("activity_id", 81))
-        return {
-            "9300": [
+        items_9300: list[dict[str, Any]] = []
+        for idx, (ev_def, ev) in enumerate(active_tr, start=1):
+            act_id = int(ev_def.metadata.get("activity_id", 81))
+            items_9300.append(
                 {
                     "ActivityId": act_id,
                     "Name": ev_def.name,
-                    "EndDate": int(ev.end_at_ts() if hasattr(ev, "end_at_ts") else (ev.end_ts or 0)),
-                    "Xssx": 1,
+                    "EndDate": int(ev.end_ts or 0),
+                    "Xssx": idx,
                     "ExtraInfo": {"ActivityEnumId": act_id},
                 }
-            ]
-        }
+            )
+        return {"9300": items_9300}
 
     # -------------------- Activity 1a: PlayerVIT Dinner Windows (2706) --------------------
 
@@ -457,14 +461,42 @@ class EventHandlersMixin:
         self.save()
         return self._build_daily_task_payload()
 
-    # -------------------- Activity 2: TimedRecruitInfo (9300, Banners 81 & 82) --------------------
+    # -------------------- Activity 2: TimedRecruitInfo (9300, Concurrent Multi-Banner) --------------------
 
-    def _timed_recruit_active(self) -> tuple[Any, Any] | tuple[None, None]:
+    def _timed_recruit_all_active(self) -> list[tuple[Any, Any]]:
         self._sync_events()
         active = self.event_runtime.get_active_timed_events(9300, self.state["player"])
+        return sorted(active, key=lambda pair: int(pair[0].metadata.get("activity_id", 0)))
+
+    def _timed_recruit_active(self, explicit_act_id: int | None = None) -> tuple[Any, Any] | tuple[None, None]:
+        active = self._timed_recruit_all_active()
         if not active:
             return None, None
-        return active[0]
+        if explicit_act_id is not None:
+            for ev_def, ev in active:
+                if int(ev_def.metadata.get("activity_id", 0)) == int(explicit_act_id):
+                    return ev_def, ev
+            return None, None
+        selected = self.state.setdefault("selected_banners", {})
+        sel_id = selected.get("9300")
+        if sel_id is not None:
+            for ev_def, ev in active:
+                if int(ev_def.metadata.get("activity_id", 0)) == int(sel_id):
+                    return ev_def, ev
+        ev_def, ev = active[0]
+        selected["9300"] = int(ev_def.metadata.get("activity_id", 81))
+        return ev_def, ev
+
+    @staticmethod
+    def _extract_optional_banner_id(data: Any, arg_index: int) -> int | None:
+        if isinstance(data, list) and len(data) > arg_index and data[arg_index] is not None:
+            try:
+                val = int(data[arg_index])
+                if val >= 80:
+                    return val
+            except (TypeError, ValueError):
+                return None
+        return None
 
     def _ensure_timed_recruit_prog(self, act_id: int, instance_id: str) -> dict[str, Any]:
         inst = self.event_runtime.get_instance(instance_id)
@@ -544,26 +576,51 @@ class EventHandlersMixin:
             res_tuples=tuples,
         )
 
-    def _timed_recruit_red_dot(self) -> int:
-        ev_def, ev = self._timed_recruit_active()
-        if not ev_def or not ev or not ev.instance_id:
-            return 0
-        act_id = int(ev_def.metadata.get("activity_id", 81))
-        prog = self._ensure_timed_recruit_prog(act_id, ev.instance_id)
-        now = self.now_ts()
-        if now >= int(prog.get("cooled_time", 0)):
-            return 1
-        if prog.get("pending_gold_hero"):
-            return 1
-        claimed = set(int(x) for x in prog.get("draw_credit_rewards", []))
-        thresholds = sorted(
-            int(r["needCredit"])
-            for r in self.game_data.get("timed_recruit_credit", {}).values()
-            if int(r.get("activityEnumID", 0)) == act_id
+    def _settle_timed_recruit_unclaimed_credits(self, inst: dict[str, Any]) -> None:
+        """Settle reached-but-unclaimed credit chests once on banner end/reset into RewardCenter."""
+        if not bool(self.event_runtime.archive_cfg.get("settle_unclaimed_credit", True)):
+            return
+        prog = inst.get("progress", {})
+        act_id = int(prog.get("activity_enum_id") or str(inst.get("event_id", "0")).split(":")[-1] or 81)
+        my_credit = int(prog.get("my_credit", 0))
+        drawn = set(int(x) for x in prog.get("draw_credit_rewards", []))
+        iid = str(inst["instance_id"])
+        tuples: list[tuple[int, int, int]] = []
+        for row in self.game_data.get("timed_recruit_credit", {}).values():
+            if int(row.get("activityEnumID", 0)) != act_id:
+                continue
+            need_c = int(row.get("needCredit", 0))
+            if need_c > 0 and my_credit >= need_c and need_c not in drawn:
+                tuples.extend(_parse_res_tuples(str(row.get("creditReward", ""))))
+        if not tuples:
+            return
+        self._push_reward_center_entry(
+            source_key=f"tr_unclaimed_credit:{iid}",
+            title=f"Quà Mốc Tích Lũy Thần Tướng ({act_id})",
+            content=f"Kết toán rương tích lũy chưa nhận kỳ {iid}.",
+            res_tuples=tuples,
         )
-        next_t = next((t for t in thresholds if t not in claimed), None)
-        if next_t is not None and int(prog.get("my_credit", 0)) >= next_t:
-            return 1
+
+    def _timed_recruit_red_dot(self) -> int:
+        active = self._timed_recruit_all_active()
+        if not active:
+            return 0
+        now = self.now_ts()
+        credit_rows = self.game_data.get("timed_recruit_credit", {}).values()
+        for ev_def, ev in active:
+            if not ev.instance_id:
+                continue
+            act_id = int(ev_def.metadata.get("activity_id", 81))
+            prog = self._ensure_timed_recruit_prog(act_id, ev.instance_id)
+            if now >= int(prog.get("cooled_time", 0)):
+                return 1
+            if prog.get("pending_gold_hero"):
+                return 1
+            claimed = set(int(x) for x in prog.get("draw_credit_rewards", []))
+            thresholds = sorted(int(r["needCredit"]) for r in credit_rows if int(r.get("activityEnumID", 0)) == act_id)
+            next_t = next((t for t in thresholds if t not in claimed), None)
+            if next_t is not None and int(prog.get("my_credit", 0)) >= next_t:
+                return 1
         return 0
 
     def _build_timed_recruit_snapshot(self, ev_def: Any, ev: Any) -> dict[str, Any]:
@@ -572,8 +629,10 @@ class EventHandlersMixin:
         my_credit = int(prog.get("my_credit", 0))
         my_rank, rank_list = self._timed_recruit_rank_and_list(act_id, ev.instance_id, my_credit)
         draw_credits = sorted(int(x) for x in prog.get("draw_credit_rewards", []))
+        avail_banners = [int(ed.metadata.get("activity_id", 0)) for ed, _ in self._timed_recruit_all_active()]
         return {
             "ActivityEnumId": act_id,
+            "AvailableBanners": avail_banners,
             "MyRank": my_rank,
             "MyCredit": my_credit,
             "OutputHighHeroIntervalNum": int(prog.get("out_zi_count", 9)),
@@ -587,8 +646,20 @@ class EventHandlersMixin:
             "DrawGoldHero": 0 if prog.get("pending_gold_hero") else 1,
         }
 
-    def _rpc_timed_recruit_get_info(self, _data: Any) -> dict[str, Any]:
-        ev_def, ev = self._timed_recruit_active()
+    def _rpc_timed_recruit_select_banner(self, data: Any) -> dict[str, Any]:
+        act_id = int(data[0]) if isinstance(data, list) and data else 0
+        ev_def, ev = self._timed_recruit_active(explicit_act_id=act_id)
+        if not ev_def or not ev or not ev.eligible or not ev.instance_id:
+            self._last_rpc_context["status"] = -1
+            return {}
+        self.state.setdefault("selected_banners", {})["9300"] = int(act_id)
+        snap = self._build_timed_recruit_snapshot(ev_def, ev)
+        self.save()
+        return snap
+
+    def _rpc_timed_recruit_get_info(self, data: Any) -> dict[str, Any]:
+        explicit_id = self._extract_optional_banner_id(data, 0)
+        ev_def, ev = self._timed_recruit_active(explicit_act_id=explicit_id)
         if not ev_def or not ev or not ev.eligible or not ev.instance_id:
             self._last_rpc_context["status"] = -1
             return {}
@@ -624,10 +695,11 @@ class EventHandlersMixin:
 
     def _rpc_timed_recruit_pull(self, data: Any) -> dict[str, Any]:
         rtype = int(data[0]) if isinstance(data, list) and data else 1
+        explicit_id = self._extract_optional_banner_id(data, 1)
         if rtype not in (1, 3, 30):
             self._last_rpc_context["status"] = -1
             return {}
-        ev_def, ev = self._timed_recruit_active()
+        ev_def, ev = self._timed_recruit_active(explicit_act_id=explicit_id)
         if not ev_def or not ev or not ev.eligible or not ev.instance_id:
             self._last_rpc_context["status"] = -1
             return {}
@@ -729,7 +801,8 @@ class EventHandlersMixin:
 
     def _rpc_timed_recruit_draw_credit(self, data: Any) -> dict[str, Any]:
         req_credit = int(data[0]) if isinstance(data, list) and data else 0
-        ev_def, ev = self._timed_recruit_active()
+        explicit_id = self._extract_optional_banner_id(data, 1)
+        ev_def, ev = self._timed_recruit_active(explicit_act_id=explicit_id)
         if not ev_def or not ev or not ev.eligible or not ev.instance_id:
             self._last_rpc_context["status"] = -1
             return {}
@@ -784,7 +857,8 @@ class EventHandlersMixin:
 
     def _rpc_timed_recruit_draw_gold_hero(self, data: Any) -> dict[str, Any]:
         hero_model_id = int(data[0]) if isinstance(data, list) and data else 0
-        ev_def, ev = self._timed_recruit_active()
+        explicit_id = self._extract_optional_banner_id(data, 1)
+        ev_def, ev = self._timed_recruit_active(explicit_act_id=explicit_id)
         if not ev_def or not ev or not ev.eligible or not ev.instance_id:
             self._last_rpc_context["status"] = -1
             return {}
@@ -1139,3 +1213,450 @@ class EventHandlersMixin:
         payload = self._build_xxbz_payload()
         self.save()
         return payload
+
+    # -------------------- Activity 4: Zcsf / Chiêu Tài Miêu (2711) --------------------
+
+    def _zcsf_ensure_prog(self) -> tuple[Any, dict[str, Any]]:
+        ev = self.event_runtime.evaluate("lucky_cat", self.state["player"])
+        inst = self.event_runtime.get_instance(ev.instance_id) if ev.instance_id else None
+        assert inst is not None
+        prog = inst.setdefault("progress", {})
+        prog.setdefault("zc_num", 0)
+        prog.setdefault("active_sf", 1)
+        return ev, prog
+
+    def _zcsf_max_count(self) -> int:
+        vip = int(self.state.get("player", {}).get("Vip", 0))
+        vip_row = self.game_data.get("vip_model", {}).get(str(vip), {})
+        return max(1, int(vip_row.get("ZCSFMaxNum", 3)))
+
+    def _zcsf_red_dot(self) -> int:
+        lv = int(self.state.get("player", {}).get("Lv", 1))
+        ev = self.event_runtime.evaluate("lucky_cat", self.state["player"])
+        if lv < ev_open_lv(self.game_data, 2711, 21) or not ev.eligible:
+            return 0
+        _, prog = self._zcsf_ensure_prog()
+        if int(prog.get("zc_num", 0)) >= self._zcsf_max_count():
+            return 0
+        use_tbl = self.game_data.get("zcsf_use", {})
+        step_k = str(min(int(prog.get("zc_num", 0)) + 1, max((int(k) for k in use_tbl), default=1)))
+        need_dia = int(use_tbl.get(step_k, {}).get("useDiamond", 10))
+        return 1 if int(prog.get("zc_num", 0)) == 0 and int(self.state["player"].get("Diamond", 0)) >= need_dia else 0
+
+    def _build_zcsf_info_payload(self, ev: Any, prog: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "LoseEffTime": int(ev.end_ts or self.clock.next_midnight_ts()),
+            "ZcNum": int(prog.get("zc_num", 0)),
+            "ActiveSF": int(prog.get("active_sf", 1)),
+        }
+
+    def _rpc_zcsf_info(self, _data: Any) -> dict[str, Any]:
+        ev, prog = self._zcsf_ensure_prog()
+        if not ev.eligible:
+            self._last_rpc_context["status"] = -1
+            return {}
+        out = self._build_zcsf_info_payload(ev, prog)
+        self.save()
+        return out
+
+    def _rpc_zcsf_zc(self, _data: Any) -> dict[str, Any]:
+        ev, prog = self._zcsf_ensure_prog()
+        if not ev.eligible:
+            self._last_rpc_context["status"] = -1
+            return {}
+        zc_num = int(prog.get("zc_num", 0))
+        max_num = self._zcsf_max_count()
+        if zc_num >= max_num:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        use_tbl = self.game_data.get("zcsf_use", {})
+        max_use_id = max((int(k) for k in use_tbl), default=1)
+        use_row = use_tbl.get(str(min(zc_num + 1, max_use_id)), {})
+        dia_cost = int(use_row.get("useDiamond", 10))
+        if int(self.state["player"].get("Diamond", 0)) < dia_cost:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        type_tbl = self.game_data.get("zcsf_type", {})
+        cur_sf = max(1, min(6, int(prog.get("active_sf", 1))))
+        sf_row = type_tbl.get(str(cur_sf), {})
+        lv = max(1, int(self.state["player"].get("Lv", 1)))
+        gold_gain = max(1, int(sf_row.get("rawGold", 1300))) * lv
+
+        if dia_cost > 0:
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                "Diamond",
+                -dia_cost,
+                source=f"zcsf_zc:{zc_num + 1}",
+            )
+        self._grant_resources_from_tuples(
+            [(1112, 0, gold_gain)],
+            source=f"zcsf_zc:{zc_num + 1}:sf{cur_sf}",
+            tx_prefix=f"evt:{ev.instance_id}:zc:{zc_num + 1}:{uuid.uuid4()}",
+        )
+
+        # Advance Lucky Cat symbol tier probabilistically per ZcsfTypeModel.upOdds (per 10000)
+        up_odds = int(sf_row.get("upOdds", 0))
+        next_sf = cur_sf + 1 if (cur_sf < 6 and random.randint(1, 10000) <= up_odds) else cur_sf
+        prog["zc_num"] = zc_num + 1
+        prog["active_sf"] = next_sf
+        self._inc_stat("zcsf_count", 1)
+        self._record_daily_task_progress(16, 1)
+        self.save()
+        return {
+            "ZcsfInfo": self._build_zcsf_info_payload(ev, prog),
+            "GoldInfo": {"Gold": gold_gain},
+        }
+
+    # -------------------- Activity 5: Xhzw / GoddessKiss (2303, Hứa Nguyện) --------------------
+
+    def _xhzw_ensure_prog(self) -> tuple[Any, dict[str, Any]]:
+        ev = self.event_runtime.evaluate("goddess_kiss", self.state["player"])
+        inst = self.event_runtime.get_instance(ev.instance_id) if ev.instance_id else None
+        assert inst is not None
+        prog = inst.setdefault("progress", {})
+        prog.setdefault("integral", 0)
+        prog.setdefault("per_integral", 0)
+        prog.setdefault("turn_count", 0)
+        prog.setdefault("lip_num", 0)
+        prog.setdefault("alter_count", 0)
+        prog.setdefault("total_alter_count", 0)
+        prog.setdefault("reward_refresh_count", 0)
+        prog.setdefault("if_open_refresh", 1)
+        prog.setdefault("claimed_rewards", [])
+        return ev, prog
+
+    def _xhzw_build_reward_list(self, ev: Any, prog: dict[str, Any]) -> list[dict[str, Any]]:
+        integral = int(prog.get("integral", 0))
+        claimed_ids = set(int(x) for x in prog.get("claimed_rewards", []))
+        reward_tbl = self.game_data.get("xhzw_reward", {})
+        out: list[dict[str, Any]] = []
+        for rid_str in sorted(reward_tbl, key=lambda k: int(k)):
+            row = reward_tbl[rid_str]
+            rid = int(row["ID"])
+            need = int(row.get("needIntegral", 10))
+            if rid in claimed_ids or (ev.instance_id and self.event_runtime.is_claimed(ev.instance_id, f"reward:{rid}")):
+                status = 2
+            elif integral >= need:
+                status = 1
+            else:
+                status = 3
+            out.append(
+                {
+                    "RewardId": rid,
+                    "RewardResource": str(row.get("rewardResource", "")),
+                    "RewardStatus": status,
+                }
+            )
+        return out
+
+    def _xhzw_roll_lip(self, *, min_lip: int = 1, altered: bool = False) -> int:
+        lip_tbl = self.game_data.get("xhzw_lip", {})
+        choices: list[int] = []
+        weights: list[int] = []
+        for k in sorted(lip_tbl, key=lambda x: int(x)):
+            lip_id = int(k)
+            if lip_id < min_lip:
+                continue
+            row = lip_tbl[k]
+            w = int(row.get("oddsWeight", 100))
+            if altered:
+                w += int(row.get("oddsWeightExtra", 0))
+            choices.append(lip_id)
+            weights.append(max(1, w))
+        if not choices:
+            return min(6, max(1, min_lip))
+        return random.choices(choices, weights=weights, k=1)[0]
+
+    def _xhzw_lip_integral(self, lip_num: int) -> int:
+        if lip_num <= 0:
+            return 0
+        row = self.game_data.get("xhzw_lip", {}).get(str(lip_num), {})
+        return int(row.get("integral", lip_num))
+
+    def _xhzw_red_dot(self) -> int:
+        lv = int(self.state.get("player", {}).get("Lv", 1))
+        ev = self.event_runtime.evaluate("goddess_kiss", self.state["player"])
+        if lv < ev_open_lv(self.game_data, 2303, 30) or not ev.eligible:
+            return 0
+        _, prog = self._xhzw_ensure_prog()
+        max_num = int(self.game_data.get("xhzw_config", {}).get("maxNum", 5))
+        if int(prog.get("turn_count", 0)) < max_num:
+            return 1
+        rewards = self._xhzw_build_reward_list(ev, prog)
+        return 1 if any(r["RewardStatus"] == 1 for r in rewards) else 0
+
+    def _build_xhzw_payload(self, ev: Any, prog: dict[str, Any]) -> dict[str, Any]:
+        cfg = self.game_data.get("xhzw_config", {})
+        return {
+            "Integral": int(prog.get("integral", 0)),
+            "PerIntegral": int(prog.get("per_integral", 0)),
+            "TurnCount": int(prog.get("turn_count", 0)),
+            "LipNum": int(prog.get("lip_num", 0)),
+            "AlterCount": int(prog.get("alter_count", 0)),
+            "TotalAlterCount": int(prog.get("total_alter_count", 0)),
+            "MaxFreeRefreshNum": int(cfg.get("maxFreeRefreshNum", 5)),
+            "LastRefreshTime": int(ev.end_ts or self.clock.next_midnight_ts()),
+            "IfOpenRefresh": int(prog.get("if_open_refresh", 1)),
+            "RewardRefreshCount": int(prog.get("reward_refresh_count", 0)),
+            "XhzwRewardInfo": self._xhzw_build_reward_list(ev, prog),
+        }
+
+    def _rpc_xhzw_get_info(self, _data: Any) -> dict[str, Any]:
+        ev, prog = self._xhzw_ensure_prog()
+        if not ev.eligible:
+            self._last_rpc_context["status"] = -1
+            return {}
+        out = self._build_xhzw_payload(ev, prog)
+        self.save()
+        return out
+
+    def _rpc_xhzw_turn(self, _data: Any) -> dict[str, Any]:
+        ev, prog = self._xhzw_ensure_prog()
+        if not ev.eligible:
+            self._last_rpc_context["status"] = -1
+            return {}
+        max_num = int(self.game_data.get("xhzw_config", {}).get("maxNum", 5))
+        if int(prog.get("turn_count", 0)) >= max_num or int(prog.get("lip_num", 0)) > 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        lip = self._xhzw_roll_lip(min_lip=1, altered=False)
+        gain_int = self._xhzw_lip_integral(lip)
+        prog["turn_count"] = int(prog.get("turn_count", 0)) + 1
+        prog["lip_num"] = lip
+        prog["alter_count"] = 0
+        prog["integral"] = int(prog.get("integral", 0)) + gain_int
+        prog["per_integral"] = int(prog.get("per_integral", 0)) + gain_int
+        self._inc_stat("xhzw_turn_count", 1)
+        self._record_daily_task_progress(8, 1)
+        self.save()
+        return {
+            "Integral": int(prog["integral"]),
+            "PerIntegral": int(prog["per_integral"]),
+            "TurnCount": int(prog["turn_count"]),
+            "LipNum": lip,
+            "BaseGetGameResourceList": [],
+        }
+
+    def _rpc_xhzw_alter_luck(self, data: Any) -> dict[str, Any]:
+        req_type = int(data[0]) if isinstance(data, list) and data else 1
+        ev, prog = self._xhzw_ensure_prog()
+        cur_lip = int(prog.get("lip_num", 0))
+        if not ev.eligible or cur_lip <= 0 or cur_lip >= 6:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        cfg = self.game_data.get("xhzw_config", {})
+        free_max = int(cfg.get("maxFreeRefreshNum", 5))
+        total_alter = int(prog.get("total_alter_count", 0))
+        rose_tuples = _parse_res_tuples(str(cfg.get("refreshUseResource", "1605,16050012,1")))
+        rose_mid, rose_qty = (rose_tuples[0][1], rose_tuples[0][2]) if rose_tuples else (16050012, 1)
+        dia_cost = int(cfg.get("refreshUseDiamond", 20))
+
+        if req_type == 1:
+            if total_alter >= free_max:
+                self._last_rpc_context["status"] = -1
+                return {}
+        elif req_type == 2:
+            g = next((x for x in self.state.get("goods", []) if int(x["GoodsModelId"]) == rose_mid), None)
+            if not g or int(g.get("Num", 0)) < rose_qty:
+                self._last_rpc_context["status"] = -1
+                return {}
+            g["Num"] = int(g["Num"]) - rose_qty
+            self._mark_goods_changed(rose_mid)
+        elif req_type == 3:
+            if int(self.state["player"].get("Diamond", 0)) < dia_cost:
+                self._last_rpc_context["status"] = -1
+                return {}
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                "Diamond",
+                -dia_cost,
+                source="xhzw_alter_luck",
+            )
+        else:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        # Guaranteed progression: alter luck rolls >= min(6, cur_lip + 1) or higher weighted roll
+        next_lip = self._xhzw_roll_lip(min_lip=min(6, cur_lip + 1), altered=True)
+        delta_int = self._xhzw_lip_integral(next_lip) - self._xhzw_lip_integral(cur_lip)
+        prog["lip_num"] = next_lip
+        prog["alter_count"] = int(prog.get("alter_count", 0)) + 1
+        prog["total_alter_count"] = total_alter + 1
+        prog["integral"] = int(prog.get("integral", 0)) + delta_int
+        prog["per_integral"] = int(prog.get("per_integral", 0)) + delta_int
+        self.save()
+        return {
+            "Integral": int(prog["integral"]),
+            "PerIntegral": int(prog["per_integral"]),
+            "AlterCount": int(prog["alter_count"]),
+            "TotalAlterCount": int(prog["total_alter_count"]),
+            "LipNum": next_lip,
+            "BaseGetGameResourceList": [],
+        }
+
+    def _rpc_xhzw_alter_luck_lock(self, _data: Any) -> dict[str, Any]:
+        ev, prog = self._xhzw_ensure_prog()
+        if not ev.eligible or int(prog.get("lip_num", 0)) <= 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+        prog["lip_num"] = 0
+        prog["alter_count"] = 0
+        self.save()
+        return {
+            "Integral": int(prog["integral"]),
+            "PerIntegral": int(prog["per_integral"]),
+            "LipNum": 0,
+        }
+
+    def _rpc_xhzw_refresh_reward_list(self, data: Any) -> dict[str, Any]:
+        req_type = int(data[0]) if isinstance(data, list) and data else 1
+        ev, prog = self._xhzw_ensure_prog()
+        if not ev.eligible:
+            self._last_rpc_context["status"] = -1
+            return {}
+        ref_cnt = int(prog.get("reward_refresh_count", 0))
+        if req_type != 1 or ref_cnt > 0:
+            price_tbl = self.game_data.get("xhzw_reward_refresh_price", {})
+            max_k = max((int(k) for k in price_tbl), default=1)
+            need_dia = int(price_tbl.get(str(min(ref_cnt + 1, max_k)), {}).get("diamond", 100))
+            if int(self.state["player"].get("Diamond", 0)) < need_dia:
+                self._last_rpc_context["status"] = -1
+                return {}
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                "Diamond",
+                -need_dia,
+                source=f"xhzw_refresh_reward:{ref_cnt + 1}",
+            )
+        prog["reward_refresh_count"] = ref_cnt + 1
+        self.save()
+        return {
+            "RewardRefreshCount": int(prog["reward_refresh_count"]),
+            "XhzwRewardInfo": self._xhzw_build_reward_list(ev, prog),
+        }
+
+    def _rpc_xhzw_receive_reward_for_one_key(self, _data: Any) -> dict[str, Any]:
+        ev, prog = self._xhzw_ensure_prog()
+        if not ev.eligible:
+            self._last_rpc_context["status"] = -1
+            return {}
+        rewards = self._xhzw_build_reward_list(ev, prog)
+        claimable = [r for r in rewards if r["RewardStatus"] == 1]
+        if not claimable:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        all_res: list[dict[str, Any]] = []
+        claimed_ids = set(int(x) for x in prog.get("claimed_rewards", []))
+        for r in claimable:
+            rid = int(r["RewardId"])
+            tuples = _parse_res_tuples(r["RewardResource"])
+            ok, base_res, _reason = self.event_runtime.claim_milestone(
+                "goddess_kiss",
+                f"reward:{rid}",
+                lambda idem, t=tuples, r_id=rid: self._grant_resources_from_tuples(
+                    t,
+                    source=f"xhzw_reward:{r_id}",
+                    tx_prefix=idem,
+                ),
+                player=self.state["player"],
+            )
+            if ok:
+                claimed_ids.add(rid)
+                all_res.extend(base_res)
+        if not all_res and not claimed_ids:
+            self._last_rpc_context["status"] = -1
+            return {}
+        prog["claimed_rewards"] = sorted(claimed_ids)
+        self.save()
+        return {
+            "Integral": int(prog["integral"]),
+            "XhzwRewardInfo": self._xhzw_build_reward_list(ev, prog),
+            "BaseGetGameResourceList": all_res,
+        }
+
+    # -------------------- Activity 6: Limitthebounty (6900, Hạn Thời Thưởng Kim) --------------------
+
+    def _bounty_state(self) -> dict[str, Any]:
+        b = self.state.setdefault("bounty", {"claimed_ids": [], "timers": {}})
+        b.setdefault("claimed_ids", [])
+        b.setdefault("timers", {})
+        return b
+
+    def _bounty_active_row(self) -> dict[str, Any] | None:
+        lv = int(self.state.get("player", {}).get("Lv", 1))
+        bst = self._bounty_state()
+        claimed = set(int(x) for x in bst.get("claimed_ids", []))
+        rows = sorted(self.game_data.get("limitthebounty", {}).values(), key=lambda r: int(r.get("ID", 0)))
+        for row in rows:
+            bid = int(row.get("ID", 0))
+            if bid in claimed:
+                continue
+            if lv >= int(row.get("triggerLV", 12)):
+                timers = bst["timers"]
+                if str(bid) not in timers:
+                    mins = int(row.get("continuedTime", 90000))
+                    timers[str(bid)] = self.now_ts() + max(3600, mins * 60)
+                return row
+        return None
+
+    def _sync_limitthebounty_trigger_lv(self) -> int:
+        row = self._bounty_active_row()
+        trig = int(row["triggerLV"]) if row else 0
+        if "player" in self.state:
+            self.state["player"]["LimitthebountyTriggerLv"] = trig
+        return trig
+
+    def _bounty_red_dot(self) -> int:
+        row = self._bounty_active_row()
+        if not row:
+            return 0
+        lv = int(self.state.get("player", {}).get("Lv", 1))
+        return 1 if lv >= int(row.get("receiveLV", 999)) else 0
+
+    def _rpc_limitthebounty_get_info(self, _data: Any) -> dict[str, Any]:
+        row = self._bounty_active_row()
+        if not row:
+            self._sync_limitthebounty_trigger_lv()
+            return {"EndDate": 0, "TriggerLv": 0}
+        bid = str(row["ID"])
+        end_ts = int(self._bounty_state()["timers"].get(bid, self.now_ts() + 86400))
+        trig = int(row["triggerLV"])
+        self.state["player"]["LimitthebountyTriggerLv"] = trig
+        self.save()
+        return {"EndDate": end_ts, "TriggerLv": trig}
+
+    def _rpc_limitthebounty_received_reward(self, _data: Any) -> dict[str, Any]:
+        row = self._bounty_active_row()
+        lv = int(self.state.get("player", {}).get("Lv", 1))
+        if not row or lv < int(row.get("receiveLV", 999)):
+            self._last_rpc_context["status"] = -1
+            return {}
+        bid = int(row["ID"])
+        bst = self._bounty_state()
+        if bid in bst["claimed_ids"]:
+            self._last_rpc_context["status"] = -1
+            return {}
+        bst["claimed_ids"].append(bid)
+        tuples = _parse_res_tuples(str(row.get("reward", "")))
+        base_res = self._grant_resources_from_tuples(
+            tuples,
+            source=f"limitthebounty:{bid}",
+            tx_prefix=f"bounty:{self.profile_name}:{self.state['player']['PlayerId']}:{bid}",
+        )
+        self._sync_limitthebounty_trigger_lv()
+        self.save()
+        return {"BaseGetGameResourceList": base_res}
+
+
+def ev_open_lv(game_data: dict[str, Any], module_sub: int, default_lv: int = 1) -> int:
+    ms = game_data.get("module_subs", {}).get(str(module_sub), {})
+    return int(ms.get("openLv", default_lv) or default_lv)

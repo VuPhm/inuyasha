@@ -1,6 +1,6 @@
 # Lộ Trình Phục Hồi Dự Án — InuYasha: Seek Jade (`VN 5.0.4.98`)
 
-**Mốc hiện tại:** `checkpoint-vn-r7.5` (`fb686cf` trên `master`) | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
+**Mốc hiện tại:** `checkpoint-vn-r7.6` trên `master` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
 
 ---
 
@@ -11,7 +11,8 @@
 | **STABLE (`:8080`)** | Khóa an toàn | `checkpoint-vn-r6.2` (`5fed4bb`), `server/saves`, hồ sơ `OlinaHugh Lv 20` |
 | **`R7.2` (`checkpoint-vn-r7.2`)** | Đã xong | Chuẩn hóa tân thủ VN `Lv 1 -> Lv 7`, thưởng bước guide, `Shrine/Refine/Gift/MysteryShop`, tương thích `OlinaHugh` |
 | **`R7.4` (`checkpoint-vn-r7.4`)** | Đã xong | `HeroRecruit` (Tầm Mộng / Túc Mệnh / Linh Hồn, `OutZiCount`, `16060005`), nạp offline, Thẻ Tháng, VIP/`ShopGift` 0..20, `SuccessTargetInfo (4900)`, `GoodsUseForBoxChoice` (rương UR `q=18`), `LvPlan` |
-| **`R7.5` (`checkpoint-vn-r7.5`)** | **Baseline hiện tại** | Lõi **`EventClock`** (`UTC+7`, `realtime`/`offset`/`fixed`), **`EventRuntime`**, **`EventArchive`** (`scheduled`/`rotating`/`manual`), **`RewardCenter (2400)`**, và khôi phục chơi thật **`DailyTaskInfo (3000)`**, **`Dinner (2706)`**, **`TimedRecruit (9300 - Banner 81 & 82)`**, **`Xxbz (4600)`** (`43/43` unit test PASS + nghiệm thu Pixel 3 XL trên DEV `:8082`) |
+| **`R7.5` (`checkpoint-vn-r7.5`)** | Đã xong | Lõi **`EventClock`** (`UTC+7`, `realtime`/`offset`/`fixed`), **`EventRuntime`**, **`EventArchive`** (`scheduled`/`rotating`/`manual`), **`RewardCenter (2400)`**, và khôi phục chơi thật **`DailyTaskInfo (3000)`**, **`Dinner (2706)`**, **`TimedRecruit (9300 - Banner 81 & 82)`**, **`Xxbz (4600)`** (`43/43` unit test PASS + nghiệm thu Pixel 3 XL trên DEV `:8082`) |
+| **`R7.6` (`checkpoint-vn-r7.6`)** | **Baseline hiện tại** | Mở rộng gameplay **`Zcsf (2711)`**, **`Xhzw (2303)`**, **`Limitthebounty (6900)`**, **`Treasure LvUp/StepUp (1402/1404)`**, **`Hero/Equip/Treasure Rebirth`** + sửa scale boss/chương xa (`Ch 15..80`) + **Multi-Banner `81+82` đồng thời** (`SelectBanner` tab UI) + **Reset tự động `00:00 UTC+7` & Reset thủ công có xác nhận** + **POC Android Standalone trên Pixel 3 XL** (`48/48` unit test PASS + nghiệm thu trực tiếp Pixel 3 XL) |
 
 ---
 
@@ -95,6 +96,6 @@ R7.6 triển khai theo hướng cân bằng — **không** dồn toàn bộ roun
 
 | Giai đoạn | Trọng tâm chính | Ghi chú kỹ thuật |
 | :--- | :--- | :--- |
-| **R7.6** *(Kế tiếp)* | Gameplay PvE/phát triển còn thiếu (`Zcsf`, `BddInfo`, `Xhzw`, `Treasure`/`Rebirth`...) + **Multi-Banner & Multi-Event đồng thời** + **Reset `00:00 UTC+7` & Reset thủ công** + **Khảo sát Android Standalone** | Tận dụng trực tiếp `EventRuntime`/`EventClock`/`EventArchive` từ R7.5 |
-| **R7.7** | **Multi-Account `ServerId = 1` + PvP Bất đồng bộ + Co-op NPC** (`MULTI_ACCOUNT_ARCHITECTURE.md`, `Teambattle 2319` dùng `TeambattlePlayerNpc`, `GGZJ 2504`, `OpenContest 7900`) | Hỗ trợ nhiều nhân vật cùng chung BXH, Lãnh địa và Tổ đội cục bộ trên 1 thiết bị |
+| **R7.6** *(Đã xong)* | **`Zcsf (2711)`**, **`Xhzw (2303)`**, **`Limitthebounty (6900)`**, **`TreasureLvUp/StepUp`**, **`Hero/Equip/Treasure Rebirth`**, sửa combat chương xa (`Ch 15..80`) + **Multi-Banner `81+82` đồng thời** + **Reset `00:00 UTC+7` & Reset thủ công** + **POC Android Standalone** | Hoàn tất `checkpoint-vn-r7.6`; xem [R7_6_ACCEPTANCE_REPORT.md](file:///Users/vup/Documents/agy/inuyasha/R7_6_ACCEPTANCE_REPORT.md) |
+| **R7.7** *(Kế tiếp)* | **`BddInfo (2507 - Mộ Thần Binh)` + Multi-Account `ServerId = 1` + PvP Bất đồng bộ + Co-op NPC** (`MULTI_ACCOUNT_ARCHITECTURE.md`, `Teambattle 2319` dùng `TeambattlePlayerNpc`, `GGZJ 2504`, `OpenContest 7900`) | Hỗ trợ nhiều nhân vật cùng chung BXH, Lãnh địa và Tổ đội cục bộ trên 1 thiết bị |
 | **R7.8+** | **Guild cục bộ (`3400`), Preset Sự kiện Thiếu Config (`MonthSignInfo`/`OnlineReward`/`TimedMoneyTree`...), UI Event Archive & Đóng gói Android Standalone** | Phân tách rạch ròi Preset mô phỏng với Config gốc; cài đặt 1-chạm hoàn toàn offline trên Android |

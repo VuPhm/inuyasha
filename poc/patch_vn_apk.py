@@ -470,6 +470,142 @@ def patch_workspace(server_host_port: str) -> None:
             ),
         ],
     )
+    patch_luac_text(
+        PATCH_WORK / "assets" / "src" / "TimedActivity" / "LimittedTimedRecruitLayer.luac",
+        [
+            (
+                '    self:loadActivityData()\n\n'
+                '    self:createBgUI()\n'
+                '    self:initUI()',
+                '    self:loadActivityData(params)\n\n'
+                '    self:createBgUI()\n'
+                '    self:initUI()',
+            ),
+            (
+                'function LimittedTimedRecruitLayer:loadActivityData( ... )\n'
+                '     self.activityId = ModuleSub.eTimedRecruit\n\n'
+                '    local activityInfo = NetworkResData:getTimedActivityOpenInfo(true, true)\n'
+                '    local _,v = next(activityInfo[ModuleSub.eTimedRecruit] or {})',
+                'function LimittedTimedRecruitLayer:loadActivityData(params)\n'
+                '     self.activityId = ModuleSub.eTimedRecruit\n\n'
+                '    local activityInfo = NetworkResData:getTimedActivityOpenInfo(true, true)\n'
+                '    local bannerList = activityInfo[ModuleSub.eTimedRecruit] or {}\n'
+                '    self.mBannerList = bannerList\n'
+                '    local wantId = params and params.selectedActivityId or nil\n'
+                '    local v = nil\n'
+                '    if wantId then\n'
+                '        for _, item in ipairs(bannerList) do\n'
+                '            if item.ActivityId == wantId then v = item break end\n'
+                '        end\n'
+                '    end\n'
+                '    if not v then local _, firstItem = next(bannerList); v = firstItem end',
+            ),
+            (
+                '    for k,v in pairs(self.mPlayerAttrNodes) do\n'
+                '        if not tolua.isnull(v.sprite) then\n'
+                '            v.sprite:setPositionY(self.mBgSize.height - 35)\n'
+                '        end\n'
+                '    end\n'
+                'end',
+                '    for k,v in pairs(self.mPlayerAttrNodes) do\n'
+                '        if not tolua.isnull(v.sprite) then\n'
+                '            v.sprite:setPositionY(self.mBgSize.height - 35)\n'
+                '        end\n'
+                '    end\n'
+                '    if self.mBannerList and #self.mBannerList > 1 then\n'
+                '        for bIdx, bItem in ipairs(self.mBannerList) do\n'
+                '            local bId = bItem.ActivityId\n'
+                '            local isCur = (bId == self.mActivityInfo.enumId)\n'
+                '            local shortName = bId == 81 and "Sessho (81)" or (bId == 82 and "InuTaishou (82)" or ("Banner " .. tostring(bId)))\n'
+                '            local tabBtn = ui.newButton({\n'
+                '                normalImage = isCur and "c_77.png" or "c_7.png",\n'
+                '                text = shortName,\n'
+                '                scale = 0.85,\n'
+                '                position = cc.p(135 + (bIdx - 1) * 160, self.mBgSize.height - 102),\n'
+                '                clickAction = function()\n'
+                '                    if isCur then return end\n'
+                '                    self:newRequest({\n'
+                '                        module = "TimedRecruitInfo",\n'
+                '                        method = "SelectBanner",\n'
+                '                        data = {bId},\n'
+                '                        callback = function(selOk)\n'
+                '                            if not selOk then return end\n'
+                '                            local parentNode = self:getParent()\n'
+                '                            local zOrd = self:getLocalZOrder()\n'
+                '                            self:removeFromParent()\n'
+                '                            if parentNode then\n'
+                '                                local newLayer = require("TimedActivity.LimittedTimedRecruitLayer").new({selectedActivityId = bId})\n'
+                '                                parentNode.mModalLayer = newLayer\n'
+                '                                parentNode:addChild(newLayer, zOrd)\n'
+                '                            end\n'
+                '                        end,\n'
+                '                    })\n'
+                '                end,\n'
+                '            })\n'
+                '            self.mBgSprite:addChild(tabBtn, 20)\n'
+                '        end\n'
+                '    end\n'
+                'end',
+            ),
+            (
+                'function LimittedTimedRecruitLayer:requestSync()\n'
+                '    self:newRequest({\n'
+                '        module   = "TimedRecruitInfo",\n'
+                '        method   = "GetTimedRecruitInfo",\n'
+                '        callback = self.handleSync,',
+                'function LimittedTimedRecruitLayer:requestSync()\n'
+                '    self:newRequest({\n'
+                '        module   = "TimedRecruitInfo",\n'
+                '        method   = "GetTimedRecruitInfo",\n'
+                '        data     = {self.mActivityInfo and self.mActivityInfo.enumId},\n'
+                '        callback = self.handleSync,',
+            ),
+            (
+                '                self:newRequest({\n'
+                '                    module   = "TimedRecruitInfo",\n'
+                '                    method   = "Recruit",\n'
+                '                    data     = {type},\n'
+                '                    callback = self.handleRecruit,\n'
+                '                    context  = self,\n'
+                '                })\n'
+                '            end\n'
+                '        else\n'
+                '            self.lastRequestTimes = times or 1\n'
+                '            self:newRequest({\n'
+                '                module   = "TimedRecruitInfo",\n'
+                '                method   = "Recruit",\n'
+                '                data     = {type},',
+                '                self:newRequest({\n'
+                '                    module   = "TimedRecruitInfo",\n'
+                '                    method   = "Recruit",\n'
+                '                    data     = {type, self.activityEnumId or (self.mActivityInfo and self.mActivityInfo.enumId)},\n'
+                '                    callback = self.handleRecruit,\n'
+                '                    context  = self,\n'
+                '                })\n'
+                '            end\n'
+                '        else\n'
+                '            self.lastRequestTimes = times or 1\n'
+                '            self:newRequest({\n'
+                '                module   = "TimedRecruitInfo",\n'
+                '                method   = "Recruit",\n'
+                '                data     = {type, self.activityEnumId or (self.mActivityInfo and self.mActivityInfo.enumId)},',
+            ),
+            (
+                '    HttpRequest("TimedRecruitInfo", "DrawCreditReward", {credit}, function(result)',
+                '    HttpRequest("TimedRecruitInfo", "DrawCreditReward", {credit, self.activityEnumId or (self.mActivityInfo and self.mActivityInfo.enumId)}, function(result)',
+            ),
+            (
+                '    self:newRequest({\n'
+                '        module   = "TimedRecruitInfo",\n'
+                '        method   = "DrawGoldHero",\n'
+                '        data     = {heroID},',
+                '    self:newRequest({\n'
+                '        module   = "TimedRecruitInfo",\n'
+                '        method   = "DrawGoldHero",\n'
+                '        data     = {heroID, self.activityEnumId or (self.mActivityInfo and self.mActivityInfo.enumId)},',
+            ),
+        ],
+    )
 
 
 def build_and_sign(out_name: str = "com.cmn.inuyasha_revival.apk") -> Path:

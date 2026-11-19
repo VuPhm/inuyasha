@@ -197,6 +197,11 @@ DEFAULT_PLAYER_STATS: dict[str, int] = {
     "sta_pills_used": 0,
     "daydayfund_count": 0,
     "lighten_star_count": 0,
+    "zcsf_count": 0,
+    "xhzw_turn_count": 0,
+    "treasure_lvup_count": 0,
+    "treasure_step_up_count": 0,
+    "rebirth_count": 0,
 }
 
 EMPTY_ENTITY_ID = "00000000-0000-0000-0000-000000000000"
@@ -548,11 +553,33 @@ class ProfileStore(EventHandlersMixin):
         p.setdefault("FashionModelId", 0)
         data.setdefault("rewards_center", [])
         data.setdefault("xxbz_lifetime", {})
+        # Migrate pre-R7.6 single-rotation default saves to R7.6 concurrent multi-banner once
+        raw_ac = data.get("event_runtime", {}).get("archive_config", {})
+        if isinstance(raw_ac, dict) and not raw_ac.get("r76_migrated"):
+            if raw_ac.get("mode") == "rotating":
+                raw_ac["mode"] = "concurrent"
+            raw_ac["r76_migrated"] = True
         EventRuntime.ensure_state(data)
         self._sync_player_recover_times(p)
         for h in data.get("heroes", []):
             h.setdefault("WarfareColorLv", 0)
             h.setdefault("WarfareLv", 0)
+            h.setdefault("LiantiLv", 0)
+            h.setdefault("RebornStep", 0)
+            h.setdefault("Lv", 1)
+            h.setdefault("Step", 0)
+        for eq in data.get("equips", []):
+            eq.setdefault("Step", 0)
+            eq.setdefault("Lv", 0)
+        for tr in data.get("treasures", []):
+            tr.setdefault("Step", 0)
+            tr.setdefault("Lv", 0)
+            tr.setdefault("Exp", 0)
+        for slot in data.get("slots", []):
+            for skey in ("Weapon", "Helmet", "Clothes", "Necklace"):
+                s_eq = slot.get(skey)
+                if isinstance(s_eq, dict) and s_eq.get("Id"):
+                    s_eq.setdefault("Step", 0)
         for ch_st in data.get("chapters", {}).values():
             for suffix in ("A", "B", "C"):
                 val = ch_st.get(f"IfDrawBox{suffix}", False)
@@ -789,6 +816,7 @@ class ProfileStore(EventHandlersMixin):
             "Lv": lv,
             "Step": step,
             "RebornStep": 0,
+            "LiantiLv": 0,
             "WarfareColorLv": 0,
             "WarfareLv": 0,
             "HP": hp,
@@ -859,15 +887,51 @@ class ProfileStore(EventHandlersMixin):
                     set_def += int(bonus.get("DEF", 0))
 
         treasures_cfg = self.game_data.get("treasures", {})
+        tr_step_attr_tbl = self.game_data.get("treasure_step_attr", {})
+        tr_lv_active_tbl = self.game_data.get("treasure_lv_active", {})
+        tr_hp_pct_bonus = 0
+        tr_ap_pct_bonus = 0
         for tkey in ("Book", "Horse"):
             tr = slot.get(tkey)
             if tr and tr.get("TreasureModelId"):
                 tm = treasures_cfg.get(str(tr["TreasureModelId"]), {})
                 tlv = int(tr.get("Lv", 0))
+                tstep = int(tr.get("Step", 0))
                 up_r = float(tm.get("upR", 0.25))
                 scale = tlv * up_r + 1.0
                 eq_hp += int(float(tm.get("HPBase", 0)) * scale)
                 eq_ap += int(float(tm.get("APBase", 0)) * scale)
+
+                type_id = int(tm.get("typeID", 1401))
+                val_lv = int(tm.get("valueLv", 1))
+                if tstep > 0:
+                    sa_id = str(type_id * 100000 + val_lv * 1000 + tstep)
+                    sa_row = tr_step_attr_tbl.get(sa_id, {})
+                    for chunk in str(sa_row.get("totalAtrrStr", "")).split(","):
+                        parts = [s.strip() for s in chunk.split("|")]
+                        if len(parts) == 2 and parts[0].isdigit():
+                            aid, aval = int(parts[0]), int(float(parts[1]))
+                            if aid == 201:
+                                eq_hp += aval
+                            elif aid == 202:
+                                eq_ap += aval
+                            elif aid == 203:
+                                eq_def += aval
+
+                act_enum = int(tm.get("activeAttrEnumID", 0))
+                if tlv > 0 and act_enum in (401, 402):
+                    best_val = 0
+                    for row in tr_lv_active_tbl.values():
+                        if (
+                            int(row.get("typeID", 0)) == type_id
+                            and int(row.get("valueLv", 0)) == val_lv
+                            and int(row.get("Lv", 9999)) <= tlv
+                        ):
+                            best_val = max(best_val, int(row.get("totalAttrUpVal", 0)))
+                    if act_enum == 402:
+                        tr_hp_pct_bonus += best_val
+                    elif act_enum == 401:
+                        tr_ap_pct_bonus += best_val
 
         star_bonus = (
             self._get_slot_star_bonuses(int(slot.get("SlotId", 0)))
@@ -881,6 +945,10 @@ class ProfileStore(EventHandlersMixin):
         )
         hp1 = hero_hp + eq_hp + set_hp + star_bonus["HP"] + glory_bonus["HP"]
         ap1 = hero_ap + eq_ap + set_ap + star_bonus["AP"] + glory_bonus["AP"]
+        if tr_hp_pct_bonus > 0:
+            hp1 = int(hp1 * (1.0 + tr_hp_pct_bonus / 10000.0))
+        if tr_ap_pct_bonus > 0:
+            ap1 = int(ap1 * (1.0 + tr_ap_pct_bonus / 10000.0))
         def1 = hero_def + eq_def + set_def + star_bonus["DEF"] + glory_bonus["DEF"]
         fsp = int(cfg.get("FSP", 500)) + step_attr["FSP"] + eq_fsp
         fap = int(hp1 + ap1 * 5 + def1 * 5)
@@ -1310,6 +1378,7 @@ class ProfileStore(EventHandlersMixin):
                         "Id": str(uuid.uuid4()),
                         "EquipModelId": rmodel,
                         "Lv": 0,
+                        "Step": 0,
                         "Gold": 0,
                         "ExtraCount": 0,
                         "APExtra": 0,
@@ -1481,6 +1550,7 @@ class ProfileStore(EventHandlersMixin):
                         break
                 self._recalc_all_slots_and_fap()
             self._unlock_eligible_next_chapters()
+            self._sync_limitthebounty_trigger_lv()
         return old_lv, new_lv
 
     def _unlock_next_chapter_after(self, ch_id: int) -> dict[str, Any] | None:
@@ -1657,6 +1727,7 @@ class ProfileStore(EventHandlersMixin):
             "Hero.HeroLvUp": self._rpc_hero_lv_up,
             "Hero.HeroStepUp": self._rpc_hero_step_up,
             "Hero.HeroRefine": self._rpc_hero_refine,
+            "Hero.HeroRebirth": self._rpc_hero_rebirth,
             "Slot.HeroCombat": self._rpc_slot_hero_combat,
             "Slot.OneKeyEquipCombat": self._rpc_slot_one_key_equip_combat,
             "Slot.SlotFormations": self._rpc_slot_formations,
@@ -1667,7 +1738,11 @@ class ProfileStore(EventHandlersMixin):
             "Equip.OneKeyEquipLvUp": self._rpc_one_key_equip_lv_up,
             "Equip.EquipLvUpForCount": self._rpc_equip_lv_up_for_count,
             "Equip.EquipRefine": self._rpc_equip_refine,
+            "Equip.EquipRebirth": self._rpc_equip_rebirth,
             "Treasure.TreasureRefine": self._rpc_treasure_refine,
+            "Treasure.TreasureLvUp": self._rpc_treasure_lv_up,
+            "Treasure.TreasureStepUp": self._rpc_treasure_step_up,
+            "Treasure.TreasureRebirth": self._rpc_treasure_rebirth,
             "Battle.GetBattleInfo": self._rpc_get_battle_info,
             "Battle.GetNodeList": self._rpc_get_node_list,
             "Battle.AllChapterInfo": self._rpc_all_chapter_info,
@@ -1778,6 +1853,7 @@ class ProfileStore(EventHandlersMixin):
             "DailyTaskInfo.OneKeyDone": self._rpc_daily_task_one_key_done,
             "DailyTaskInfo.OneKeyAllDone": self._rpc_daily_task_one_key_all_done,
             "TimedRecruitInfo.GetTimedRecruitInfo": self._rpc_timed_recruit_get_info,
+            "TimedRecruitInfo.SelectBanner": self._rpc_timed_recruit_select_banner,
             "TimedRecruitInfo.Recruit": self._rpc_timed_recruit_pull,
             "TimedRecruitInfo.DrawCreditReward": self._rpc_timed_recruit_draw_credit,
             "TimedRecruitInfo.DrawGoldHero": self._rpc_timed_recruit_draw_gold_hero,
@@ -1786,6 +1862,16 @@ class ProfileStore(EventHandlersMixin):
             "Xxbz.Fight": self._rpc_xxbz_fight,
             "Xxbz.DrawReward": self._rpc_xxbz_draw_reward,
             "XxbzInfo.BuyCount": self._rpc_xxbz_buy_count,
+            "Zcsf.ZcsfInfo": self._rpc_zcsf_info,
+            "Zcsf.ZC": self._rpc_zcsf_zc,
+            "Xhzw.GetXhzwInfo": self._rpc_xhzw_get_info,
+            "Xhzw.XhzwTurn": self._rpc_xhzw_turn,
+            "Xhzw.XhzwAlterLuck": self._rpc_xhzw_alter_luck,
+            "Xhzw.XhzwAlterLuckLock": self._rpc_xhzw_alter_luck_lock,
+            "Xhzw.RefreshXhzwRewardList": self._rpc_xhzw_refresh_reward_list,
+            "Xhzw.ReceiveRewardForOneKey": self._rpc_xhzw_receive_reward_for_one_key,
+            "Limitthebounty.GetInfo": self._rpc_limitthebounty_get_info,
+            "Limitthebounty.ReceivedReward": self._rpc_limitthebounty_received_reward,
         }
         fn = handlers.get(key)
         handled = fn is not None
@@ -1851,6 +1937,7 @@ class ProfileStore(EventHandlersMixin):
             gl["login_days"] = min(7, int(gl.get("login_days", 0)) + 1)
             gl["last_login_date"] = today
         self._sync_player_recover_times()
+        self._sync_limitthebounty_trigger_lv()
         self.save()
         return dict(self.state["player"])
 
@@ -1890,6 +1977,7 @@ class ProfileStore(EventHandlersMixin):
     def _rpc_get_init_data(self, _data: Any) -> dict[str, Any]:
         self._sync_events()
         self._sync_player_recover_times()
+        self._sync_limitthebounty_trigger_lv()
         timed_open = self._build_timed_activity_open_info()
         module_subs = self.game_data.get("module_subs", {})
         if module_subs:
@@ -1945,13 +2033,15 @@ class ProfileStore(EventHandlersMixin):
             p.get("STANextRecoverTime"),
         )
         self._sync_player_recover_times(p)
+        old_trig = p.get("LimitthebountyTriggerLv")
+        new_trig = self._sync_limitthebounty_trigger_lv()
         after = (
             p.get("VITMaxNum"),
             p.get("VITNextRecoverTime"),
             p.get("STAMaxNum"),
             p.get("STANextRecoverTime"),
         )
-        if after != before:
+        if after != before or new_trig != old_trig:
             self.save()
         return dict(p)
 
@@ -2257,6 +2347,7 @@ class ProfileStore(EventHandlersMixin):
                     "Id": eq["Id"],
                     "EquipModelId": eq["EquipModelId"],
                     "Lv": eq["Lv"],
+                    "Step": int(eq.get("Step", 0)),
                 }
 
         treasures_by_id = {t["Id"]: t for t in self.state.get("treasures", [])}
@@ -2443,7 +2534,9 @@ class ProfileStore(EventHandlersMixin):
         for slot in self.state["slots"]:
             for key in ("Weapon", "Helmet", "Clothes", "Necklace"):
                 if slot.get(key, {}).get("Id") in equips_by_id:
-                    slot[key]["Lv"] = equips_by_id[slot[key]["Id"]]["Lv"]
+                    eq = equips_by_id[slot[key]["Id"]]
+                    slot[key]["Lv"] = eq["Lv"]
+                    slot[key]["Step"] = int(eq.get("Step", 0))
         self._recalc_all_slots_and_fap()
 
     def _rpc_one_key_equip_lv_up(self, data: Any) -> dict[str, Any]:
@@ -2560,11 +2653,13 @@ class ProfileStore(EventHandlersMixin):
             return enemies, 9500
 
         ch_id = int(node_cfg.get("chapterModelID", 11))
-        node_idx = node_id % 10
+        node_pos = 10 if (node_id % 10 == 0 and ch_id > 11) else max(1, node_id % 10)
         if ch_id == 11:
-            base_lv = max(1, (node_idx + 1) // 2)
+            base_lv = max(1, (node_pos + 1) // 2)
+        elif ch_id <= 20:
+            base_lv = max(1, (ch_id - 11) * 4 + node_pos)
         else:
-            base_lv = max(1, (ch_id - 11) * 4 + node_idx)
+            base_lv = max(1, 36 + (ch_id - 20) * 2 + node_pos)
 
         pic = str(node_cfg.get("pic", "0"))
         is_final_wave = wave_idx == total_waves
@@ -2591,7 +2686,7 @@ class ProfileStore(EventHandlersMixin):
         mob_cfg = heroes_cfg.get("12012045", heroes_cfg["12013043"])
         enemies[0] = self._hero_fight_obj(mob_cfg, lv=mob_lv, is_boss=False, hp_mult=diff_mult, ap_mult=diff_mult, def_mult=diff_mult)
         enemies[2] = self._hero_fight_obj(mob_cfg, lv=mob_lv, is_boss=False, hp_mult=diff_mult, ap_mult=diff_mult, def_mult=diff_mult)
-        if ch_id >= 12 or node_idx >= 4:
+        if ch_id >= 12 or node_pos >= 4:
             enemies[4] = self._hero_fight_obj(mob_cfg, lv=mob_lv, is_boss=False, hp_mult=diff_mult, ap_mult=diff_mult, def_mult=diff_mult)
         enemy_fap = sum(int(h["HP"] + h["AP"] * 5 + h["DEF"] * 5) for h in enemies if h)
         return enemies, enemy_fap
@@ -4485,13 +4580,16 @@ class ProfileStore(EventHandlersMixin):
             "1405": 1 if can_compose_equip else 0,
             "2203": 1 if (lv >= 18 and alive_boss) else 0,
             "2205": 1 if (lv >= 18 and claimable_box) else 0,
+            "2303": self._xhzw_red_dot(),
             "2400": 1 if len(self._active_reward_center_entries()) > 0 else 0,
             "2706": self._dinner_red_dot(),
             "2710": 1 if can_fund else 0,
+            "2711": self._zcsf_red_dot(),
             "2718": 1 if can_startwork else 0,
             "3000": self._daily_task_red_dot(),
             "4600": self._xxbz_red_dot(),
             "4900": 1 if has_success_claim else 0,
+            "6900": self._bounty_red_dot(),
             "9300": self._timed_recruit_red_dot(),
         }
 
@@ -6122,6 +6220,438 @@ class ProfileStore(EventHandlersMixin):
         self.save()
         return {"BaseGetGameResourceList": base_res}
 
+    # ------------------------- R7.6: Treasure LvUp/StepUp & Hero/Equip/Treasure Rebirth -------------------------
+
+    def _sync_slot_treasures(self) -> None:
+        treasures_by_id = {t["Id"]: t for t in self.state.get("treasures", [])}
+        for slot in self.state.get("slots", []):
+            for tkey in ("Book", "Horse"):
+                s_tr = slot.get(tkey)
+                if isinstance(s_tr, dict) and s_tr.get("Id") in treasures_by_id:
+                    tr = treasures_by_id[s_tr["Id"]]
+                    s_tr["Lv"] = int(tr.get("Lv", 0))
+                    s_tr["Step"] = int(tr.get("Step", 0))
+                    s_tr["EXP"] = int(tr.get("EXP", 0))
+        self._recalc_all_slots_and_fap()
+
+    def _treasure_lv_for_exp(self, treasure_model_id: int, exp_total: int, max_lv: int) -> int:
+        tm = self.game_data.get("treasures", {}).get(str(treasure_model_id), {})
+        exp_r = float(tm.get("expR", 1.0))
+        if exp_r <= 0:
+            return 0
+        lv_tbl = self.game_data.get("treasure_lv", {})
+        cur_lv = 0
+        for lv in range(1, max(1, max_lv) + 1):
+            row = lv_tbl.get(str(lv))
+            if not row:
+                break
+            req_exp = int(round(float(row.get("baseExpTotal", 0)) * exp_r))
+            if exp_total >= req_exp:
+                cur_lv = lv
+            else:
+                break
+        return cur_lv
+
+    def _rpc_treasure_lv_up(self, data: Any) -> dict[str, Any]:
+        """Consume unequipped fodder treasures/EXP items to strengthen target Treasure (ModuleSub 1402)."""
+        entity_id = str(data[0]) if isinstance(data, list) and len(data) >= 1 else ""
+        mat_ids = [str(x) for x in (data[1] if isinstance(data, list) and len(data) >= 2 and isinstance(data[1], list) else []) if x]
+        tr = next((t for t in self.state.get("treasures", []) if str(t.get("Id")) == entity_id), None)
+        if not tr or not mat_ids:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        treasures_cfg = self.game_data.get("treasures", {})
+        tm = treasures_cfg.get(str(tr.get("TreasureModelId", 0)), {})
+        max_lv = int(tm.get("maxLV", 100))
+        if int(tr.get("Lv", 0)) >= max_lv or float(tm.get("expR", 0)) <= 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        equipped_ids = {
+            slot[k]["Id"]
+            for slot in self.state.get("slots", [])
+            for k in ("Book", "Horse")
+            if isinstance(slot.get(k), dict) and slot[k].get("Id")
+        }
+        tr_by_id = {str(t["Id"]): t for t in self.state.get("treasures", [])}
+        consumed: list[dict[str, Any]] = []
+        gain_exp = 0
+        seen: set[str] = set()
+        for mid in mat_ids:
+            if mid in seen or mid == entity_id or mid in equipped_ids:
+                continue
+            mat = tr_by_id.get(mid)
+            if not mat:
+                continue
+            mcfg = treasures_cfg.get(str(mat.get("TreasureModelId", 0)), {})
+            base_exp = int(mcfg.get("baseExp", 1000))
+            gain_exp += max(0, base_exp + int(mat.get("EXP", 0)))
+            seen.add(mid)
+            consumed.append(mat)
+        if not consumed or gain_exp <= 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        self.state["treasures"] = [t for t in self.state.get("treasures", []) if str(t["Id"]) not in seen]
+        new_exp = int(tr.get("EXP", 0)) + gain_exp
+        tr["EXP"] = new_exp
+        tr["Lv"] = self._treasure_lv_for_exp(int(tr["TreasureModelId"]), new_exp, max_lv)
+        self._inc_stat("treasure_lvup_count", 1)
+        self._sync_slot_treasures()
+        self._last_rpc_context["slots_changed"] = True
+        self.save()
+        return {
+            "Id": tr["Id"],
+            "TreasureModelId": int(tr["TreasureModelId"]),
+            "Lv": int(tr["Lv"]),
+            "Step": int(tr.get("Step", 0)),
+            "EXP": int(tr["EXP"]),
+        }
+
+    def _rpc_treasure_step_up(self, data: Any) -> dict[str, Any]:
+        """Advance Treasure Step using duplicate card or Substitute Stone (ModuleSub 1404)."""
+        entity_id = str(data[0]) if isinstance(data, list) and len(data) >= 1 else ""
+        mat_ids = [str(x) for x in (data[1] if isinstance(data, list) and len(data) >= 2 and isinstance(data[1], list) else []) if x]
+        # VN Lua TreasureExtraLayer sends data[2]=0 with [] for Substitute Stone, or data[2]=1 with [dupe_id,...] for duplicate cards.
+        if_sub = len(mat_ids) == 0
+
+        tr = next((t for t in self.state.get("treasures", []) if str(t.get("Id")) == entity_id), None)
+        if not tr:
+            self._last_rpc_context["status"] = -1
+            return {}
+        tm = self.game_data.get("treasures", {}).get(str(tr.get("TreasureModelId", 0)), {})
+        cur_step = int(tr.get("Step", 0))
+        max_step = int(tm.get("maxStep", 0))
+        if max_step <= 0 or cur_step >= max_step:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        val_lv = int(tm.get("valueLv", 5))
+        step_row = self.game_data.get("treasure_step", {}).get(str(val_lv * 1000 + cur_step))
+        if not step_row or int(tr.get("Lv", 0)) < int(step_row.get("needLv", 0)):
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        extra_reqs = _parse_resource_str(str(step_row.get("upUseExtraStr", "")))
+        sub_reqs = _parse_resource_str(str(step_row.get("upUseBaseSubStr", "")))
+        need_cards = int(step_row.get("upUseBaseCardNum", 0))
+
+        # Validate costs before mutating state
+        cost_tuples: list[tuple[int, int, int]] = list(extra_reqs)
+        if if_sub:
+            if not bool(tm.get("ifSub", True)):
+                self._last_rpc_context["status"] = -1
+                return {}
+            cost_tuples.extend(sub_reqs)
+        for rt, rm, rn in cost_tuples:
+            if rt == 1112 and int(self.state["player"].get("Gold", 0)) < rn:
+                self._last_rpc_context["status"] = -1
+                return {}
+            if rt >= 1500:
+                g = next((x for x in self.state.get("goods", []) if int(x["GoodsModelId"]) == rm), None)
+                if not g or int(g.get("Num", 0)) < rn:
+                    self._last_rpc_context["status"] = -1
+                    return {}
+
+        dupe_consumed: list[dict[str, Any]] = []
+        if not if_sub and need_cards > 0:
+            equipped_ids = {
+                slot[k]["Id"]
+                for slot in self.state.get("slots", [])
+                for k in ("Book", "Horse")
+                if isinstance(slot.get(k), dict) and slot[k].get("Id")
+            }
+            tr_by_id = {str(t["Id"]): t for t in self.state.get("treasures", [])}
+            for mid in mat_ids:
+                if len(dupe_consumed) >= need_cards:
+                    break
+                if mid == entity_id or mid in equipped_ids or any(c["Id"] == mid for c in dupe_consumed):
+                    continue
+                cand = tr_by_id.get(mid)
+                if cand and int(cand.get("TreasureModelId", 0)) == int(tr["TreasureModelId"]):
+                    dupe_consumed.append(cand)
+            if len(dupe_consumed) < need_cards:
+                self._last_rpc_context["status"] = -1
+                return {}
+
+        used_log = tr.setdefault("step_materials_used", [])
+        for rt, rm, rn in cost_tuples:
+            if rn <= 0:
+                continue
+            if rt == 1112:
+                self.ledger.apply_player_delta(
+                    self.state["player"],
+                    self.profile_name,
+                    "Gold",
+                    -rn,
+                    source=f"treasure_step_up:{tr['TreasureModelId']}",
+                )
+                used_log.append([1112, 0, rn])
+            elif rt >= 1500:
+                for g in self.state.get("goods", []):
+                    if int(g["GoodsModelId"]) == rm:
+                        g["Num"] = max(0, int(g["Num"]) - rn)
+                        self._mark_goods_changed(rm)
+                        break
+                used_log.append([rt, rm, rn])
+
+        if dupe_consumed:
+            rm_ids = {str(c["Id"]) for c in dupe_consumed}
+            self.state["treasures"] = [t for t in self.state.get("treasures", []) if str(t["Id"]) not in rm_ids]
+            tr_type = int(tm.get("typeID", 1401))
+            used_log.append([tr_type, int(tr["TreasureModelId"]), len(dupe_consumed)])
+
+        tr["Step"] = cur_step + 1
+        self._inc_stat("treasure_step_up_count", 1)
+        self._sync_slot_treasures()
+        self._last_rpc_context["slots_changed"] = True
+        self.save()
+        return {
+            "Id": tr["Id"],
+            "TreasureModelId": int(tr["TreasureModelId"]),
+            "Lv": int(tr.get("Lv", 0)),
+            "Step": int(tr["Step"]),
+            "EXP": int(tr.get("EXP", 0)),
+        }
+
+    def _rebirth_target_id(self, data: Any) -> str:
+        if isinstance(data, list) and data:
+            first = data[0]
+            if isinstance(first, list) and first:
+                return str(first[0])
+            return str(first)
+        return ""
+
+    def _rpc_hero_rebirth(self, data: Any) -> dict[str, Any]:
+        """Reset non-deployed upgraded Hero back to Lv 1 Step 0 and refund HeroEXP, Gold, Stones, and dupes."""
+        hero_id = self._rebirth_target_id(data)
+        deployed_ids = {
+            str(s.get("HeroId"))
+            for s in self.state.get("slots", [])
+            if int(s.get("HeroModelId", 0)) > 0 and s.get("HeroId")
+        }
+        hero = next((h for h in self.state.get("heroes", []) if str(h.get("Id")) == hero_id), None)
+        if not hero or hero_id in deployed_ids:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        cur_lv = int(hero.get("Lv", 1))
+        cur_step = int(hero.get("Step", 0))
+        cur_reborn = int(hero.get("RebornStep", 0))
+        if cur_lv <= 1 and cur_step <= 0 and cur_reborn <= 0 and int(hero.get("LiantiLv", 0)) <= 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        cfg = self.game_data.get("heroes", {}).get(str(hero["HeroModelId"]), {})
+        quality = str(int(cfg.get("quality", 15)))
+        rb_tbl = self.game_data.get("hero_rebirth", {}).get(quality, {})
+        dia_cost = int(rb_tbl.get(str(cur_step), {}).get("useDiamond", 0)) + int(
+            rb_tbl.get(str(cur_reborn), {}).get("useDiamond", 0)
+        )
+        if int(self.state["player"].get("Diamond", 0)) < dia_cost:
+            self._last_rpc_context["status"] = -1
+            return {}
+        if dia_cost > 0:
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                "Diamond",
+                -dia_cost,
+                source=f"hero_rebirth:{hero['HeroModelId']}",
+            )
+
+        refund_tuples: list[tuple[int, int, int]] = []
+        val_lv = int(cfg.get("valueLv", 3))
+        gold_ratio = int(self.game_data.get("hero_config", {}).get("LVUpUseGoldR", 10000)) / 10000.0
+        hero_lv_tbl = self.game_data.get("hero_lv", {})
+        base_exp = int(hero_lv_tbl.get(str(val_lv * 1000 + 1), {}).get("EXPTotal", 0))
+        cur_exp = int(hero_lv_tbl.get(str(val_lv * 1000 + cur_lv), {}).get("EXPTotal", base_exp))
+        soul_refund = max(0, cur_exp - base_exp)
+        gold_refund = int(soul_refund * gold_ratio)
+        if soul_refund > 0:
+            refund_tuples.append((1117, 0, soul_refund))
+        if gold_refund > 0:
+            refund_tuples.append((1112, 0, gold_refund))
+
+        step_cls = int(cfg.get("stepUpClassID", 0))
+        hero_step_tbl = self.game_data.get("hero_step", {})
+        for s_idx in range(cur_step):
+            row = hero_step_tbl.get(str(step_cls * 1000 + s_idx))
+            if not row:
+                continue
+            refund_tuples.extend(_parse_resource_str(str(row.get("upUse", ""))))
+            use_dupes = int(row.get("useNum", 0))
+            if use_dupes > 0:
+                refund_tuples.append((1201, int(hero["HeroModelId"]), use_dupes))
+
+        hero["Lv"] = 1
+        hero["EXP"] = 0
+        hero["Step"] = 0
+        hero["RebornStep"] = 0
+        hero["LiantiLv"] = 0
+        hero["HP"] = int(cfg.get("HPBase", hero.get("HP", 100)))
+        hero["AP"] = int(cfg.get("APBase", hero.get("AP", 20)))
+        hero["DEF"] = int(cfg.get("DEFBase", hero.get("DEF", 10)))
+
+        base_res = (
+            self._grant_resources_from_tuples(
+                refund_tuples,
+                source=f"hero_rebirth:{hero['HeroModelId']}",
+                tx_prefix=f"hero_rebirth:{self.profile_name}:{hero_id}:{uuid.uuid4()}",
+            )
+            if refund_tuples
+            else []
+        )
+        self._inc_stat("rebirth_count", 1)
+        self.save()
+        return {"HeroInfo": copy.deepcopy(hero), "BaseGetGameResourceList": base_res}
+
+    def _rpc_equip_rebirth(self, data: Any) -> dict[str, Any]:
+        """Reset unequipped Equip back to Lv 0 Step 0 and refund all invested Gold."""
+        equip_id = self._rebirth_target_id(data)
+        equipped_ids = {
+            slot[k]["Id"]
+            for slot in self.state.get("slots", [])
+            for k in ("Weapon", "Helmet", "Clothes", "Necklace")
+            if isinstance(slot.get(k), dict) and slot[k].get("Id")
+        }
+        eq = next((e for e in self.state.get("equips", []) if str(e.get("Id")) == equip_id), None)
+        if not eq or equip_id in equipped_ids:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        cur_lv = int(eq.get("Lv", 0))
+        cur_step = int(eq.get("Step", 0))
+        if cur_lv <= 0 and cur_step <= 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        cfg = self.game_data.get("equips", {}).get(str(eq["EquipModelId"]), {})
+        quality = str(int(cfg.get("quality", 30)))
+        rb_tbl = self.game_data.get("equip_rebirth", {}).get(quality, {})
+        dia_cost = int(rb_tbl.get(str(cur_step), {}).get("useDiamond", 0))
+        if int(self.state["player"].get("Diamond", 0)) < dia_cost:
+            self._last_rpc_context["status"] = -1
+            return {}
+        if dia_cost > 0:
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                "Diamond",
+                -dia_cost,
+                source=f"equip_rebirth:{eq['EquipModelId']}",
+            )
+
+        clv = str(int(cfg.get("colorLV", 1)))
+        lv_tbl = self.game_data.get("equip_lv_up", {}).get(clv, {})
+        computed_gold = sum(int(lv_tbl.get(str(lv_i), {}).get("lvUpUseNum", 0)) for lv_i in range(cur_lv))
+        refund_gold = max(int(eq.get("Gold", 0)), computed_gold)
+
+        eq["Lv"] = 0
+        eq["Step"] = 0
+        eq["Gold"] = 0
+        refund_tuples = [(1112, 0, refund_gold)] if refund_gold > 0 else []
+        base_res = (
+            self._grant_resources_from_tuples(
+                refund_tuples,
+                source=f"equip_rebirth:{eq['EquipModelId']}",
+                tx_prefix=f"equip_rebirth:{self.profile_name}:{equip_id}:{uuid.uuid4()}",
+            )
+            if refund_tuples
+            else []
+        )
+        self._inc_stat("rebirth_count", 1)
+        self.save()
+        return {"EquipInfo": copy.deepcopy(eq), "BaseGetGameResourceList": base_res}
+
+    def _rpc_treasure_rebirth(self, data: Any) -> dict[str, Any]:
+        """Reset unequipped Treasure back to Lv 0 Step 0 EXP 0 and refund EXP fodders + Step materials."""
+        tr_id = self._rebirth_target_id(data)
+        equipped_ids = {
+            slot[k]["Id"]
+            for slot in self.state.get("slots", [])
+            for k in ("Book", "Horse")
+            if isinstance(slot.get(k), dict) and slot[k].get("Id")
+        }
+        tr = next((t for t in self.state.get("treasures", []) if str(t.get("Id")) == tr_id), None)
+        if not tr or tr_id in equipped_ids:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        cur_lv = int(tr.get("Lv", 0))
+        cur_step = int(tr.get("Step", 0))
+        cur_exp = int(tr.get("EXP", 0))
+        if cur_lv <= 0 and cur_step <= 0 and cur_exp <= 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+
+        tm = self.game_data.get("treasures", {}).get(str(tr["TreasureModelId"]), {})
+        quality = str(int(tm.get("quality", 10)))
+        rb_tbl = self.game_data.get("treasure_rebirth", {}).get(quality, {})
+        dia_cost = int(rb_tbl.get(str(cur_step), {}).get("useDiamond", 0))
+        if int(self.state["player"].get("Diamond", 0)) < dia_cost:
+            self._last_rpc_context["status"] = -1
+            return {}
+        if dia_cost > 0:
+            self.ledger.apply_player_delta(
+                self.state["player"],
+                self.profile_name,
+                "Diamond",
+                -dia_cost,
+                source=f"treasure_rebirth:{tr['TreasureModelId']}",
+            )
+
+        refund_tuples: list[tuple[int, int, int]] = []
+        tr_type = int(tm.get("typeID", 1401))
+        if cur_exp > 0:
+            gold_fodder = 14021304 if tr_type == 1402 else 14011304
+            silver_fodder = 14020803 if tr_type == 1402 else 14010803
+            base_fodder = 14020501 if tr_type == 1402 else 14010501
+            g_cnt = cur_exp // 40000
+            rem = cur_exp % 40000
+            s_cnt = rem // 10000
+            b_cnt = (rem % 10000 + 999) // 1000
+            if g_cnt > 0:
+                refund_tuples.append((tr_type, gold_fodder, g_cnt))
+            if s_cnt > 0:
+                refund_tuples.append((tr_type, silver_fodder, s_cnt))
+            if b_cnt > 0:
+                refund_tuples.append((tr_type, base_fodder, b_cnt))
+
+        used_log = tr.pop("step_materials_used", None)
+        if isinstance(used_log, list) and used_log:
+            for item in used_log:
+                if len(item) >= 3 and int(item[2]) > 0:
+                    refund_tuples.append((int(item[0]), int(item[1]), int(item[2])))
+        elif cur_step > 0:
+            val_lv = int(tm.get("valueLv", 5))
+            tr_step_tbl = self.game_data.get("treasure_step", {})
+            for s_idx in range(cur_step):
+                s_row = tr_step_tbl.get(str(val_lv * 1000 + s_idx))
+                if not s_row:
+                    continue
+                refund_tuples.extend(_parse_resource_str(str(s_row.get("upUseExtraStr", ""))))
+                cards_n = int(s_row.get("upUseBaseCardNum", 0))
+                if cards_n > 0:
+                    refund_tuples.append((tr_type, int(tr["TreasureModelId"]), cards_n))
+
+        tr["Lv"] = 0
+        tr["Step"] = 0
+        tr["EXP"] = 0
+        base_res = (
+            self._grant_resources_from_tuples(
+                refund_tuples,
+                source=f"treasure_rebirth:{tr['TreasureModelId']}",
+                tx_prefix=f"treasure_rebirth:{self.profile_name}:{tr_id}:{uuid.uuid4()}",
+            )
+            if refund_tuples
+            else []
+        )
+        self._inc_stat("rebirth_count", 1)
+        self.save()
+        return {"TreasureInfo": copy.deepcopy(tr), "BaseGetGameResourceList": base_res}
+
     def _build_mystery_shop_items(self, shop_type: int) -> list[dict[str, Any]]:
         """Build 8 Mystery Shop entries from MysteryshopFixedRelation + MysteryshopOddsPseudoRelation."""
         lv = int(self.state["player"].get("Lv", 1))
@@ -7121,12 +7651,36 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                     action = str(payload.get("action") or "status")
                     with prof._lock:
                         prof._sync_events()
-                        if action == "mode":
-                            mode = str(payload.get("mode", "rotating"))
+                        if action in ("mode", "config"):
+                            mode = str(
+                                payload.get(
+                                    "mode",
+                                    prof.event_runtime.archive_cfg.get("mode", "concurrent"),
+                                )
+                            )
                             kwargs: dict[str, Any] = {}
-                            for k in ("rotation_pool", "rotation_duration_sec", "rotation_anchor_ts", "scheduled_windows", "event_id", "duration_sec"):
+                            for k in (
+                                "concurrent_events",
+                                "events",
+                                "period_mode",
+                                "period_sec",
+                                "period_anchor_ts",
+                                "period_overrides",
+                                "carry_over_pity",
+                                "carry_over_policy",
+                                "rotation_pool",
+                                "rotation_duration_sec",
+                                "rotation_anchor_ts",
+                                "scheduled_windows",
+                                "event_id",
+                                "duration_sec",
+                            ):
                                 if k in payload:
                                     kwargs[k] = payload[k]
+                            if "settle_unclaimed_credit" in payload:
+                                prof.event_runtime.archive_cfg["settle_unclaimed_credit"] = bool(
+                                    payload["settle_unclaimed_credit"]
+                                )
                             prof.event_runtime.configure_archive_mode(mode, **kwargs)
                         elif action == "activate":
                             prof.event_runtime.activate_manual_event(
@@ -7139,6 +7693,13 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                                 int(payload["start_ts"]),
                                 int(payload["end_ts"]),
                                 enabled=bool(payload.get("enabled", True)),
+                            )
+                        elif action == "reset":
+                            prof.event_runtime.manual_reset_event(
+                                str(payload["event_id"]),
+                                confirm=bool(payload.get("confirm", False)),
+                                on_ended=prof._on_timed_event_ended,
+                                player=prof.state["player"],
                             )
                         prof._sync_events()
                         info = prof.event_runtime.describe_archive(prof.state["player"])

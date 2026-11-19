@@ -307,6 +307,7 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
     files = [
         "emulator.py",
         "event_handlers.py",
+        "r79_event_handlers.py",
         "event_runtime.py",
         "combat_sim.py",
         "economy_audit.py",
@@ -1046,6 +1047,22 @@ def patch_standalone_workspace(
         STANDALONE_WORK / "assets" / "src" / "System" / "AccountSwitchLayer.luac",
         ACCOUNT_SWITCH_LAYER_LUA,
     )
+
+    # 6b. Bundle VN-adapted TW 1.4 Config/*.lua tables missing from VN 5.0.4.98 APK
+    for cfg_name in (
+        "XssbModel",
+        "CriticalTasksTypeRelation",
+        "EarlytaskModel",
+        "EarlytaskRewardRelation",
+        "TraderConfig",
+    ):
+        cfg_src = ROOT_DIR / "analysis" / "vn" / "decompiled_src" / "Config" / f"{cfg_name}.lua"
+        if not cfg_src.exists():
+            raise FileNotFoundError(f"Missing VN-adapted config Lua: {cfg_src}")
+        write_luac_text(
+            STANDALONE_WORK / "assets" / "src" / "Config" / f"{cfg_name}.luac",
+            cfg_src.read_text(encoding="utf-8"),
+        )
 
     # 7. Bundle embedded 32-bit CPython 3.11 + server_bundle.zip + stdlib.zip
     bundle_embedded_python(STANDALONE_WORK, f"{version_name}-{version_code}")

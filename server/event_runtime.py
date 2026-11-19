@@ -270,7 +270,150 @@ def build_default_event_registry(game_data: dict[str, Any]) -> dict[str, EventDe
             source_origin="verified_original",
             duration_sec=86400,
         ),
+        "online_reward": EventDefinition(
+            event_id="online_reward",
+            module_sub=3700,
+            name="Quà Online Đếm Ngược",
+            schedule_type="daily",
+            open_lv=1,
+            source_origin="verified_original",
+            duration_sec=86400,
+        ),
+        "month_sign": EventDefinition(
+            event_id="month_sign",
+            module_sub=2712,
+            name="Điểm Danh Tháng",
+            schedule_type="daily",
+            open_lv=1,
+            source_origin="verified_original",
+            duration_sec=86400,
+        ),
+        "timed_critical_tasks": EventDefinition(
+            event_id="timed_critical_tasks",
+            module_sub=4700,
+            name="Nhiệm Vụ Bạo Kích Hạn Giờ",
+            schedule_type="daily",
+            open_lv=1,
+            source_origin="cross_region_tw_1.4_adapted",
+            duration_sec=86400,
+        ),
+        "time_spike": EventDefinition(
+            event_id="time_spike",
+            module_sub=6800,
+            name="Giờ Vàng Flash Sale",
+            schedule_type="daily",
+            open_lv=1,
+            source_origin="verified_original",
+            duration_sec=86400,
+        ),
+        "time_miaosha": EventDefinition(
+            event_id="time_miaosha",
+            module_sub=7000,
+            name="Vua Giờ Vàng (MiaoSha)",
+            schedule_type="daily",
+            open_lv=1,
+            source_origin="server_modeled_preset",
+            duration_sec=86400,
+        ),
+        "random_red_bag": EventDefinition(
+            event_id="random_red_bag",
+            module_sub=5501,
+            name="Lì Xì Liên Server",
+            schedule_type="daily",
+            open_lv=1,
+            source_origin="server_modeled_preset",
+            duration_sec=86400,
+        ),
+        "yiyuan_duobao": EventDefinition(
+            event_id="yiyuan_duobao",
+            module_sub=7800,
+            name="Di Tích Đoạt Bảo",
+            schedule_type="daily",
+            open_lv=1,
+            source_origin="server_modeled_preset",
+            duration_sec=86400,
+        ),
+        "open_contest": EventDefinition(
+            event_id="open_contest",
+            module_sub=7900,
+            name="Đua Top Chiến Lực Mở Server 7 Ngày",
+            schedule_type="daily",
+            open_lv=1,
+            source_origin="verified_original",
+            duration_sec=86400,
+        ),
+        "shiwan_diamond": EventDefinition(
+            event_id="shiwan_diamond",
+            module_sub=8200,
+            name="Mười Vạn Kim Cương",
+            schedule_type="permanent",
+            open_lv=1,
+            source_origin="verified_original",
+            duration_sec=86400,
+        ),
+        "early_task": EventDefinition(
+            event_id="early_task",
+            module_sub=2600,
+            name="Nhiệm Vụ Mở Server (Earlytask)",
+            schedule_type="permanent",
+            open_lv=1,
+            source_origin="cross_region_tw_1.4_adapted",
+            duration_sec=86400,
+        ),
+        "limit_trader": EventDefinition(
+            event_id="limit_trader",
+            module_sub=4300,
+            name="Thương Nhân Hạn Giờ",
+            schedule_type="daily",
+            open_lv=1,
+            source_origin="cross_region_tw_1.4_adapted",
+            duration_sec=86400,
+        ),
     }
+
+    # TimedActivityScene (4400) sub-modules (4401..4432)
+    timed_scene_specs: list[tuple[str, int, str, str, dict[str, Any]]] = [
+        ("timed_charge_single", 4401, "Nạp Đơn Nhận Quà", "server_modeled_preset", {}),
+        ("timed_charge_total", 4402, "Nạp Tích Lũy", "server_modeled_preset", {}),
+        ("timed_use_total", 4403, "Tiêu Phí Tích Lũy", "server_modeled_preset", {}),
+        ("timed_accum_days", 4405, "Ngày Nạp Liên Tục", "server_modeled_preset", {}),
+        ("timed_exchange", 4406, "Đổi Thưởng Hạn Giờ", "server_modeled_preset", {}),
+        ("timed_double_diamond", 4407, "Nạp Nhân Đôi", "server_modeled_preset", {}),
+        ("timed_pray_tree", 4409, "Cây Ước Nguyện", "server_modeled_preset", {}),
+        ("timed_xssb", 4410, "Thần Binh Giới Hạn", "cross_region_tw_1.4_adapted", {}),
+        ("timed_slot", 4412, "Kho Báu Quay Thưởng", "server_modeled_preset", {}),
+        ("timed_welfare_equip", 4416, "Phúc Lợi Trang Bị 80%", "verified_original", {"RefNum": 80}),
+        ("timed_welfare_hero", 4417, "Phúc Lợi Chiêu Mộ 80%", "verified_original", {"RefNum": 80}),
+        ("timed_recharge_rank", 4421, "BXH Nạp Kim Cương", "server_modeled_preset", {}),
+        ("timed_consume_rank", 4422, "BXH Tiêu Kim Cương", "server_modeled_preset", {}),
+        ("timed_smash_egg", 4426, "Đập Trứng Vàng", "server_modeled_preset", {}),
+        ("timed_day_login", 4427, "Đăng Nhập Tích Lũy", "server_modeled_preset", {}),
+        ("timed_points_mall", 4428, "Shop Điểm Nạp", "server_modeled_preset", {}),
+        ("timed_charge_gift", 4429, "Quà Nạp Tự Chọn", "server_modeled_preset", {}),
+        ("timed_active_rank", 4430, "BXH Năng Động", "verified_original", {}),
+        ("timed_money_tree", 4432, "Cây Tiền May Mắn", "server_modeled_preset", {}),
+    ]
+    for ev_id, mod_sub, title, origin, extra_info in timed_scene_specs:
+        registry[ev_id] = EventDefinition(
+            event_id=ev_id,
+            module_sub=mod_sub,
+            name=title,
+            schedule_type="timed",
+            open_lv=1,
+            source_origin=origin,
+            duration_sec=259200,
+            archive_eligible=True,
+            timed_open_info={
+                "ActivityId": mod_sub,
+                "Name": title,
+                "ExtraInfo": extra_info,
+            },
+            metadata={
+                "activity_id": mod_sub,
+                "extra_info": extra_info,
+                "assets_complete": True,
+            },
+        )
 
     # Verified TimedRecruit banners from TimedRecruitModel (9300).
     # Only 81 & 82 have 100% UI/icon assets verified in VN APK/OBB.
@@ -320,6 +463,29 @@ class EventRuntime:
     """Manages event schedules, Event Archive modes, instances, progress, and claim locks."""
 
     DEFAULT_ROTATION_ANCHOR_TS = 1767200400  # 2026-01-01 00:00:00 UTC+7
+    DEFAULT_CONCURRENT_EVENTS: list[str] = [
+        "timed_recruit:81",
+        "timed_recruit:82",
+        "timed_money_tree",
+        "timed_pray_tree",
+        "timed_smash_egg",
+        "timed_slot",
+        "timed_xssb",
+        "timed_charge_single",
+        "timed_charge_total",
+        "timed_use_total",
+        "timed_accum_days",
+        "timed_exchange",
+        "timed_double_diamond",
+        "timed_welfare_equip",
+        "timed_welfare_hero",
+        "timed_recharge_rank",
+        "timed_consume_rank",
+        "timed_day_login",
+        "timed_points_mall",
+        "timed_charge_gift",
+        "timed_active_rank",
+    ]
 
     def __init__(
         self,
@@ -340,9 +506,16 @@ class EventRuntime:
     def ensure_state(cls, state: dict[str, Any]) -> dict[str, Any]:
         rt = state.setdefault("event_runtime", {})
         ac = rt.setdefault("archive_config", {})
-        ac.setdefault("mode", "concurrent")  # R7.6 default: concurrent multi-banner + 00:00 UTC+7 daily reset
+        ac.setdefault("mode", "concurrent")  # R7.6+ default: concurrent multi-banner + 00:00 UTC+7 daily reset
         ac.setdefault("r76_migrated", True)
-        ac.setdefault("concurrent_events", ["timed_recruit:81", "timed_recruit:82"])
+        ac.setdefault("concurrent_events", list(cls.DEFAULT_CONCURRENT_EVENTS))
+        if not ac.get("r79_migrated"):
+            cur_list = [str(x) for x in ac.get("concurrent_events", [])]
+            for eid in cls.DEFAULT_CONCURRENT_EVENTS:
+                if eid not in cur_list:
+                    cur_list.append(eid)
+            ac["concurrent_events"] = cur_list
+            ac["r79_migrated"] = True
         ac.setdefault("period_mode", "daily_utc7")
         ac.setdefault("period_sec", 86400)
         ac.setdefault("period_anchor_ts", cls.DEFAULT_ROTATION_ANCHOR_TS)

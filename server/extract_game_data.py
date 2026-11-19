@@ -288,6 +288,15 @@ def main() -> None:
     activeranking = parse_simple_lua_items(os.path.join(cfg_dir, "ActiverankingModel.lua"))
     opencontest_project = parse_simple_lua_items(os.path.join(cfg_dir, "OpencontestProject.lua"))
     opencontest_rank = parse_3level_lua_items(os.path.join(cfg_dir, "OpencontestRankingrewards.lua"), "days")
+    shiwanyuanbao = parse_simple_lua_items(os.path.join(cfg_dir, "ShiwanyuanbaoRelation.lua"))
+    share_config = parse_singleton_lua_item(os.path.join(cfg_dir, "ShareConfig.lua"))
+
+    # Multi-Region (TW 1.4 -> VN 5.0.4.98 adapted) recovered Config tables
+    xssb_model = parse_singleton_lua_item(os.path.join(cfg_dir, "XssbModel.lua"))
+    critical_tasks_type = parse_simple_lua_items(os.path.join(cfg_dir, "CriticalTasksTypeRelation.lua"))
+    earlytask_model = parse_simple_lua_items(os.path.join(cfg_dir, "EarlytaskModel.lua"))
+    earlytask_reward = parse_nested_lua_items(os.path.join(cfg_dir, "EarlytaskRewardRelation.lua"))
+    trader_config = parse_singleton_lua_item(os.path.join(cfg_dir, "TraderConfig.lua"))
 
     xhzw_config = parse_singleton_lua_item(os.path.join(cfg_dir, "XhzwConfig.lua"))
     xhzw_lip = parse_simple_lua_items(os.path.join(cfg_dir, "XhzwLipRelation.lua"))
@@ -370,6 +379,12 @@ def main() -> None:
             "activeranking": len(activeranking),
             "opencontest_project": len(opencontest_project),
             "opencontest_rank": sum(len(v) for v in opencontest_rank.values()),
+            "shiwanyuanbao": len(shiwanyuanbao),
+            "xssb_model": 1 if xssb_model else 0,
+            "critical_tasks_type": len(critical_tasks_type),
+            "earlytask_model": len(earlytask_model),
+            "earlytask_reward": sum(len(v) for v in earlytask_reward.values()),
+            "trader_config": 1 if trader_config else 0,
             "xhzw_lip": len(xhzw_lip),
             "xhzw_reward": len(xhzw_reward),
             "xhzw_reward_refresh_price": len(xhzw_reward_refresh_price),
@@ -471,6 +486,13 @@ def main() -> None:
         "activeranking": activeranking,
         "opencontest_project": opencontest_project,
         "opencontest_rank": opencontest_rank,
+        "shiwanyuanbao": shiwanyuanbao,
+        "share_config": share_config,
+        "xssb_model": xssb_model,
+        "critical_tasks_type": critical_tasks_type,
+        "earlytask_model": earlytask_model,
+        "earlytask_reward": earlytask_reward,
+        "trader_config": trader_config,
         "xhzw_config": xhzw_config,
         "xhzw_lip": xhzw_lip,
         "xhzw_reward": xhzw_reward,

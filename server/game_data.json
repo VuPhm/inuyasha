@@ -64,6 +64,12 @@
     "activeranking": 12,
     "opencontest_project": 7,
     "opencontest_rank": 21,
+    "shiwanyuanbao": 24,
+    "xssb_model": 1,
+    "critical_tasks_type": 9,
+    "earlytask_model": 24,
+    "earlytask_reward": 239,
+    "trader_config": 1,
     "xhzw_lip": 6,
     "xhzw_reward": 10,
     "xhzw_reward_refresh_price": 1,
@@ -270989,6 +270995,1661 @@
         "describe": "Quà Mảnh Thần B ©*50"
       }
     ]
+  },
+  "shiwanyuanbao": {
+    "1": {
+      "loginDays": 1,
+      "getDimonds": 100,
+      "getVipExp": 0,
+      "description": ""
+    },
+    "2": {
+      "loginDays": 2,
+      "getDimonds": 200,
+      "getVipExp": 10,
+      "description": ""
+    },
+    "3": {
+      "loginDays": 3,
+      "getDimonds": 300,
+      "getVipExp": 10,
+      "description": ""
+    },
+    "4": {
+      "loginDays": 4,
+      "getDimonds": 400,
+      "getVipExp": 10,
+      "description": ""
+    },
+    "5": {
+      "loginDays": 5,
+      "getDimonds": 500,
+      "getVipExp": 10,
+      "description": ""
+    },
+    "6": {
+      "loginDays": 6,
+      "getDimonds": 600,
+      "getVipExp": 10,
+      "description": ""
+    },
+    "7": {
+      "loginDays": 7,
+      "getDimonds": 700,
+      "getVipExp": 10,
+      "description": "Miễn Phí VIP1"
+    },
+    "9": {
+      "loginDays": 9,
+      "getDimonds": 900,
+      "getVipExp": 300,
+      "description": "Miễn Phí VIP2"
+    },
+    "12": {
+      "loginDays": 12,
+      "getDimonds": 1200,
+      "getVipExp": 0,
+      "description": ""
+    },
+    "16": {
+      "loginDays": 16,
+      "getDimonds": 1600,
+      "getVipExp": 500,
+      "description": "Miễn Phí VIP3"
+    },
+    "20": {
+      "loginDays": 20,
+      "getDimonds": 2000,
+      "getVipExp": 0,
+      "description": ""
+    },
+    "25": {
+      "loginDays": 25,
+      "getDimonds": 2500,
+      "getVipExp": 1000,
+      "description": "Miễn Phí VIP4"
+    },
+    "30": {
+      "loginDays": 30,
+      "getDimonds": 3000,
+      "getVipExp": 0,
+      "description": ""
+    },
+    "40": {
+      "loginDays": 40,
+      "getDimonds": 4000,
+      "getVipExp": 1500,
+      "description": "Miễn Phí VIP5"
+    },
+    "50": {
+      "loginDays": 50,
+      "getDimonds": 5000,
+      "getVipExp": 0,
+      "description": ""
+    },
+    "60": {
+      "loginDays": 60,
+      "getDimonds": 6000,
+      "getVipExp": 2000,
+      "description": "Miễn Phí VIP6"
+    },
+    "75": {
+      "loginDays": 75,
+      "getDimonds": 7500,
+      "getVipExp": 0,
+      "description": ""
+    },
+    "90": {
+      "loginDays": 90,
+      "getDimonds": 9000,
+      "getVipExp": 2500,
+      "description": "Miễn Phí VIP7"
+    },
+    "105": {
+      "loginDays": 105,
+      "getDimonds": 10000,
+      "getVipExp": 0,
+      "description": ""
+    },
+    "120": {
+      "loginDays": 120,
+      "getDimonds": 10000,
+      "getVipExp": 3000,
+      "description": "Miễn Phí VIP8"
+    },
+    "140": {
+      "loginDays": 140,
+      "getDimonds": 10000,
+      "getVipExp": 0,
+      "description": ""
+    },
+    "160": {
+      "loginDays": 160,
+      "getDimonds": 10000,
+      "getVipExp": 4000,
+      "description": "Miễn Phí VIP9"
+    },
+    "180": {
+      "loginDays": 180,
+      "getDimonds": 10000,
+      "getVipExp": 0,
+      "description": ""
+    },
+    "200": {
+      "loginDays": 200,
+      "getDimonds": 10000,
+      "getVipExp": 5000,
+      "description": "Miễn Phí VIP10"
+    }
+  },
+  "share_config": {
+    "firstReward": "1111,0,50",
+    "dailyReward": "1111,0,10",
+    "firstWeChatReward": "1111,0,100||1112,0,100000"
+  },
+  "xssb_model": {
+    "recruitPrice": 280,
+    "recruitPriceTen": 1680,
+    "freeRecruitCD": 72000,
+    "recruitCreditPer": 10,
+    "recruitCreditTen": 110,
+    "getPurpleCD": 9,
+    "initCallNum": 0
+  },
+  "critical_tasks_type": {
+    "1": {
+      "tasksTypeID": 1,
+      "description": "Nạp %s Kim Cương",
+      "moduleID": 3300
+    },
+    "2": {
+      "tasksTypeID": 2,
+      "description": "Quyết Đấu thắng %s trận",
+      "moduleID": 2502
+    },
+    "3": {
+      "tasksTypeID": 3,
+      "description": "Chiêu mộ Tướng %s lần",
+      "moduleID": 3801
+    },
+    "4": {
+      "tasksTypeID": 4,
+      "description": "Chiêu mộ Trang Bị %s lần",
+      "moduleID": 3802
+    },
+    "5": {
+      "tasksTypeID": 5,
+      "description": "Khiêu chiến Yêu Vương %s lần",
+      "moduleID": 2203
+    },
+    "6": {
+      "tasksTypeID": 6,
+      "description": "Hoàn thành Ải %s lần",
+      "moduleID": 2201
+    },
+    "7": {
+      "tasksTypeID": 7,
+      "description": "Chiến đấu Mộ Thần Binh %s lần",
+      "moduleID": 2507
+    },
+    "8": {
+      "tasksTypeID": 8,
+      "description": "Chiêu Tài Miêu %s lần",
+      "moduleID": 2711
+    },
+    "9": {
+      "tasksTypeID": 9,
+      "description": "Tiêu phí %s Kim Cương",
+      "moduleID": 2000
+    }
+  },
+  "earlytask_model": {
+    "2601": {
+      "ID": 2601,
+      "name": "Bậc Thầy Cường Hóa",
+      "intro": "Cường hóa vũ khí đạt cấp quy định nhận thưởng",
+      "reachedIntroFormat": "Cường hóa vũ khíLBđạt cấp %s",
+      "pic": "kfhd_1",
+      "moduleID": 1401
+    },
+    "2602": {
+      "ID": 2602,
+      "name": "Thưởng Online",
+      "intro": "Online đủ thời gian nhận thưởng",
+      "reachedIntroFormat": "Online %s phút",
+      "pic": "kfhd_1",
+      "moduleID": 0
+    },
+    "2603": {
+      "ID": 2603,
+      "name": "Đoạt Bảo Kỳ Binh",
+      "intro": "Đoạt Bảo đạt số lần nhận thưởng",
+      "reachedIntroFormat": "Đoạt Bảo %s lần",
+      "pic": "kfhd_1",
+      "moduleID": 2501
+    },
+    "2605": {
+      "ID": 2605,
+      "name": "Cao Thủ Quyết Đấu",
+      "intro": "Chiến thắng Quyết Đấu đạt số lần nhận thưởng",
+      "reachedIntroFormat": "Thắng Quyết Đấu %s lần",
+      "pic": "kfhd_1",
+      "moduleID": 2502
+    },
+    "2606": {
+      "ID": 2606,
+      "name": "Diệt Yêu Vương",
+      "intro": "Khiêu chiến Yêu Vương đạt số lần nhận thưởng",
+      "reachedIntroFormat": "Đánh Yêu Vương %s lần",
+      "pic": "kfhd_1",
+      "moduleID": 2203
+    },
+    "2607": {
+      "ID": 2607,
+      "name": "Tín Đồ Tứ Hồn",
+      "intro": "Tổng cấp Thần Khám đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Tổng cấp Hồn ThạchLBđạt cấp %s",
+      "pic": "kfhd_1",
+      "moduleID": 2301
+    },
+    "2608": {
+      "ID": 2608,
+      "name": "Tinh Anh Mãnh Tướng",
+      "intro": "Vượt ải Tinh Anh chỉ định nhận thưởng",
+      "reachedIntroFormat": "Vượt ảiLB\"%s\"",
+      "pic": "kfhd_1",
+      "moduleID": 2202
+    },
+    "2610": {
+      "ID": 2610,
+      "name": "Bảo Vật Tiến Bậc",
+      "intro": "Tiến bậc Bảo Vật Cam đạt cấp nhận thưởng",
+      "reachedIntroFormat": "Bảo Vật Cam bất kỳLBtiến bậc cấp %s",
+      "pic": "kfhd_1",
+      "moduleID": 1404
+    },
+    "2611": {
+      "ID": 2611,
+      "name": "Trang Bị Tiến Bậc",
+      "intro": "Tiến bậc Trang Bị Cam đạt cấp nhận thưởng",
+      "reachedIntroFormat": "Trang Bị Cam bất kỳLBtiến bậc cấp %s",
+      "pic": "kfhd_1",
+      "moduleID": 1403
+    },
+    "2612": {
+      "ID": 2612,
+      "name": "Cao Thủ Đột Phá",
+      "intro": "Nhân vật chính đột phá đạt bậc nhận thưởng",
+      "reachedIntroFormat": "Nhân vật chínhLBđột phá bậc %s",
+      "pic": "kfhd_1",
+      "moduleID": 1102
+    },
+    "2613": {
+      "ID": 2613,
+      "name": "Bá Chủ Kim Khố",
+      "intro": "Khiêu chiến Dũng Sĩ Kim Khố đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Khiêu chiếnLBKim Khố %s lần",
+      "pic": "kfhd_1",
+      "moduleID": 2504
+    },
+    "2614": {
+      "ID": 2614,
+      "name": "Thể Lực Vô Hạn",
+      "intro": "Dùng Thể Lực Hoàn đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Dùng Thể Lực HoànLB%s lần",
+      "pic": "kfhd_1",
+      "moduleID": 1301
+    },
+    "2615": {
+      "ID": 2615,
+      "name": "Hoạt Lực Siêu Cường",
+      "intro": "Dùng Hoạt Lực Hoàn đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Dùng Hoạt Lực HoànLB%s lần",
+      "pic": "kfhd_1",
+      "moduleID": 1301
+    },
+    "2616": {
+      "ID": 2616,
+      "name": "Chiêu Mộ Trang Bị",
+      "intro": "Tích lũy chiêu mộ Trang Bị đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Chiêu mộ Trang BịLB%s lần",
+      "pic": "kfhd_1",
+      "moduleID": 3802
+    },
+    "2617": {
+      "ID": 2617,
+      "name": "Bậc Thầy Chiêu Mộ",
+      "intro": "Chiêu mộ Linh Hồn đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Chiêu mộ Linh HồnLB%s lần",
+      "pic": "kfhd_1",
+      "moduleID": 3800
+    },
+    "2618": {
+      "ID": 2618,
+      "name": "Khách Hàng Bí Ẩn",
+      "intro": "Làm mới Shop Thần Bí đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Shop Thần BíLBlàm mới %s lần",
+      "pic": "kfhd_1",
+      "moduleID": 2100
+    },
+    "2619": {
+      "ID": 2619,
+      "name": "Cao Thủ Ước Nguyện",
+      "intro": "Tham gia Ước Nguyện đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Ước Nguyện %s lần",
+      "pic": "kfhd_1",
+      "moduleID": 2303
+    },
+    "2620": {
+      "ID": 2620,
+      "name": "Thợ Săn Yêu Quái",
+      "intro": "Săn Yêu Vương đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Săn Yêu %s lần",
+      "pic": "kfhd_1",
+      "moduleID": 2203
+    },
+    "2621": {
+      "ID": 2621,
+      "name": "Tụ Hồn Cao Thủ",
+      "intro": "Tụ Hồn cao cấp đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Tụ Hồn cao cấpLB%s lần",
+      "pic": "kfhd_1",
+      "moduleID": 2301
+    },
+    "2622": {
+      "ID": 2622,
+      "name": "Trụ Cột Bang Hội",
+      "intro": "Xây dựng Bang Hội đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Bang HộiLBxây dựng %s lần",
+      "pic": "kfhd_1",
+      "moduleID": 3400
+    },
+    "2623": {
+      "ID": 2623,
+      "name": "Đăng Nhập Tích Lũy",
+      "intro": "Đăng nhập tích lũy đủ ngày nhận thưởng",
+      "reachedIntroFormat": "Đăng nhập %s ngày",
+      "pic": "kfhd_1",
+      "moduleID": 0
+    },
+    "2624": {
+      "ID": 2624,
+      "name": "Chiêu Tài Tiến Bảo",
+      "intro": "Chiêu Tài Miêu đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Chiêu Tài %s lần",
+      "pic": "kfhd_1",
+      "moduleID": 2711
+    },
+    "2625": {
+      "ID": 2625,
+      "name": "Tiềm Tâm Ngộ Đạo",
+      "intro": "Bạch Linh Ngộ Đạo đạt mốc nhận thưởng",
+      "reachedIntroFormat": "Ngộ Đạo %s lần",
+      "pic": "kfhd_1",
+      "moduleID": 2302
+    },
+    "2626": {
+      "ID": 2626,
+      "name": "Đồng Đội Đông Đúc",
+      "intro": "Mở ô đội hình và trợ chiến nhận thưởng",
+      "reachedIntroFormat": "Đã ra trậnLB%s",
+      "pic": "kfhd_1",
+      "moduleID": 1200
+    }
+  },
+  "earlytask_reward": {
+    "2601": {
+      "30": {
+        "earlyTaskModelID": 2601,
+        "needReachedNum": 30,
+        "resourceList": "1111,0,20||1112,0,100000"
+      },
+      "50": {
+        "earlyTaskModelID": 2601,
+        "needReachedNum": 50,
+        "resourceList": "1111,0,30||1112,0,200000"
+      },
+      "70": {
+        "earlyTaskModelID": 2601,
+        "needReachedNum": 70,
+        "resourceList": "1111,0,40||1112,0,300000"
+      },
+      "90": {
+        "earlyTaskModelID": 2601,
+        "needReachedNum": 90,
+        "resourceList": "1111,0,50||1112,0,400000"
+      },
+      "120": {
+        "earlyTaskModelID": 2601,
+        "needReachedNum": 120,
+        "resourceList": "1111,0,60||1112,0,500000"
+      },
+      "140": {
+        "earlyTaskModelID": 2601,
+        "needReachedNum": 140,
+        "resourceList": "1111,0,60||1112,0,600000"
+      },
+      "160": {
+        "earlyTaskModelID": 2601,
+        "needReachedNum": 160,
+        "resourceList": "1111,0,60||1112,0,700000"
+      },
+      "180": {
+        "earlyTaskModelID": 2601,
+        "needReachedNum": 180,
+        "resourceList": "1111,0,60||1112,0,800000"
+      },
+      "200": {
+        "earlyTaskModelID": 2601,
+        "needReachedNum": 200,
+        "resourceList": "1111,0,60||1112,0,900000"
+      }
+    },
+    "2602": {
+      "1": {
+        "earlyTaskModelID": 2602,
+        "needReachedNum": 1,
+        "resourceList": "1111,0,10||1605,16050010,1||1605,16050003,1||1112,0,5000"
+      },
+      "2": {
+        "earlyTaskModelID": 2602,
+        "needReachedNum": 2,
+        "resourceList": "1111,0,20||1603,16030006,1||1117,0,2000||1112,0,10000"
+      },
+      "5": {
+        "earlyTaskModelID": 2602,
+        "needReachedNum": 5,
+        "resourceList": "1111,0,30||1605,16050010,2||1605,16050003,1||1117,0,1000"
+      },
+      "10": {
+        "earlyTaskModelID": 2602,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,40||1603,16030008,1||1605,16050001,20||1605,16050003,1"
+      },
+      "20": {
+        "earlyTaskModelID": 2602,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,50||1603,16030006,1||1503,15032401,1||1605,16050010,3"
+      },
+      "30": {
+        "earlyTaskModelID": 2602,
+        "needReachedNum": 30,
+        "resourceList": "1111,0,60||1603,16030008,1||1504,15040401,1||1605,16050003,1"
+      },
+      "60": {
+        "earlyTaskModelID": 2602,
+        "needReachedNum": 60,
+        "resourceList": "1111,0,100||1605,16050010,4||1603,16030008,1||1117,0,1000"
+      }
+    },
+    "2603": {
+      "50": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 50,
+        "resourceList": "1111,0,50||1603,16030008,1"
+      },
+      "100": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 100,
+        "resourceList": "1111,0,50||1603,16030008,1"
+      },
+      "200": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 200,
+        "resourceList": "1111,0,50||1603,16030008,2"
+      },
+      "350": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 350,
+        "resourceList": "1111,0,50||1603,16030008,2"
+      },
+      "500": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 500,
+        "resourceList": "1111,0,50||1603,16030008,3"
+      },
+      "700": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 700,
+        "resourceList": "1111,0,50||1603,16030008,3"
+      },
+      "900": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 900,
+        "resourceList": "1111,0,50||1603,16030008,4"
+      },
+      "1200": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 1200,
+        "resourceList": "1111,0,50||1603,16030008,4"
+      },
+      "1800": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 1800,
+        "resourceList": "1111,0,50||1603,16030008,5"
+      },
+      "2400": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 2400,
+        "resourceList": "1111,0,50||1603,16030008,5"
+      },
+      "3000": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 3000,
+        "resourceList": "1111,0,50||1603,16030008,6"
+      },
+      "4000": {
+        "earlyTaskModelID": 2603,
+        "needReachedNum": 4000,
+        "resourceList": "1111,0,50||1603,16030008,6"
+      }
+    },
+    "2605": {
+      "5": {
+        "earlyTaskModelID": 2605,
+        "needReachedNum": 5,
+        "resourceList": "1115,0,50||1112,0,10000"
+      },
+      "20": {
+        "earlyTaskModelID": 2605,
+        "needReachedNum": 20,
+        "resourceList": "1115,0,80||1112,0,30000"
+      },
+      "50": {
+        "earlyTaskModelID": 2605,
+        "needReachedNum": 50,
+        "resourceList": "1115,0,100||1112,0,50000"
+      },
+      "100": {
+        "earlyTaskModelID": 2605,
+        "needReachedNum": 100,
+        "resourceList": "1115,0,120||1112,0,100000"
+      },
+      "150": {
+        "earlyTaskModelID": 2605,
+        "needReachedNum": 150,
+        "resourceList": "1115,0,150||1112,0,150000"
+      },
+      "200": {
+        "earlyTaskModelID": 2605,
+        "needReachedNum": 200,
+        "resourceList": "1115,0,200||1112,0,200000"
+      },
+      "300": {
+        "earlyTaskModelID": 2605,
+        "needReachedNum": 300,
+        "resourceList": "1115,0,300||1112,0,250000"
+      },
+      "400": {
+        "earlyTaskModelID": 2605,
+        "needReachedNum": 400,
+        "resourceList": "1115,0,400||1112,0,300000"
+      },
+      "500": {
+        "earlyTaskModelID": 2605,
+        "needReachedNum": 500,
+        "resourceList": "1115,0,500||1112,0,400000"
+      }
+    },
+    "2606": {
+      "3": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 3,
+        "resourceList": "1111,0,20||1112,0,10000"
+      },
+      "10": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,30||1112,0,30000"
+      },
+      "20": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,40||1112,0,50000"
+      },
+      "35": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 35,
+        "resourceList": "1111,0,50||1112,0,100000"
+      },
+      "60": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 60,
+        "resourceList": "1111,0,60||1112,0,150000"
+      },
+      "100": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 100,
+        "resourceList": "1111,0,70||1112,0,200000"
+      },
+      "150": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 150,
+        "resourceList": "1111,0,80||1112,0,250000"
+      },
+      "200": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 200,
+        "resourceList": "1111,0,90||1112,0,300000"
+      },
+      "300": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 300,
+        "resourceList": "1111,0,100||1112,0,350000"
+      },
+      "450": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 450,
+        "resourceList": "1111,0,110||1112,0,400000"
+      },
+      "600": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 600,
+        "resourceList": "1111,0,120||1112,0,450000"
+      },
+      "800": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 800,
+        "resourceList": "1111,0,130||1112,0,500000"
+      },
+      "1000": {
+        "earlyTaskModelID": 2606,
+        "needReachedNum": 1000,
+        "resourceList": "1111,0,140||1112,0,550000"
+      }
+    },
+    "2607": {
+      "5": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 5,
+        "resourceList": "1111,0,20||1604,16040007,1"
+      },
+      "10": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,20||1604,16040007,2"
+      },
+      "20": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,20||1604,16040004,2"
+      },
+      "30": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 30,
+        "resourceList": "1111,0,40||1604,16040004,4"
+      },
+      "40": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 40,
+        "resourceList": "1111,0,60||1604,16040004,6"
+      },
+      "50": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 50,
+        "resourceList": "1111,0,80||1604,16040004,8"
+      },
+      "60": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 60,
+        "resourceList": "1111,0,100||1604,16040004,10"
+      },
+      "70": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 70,
+        "resourceList": "1111,0,120||1604,16040004,12"
+      },
+      "80": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 80,
+        "resourceList": "1111,0,140||1604,16040004,14"
+      },
+      "90": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 90,
+        "resourceList": "1111,0,160||1604,16040004,16"
+      },
+      "100": {
+        "earlyTaskModelID": 2607,
+        "needReachedNum": 100,
+        "resourceList": "1111,0,180||1604,16040004,20"
+      }
+    },
+    "2608": {
+      "11": {
+        "earlyTaskModelID": 2608,
+        "needReachedNum": 11,
+        "resourceList": "1112,0,10000||1605,16050011,5"
+      },
+      "13": {
+        "earlyTaskModelID": 2608,
+        "needReachedNum": 13,
+        "resourceList": "1112,0,20000||1605,16050011,10"
+      },
+      "15": {
+        "earlyTaskModelID": 2608,
+        "needReachedNum": 15,
+        "resourceList": "1112,0,40000||1605,16050011,15"
+      },
+      "17": {
+        "earlyTaskModelID": 2608,
+        "needReachedNum": 17,
+        "resourceList": "1112,0,80000||1605,16050011,20"
+      },
+      "19": {
+        "earlyTaskModelID": 2608,
+        "needReachedNum": 19,
+        "resourceList": "1112,0,100000||1605,16050011,25"
+      },
+      "20": {
+        "earlyTaskModelID": 2608,
+        "needReachedNum": 20,
+        "resourceList": "1112,0,150000||1605,16050011,30"
+      },
+      "21": {
+        "earlyTaskModelID": 2608,
+        "needReachedNum": 21,
+        "resourceList": "1112,0,250000||1605,16050011,35"
+      }
+    },
+    "2610": {
+      "1": {
+        "earlyTaskModelID": 2610,
+        "needReachedNum": 1,
+        "resourceList": "1111,0,20||1605,16050020,1"
+      },
+      "3": {
+        "earlyTaskModelID": 2610,
+        "needReachedNum": 3,
+        "resourceList": "1111,0,50||1605,16050020,1"
+      },
+      "5": {
+        "earlyTaskModelID": 2610,
+        "needReachedNum": 5,
+        "resourceList": "1111,0,100||1605,16050020,1"
+      },
+      "7": {
+        "earlyTaskModelID": 2610,
+        "needReachedNum": 7,
+        "resourceList": "1111,0,150||1605,16050020,1"
+      },
+      "9": {
+        "earlyTaskModelID": 2610,
+        "needReachedNum": 9,
+        "resourceList": "1111,0,200||1605,16050020,1"
+      }
+    },
+    "2611": {
+      "1": {
+        "earlyTaskModelID": 2611,
+        "needReachedNum": 1,
+        "resourceList": "1111,0,20||1112,0,100000"
+      },
+      "3": {
+        "earlyTaskModelID": 2611,
+        "needReachedNum": 3,
+        "resourceList": "1111,0,40||1112,0,300000"
+      },
+      "5": {
+        "earlyTaskModelID": 2611,
+        "needReachedNum": 5,
+        "resourceList": "1111,0,60||1112,0,500000"
+      },
+      "7": {
+        "earlyTaskModelID": 2611,
+        "needReachedNum": 7,
+        "resourceList": "1111,0,80||1112,0,700000"
+      },
+      "9": {
+        "earlyTaskModelID": 2611,
+        "needReachedNum": 9,
+        "resourceList": "1111,0,100||1112,0,900000"
+      }
+    },
+    "2612": {
+      "2": {
+        "earlyTaskModelID": 2612,
+        "needReachedNum": 2,
+        "resourceList": "1111,0,10||1605,16050001,100"
+      },
+      "3": {
+        "earlyTaskModelID": 2612,
+        "needReachedNum": 3,
+        "resourceList": "1111,0,10||1605,16050001,200"
+      },
+      "4": {
+        "earlyTaskModelID": 2612,
+        "needReachedNum": 4,
+        "resourceList": "1111,0,10||1605,16050001,300"
+      },
+      "5": {
+        "earlyTaskModelID": 2612,
+        "needReachedNum": 5,
+        "resourceList": "1111,0,10||1605,16050001,400"
+      },
+      "6": {
+        "earlyTaskModelID": 2612,
+        "needReachedNum": 6,
+        "resourceList": "1111,0,10||1605,16050001,500"
+      },
+      "7": {
+        "earlyTaskModelID": 2612,
+        "needReachedNum": 7,
+        "resourceList": "1111,0,10||1605,16050001,600"
+      }
+    },
+    "2613": {
+      "1": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 1,
+        "resourceList": "1111,0,20||1112,0,50000"
+      },
+      "3": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 3,
+        "resourceList": "1111,0,20||1112,0,100000"
+      },
+      "5": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 5,
+        "resourceList": "1111,0,25||1112,0,150000"
+      },
+      "10": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,25||1112,0,200000"
+      },
+      "15": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 15,
+        "resourceList": "1111,0,30||1112,0,250000"
+      },
+      "20": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,30||1112,0,300000"
+      },
+      "30": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 30,
+        "resourceList": "1111,0,35||1112,0,350000"
+      },
+      "40": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 40,
+        "resourceList": "1111,0,35||1112,0,400000"
+      },
+      "55": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 55,
+        "resourceList": "1111,0,40||1112,0,450000"
+      },
+      "75": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 75,
+        "resourceList": "1111,0,40||1112,0,500000"
+      },
+      "100": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 100,
+        "resourceList": "1111,0,50||1112,0,600000"
+      },
+      "150": {
+        "earlyTaskModelID": 2613,
+        "needReachedNum": 150,
+        "resourceList": "1111,0,50||1112,0,700000"
+      }
+    },
+    "2614": {
+      "2": {
+        "earlyTaskModelID": 2614,
+        "needReachedNum": 2,
+        "resourceList": "1111,0,10||1603,16030006,1"
+      },
+      "5": {
+        "earlyTaskModelID": 2614,
+        "needReachedNum": 5,
+        "resourceList": "1111,0,10||1603,16030006,1"
+      },
+      "10": {
+        "earlyTaskModelID": 2614,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,20||1603,16030006,1"
+      },
+      "20": {
+        "earlyTaskModelID": 2614,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,20||1603,16030006,1"
+      },
+      "35": {
+        "earlyTaskModelID": 2614,
+        "needReachedNum": 35,
+        "resourceList": "1111,0,30||1603,16030006,1"
+      },
+      "60": {
+        "earlyTaskModelID": 2614,
+        "needReachedNum": 60,
+        "resourceList": "1111,0,30||1603,16030006,1"
+      },
+      "90": {
+        "earlyTaskModelID": 2614,
+        "needReachedNum": 90,
+        "resourceList": "1111,0,40||1603,16030006,1"
+      },
+      "120": {
+        "earlyTaskModelID": 2614,
+        "needReachedNum": 120,
+        "resourceList": "1111,0,40||1603,16030006,1"
+      },
+      "150": {
+        "earlyTaskModelID": 2614,
+        "needReachedNum": 150,
+        "resourceList": "1111,0,50||1603,16030006,1"
+      },
+      "200": {
+        "earlyTaskModelID": 2614,
+        "needReachedNum": 200,
+        "resourceList": "1111,0,50||1603,16030006,1"
+      }
+    },
+    "2615": {
+      "5": {
+        "earlyTaskModelID": 2615,
+        "needReachedNum": 5,
+        "resourceList": "1111,0,10||1603,16030008,1"
+      },
+      "10": {
+        "earlyTaskModelID": 2615,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,20||1603,16030008,1"
+      },
+      "20": {
+        "earlyTaskModelID": 2615,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,30||1603,16030008,1"
+      },
+      "35": {
+        "earlyTaskModelID": 2615,
+        "needReachedNum": 35,
+        "resourceList": "1111,0,40||1603,16030008,1"
+      },
+      "60": {
+        "earlyTaskModelID": 2615,
+        "needReachedNum": 60,
+        "resourceList": "1111,0,50||1603,16030008,1"
+      },
+      "90": {
+        "earlyTaskModelID": 2615,
+        "needReachedNum": 90,
+        "resourceList": "1111,0,60||1603,16030008,1"
+      },
+      "120": {
+        "earlyTaskModelID": 2615,
+        "needReachedNum": 120,
+        "resourceList": "1111,0,80||1603,16030008,1"
+      },
+      "150": {
+        "earlyTaskModelID": 2615,
+        "needReachedNum": 150,
+        "resourceList": "1111,0,90||1603,16030008,1"
+      },
+      "200": {
+        "earlyTaskModelID": 2615,
+        "needReachedNum": 200,
+        "resourceList": "1111,0,100||1603,16030008,1"
+      },
+      "300": {
+        "earlyTaskModelID": 2615,
+        "needReachedNum": 300,
+        "resourceList": "1111,0,110||1603,16030008,1"
+      }
+    },
+    "2616": {
+      "10": {
+        "earlyTaskModelID": 2616,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,200||1602,16020021,1"
+      },
+      "20": {
+        "earlyTaskModelID": 2616,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,200||1602,16020021,1"
+      },
+      "35": {
+        "earlyTaskModelID": 2616,
+        "needReachedNum": 35,
+        "resourceList": "1111,0,300||1602,16020021,1"
+      },
+      "50": {
+        "earlyTaskModelID": 2616,
+        "needReachedNum": 50,
+        "resourceList": "1111,0,300||1602,16020021,1"
+      },
+      "70": {
+        "earlyTaskModelID": 2616,
+        "needReachedNum": 70,
+        "resourceList": "1111,0,400||1602,16020021,1"
+      },
+      "100": {
+        "earlyTaskModelID": 2616,
+        "needReachedNum": 100,
+        "resourceList": "1111,0,600||1602,16020021,1"
+      },
+      "150": {
+        "earlyTaskModelID": 2616,
+        "needReachedNum": 150,
+        "resourceList": "1111,0,800||1602,16020021,1"
+      },
+      "300": {
+        "earlyTaskModelID": 2616,
+        "needReachedNum": 300,
+        "resourceList": "1111,0,1000||1602,16020021,1"
+      }
+    },
+    "2617": {
+      "10": {
+        "earlyTaskModelID": 2617,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,200||1605,16050003,5"
+      },
+      "20": {
+        "earlyTaskModelID": 2617,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,200||1605,16050003,5"
+      },
+      "35": {
+        "earlyTaskModelID": 2617,
+        "needReachedNum": 35,
+        "resourceList": "1111,0,300||1605,16050003,10"
+      },
+      "50": {
+        "earlyTaskModelID": 2617,
+        "needReachedNum": 50,
+        "resourceList": "1111,0,300||1605,16050003,15"
+      },
+      "70": {
+        "earlyTaskModelID": 2617,
+        "needReachedNum": 70,
+        "resourceList": "1111,0,400||1605,16050003,20"
+      },
+      "100": {
+        "earlyTaskModelID": 2617,
+        "needReachedNum": 100,
+        "resourceList": "1111,0,600||1605,16050003,25"
+      },
+      "150": {
+        "earlyTaskModelID": 2617,
+        "needReachedNum": 150,
+        "resourceList": "1111,0,800||1605,16050003,30"
+      },
+      "200": {
+        "earlyTaskModelID": 2617,
+        "needReachedNum": 200,
+        "resourceList": "1111,0,1000||1605,16050003,35"
+      }
+    },
+    "2618": {
+      "10": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,10||1605,16050010,1"
+      },
+      "30": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 30,
+        "resourceList": "1111,0,10||1605,16050010,2"
+      },
+      "50": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 50,
+        "resourceList": "1111,0,10||1605,16050010,3"
+      },
+      "80": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 80,
+        "resourceList": "1111,0,10||1605,16050010,4"
+      },
+      "120": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 120,
+        "resourceList": "1111,0,10||1605,16050010,5"
+      },
+      "180": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 180,
+        "resourceList": "1111,0,10||1605,16050010,6"
+      },
+      "260": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 260,
+        "resourceList": "1111,0,10||1605,16050010,7"
+      },
+      "360": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 360,
+        "resourceList": "1111,0,10||1605,16050010,8"
+      },
+      "500": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 500,
+        "resourceList": "1111,0,10||1605,16050010,9"
+      },
+      "700": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 700,
+        "resourceList": "1111,0,10||1605,16050010,10"
+      },
+      "1000": {
+        "earlyTaskModelID": 2618,
+        "needReachedNum": 1000,
+        "resourceList": "1111,0,10||1605,16050010,11"
+      }
+    },
+    "2619": {
+      "20": {
+        "earlyTaskModelID": 2619,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,20||1605,16050012,1"
+      },
+      "40": {
+        "earlyTaskModelID": 2619,
+        "needReachedNum": 40,
+        "resourceList": "1111,0,20||1605,16050012,2"
+      },
+      "60": {
+        "earlyTaskModelID": 2619,
+        "needReachedNum": 60,
+        "resourceList": "1111,0,20||1605,16050012,3"
+      },
+      "90": {
+        "earlyTaskModelID": 2619,
+        "needReachedNum": 90,
+        "resourceList": "1111,0,30||1605,16050012,4"
+      },
+      "130": {
+        "earlyTaskModelID": 2619,
+        "needReachedNum": 130,
+        "resourceList": "1111,0,40||1605,16050012,5"
+      },
+      "180": {
+        "earlyTaskModelID": 2619,
+        "needReachedNum": 180,
+        "resourceList": "1111,0,50||1605,16050012,6"
+      },
+      "240": {
+        "earlyTaskModelID": 2619,
+        "needReachedNum": 240,
+        "resourceList": "1111,0,60||1605,16050012,7"
+      },
+      "320": {
+        "earlyTaskModelID": 2619,
+        "needReachedNum": 320,
+        "resourceList": "1111,0,70||1605,16050012,8"
+      },
+      "400": {
+        "earlyTaskModelID": 2619,
+        "needReachedNum": 400,
+        "resourceList": "1111,0,80||1605,16050012,9"
+      },
+      "600": {
+        "earlyTaskModelID": 2619,
+        "needReachedNum": 600,
+        "resourceList": "1111,0,100||1605,16050012,10"
+      }
+    },
+    "2620": {
+      "1": {
+        "earlyTaskModelID": 2620,
+        "needReachedNum": 1,
+        "resourceList": "1605,16050009,1"
+      },
+      "3": {
+        "earlyTaskModelID": 2620,
+        "needReachedNum": 3,
+        "resourceList": "1605,16050009,1"
+      },
+      "5": {
+        "earlyTaskModelID": 2620,
+        "needReachedNum": 5,
+        "resourceList": "1605,16050009,1"
+      },
+      "10": {
+        "earlyTaskModelID": 2620,
+        "needReachedNum": 10,
+        "resourceList": "1605,16050009,1"
+      },
+      "15": {
+        "earlyTaskModelID": 2620,
+        "needReachedNum": 15,
+        "resourceList": "1605,16050009,1"
+      },
+      "20": {
+        "earlyTaskModelID": 2620,
+        "needReachedNum": 20,
+        "resourceList": "1605,16050009,1"
+      },
+      "25": {
+        "earlyTaskModelID": 2620,
+        "needReachedNum": 25,
+        "resourceList": "1605,16050009,1"
+      },
+      "30": {
+        "earlyTaskModelID": 2620,
+        "needReachedNum": 30,
+        "resourceList": "1605,16050009,1"
+      }
+    },
+    "2621": {
+      "1": {
+        "earlyTaskModelID": 2621,
+        "needReachedNum": 1,
+        "resourceList": "1605,16050007,1"
+      },
+      "3": {
+        "earlyTaskModelID": 2621,
+        "needReachedNum": 3,
+        "resourceList": "1605,16050007,1"
+      },
+      "5": {
+        "earlyTaskModelID": 2621,
+        "needReachedNum": 5,
+        "resourceList": "1605,16050007,1"
+      },
+      "10": {
+        "earlyTaskModelID": 2621,
+        "needReachedNum": 10,
+        "resourceList": "1605,16050007,1"
+      },
+      "15": {
+        "earlyTaskModelID": 2621,
+        "needReachedNum": 15,
+        "resourceList": "1605,16050007,1"
+      },
+      "20": {
+        "earlyTaskModelID": 2621,
+        "needReachedNum": 20,
+        "resourceList": "1605,16050007,1"
+      },
+      "25": {
+        "earlyTaskModelID": 2621,
+        "needReachedNum": 25,
+        "resourceList": "1605,16050007,1"
+      },
+      "30": {
+        "earlyTaskModelID": 2621,
+        "needReachedNum": 30,
+        "resourceList": "1111,0,10||1605,16050007,1"
+      }
+    },
+    "2622": {
+      "5": {
+        "earlyTaskModelID": 2622,
+        "needReachedNum": 5,
+        "resourceList": "1111,0,10||1605,16050017,1"
+      },
+      "10": {
+        "earlyTaskModelID": 2622,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,10||1605,16050017,1"
+      },
+      "15": {
+        "earlyTaskModelID": 2622,
+        "needReachedNum": 15,
+        "resourceList": "1111,0,10||1605,16050017,1"
+      },
+      "20": {
+        "earlyTaskModelID": 2622,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,10||1605,16050017,1"
+      },
+      "25": {
+        "earlyTaskModelID": 2622,
+        "needReachedNum": 25,
+        "resourceList": "1111,0,10||1605,16050017,1"
+      },
+      "35": {
+        "earlyTaskModelID": 2622,
+        "needReachedNum": 35,
+        "resourceList": "1111,0,10||1605,16050017,1"
+      },
+      "55": {
+        "earlyTaskModelID": 2622,
+        "needReachedNum": 55,
+        "resourceList": "1111,0,10||1605,16050017,1"
+      },
+      "80": {
+        "earlyTaskModelID": 2622,
+        "needReachedNum": 80,
+        "resourceList": "1111,0,10||1605,16050017,1"
+      },
+      "120": {
+        "earlyTaskModelID": 2622,
+        "needReachedNum": 120,
+        "resourceList": "1111,0,10||1605,16050017,1"
+      },
+      "180": {
+        "earlyTaskModelID": 2622,
+        "needReachedNum": 180,
+        "resourceList": "1111,0,10||1605,16050017,1"
+      }
+    },
+    "2623": {
+      "1": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 1,
+        "resourceList": "1607,16070001,6||1111,0,150||1112,0,10000||1605,16050003,5"
+      },
+      "2": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 2,
+        "resourceList": "1607,16070001,4||1602,16020013,1||1111,0,300||1602,16020012,1"
+      },
+      "3": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 3,
+        "resourceList": "1607,16070001,4||1301,13010411,1||1112,0,15000||1605,16050003,5"
+      },
+      "4": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 4,
+        "resourceList": "1607,16070001,4||1111,0,300||1602,16020011,1||1605,16050010,2"
+      },
+      "5": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 5,
+        "resourceList": "1607,16070001,4||1304,13040411,1||1112,0,20000||1605,16050010,2"
+      },
+      "6": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 6,
+        "resourceList": "1607,16070001,4||1111,0,300||1112,0,30000||1605,16050010,2"
+      },
+      "7": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 7,
+        "resourceList": "1607,16070001,4||1111,0,500||1304,13040507,1||1112,0,40000"
+      },
+      "8": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 8,
+        "resourceList": "1111,0,200||1605,16050003,3"
+      },
+      "9": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 9,
+        "resourceList": "1602,16020021,1||1605,16050003,2"
+      },
+      "10": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,300||1605,16050003,2"
+      },
+      "11": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 11,
+        "resourceList": "1605,16050010,5||1602,16020022,2"
+      },
+      "12": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 12,
+        "resourceList": "1111,0,300||1605,16050003,2"
+      },
+      "13": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 13,
+        "resourceList": "1605,16050010,5||1602,16020022,2"
+      },
+      "14": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 14,
+        "resourceList": "1602,16020021,1||1605,16050003,2"
+      },
+      "15": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 15,
+        "resourceList": "1111,0,400||1606,16060002,1"
+      },
+      "16": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 16,
+        "resourceList": "1605,16050010,5||1602,16020022,2"
+      },
+      "17": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 17,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      "18": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 18,
+        "resourceList": "1602,16020021,1||1605,16050003,2"
+      },
+      "19": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 19,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      "20": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 20,
+        "resourceList": "1605,16050010,5||1602,16020023,2"
+      },
+      "21": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 21,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      "22": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 22,
+        "resourceList": "1605,16050010,5||1602,16020023,2"
+      },
+      "23": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 23,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      "24": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 24,
+        "resourceList": "1602,16020022,1||1605,16050003,2"
+      },
+      "25": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 25,
+        "resourceList": "1111,0,500||1602,16020023,2"
+      },
+      "26": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 26,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      "27": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 27,
+        "resourceList": "1605,16050010,5||1602,16020023,2"
+      },
+      "28": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 28,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      },
+      "29": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 29,
+        "resourceList": "1605,16050010,5||1602,16020023,2"
+      },
+      "30": {
+        "earlyTaskModelID": 2623,
+        "needReachedNum": 30,
+        "resourceList": "1111,0,300||1605,16050003,3"
+      }
+    },
+    "2624": {
+      "15": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 15,
+        "resourceList": "1111,0,10||1112,0,50000"
+      },
+      "30": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 30,
+        "resourceList": "1111,0,10||1112,0,100000"
+      },
+      "50": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 50,
+        "resourceList": "1111,0,10||1112,0,150000"
+      },
+      "80": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 80,
+        "resourceList": "1111,0,10||1112,0,200000"
+      },
+      "120": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 120,
+        "resourceList": "1111,0,20||1112,0,250000"
+      },
+      "160": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 160,
+        "resourceList": "1111,0,20||1112,0,300000"
+      },
+      "200": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 200,
+        "resourceList": "1111,0,20||1112,0,350000"
+      },
+      "250": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 250,
+        "resourceList": "1111,0,20||1112,0,400000"
+      },
+      "300": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 300,
+        "resourceList": "1111,0,30||1112,0,450000"
+      },
+      "400": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 400,
+        "resourceList": "1111,0,30||1112,0,500000"
+      },
+      "550": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 550,
+        "resourceList": "1111,0,30||1112,0,550000"
+      },
+      "700": {
+        "earlyTaskModelID": 2624,
+        "needReachedNum": 700,
+        "resourceList": "1111,0,30||1112,0,600000"
+      }
+    },
+    "2625": {
+      "3": {
+        "earlyTaskModelID": 2625,
+        "needReachedNum": 3,
+        "resourceList": "1111,0,10"
+      },
+      "10": {
+        "earlyTaskModelID": 2625,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,20"
+      },
+      "20": {
+        "earlyTaskModelID": 2625,
+        "needReachedNum": 20,
+        "resourceList": "1111,0,30"
+      },
+      "40": {
+        "earlyTaskModelID": 2625,
+        "needReachedNum": 40,
+        "resourceList": "1111,0,40"
+      },
+      "70": {
+        "earlyTaskModelID": 2625,
+        "needReachedNum": 70,
+        "resourceList": "1111,0,60"
+      },
+      "100": {
+        "earlyTaskModelID": 2625,
+        "needReachedNum": 100,
+        "resourceList": "1111,0,80"
+      },
+      "150": {
+        "earlyTaskModelID": 2625,
+        "needReachedNum": 150,
+        "resourceList": "1111,0,100"
+      },
+      "200": {
+        "earlyTaskModelID": 2625,
+        "needReachedNum": 200,
+        "resourceList": "1111,0,150"
+      },
+      "250": {
+        "earlyTaskModelID": 2625,
+        "needReachedNum": 250,
+        "resourceList": "1111,0,200"
+      }
+    },
+    "2626": {
+      "4": {
+        "earlyTaskModelID": 2626,
+        "needReachedNum": 4,
+        "resourceList": "1111,0,50"
+      },
+      "5": {
+        "earlyTaskModelID": 2626,
+        "needReachedNum": 5,
+        "resourceList": "1111,0,50"
+      },
+      "6": {
+        "earlyTaskModelID": 2626,
+        "needReachedNum": 6,
+        "resourceList": "1111,0,50"
+      },
+      "7": {
+        "earlyTaskModelID": 2626,
+        "needReachedNum": 7,
+        "resourceList": "1111,0,50"
+      },
+      "8": {
+        "earlyTaskModelID": 2626,
+        "needReachedNum": 8,
+        "resourceList": "1111,0,50"
+      },
+      "9": {
+        "earlyTaskModelID": 2626,
+        "needReachedNum": 9,
+        "resourceList": "1111,0,50"
+      },
+      "10": {
+        "earlyTaskModelID": 2626,
+        "needReachedNum": 10,
+        "resourceList": "1111,0,50"
+      },
+      "11": {
+        "earlyTaskModelID": 2626,
+        "needReachedNum": 11,
+        "resourceList": "1111,0,50"
+      },
+      "12": {
+        "earlyTaskModelID": 2626,
+        "needReachedNum": 12,
+        "resourceList": "1111,0,50"
+      }
+    }
+  },
+  "trader_config": {
+    "perOutNum": 6,
+    "continueTime": 60,
+    "refreshGoodsModelID": 0,
+    "appearNeedLv": 24,
+    "orangeNum": 1,
+    "discountNum": 1,
+    "discount": "8000,8000"
   },
   "xhzw_config": {
     "maxNum": 5,

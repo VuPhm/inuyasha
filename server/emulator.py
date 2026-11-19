@@ -203,6 +203,8 @@ DEFAULT_PLAYER_STATS: dict[str, int] = {
     "treasure_lvup_count": 0,
     "treasure_step_up_count": 0,
     "rebirth_count": 0,
+    "recharged_diamonds": 0,
+    "spent_diamonds": 0,
 }
 
 EMPTY_ENTITY_ID = "00000000-0000-0000-0000-000000000000"
@@ -1831,12 +1833,18 @@ class ProfileStore(EventHandlersMixin):
             "Fashion.DressUp": self._rpc_fashion_dress_up,
             "Fashion.StepUp": self._rpc_fashion_step_up,
             "Fashion.Resolve": self._rpc_fashion_resolve,
-            "MonthSignInfo.GetInfo": lambda _d: [],
+            "MonthSignInfo.GetInfo": self._rpc_month_sign_get_info,
+            "MonthSignInfo.DrawReward": self._rpc_month_sign_draw_reward,
             "Notice.GetNoticeList": lambda _d: [],
             "Enemy.GetEnemyList": lambda _d: [],
-            "TraderInfo.GetInfo": lambda _d: {"TraderInfo": None},
-            "OnlineReward.OnlineRewardInfo": lambda _d: {},
-            "YiYuan.GetInfo": lambda _d: {},
+            "TraderInfo.GetInfo": self._rpc_trader_get_info,
+            "TraderInfo.RefreshtGoodsList": self._rpc_trader_refresh,
+            "TraderInfo.BuyGoods": self._rpc_trader_buy_goods,
+            "OnlineReward.OnlineRewardInfo": self._rpc_online_reward_info,
+            "OnlineReward.DrawOnlineReward": self._rpc_online_reward_draw,
+            "YiYuan.GetInfo": self._rpc_yiyuan_get_info,
+            "YiYuan.Join": self._rpc_yiyuan_join,
+            "YiYuan.DrawReward": self._rpc_yiyuan_draw_reward,
             "TeambattleInfo.GetInviteInfo": lambda _d: {},
             "GiftLogin.SignInfo": self._rpc_gift_login_info,
             "GiftLogin.DrawGiftBox": self._rpc_gift_login_draw,
@@ -1884,6 +1892,58 @@ class ProfileStore(EventHandlersMixin):
             "Xhzw.ReceiveRewardForOneKey": self._rpc_xhzw_receive_reward_for_one_key,
             "Limitthebounty.GetInfo": self._rpc_limitthebounty_get_info,
             "Limitthebounty.ReceivedReward": self._rpc_limitthebounty_received_reward,
+            "TimedMoneyTree.GetInfo": self._rpc_timed_money_tree_get_info,
+            "TimedMoneyTree.ShakeTree": self._rpc_timed_money_tree_shake,
+            "TimedMoneyTree.DrawReward": self._rpc_timed_money_tree_draw_reward,
+            "TimedHopetreeInfo.GetInfo": self._rpc_timed_hopetree_get_info,
+            "TimedHopetreeInfo.DrawReward": self._rpc_timed_hopetree_draw_reward,
+            "TimedSmashingeggsInfo.GetRewardList": self._rpc_timed_smash_egg_get_reward_list,
+            "TimedSmashingeggsInfo.GetSmashingRecord": self._rpc_timed_smash_egg_get_record,
+            "TimedSmashingeggsInfo.SmashingEggs": self._rpc_timed_smash_egg_smash,
+            "TimedLuckdrawInfo.GetInfo": self._rpc_timed_luckdraw_get_info,
+            "TimedLuckdrawInfo.Luckdraw": self._rpc_timed_luckdraw_draw,
+            "TimedXssbInfo.GetInfo": self._rpc_timed_xssb_get_info,
+            "TimedXssbInfo.CallEquip": self._rpc_timed_xssb_call_equip,
+            "TimedXssbInfo.ReceiveReward": self._rpc_timed_xssb_receive_reward,
+            "Timespike.GetInfo": self._rpc_timespike_get_info,
+            "Timespike.ReceivedReward": self._rpc_timespike_received_reward,
+            "TimesMiaosha.GetInfo": self._rpc_times_miaosha_get_info,
+            "TimesMiaosha.Receive": self._rpc_times_miaosha_receive,
+            "TimedInfo.GetChargeSingleInfo": self._rpc_timed_info_get_charge_single,
+            "TimedInfo.DrawSingleChargeReward": self._rpc_timed_info_draw_charge_single,
+            "TimedInfo.GetChargeTotalInfo": self._rpc_timed_info_get_charge_total,
+            "TimedInfo.DrawChargeTotalReward": self._rpc_timed_info_draw_charge_total,
+            "TimedInfo.GetUseTotalInfo": self._rpc_timed_info_get_use_total,
+            "TimedInfo.DrawUseTotalReward": self._rpc_timed_info_draw_use_total,
+            "TimedInfo.GetChargeDaysInfo": self._rpc_timed_info_get_charge_days,
+            "TimedInfo.DrawChargeDaysReward": self._rpc_timed_info_draw_charge_days,
+            "TimedInfo.GetDoubleDiamondInfo": self._rpc_timed_info_get_double_diamond,
+            "TimedInfo.DrawDoubleDiamondReward": self._rpc_timed_info_draw_double_diamond,
+            "TimedInfo.GetAcumulateDaysRewardInfo": self._rpc_timed_info_get_accumulate_login,
+            "TimedInfo.DrawAcumulateDaysReward": self._rpc_timed_info_draw_accumulate_login,
+            "TimedInfo.GetChargeRankInfo": self._rpc_timed_info_get_charge_rank,
+            "TimedInfo.GetUseDiamondRankInfo": self._rpc_timed_info_get_use_rank,
+            "TimedChargeGift.GetChargeGiftInfo": self._rpc_timed_charge_gift_get_info,
+            "TimedChargeGift.ReceiveChargeGift": self._rpc_timed_charge_gift_receive,
+            "TimedChargeScore.GetRewardList": self._rpc_timed_charge_score_get_list,
+            "TimedChargeScore.BuyGoods": self._rpc_timed_charge_score_buy,
+            "TimedLimitExchange.GetInfo": self._rpc_timed_limit_exchange_get_info,
+            "TimedLimitExchange.Exchange": self._rpc_timed_limit_exchange_exchange,
+            "TimedScoreRank.GetInfo": self._rpc_timed_score_rank_get_info,
+            "TimedScoreRank.GetReward": self._rpc_timed_score_rank_get_reward,
+            "TimedCriticalInfo.Info": self._rpc_timed_critical_info,
+            "TimedCriticalInfo.Reward": self._rpc_timed_critical_reward,
+            "GlobalOpencontestRank.GetActiveRank": self._rpc_opencontest_get_active_rank,
+            "GlobalOpencontestRank.GetRank": self._rpc_opencontest_get_rank,
+            "GlobalOpencontestRank.DrawReward": self._rpc_opencontest_draw_reward,
+            "EarlytaskFinishRecord.GetEarlytaskList": self._rpc_earlytask_get_list,
+            "EarlytaskFinishRecord.DrawEarlytaskGift": self._rpc_earlytask_draw_gift,
+            "Swdiamonds.GetSwdiamondInfo": self._rpc_swdiamonds_get_info,
+            "Swdiamonds.GetSwdiamondReward": self._rpc_swdiamonds_get_reward,
+            "RandomRedBag.GetRandomRedBagInfo": self._rpc_random_red_bag_get_info,
+            "RandomRedBag.ReceiveRandomRedBag": self._rpc_random_red_bag_receive,
+            "ActiveGift.ActiveGift": self._rpc_active_gift_redeem,
+            "ShareInvite.GetShareReward": self._rpc_share_invite_get_share_reward,
             "Account.List": self._rpc_account_list,
             "Account.Switch": self._rpc_account_switch,
             "Account.Create": self._rpc_account_create,
@@ -1899,9 +1959,11 @@ class ProfileStore(EventHandlersMixin):
         if status == 0:
             dia_spent = before_diamond - int(self.state.get("player", {}).get("Diamond", 0))
             if dia_spent > 0 and key not in ("DailyTaskInfo.OneKeyDone", "DailyTaskInfo.OneKeyAllDone"):
+                self._inc_stat("spent_diamonds", dia_spent)
                 self._record_daily_task_progress(23, dia_spent)
                 self.save()
             elif dia_spent > 0 and key in ("DailyTaskInfo.OneKeyDone", "DailyTaskInfo.OneKeyAllDone"):
+                self._inc_stat("spent_diamonds", dia_spent)
                 self._record_daily_task_progress(23, dia_spent)
                 if isinstance(value, dict) and "TasksInfo" in value:
                     value = self._build_daily_task_payload()
@@ -1995,7 +2057,11 @@ class ProfileStore(EventHandlersMixin):
         self._sync_events()
         self._sync_player_recover_times()
         self._sync_limitthebounty_trigger_lv()
+        self.state["player"]["OpencontestState"] = 1
         timed_open = self._build_timed_activity_open_info()
+        has_44xx = any(4400 <= int(k) < 4500 for k in timed_open if str(k).isdigit())
+        has_63xx = any(6300 <= int(k) < 6400 for k in timed_open if str(k).isdigit())
+        has_64xx = any(6400 <= int(k) < 6500 for k in timed_open if str(k).isdigit())
         module_subs = self.game_data.get("module_subs", {})
         if module_subs:
             open_submodules = sorted(
@@ -2007,7 +2073,11 @@ class ProfileStore(EventHandlersMixin):
             {
                 "SubModuleId": mid,
                 "OrderNum": idx,
-                "IfOpen": 0 if (mid in (4400, 6300, 6400) and str(mid) not in timed_open) else 1,
+                "IfOpen": (
+                    (1 if has_44xx else 0)
+                    if mid == 4400
+                    else ((1 if has_63xx else 0) if mid == 6300 else ((1 if has_64xx else 0) if mid == 6400 else 1))
+                ),
             }
             for idx, mid in enumerate(open_submodules, start=1)
         ]
@@ -2038,6 +2108,7 @@ class ProfileStore(EventHandlersMixin):
             "WarfarespiritInfo": [],
             "RebornGoodsList": [],
             "RebornnComposeStatus": [],
+            "OpencontestState": 1,
             "RedDotInfo": self._compute_red_dot_info(),
         }
 
@@ -4415,6 +4486,7 @@ class ProfileStore(EventHandlersMixin):
             metadata={"ProductId": pid},
         )
         p["ChargeNum"] = int(p.get("ChargeNum", 0)) + base_diamonds
+        self._inc_stat("recharged_diamonds", base_diamonds)
         if is_first:
             bought.append(pid)
         self._sync_player_recover_times(p)
@@ -4538,6 +4610,7 @@ class ProfileStore(EventHandlersMixin):
             idempotency_key=tx_key,
         )
         p["ChargeNum"] = int(p.get("ChargeNum", 0)) + int(cfg["price"])
+        self._inc_stat("recharged_diamonds", int(cfg["price"]))
         self._sync_player_recover_times(p)
         self.save()
         return self._card_list_payload()
@@ -4584,7 +4657,7 @@ class ProfileStore(EventHandlersMixin):
     # ------------------------------------------------------------------
 
     def _compute_red_dot_info(self) -> dict[str, int]:
-        """Compute module red-dot flags (including StartWork 2718 and R7.5 events)."""
+        """Compute module red-dot flags (including StartWork 2718 and R7.5–R7.9 events)."""
         lv = int(self.state.get("player", {}).get("Lv", 1))
         now = self.now_ts()
         boss_state = self.state.get("boss_battle", {})
@@ -4626,6 +4699,7 @@ class ProfileStore(EventHandlersMixin):
             int(item.get("Sequence", 0)) > len([x for x in str(item.get("DrawNums", "")).split(",") if x.strip()])
             for item in st_payload.get("TargetList", [])
         )
+        miaosha_rd = self._miaosha_red_dot()
 
         return {
             "1400": 1 if can_compose_equip else 0,
@@ -4637,11 +4711,28 @@ class ProfileStore(EventHandlersMixin):
             "2706": self._dinner_red_dot(),
             "2710": 1 if can_fund else 0,
             "2711": self._zcsf_red_dot(),
+            "2712": self._month_sign_red_dot(),
             "2718": 1 if can_startwork else 0,
             "3000": self._daily_task_red_dot(),
+            "3700": 1 if self._build_online_reward_info() is not None else 0,
+            "4300": 1,
+            "4409": self._pray_tree_red_dot(),
+            "4410": self._xssb_red_dot(),
+            "4412": self._slot_red_dot(),
+            "4426": self._smash_egg_red_dot(),
+            "4432": self._money_tree_red_dot(),
             "4600": self._xxbz_red_dot(),
+            "4700": self._critical_tasks_red_dot(),
             "4900": 1 if has_success_claim else 0,
+            "5501": self._random_red_bag_red_dot(),
+            "6800": self._timespike_red_dot(),
             "6900": self._bounty_red_dot(),
+            "7000": miaosha_rd,
+            "7001": miaosha_rd,
+            "7002": miaosha_rd,
+            "7800": self._yiyuan_red_dot(),
+            "7900": self._opencontest_red_dot(),
+            "8200": self._shiwan_red_dot(),
             "9300": self._timed_recruit_red_dot(),
         }
 

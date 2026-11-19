@@ -12,6 +12,7 @@ from typing import Any
 
 from combat_sim import simulate_fight_info
 from event_runtime import STATUS_ACTIVE, STATUS_ENDED
+from r79_event_handlers import R79EventHandlersMixin
 
 
 def _parse_res_tuples(raw: str) -> list[tuple[int, int, int]]:
@@ -25,8 +26,8 @@ def _parse_res_tuples(raw: str) -> list[tuple[int, int, int]]:
     return out
 
 
-class EventHandlersMixin:
-    """Mixin adding R7.5 restored activities and Event Archive integration to ProfileStore."""
+class EventHandlersMixin(R79EventHandlersMixin):
+    """Mixin adding R7.5–R7.9 restored activities and Event Archive integration to ProfileStore."""
 
     # -------------------- Shared Sync, Archive & RewardCenter (2400) --------------------
 
@@ -141,29 +142,6 @@ class EventHandlersMixin:
             self._recalc_all_slots_and_fap()
         self.save()
         return {"BaseGetGameResourceList": base_res}
-
-    def _build_timed_activity_open_info(self) -> dict[str, list[dict[str, Any]]]:
-        """Build Avatar.TimedActivityOpenInfo with all simultaneously active EventRuntime timed events."""
-        p = self.state["player"]
-        active_tr = sorted(
-            self.event_runtime.get_active_timed_events(9300, p),
-            key=lambda pair: int(pair[0].metadata.get("activity_id", 0)),
-        )
-        if not active_tr:
-            return {}
-        items_9300: list[dict[str, Any]] = []
-        for idx, (ev_def, ev) in enumerate(active_tr, start=1):
-            act_id = int(ev_def.metadata.get("activity_id", 81))
-            items_9300.append(
-                {
-                    "ActivityId": act_id,
-                    "Name": ev_def.name,
-                    "EndDate": int(ev.end_ts or 0),
-                    "Xssx": idx,
-                    "ExtraInfo": {"ActivityEnumId": act_id},
-                }
-            )
-        return {"9300": items_9300}
 
     # -------------------- Activity 1a: PlayerVIT Dinner Windows (2706) --------------------
 

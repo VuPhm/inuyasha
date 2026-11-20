@@ -131,6 +131,21 @@ def parse_array_lua_list(path: str) -> list[dict[str, Any]]:
     return [_parse_fields(bm.group(1), indent=12) for bm in block_re.finditer(body)]
 
 
+def extract_bdd_data(cfg_dir: str) -> dict[str, Any]:
+    """Load the VN catalogue and reward tables. NPC lineups are supplied by the original server."""
+    config = lambda name: os.path.join(cfg_dir, name + ".lua")
+    return {
+        "nodes": parse_simple_lua_items(config("BddNodeModel")),
+        "points": parse_simple_lua_items(config("BddPointModel")),
+        "clearance": parse_array_lua_items(config("BddClearanceModel"), "clearanceID"),
+        "rewards": parse_array_lua_list(config("BddRewardStarsRelation")),
+        "buffs": parse_array_lua_items(config("BddBuffShopRelation")),
+        "reset": parse_simple_lua_items(config("BddResetUseRelation")),
+        "merit_shop": parse_simple_lua_items(config("BddWraithShopRelation")),
+        "equip_shop": parse_simple_lua_items(config("BddEquipShopRelation")),
+    }
+
+
 def parse_3level_lua_items(path: str, group_key: str) -> dict[str, list[dict[str, Any]]]:
     """Parse 3-level `[k1][k2][k3] = { ... }` tables grouped by `group_key`."""
     if not os.path.exists(path):
@@ -513,6 +528,9 @@ def main() -> None:
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     print(f"Wrote {OUT_PATH}: {data['counts']}")
+    with open(os.path.join(os.path.dirname(OUT_PATH), "bdd_data.json"), "w", encoding="utf-8") as f:
+        json.dump(extract_bdd_data(cfg_dir), f, ensure_ascii=False, indent=2)
+        f.write("\n")
 
 
 if __name__ == "__main__":

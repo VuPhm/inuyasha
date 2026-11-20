@@ -1,10 +1,10 @@
 # Lộ Trình Phục Hồi Dự Án — InuYasha: Seek Jade (`VN 5.0.4.98`)
 
-**Mốc hiện tại:** `checkpoint-vn-r7.12.1` trên `master` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
+**Bản đã nghiệm thu:** R7.14, APK standalone 827 | **Checkpoint:** `checkpoint-vn-r7.14` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
 
 ---
 
-## I. Hiện trạng Baseline Đã Đạt (`R1 – R7.12.1`)
+## I. Hiện trạng Baseline Đã Đạt (`R1 – R7.14`)
 
 | Mốc | Trạng thái | Thành phần đã khôi phục & kiểm chứng |
 | :--- | :---: | :--- |
@@ -18,7 +18,10 @@
 | **`R7.10` (`checkpoint-vn-r7.10`)** | Đã xong | Cây Tiền, Slot và rương banner đã được kiểm thử delta. Vé quay đúng ID VN, nới túi tướng, giữ quyền chọn UR khi đổi kỳ và chống trùng khóa nhận thưởng giữa TK S1. Xem [báo cáo R7.10](R7_10_ACCEPTANCE_REPORT.md). |
 | **`R7.11` (`checkpoint-vn-r7.11`)** | Đã xong | BXH Slot và Thần Tướng cùng S1, bản ghi Đập Trứng từ lượt chơi thật, kết toán Slot và Cây Tiền, reset và tùy chọn bảo lưu pity theo banner. APK 810 nâng cấp giữ save trên Pixel 3 XL. Xem [báo cáo R7.11](R7_11_ACCEPTANCE_REPORT.md). |
 | **`R7.12` (`checkpoint-vn-r7.12`)** | Đã xong | Bảo toàn Túi Đá, sửa nút X Quà xếp hạng, kho tướng 300–400, Tầm Bảo từ Đột Phá và Cây Ước tính nạp theo kỳ. APK 820 cài đè giữ đủ bốn save S1 trên Pixel. [Nghiệm thu R7.12](R7_12_ACCEPTANCE_REPORT.md). |
-| **`R7.12.1` (`checkpoint-vn-r7.12.1`)** | **Mốc hiện tại** | APK 823 gắn lựa chọn tướng với banner và kỳ đã cấp quyền, đồng bộ thành tích 4918 và rương theo ngày, phục hồi búa Đập Trứng đã ghi sổ. [Nghiệm thu hotfix](R7_12_1_ACCEPTANCE_REPORT.md). |
+| **`R7.12.1` (`checkpoint-vn-r7.12.1`)** | Checkpoint bảo toàn | APK 823 gắn lựa chọn tướng với banner và kỳ đã cấp quyền, đồng bộ thành tích 4918 và rương theo ngày, phục hồi búa Đập Trứng đã ghi sổ. [Nghiệm thu hotfix](R7_12_1_ACCEPTANCE_REPORT.md). |
+| **R7.12.2 (APK 824)** | **Đã nghiệm thu** | Đột Phá tiêu đúng nguyên liệu và đồng bộ Túi. Cài đè trên Pixel giữ đủ bốn save S1. [Nghiệm thu R7.12.2](R7_12_2_ACCEPTANCE_REPORT.md). |
+| **R7.13 (APK 825)** | **Đã nghiệm thu** | Shop Thần Bí, hợp thành đỏ, chiêu mộ 4417, thời trang và tiến trình theo kỳ. Cài đè giữ đủ bốn save S1 trên Pixel. [Nghiệm thu R7.13](R7_13_ACCEPTANCE_REPORT.md). |
+| **R7.14 (APK 827)** | **Đã nghiệm thu** | Đồng bộ sao Ngộ Đạo, xác minh giới hạn Hợp Thành VN, mở danh mục 51 ải Mộ Thần Binh và sáu trận mô phỏng. [Nghiệm thu R7.14](R7_14_ACCEPTANCE_REPORT.md). |
 
 ---
 
@@ -105,4 +108,7 @@ R7.6 triển khai theo hướng cân bằng — **không** dồn toàn bộ roun
 | **R7.6** *(Đã xong)* | **`Zcsf (2711)`**, **`Xhzw (2303)`**, **`Limitthebounty (6900)`**, **`TreasureLvUp/StepUp`**, **`Hero/Equip/Treasure Rebirth`**, sửa combat chương xa (`Ch 15..80`) + **Multi-Banner `81+82` đồng thời** + **Reset `00:00 UTC+7` & Reset thủ công** + **POC Android Standalone** | Hoàn tất `checkpoint-vn-r7.6`; xem [R7_6_ACCEPTANCE_REPORT.md](file:///Users/vup/Documents/agy/inuyasha/R7_6_ACCEPTANCE_REPORT.md) |
 | **R7.7 → R7.8** *(Baseline hiện tại)* | **Android Standalone Beta (Ship Candidate `com.cmn.inuyasha.revival`)**: Nhúng CPython `3.11.17` 32-bit + `libinubackend.so` + `LocalBackendManager`/`LocalBackendService` (`127.0.0.1:18082` loopback-only) + Gộp toàn bộ `3,672` file OBB vào 1 APK duy nhất + **Đa tài khoản S1 độc lập & Đấu Arena phòng thủ giữa các TK S1** + **Sao lưu/Khôi phục SHA-256** + **Nâng cấp phiên bản giữ Save (`770 -> 780`)** | Hoàn tất `checkpoint-vn-r7.8` (`50/50` unit test PASS); xem [R7_7_R7_8_STANDALONE_BETA_REPORT.md](file:///Users/vup/Documents/agy/inuyasha/R7_7_R7_8_STANDALONE_BETA_REPORT.md) |
 | **R7.11** *(Đã xong)* | Xếp hạng sự kiện cùng S1, bot cục bộ, kết toán đúng kỳ và hoàn thiện Event Archive | Nâng cấp standalone trên Pixel, Test the Delta |
-| **Round sau** | `BddInfo (2507 - Mộ Thần Binh)`, Guild cục bộ (`3400`), Co-op NPC (`Teambattle 2319`) | Mở rộng khi đã đối chiếu đủ cấu hình và luồng UI |
+| **R7.12.2** *(Đã nghiệm thu)* | Đồng bộ đá sau Đột Phá và tiêu đúng nguyên liệu VN | 76/76 Python, 8/8 Lua. APK 824 cài đè giữ đủ bốn save S1 trên Pixel. [Báo cáo](R7_12_2_ACCEPTANCE_REPORT.md). |
+| **R7.13** *(Đã nghiệm thu)* | Đồng hồ Shop Thần Bí, hợp thành đỏ, phí 4417, chỉ số thời trang và nạp/tiêu theo kỳ | 86/86 Python, 9/9 Lua. Test the Delta và nâng cấp 824 → 825 trên Pixel. [Báo cáo](R7_13_ACCEPTANCE_REPORT.md). |
+| **R7.14A/B** *(Lát đầu đã nghiệm thu)* | Ngộ Đạo, giới hạn Hợp Thành và Mộ Thần Binh. Danh mục 51 ải, chơi sáu ải mô phỏng có thưởng và tiến trình S1. | 94/94 Python, 12/12 Lua. Giữ 45 ải còn lại khóa đến khi có nguồn đội hình/chỉ số gốc hoặc lát mô phỏng tiếp theo đã cân chỉnh. [Audit nguồn](R7_14_SOURCE_AUDIT.md). |
+| **Round sau** | Guild cục bộ (`3400`), Co-op NPC (`Teambattle 2319`) | Mở rộng khi đã đối chiếu đủ cấu hình và luồng UI |

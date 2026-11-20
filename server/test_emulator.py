@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import tempfile
 import threading
@@ -518,11 +519,11 @@ class EmulatorProtocolTest(unittest.TestCase):
         r_tal_empty = prof.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [1, 0]})
         self.assertEqual(r_tal_empty["Status"], -1)
 
-        # Grant diamonds via step reward 1602 (200) + paid Recruit type 2 (80)
+        # Grant diamonds via step reward 1602 (200) + paid Recruit type 2 (64 while 4417 is active)
         prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetStepCountReward", "Data": [1602]})
         r_paid = prof.handle_rpc({"ModuleName": "HeroRecruit", "MethodName": "Recruit", "Data": [2, 0]})
         self.assertEqual(r_paid["Status"], 0)
-        self.assertEqual(prof.state["player"]["Diamond"], 120)
+        self.assertEqual(prof.state["player"]["Diamond"], 136)  # VN 4417: 200 - ceil(80 * 80%).
 
         # EquipCompose (explicit 5 white -> 1 green), EquipLvUpForCount, and set bonus verification
         prof._grant_resources_from_tuples(
@@ -554,7 +555,7 @@ class EmulatorProtocolTest(unittest.TestCase):
         exp_buy = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "BuyExploreNum", "Data": []})
         self.assertEqual(exp_buy["Status"], 0)
         self.assertEqual(exp_buy["Value"]["ResetNum"], 1)
-        self.assertEqual(prof.state["player"]["Diamond"], 100)
+        self.assertEqual(prof.state["player"]["Diamond"], 116)
 
         early_daily = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "DrawDailyReward", "Data": [50]})
         self.assertEqual(early_daily["Status"], -1)
@@ -4057,6 +4058,176 @@ class R7121RewardTest(unittest.TestCase):
                 self.assertTrue(profile.event_runtime.get_instance(event.instance_id)["progress"]["starter_hammers_seeded"])
             entries = [json.loads(line) for line in (root / "audit_ledger.jsonl").read_text().splitlines()]
             self.assertEqual(sum(row["idempotency_key"] == key for row in entries), 1)
+
+
+class HeroBreakthroughDeltaTest(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        self.profile = R712DeltaTest.emulator(self.root).profiles["normal"]
+        self.profile.state["player"].update(Lv=42, Gold=2_000_000)
+        self.profile.state["goods"] = []
+        R712DeltaTest.rpc(self.profile, "Player", "GetInitData")
+
+    def step_up(self, hero, materials, *expected_step):
+        return R712DeltaTest.rpc(self.profile, "Hero", "HeroStepUp", hero["Id"], materials, *expected_step)
+
+    def hero(self, model, lv=1, step=0):
+        hero = self.profile._build_hero_instance(model, lv=lv, step=step)
+        self.profile.state["heroes"].append(hero)
+        return hero
+
+    def treasures(self, model, amount):
+        bundles = self.profile._grant_resources_from_tuples(
+            [(model // 10000, model, amount)], source="step_fixture",
+            tx_prefix=f"step_fixture:{model}",
+        )
+        return bundles[0]["Treasure"]
+
+    def goods(self, model, *amounts):
+        for i, amount in enumerate(amounts):
+            self.profile.state["goods"].append(
+                {"GoodsModelId": model, "Id": f"goods-{model}-{i}", "Num": amount},
+            )
+
+    def inventory(self):
+        state = self.profile.state
+        return (
+            state["player"]["Gold"],
+            {item["Id"]: item["Num"] for item in state["goods"]},
+            {item["Id"]: item["Step"] for item in state["heroes"]},
+            {item["Id"] for item in state["treasures"]},
+            {item["Id"] for item in state["equips"]},
+        )
+
+    def assert_rejected(self, status, hero, materials, *expected_step):
+        before = self.inventory()
+        self.assertEqual(self.step_up(hero, materials, *expected_step)["Status"], status)
+        self.assertEqual(self.inventory(), before)
+
+    def test_lv35_uses_target_hero_level_and_refreshes_stones_before_next_step(self):
+        hero = self.hero(12011004, lv=34, step=3)
+        ids_before = [item["Id"] for item in self.treasures(14010502, 2) + self.treasures(14020502, 2)]
+        ids_after = [item["Id"] for item in self.treasures(14010501, 4) + self.treasures(14020501, 4)]
+        ids_before.insert(0, self.hero(12011004)["Id"])
+        ids_after.insert(0, self.hero(12011004)["Id"])
+        self.goods(16050001, 3500)
+        reply = self.step_up(hero, ids_before, 3)
+        self.assertEqual(reply["Status"], 0)
+        self.assertEqual([item["Num"] for item in reply["Avatar"]["GoodsInfo"]["16050001"]], [2100])
+        self.assert_rejected(-1217, hero, ids_after, 4)  # Player Lv42, target hero Lv34
+        hero["Lv"] = 35
+        self.assert_rejected(-1802, hero, ids_after, 4)
+        stones = next(item for item in self.profile.state["goods"] if item["GoodsModelId"] == 16050001)
+        stones["Num"] += 100
+        reply = self.step_up(hero, ids_after, 4)
+        self.assertEqual(reply["Status"], 0)
+        self.assertEqual(reply["Value"]["Step"], 5)
+        self.assertEqual(reply["Avatar"]["GoodsInfo"], {"16050001": []})
+        self.assertEqual(self.inventory()[0], 1_200_000)
+        self.assertFalse(set(ids_before + ids_after) & (set(self.inventory()[2]) | self.inventory()[3]))
+        self.assert_rejected(-1217, hero, [], 5)  # Next gate is Lv40
+
+    def test_lv35_rejects_wrong_missing_duplicate_upgraded_or_equipped_entities(self):
+        self.goods(16050001, 2200)
+        hero = self.hero(12011004, lv=35, step=4)
+        duplicate = self.hero(12011004)
+        books = self.treasures(14010501, 4)
+        horses = self.treasures(14020501, 4)
+        wrong_book = self.treasures(14010502, 1)[0]
+        wrong_hero = self.hero(12012005)
+        ids = [duplicate["Id"]] + [item["Id"] for item in books + horses]
+        self.assert_rejected(-1602, hero, ids[:-1], 4)
+        self.assert_rejected(-1602, hero, [wrong_hero["Id"], *ids[1:]], 4)
+        self.assert_rejected(-1602, hero, [*ids[:-1], wrong_book["Id"]], 4)
+        self.assert_rejected(-1602, hero, [*ids[:-1], "missing-id"], 4)
+        self.assert_rejected(-1221, hero, [*ids[:-1], ids[-2]], 4)
+        self.assert_rejected(-1220, hero, [hero["Id"], *ids[1:]], 4)
+        self.profile.state["slots"][1]["HeroId"] = duplicate["Id"]
+        self.assert_rejected(-1206, hero, ids, 4)
+        self.profile.state["slots"][1]["HeroId"] = hero["Id"]
+        duplicate["Lv"] = 2
+        self.assert_rejected(-1602, hero, ids, 4)
+        duplicate["Lv"] = 1
+        self.profile.state["slots"][1]["Book"] = books[0].copy()
+        self.assert_rejected(-1405, hero, ids, 4)
+        self.profile.state["slots"][1].pop("Book")
+        books[0]["Lv"] = 1
+        self.assert_rejected(-1602, hero, ids, 4)
+        books[0]["Lv"] = 0
+        horses[0]["Step"] = 1
+        self.assert_rejected(-1602, hero, ids, 4)
+        horses[0]["Step"] = 0
+        self.profile.state["player"]["Gold"] = 549999
+        self.assert_rejected(-1118, hero, ids, 4)
+        self.profile.state["player"]["Gold"] += 1
+        self.assertEqual(self.step_up(hero, ids, 4)["Status"], 0)
+        self.assertEqual(self.inventory()[0], 0)
+        self.assertIn(wrong_book["Id"], self.inventory()[3])
+
+    def test_main_hero_lv35_naohi_and_stones_across_multiple_stacks(self):
+        hero = next(h for h in self.profile.state["heroes"] if h["HeroModelId"] in (12010001, 12010004))
+        hero.update(Lv=35, Step=4)
+        treasures = self.treasures(14010501, 2) + self.treasures(14020501, 2)
+        self.goods(16050001, 1000, 1550)
+        self.goods(16050090, 100, 299)
+        materials = [item["Id"] for item in treasures]
+        self.assert_rejected(-1802, hero, materials, 4)
+        self.profile.state["goods"][-1]["Num"] += 1
+        reply = self.step_up(hero, materials, 4)
+        self.assertEqual(reply["Status"], 0)
+        self.assertEqual(reply["Avatar"]["GoodsInfo"]["16050090"], [])
+        self.assertEqual([item["Num"] for item in reply["Avatar"]["GoodsInfo"]["16050001"]], [50])
+        self.assertEqual(self.inventory()[0], 1_600_000)
+        self.assertFalse(self.inventory()[3])
+
+    def test_early_step_replay_concurrent_and_after_reload(self):
+        hero = next(h for h in self.profile.state["heroes"] if h["HeroModelId"] in (12010001, 12010004))
+        hero.update(Lv=10, Step=0)
+        self.goods(16050001, 600)
+        self.profile.save()
+        with ThreadPoolExecutor(max_workers=2) as clients:
+            replies = list(clients.map(lambda _: self.step_up(hero, {}, 0)["Status"], range(2)))
+        self.assertCountEqual(replies, [0, -39])
+        self.assertEqual(self.inventory()[0], 1_980_000)
+        self.assertEqual(self.profile._get_goods_qty(16050001), 500)
+        self.profile = R712DeltaTest.emulator(self.root).profiles["normal"]
+        self.assert_rejected(-39, hero, [], 0)
+        self.assert_rejected(-47, hero, [])
+        self.assertEqual(self.step_up(hero, [], 1)["Status"], 0)
+        self.assertEqual(self.profile._get_goods_qty(16050001), 100)
+        self.assertEqual(self.inventory()[0], 1_930_000)
+
+    def test_lv35_failed_save_rolls_back_and_retry_commits_once(self):
+        hero = self.hero(12011004, lv=35, step=4)
+        mats = [item["Id"] for item in self.treasures(14010501, 4) + self.treasures(14020501, 4)]
+        mats.insert(0, self.hero(12011004)["Id"])
+        self.goods(16050001, 2200)
+        self.profile.save()
+        saved = self.profile.state_path.read_bytes()
+        audit = self.profile.ledger.audit_log_path.read_bytes()
+        with patch.object(self.profile, "_write_json_atomic", side_effect=OSError("test storage error")):
+            with self.assertLogs(level="ERROR"):
+                self.assert_rejected(-7, hero, mats, 4)
+        self.assertEqual(self.profile.state_path.read_bytes(), saved)
+        self.assertEqual(self.profile.ledger.audit_log_path.read_bytes(), audit)
+        self.assertEqual(self.step_up(hero, mats, 4)["Status"], 0)
+        committed = self.inventory()
+        self.profile = R712DeltaTest.emulator(self.root).profiles["normal"]
+        self.assertEqual(self.inventory(), committed)
+        self.assert_rejected(-39, hero, mats, 4)
+        rows = self.profile.ledger.list_transactions()
+        self.assertEqual([row["amount"] for row in rows if row["source"] == "hero_step_up:12011004"], [-550000])
+
+    def test_max_step_or_invalid_payload_leaves_inventory_intact(self):
+        hero = self.hero(12011004, lv=75, step=15)
+        self.goods(16050001, 10000)
+        self.assert_rejected(-1214, hero, [], 15)
+        early = self.hero(12011004, lv=1)
+        self.assert_rejected(-1602, early, [hero["Id"]], 0)
+        self.assert_rejected(-48, early, {"extra": hero["Id"]}, 0)
+        self.assert_rejected(-48, early, [], False)
 
 
 if __name__ == "__main__":

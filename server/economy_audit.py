@@ -15,6 +15,7 @@ import json
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +32,7 @@ ALLOWED_PLAYER_RESOURCES = {
     "EXP": "EXP",
     "PVPCoin": "PVPCoin",
     "BossCoin": "BossCoin",
+    "Merit": "Merit",
 }
 
 DISALLOWED_BALANCE_KEYS = {"HP", "AP", "DEF", "DAM", "DAMADD", "DAMADDR", "DAMCUT", "DAMCUTR"}
@@ -69,6 +71,7 @@ class ResourceLedger:
         self.audit_log_path = audit_log_path
         self.vip_model = vip_model or {}
         self._lock = threading.RLock()
+        self._debit_capture = threading.local()
         self._applied_keys: set[tuple[str, str]] = set()
         self._memory_log: list[dict[str, Any]] = []
         if self.audit_log_path and self.audit_log_path.exists():
@@ -81,6 +84,17 @@ class ResourceLedger:
                         self._applied_keys.add((str(rec["account_id"]), rec["idempotency_key"]))
                 except json.JSONDecodeError:
                     continue
+
+    @contextmanager
+    def capture_diamond_debits(self):
+        """Measure actual Diamond costs during one RPC, independently of its rewards."""
+        previous = getattr(self._debit_capture, "accounts", None)
+        accounts: dict[str, int] = {}
+        self._debit_capture.accounts = accounts
+        try:
+            yield accounts
+        finally:
+            self._debit_capture.accounts = previous
 
     def derive_vip_level(self, vip_exp: int) -> int:
         """Compute VIP level strictly from cumulative VipEXP and VipModel thresholds."""
@@ -140,7 +154,7 @@ class ResourceLedger:
                 player["Vip"] = vip_lv
                 player["VIPLv"] = vip_lv
 
-            return self._record(
+            transaction = self._record(
                 account_id=account_id,
                 profile=profile,
                 resource_type=resource_type,
@@ -151,6 +165,10 @@ class ResourceLedger:
                 actor=actor,
                 metadata=metadata,
             )
+            capture = getattr(self._debit_capture, "accounts", None)
+            if capture is not None and resource_type == "Diamond" and amount < 0:
+                capture[account_id] = capture.get(account_id, 0) - amount
+            return transaction
 
     def record_grant_event(
         self,

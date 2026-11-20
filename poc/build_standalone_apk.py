@@ -312,6 +312,8 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
         "combat_sim.py",
         "economy_audit.py",
         "game_data.json",
+        "bdd_handlers.py",
+        "bdd_data.json",
     ]
     dest_zip.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(dest_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
@@ -1049,6 +1051,25 @@ def patch_standalone_workspace(
 
     patch_r712_lua(STANDALONE_WORK / "assets" / "src")
     patch_reward_claim_lua(STANDALONE_WORK / "assets" / "src")
+    patch_mystery_shop_lua(STANDALONE_WORK / "assets" / "src")
+    patch_r714_lua(STANDALONE_WORK / "assets" / "src")
+    patch_luac_text(STANDALONE_WORK / "assets" / "src" / "Equipment" / "EquipmentComposeLayer.luac", [
+        (
+            '        if colorLV < 8 then    --排除最高等级的装备',
+            '        local recipe = EquipColorRelation.items[colorLV]\n'
+            '        if recipe and recipe.colorFinally > colorLV then',
+        ),
+    ])
+    patch_luac_text(STANDALONE_WORK / "assets" / "src" / "Store" / "RecruitScene.luac", [
+        (
+            'local cnt = singleUsed.count * (priceSave and (priceSave / 100) or 1)',
+            'local cnt = math.ceil(singleUsed.count * (priceSave or 100) / 100)',
+        ),
+        (
+            'local tenCnt = tenConsume.count * (priceSave and (priceSave / 100) or 1)',
+            'local tenCnt = math.ceil(tenConsume.count * (priceSave or 100) / 100)',
+        ),
+    ])
 
     # 6b. Bundle VN-adapted TW 1.4 Config/*.lua tables missing from VN 5.0.4.98 APK
     for cfg_name in (
@@ -1118,6 +1139,33 @@ def patch_r712_lua(src: Path) -> None:
         ('if not BagExpandUseRelation.items[expandNum + 1] then', 'if not nextExpansion then'),
     ])
     patch_luac_text(src / "Hero" / "HeroUpdateScene.luac", [
+        (
+            'function HeroUpdateScene:requestHeroStepUp(heroId)\n',
+            'function HeroUpdateScene:requestHeroStepUp(heroId)\n'
+            '    if self.mHeroStepPending then return end\n',
+        ),
+        (
+            '    LoadingWait:begin(self)\n'
+            '    HttpRequest("Hero","HeroStepUp", {heroId, materialEntity}, handler(self, self.responseHeroStepUp))',
+            '    self.mHeroStepPending = true\n'
+            '    LoadingWait:begin(self)\n'
+            '    HttpRequest("Hero","HeroStepUp", {heroId, materialEntity, self.mHero.Step}, '
+            'handler(self, self.responseHeroStepUp))',
+        ),
+        (
+            'function HeroUpdateScene:responseHeroStepUp(event)\n    LoadingWait:ends()',
+            'function HeroUpdateScene:responseHeroStepUp(event)\n    LoadingWait:ends()\n'
+            '    if not event or event.Status ~= 0 then self.mHeroStepPending = false end',
+        ),
+        (
+            '            self.mHero = event.Value\n'
+            '            --刷新界面\n'
+            '            self:createHeroBreakthrough(event.Value.Step)',
+            '            self.mHero = event.Value\n'
+            '            self.mHeroStepPending = false\n'
+            '            --刷新界面\n'
+            '            self:createHeroBreakthrough(event.Value.Step)',
+        ),
         (
             'function HeroUpdateScene:createHeroBreakthrough(step)',
             '''function HeroUpdateScene:openBreakthroughTreasure(resourceType, modelId)
@@ -1276,6 +1324,232 @@ function TimedPrayTree:refreshUi(missTime, needDiamond, currentDiamond, rewards)
             '',
         ),
     ])
+
+
+def patch_r714_lua(src: Path) -> None:
+    patch_luac_text(src / "Practice" / "LightenStarScene.luac", [
+        (
+            '    if starCount < targetStarInfo.needStar then',
+            '    if LightenStarInfo.ID == AttrtreeModel.items[#AttrtreeModel.items].ID then\n'
+            '        ui.showFlashView({parent = self, text = TR("悟道已完成")})\n'
+            '    elseif starCount < targetStarInfo.needStar then',
+        ),
+        (
+            '    elseif LightenStarInfo.ID == AttrtreeModel.items[#AttrtreeModel.items].ID then\n'
+            '        --点星已经达到最大\n'
+            '        ui.showFlashView({parent = self, text = TR("悟道已完成"),})\n',
+            '',
+        ),
+    ])
+    patch_luac_text(src / "NewXZYY" / "XzyyMainScene.luac", [
+        (
+            '    FTPSprite :setScale(Adapter.MinScale)',
+            '''    FTPSprite :setScale(Adapter.MinScale)
+    self.mSimulationLabel = ui.newLabel({
+        text = "", font = _FONT_DEFAULT, size = 20,
+        color = ColorList.ccWhite, needOutLine = true,
+    })
+    self.mSimulationLabel:setPosition(cc.p(445 * Adapter.AutoScaleX, display.height - 138 * Adapter.AutoScaleY))
+    self.mSimulationLabel:setScale(Adapter.MinScale)
+    self.mBgLayer:addChild(self.mSimulationLabel)
+    local catalogueBtn = ui.newButton({
+        normalImage = "c_77.png", text = "Danh sách ải", fontSize = 24,
+        clickAction = function() self:showCatalogue() end,
+    })
+    catalogueBtn:setPosition(cc.p(490 * Adapter.AutoScaleX, 50 * Adapter.AutoScaleY))
+    catalogueBtn:setScale(Adapter.MinScale)
+    self.mBgLayer:addChild(catalogueBtn)''',
+        ),
+        (
+            'function XzyyMainScene:refeshData(needAction)',
+            '''function XzyyMainScene:showCatalogue()
+    if not self.mCatalogue then return end
+    local layer = require("Common.ModalColorLayer").new({
+        bgImage = "c_43.png", title = "Mộ Thần Binh", closeBtnImage = "c_15.png",
+    })
+    local size = layer.mBgSprite:getContentSize()
+    local list = ccui.ListView:create()
+    list:setDirection(ccui.ScrollViewDir.vertical)
+    list:setTouchEnabled(true)
+    list:setContentSize(cc.size(size.width * 0.85, size.height * 0.65))
+    list:setPosition(cc.p(size.width * 0.075, size.height * 0.14))
+    layer.mBgSprite:addChild(list)
+    for _, entry in ipairs(self.mCatalogue) do
+        local cell = ccui.Layout:create()
+        cell:setContentSize(cc.size(size.width * 0.85, 39))
+        local state = "Có thể đánh"
+        if entry.StarCount > 0 then
+            state = string.format("%d sao", entry.StarCount)
+        elseif not entry.Available then
+            state = "Chưa mở mô phỏng"
+        elseif entry.Locked then
+            state = "Đang khóa"
+        end
+        local name = BddNodeModel.items[entry.Id].name
+        local row = ui.newLabel({
+            text = string.format("%02d  %s   -   %s", (entry.Floor - 11) * 3 + entry.Id % 10, name, state),
+            size = 19, font = _FONT_DEFAULT, color = ColorList.ccWhite, needOutLine = true,
+        })
+        row:setAnchorPoint(cc.p(0, 0.5))
+        row:setPosition(cc.p(8, 19))
+        cell:addChild(row)
+        list:pushBackCustomItem(cell)
+    end
+    self:addChild(layer)
+end
+
+function XzyyMainScene:refeshData(needAction)''',
+        ),
+        (
+            '                        --请求BUff信息\n'
+            '                        if self.mIsNeedBuff == true then\n'
+            '                            self:requestSelectBuffList()\n'
+            '                        end\n'
+            '                        target:removeFromParent()',
+            '                        target:removeFromParent()\n'
+            '                        self:requestInitData()',
+        ),
+        (
+            '    if event and event.Status == 0 then\n'
+            '        --当前星星',
+            '    if event and event.Status == 0 and event.Value and event.Value.Info then\n'
+            '        self.mCatalogue = event.Value.Catalogue\n'
+            '        if self.mSimulationLabel and event.Value.Simulation then\n'
+            '            self.mSimulationLabel:setString(string.format("Đội NPC mô phỏng (%d/51 ải)", event.Value.PlayableCount))\n'
+            '        end\n'
+            '        --当前星星',
+        ),
+        (
+            '                    static = self.mFloorInfor[i].Id  ~= self.mNode,',
+            '                    static = self.mFloorInfor[i].Locked or self.mFloorInfor[i].Id ~= self.mNode,',
+        ),
+        (
+            '                        if  self.mFloorInfor[i].Id  ~= self.mNode then',
+            '                        if self.mFloorInfor[i].Locked or self.mFloorInfor[i].Id ~= self.mNode then',
+        ),
+        (
+            '                if self.mFloorInfor[i].Id  == self.mNode then',
+            '                if not self.mFloorInfor[i].Locked and self.mFloorInfor[i].Id == self.mNode then',
+        ),
+        (
+            '    self.mCanUseStar = canUseStar\n    self:refeshData(true)',
+            '    self.mCanUseStar = canUseStar\n    self:requestInitData()',
+        ),
+        (
+            '        local tempLayer = require("NewXZYY.XzyyOneKeyLayer")',
+            '        self.mCatalogue = event.Value.Catalogue\n'
+            '        self.mHaveBuff = event.Value.BuffInfo\n'
+            '        local tempLayer = require("NewXZYY.XzyyOneKeyLayer")',
+        ),
+        (
+            '        if self.mShanhu then',
+            '        self.mCatalogue = event.Value.Catalogue\n'
+            '        if self.mShanhu then',
+        ),
+    ])
+    patch_luac_text(src / "NewXZYY" / "XzyyPrepareFightLayer.luac", [
+        (
+            'function XzyyPrepareFightLayer:requestFight(NodeId,difficulty,isPassed)\n',
+            'function XzyyPrepareFightLayer:requestFight(NodeId,difficulty,isPassed)\n'
+            '    if self.mFightPending then return end\n'
+            '    self.mFightPending = true\n',
+        ),
+        (
+            'function XzyyPrepareFightLayer:responseFight(event)\n',
+            'function XzyyPrepareFightLayer:responseFight(event)\n'
+            '    self.mFightPending = false\n',
+        ),
+        (
+            'BattleDataCache:setXZYYData({NodeId = self.mFightNodeId,Nandu = self.mFightNandu})',
+            'BattleDataCache:setXZYYData({NodeId = self.mFightNodeId, Nandu = self.mFightNandu, FightToken = event.Value.FightToken})',
+        ),
+    ])
+    patch_luac_text(src / "Adventure" / "BattleSettleLayer.luac", [
+        (
+            '{self.mXZYYData.NodeId, self.mXZYYData.Nandu, self.mFightResult.result,self.mFightResult.data, self.mFightResult.optional},',
+            '{self.mXZYYData.NodeId, self.mXZYYData.Nandu, self.mFightResult.result, self.mFightResult.data, '
+            'self.mFightResult.optional or {}, self.mXZYYData.FightToken},',
+        ),
+    ])
+    patch_luac_text(src / "NewXZYY" / "XzyyStoreScene.luac", [
+        (
+            '                for j, v2 in pairs(equipment) do\n'
+            '                    table.insert(IdList,v2.Id)\n'
+            '                end',
+            '                local selected = {}\n'
+            '                for index = 1, useData[1].count do\n'
+            '                    if not equipment[index] then return end\n'
+            '                    selected[index] = equipment[index]\n'
+            '                    IdList[index] = equipment[index].Id\n'
+            '                end',
+        ),
+        ('NetworkResData:deleteEquipItems(equipment)', 'NetworkResData:deleteEquipItems(selected)'),
+    ])
+
+
+def patch_mystery_shop_lua(src: Path) -> None:
+    replacements = [
+        (
+            '                if not storeInfo then\n'
+            '                    return\n'
+            '                end\n'
+            '                local tempTime = storeInfo.LastFreshDate or 0\n'
+            '                if tempTime < currTime then  -- 需要重新请求服务器获取商店数据\n'
+            '                    return true\n'
+            '                end\n'
+            '                -- 刷新倒计时时间\n'
+            '                if self.mRefershTimeLabel then\n'
+            '                    self.mRefershTimeLabel:setString(formatTimeEx(tempTime - currTime))\n'
+            '                end',
+            '                local deadline = storeInfo and tonumber(storeInfo.LastFreshDate)\n'
+            '                if not deadline or not currTime then return end\n'
+            '                local remaining = math.max(0, deadline - currTime)\n'
+            '                if self.mRefershTimeLabel then\n'
+            '                    self.mRefershTimeLabel:setString(formatTimeEx(remaining))\n'
+            '                end\n'
+            '                return remaining == 0',
+        ),
+    ]
+    for rpc, method, field in (
+        ("GetInfo", "requestNormalInfo", "mNormalInfoPending"),
+        ("SeniorGetInfo", "requestSeniorGetInfo", "mSeniorInfoPending"),
+    ):
+        old = (
+            f'function MysticalStoreScene:{method}()\n'
+            '    LoadingWait:begin(self)\n'
+            f'    HttpRequest("MysteryShop", "{rpc}", {{}}, function(response)\n'
+        )
+        new = (
+            f'function MysticalStoreScene:{method}()\n'
+            f'    if self.{field} then return end\n'
+            f'    self.{field} = true\n'
+            '    LoadingWait:begin(self)\n'
+            f'    HttpRequest("MysteryShop", "{rpc}", {{}}, function(response)\n'
+            f'        self.{field} = false\n'
+        )
+        replacements.append((old, new))
+    replacements.extend([
+        (
+            '            if self.mStoreInfo.normalStore then\n'
+            '                self.mStoreInfo.normalStore.FreeCount = response.Value.FreeCount\n'
+            '                self.mStoreInfo.normalStore.GoldCount = response.Value.GoldCount\n'
+            '                self.mStoreInfo.normalStore.RefreshMysteryShopMaxNum = response.Value.RefreshMysteryShopMaxNum\n'
+            '                self.mStoreInfo.normalStore.MysteryShopGoodsList = response.Value.MysteryShopGoodsList\n'
+            '            else\n'
+            '                self.mStoreInfo.normalStore = response.Value\n'
+            '            end',
+            '            self.mStoreInfo.normalStore = response.Value',
+        ),
+        (
+            '            if self.mStoreInfo.seniorStore then\n'
+            '                self.mStoreInfo.seniorStore.MysteryShopGoodsList = response.Value and response.Value.MysteryShopGoodsList\n'
+            '            else\n'
+            '                self.mStoreInfo.seniorStore = response.Value\n'
+            '            end',
+            '            self.mStoreInfo.seniorStore = response.Value',
+        ),
+    ])
+    patch_luac_text(src / "Store" / "MysticalStoreScene.luac", replacements)
 
 
 def patch_reward_claim_lua(src: Path) -> None:

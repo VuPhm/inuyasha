@@ -1,0 +1,2771 @@
+{
+  "nodes": {
+    "1111": {
+      "ID": 1111,
+      "name": "Bà Kaede",
+      "floorModelID": 11,
+      "clearanceID": 4,
+      "pic": "12011012",
+      "NPCWords": "Còn 4 người sống sót mới thắng"
+    },
+    "1112": {
+      "ID": 1112,
+      "name": "Sango",
+      "floorModelID": 11,
+      "clearanceID": 4,
+      "pic": "12011007",
+      "NPCWords": "Còn 4 người sống sót mới thắng"
+    },
+    "1113": {
+      "ID": 1113,
+      "name": "Ryura",
+      "floorModelID": 11,
+      "clearanceID": 4,
+      "pic": "12012020",
+      "NPCWords": "Còn 4 người sống sót mới thắng"
+    },
+    "1211": {
+      "ID": 1211,
+      "name": "Yoreitaisei",
+      "floorModelID": 12,
+      "clearanceID": 2,
+      "pic": "12011018",
+      "NPCWords": "4 lượt kết thúc mới thắng"
+    },
+    "1212": {
+      "ID": 1212,
+      "name": "Menomaru",
+      "floorModelID": 12,
+      "clearanceID": 2,
+      "pic": "12013022",
+      "NPCWords": "4 lượt kết thúc mới thắng"
+    },
+    "1213": {
+      "ID": 1213,
+      "name": "Oyakata",
+      "floorModelID": 12,
+      "clearanceID": 2,
+      "pic": "12013019",
+      "NPCWords": "4 lượt kết thúc mới thắng"
+    },
+    "1311": {
+      "ID": 1311,
+      "name": "Kagome",
+      "floorModelID": 13,
+      "clearanceID": 6,
+      "pic": "12011005",
+      "NPCWords": "Tổng HP không được thấp hơn 60%"
+    },
+    "1312": {
+      "ID": 1312,
+      "name": "Rin",
+      "floorModelID": 13,
+      "clearanceID": 6,
+      "pic": "12012010",
+      "NPCWords": "Tổng HP không được thấp hơn 60%"
+    },
+    "1313": {
+      "ID": 1313,
+      "name": "Jakotsu",
+      "floorModelID": 13,
+      "clearanceID": 6,
+      "pic": "12013017",
+      "NPCWords": "Tổng HP không được thấp hơn 60%"
+    },
+    "1411": {
+      "ID": 1411,
+      "name": "Jura",
+      "floorModelID": 14,
+      "clearanceID": 1,
+      "pic": "12012022",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "1412": {
+      "ID": 1412,
+      "name": "Royakan",
+      "floorModelID": 14,
+      "clearanceID": 1,
+      "pic": "12012011",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "1413": {
+      "ID": 1413,
+      "name": "Toutousai",
+      "floorModelID": 14,
+      "clearanceID": 1,
+      "pic": "12011019",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "1511": {
+      "ID": 1511,
+      "name": "Kaguya",
+      "floorModelID": 15,
+      "clearanceID": 5,
+      "pic": "12013004",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "1512": {
+      "ID": 1512,
+      "name": "Ayame",
+      "floorModelID": 15,
+      "clearanceID": 5,
+      "pic": "12011014",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "1513": {
+      "ID": 1513,
+      "name": "Sara",
+      "floorModelID": 15,
+      "clearanceID": 5,
+      "pic": "12012007",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "1611": {
+      "ID": 1611,
+      "name": "Naraku",
+      "floorModelID": 16,
+      "clearanceID": 3,
+      "pic": "12013005",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "1612": {
+      "ID": 1612,
+      "name": "Hakudoushi",
+      "floorModelID": 16,
+      "clearanceID": 3,
+      "pic": "12013009",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "1613": {
+      "ID": 1613,
+      "name": "InuYasha",
+      "floorModelID": 16,
+      "clearanceID": 3,
+      "pic": "12011004",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "1711": {
+      "ID": 1711,
+      "name": "Ryura",
+      "floorModelID": 17,
+      "clearanceID": 1,
+      "pic": "12012020",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "1712": {
+      "ID": 1712,
+      "name": "Kanna",
+      "floorModelID": 17,
+      "clearanceID": 1,
+      "pic": "12013006",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "1713": {
+      "ID": 1713,
+      "name": "Ryukotsusei",
+      "floorModelID": 17,
+      "clearanceID": 1,
+      "pic": "12012018",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "1811": {
+      "ID": 1811,
+      "name": "Manten",
+      "floorModelID": 18,
+      "clearanceID": 5,
+      "pic": "12012014",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "1812": {
+      "ID": 1812,
+      "name": "Inu no Taishou",
+      "floorModelID": 18,
+      "clearanceID": 5,
+      "pic": "12011002",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "1813": {
+      "ID": 1813,
+      "name": "Kagura",
+      "floorModelID": 18,
+      "clearanceID": 5,
+      "pic": "12013008",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "1911": {
+      "ID": 1911,
+      "name": "Kanade Hime",
+      "floorModelID": 19,
+      "clearanceID": 3,
+      "pic": "12012003",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "1912": {
+      "ID": 1912,
+      "name": "Moryomaru",
+      "floorModelID": 19,
+      "clearanceID": 3,
+      "pic": "12013007",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "1913": {
+      "ID": 1913,
+      "name": "Kikyo",
+      "floorModelID": 19,
+      "clearanceID": 3,
+      "pic": "12011003",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "2011": {
+      "ID": 2011,
+      "name": "Takemaru",
+      "floorModelID": 20,
+      "clearanceID": 1,
+      "pic": "12013003",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "2012": {
+      "ID": 2012,
+      "name": "Tsubaki",
+      "floorModelID": 20,
+      "clearanceID": 1,
+      "pic": "12013018",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "2013": {
+      "ID": 2013,
+      "name": "Juromaru",
+      "floorModelID": 20,
+      "clearanceID": 1,
+      "pic": "12013013",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "2111": {
+      "ID": 2111,
+      "name": "Kyora",
+      "floorModelID": 21,
+      "clearanceID": 5,
+      "pic": "12012021",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "2112": {
+      "ID": 2112,
+      "name": "Takemaru",
+      "floorModelID": 21,
+      "clearanceID": 5,
+      "pic": "12013003",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "2113": {
+      "ID": 2113,
+      "name": "Hosenki",
+      "floorModelID": 21,
+      "clearanceID": 5,
+      "pic": "12011020",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "2211": {
+      "ID": 2211,
+      "name": "Moryomaru",
+      "floorModelID": 22,
+      "clearanceID": 3,
+      "pic": "12013007",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "2212": {
+      "ID": 2212,
+      "name": "Kohaku",
+      "floorModelID": 22,
+      "clearanceID": 3,
+      "pic": "12012008",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "2213": {
+      "ID": 2213,
+      "name": "Ryura",
+      "floorModelID": 22,
+      "clearanceID": 3,
+      "pic": "12012020",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "2311": {
+      "ID": 2311,
+      "name": "Sara",
+      "floorModelID": 23,
+      "clearanceID": 1,
+      "pic": "12012007",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "2312": {
+      "ID": 2312,
+      "name": "Royakan",
+      "floorModelID": 23,
+      "clearanceID": 1,
+      "pic": "12012011",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "2313": {
+      "ID": 2313,
+      "name": "Manten",
+      "floorModelID": 23,
+      "clearanceID": 1,
+      "pic": "12012014",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "2411": {
+      "ID": 2411,
+      "name": "Kouga",
+      "floorModelID": 24,
+      "clearanceID": 5,
+      "pic": "12011008",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "2412": {
+      "ID": 2412,
+      "name": "Shishinki",
+      "floorModelID": 24,
+      "clearanceID": 5,
+      "pic": "12013023",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "2413": {
+      "ID": 2413,
+      "name": "Sesshomaru",
+      "floorModelID": 24,
+      "clearanceID": 5,
+      "pic": "12012005",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "2511": {
+      "ID": 2511,
+      "name": "Bankotsu",
+      "floorModelID": 25,
+      "clearanceID": 3,
+      "pic": "12013016",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "2512": {
+      "ID": 2512,
+      "name": "Kohaku",
+      "floorModelID": 25,
+      "clearanceID": 3,
+      "pic": "12012008",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "2513": {
+      "ID": 2513,
+      "name": "Jaken",
+      "floorModelID": 25,
+      "clearanceID": 3,
+      "pic": "12012006",
+      "NPCWords": "Tổng HP không được thấp hơn 70%"
+    },
+    "2611": {
+      "ID": 2611,
+      "name": "Bà Kaede",
+      "floorModelID": 26,
+      "clearanceID": 1,
+      "pic": "12011012",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "2612": {
+      "ID": 2612,
+      "name": "Goshinki",
+      "floorModelID": 26,
+      "clearanceID": 1,
+      "pic": "12013011",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "2613": {
+      "ID": 2613,
+      "name": "Kagome",
+      "floorModelID": 26,
+      "clearanceID": 1,
+      "pic": "12011005",
+      "NPCWords": "Tất cả đều sống mới tính là thắng"
+    },
+    "2711": {
+      "ID": 2711,
+      "name": "Takemaru",
+      "floorModelID": 27,
+      "clearanceID": 5,
+      "pic": "12013003",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "2712": {
+      "ID": 2712,
+      "name": "InuYasha",
+      "floorModelID": 27,
+      "clearanceID": 5,
+      "pic": "12011004",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    },
+    "2713": {
+      "ID": 2713,
+      "name": "Midoriko",
+      "floorModelID": 27,
+      "clearanceID": 5,
+      "pic": "12012004",
+      "NPCWords": "3 lượt kết thúc mới thắng"
+    }
+  },
+  "points": {
+    "111111": {
+      "ID": 111111,
+      "nodeModelID": 1111,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "29800",
+      "drop": 10
+    },
+    "111112": {
+      "ID": 111112,
+      "nodeModelID": 1111,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "34100",
+      "drop": 20
+    },
+    "111113": {
+      "ID": 111113,
+      "nodeModelID": 1111,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "43700",
+      "drop": 30
+    },
+    "111211": {
+      "ID": 111211,
+      "nodeModelID": 1112,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "32200",
+      "drop": 10
+    },
+    "111212": {
+      "ID": 111212,
+      "nodeModelID": 1112,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "39800",
+      "drop": 20
+    },
+    "111213": {
+      "ID": 111213,
+      "nodeModelID": 1112,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "47200",
+      "drop": 30
+    },
+    "111311": {
+      "ID": 111311,
+      "nodeModelID": 1113,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "44800",
+      "drop": 10
+    },
+    "111312": {
+      "ID": 111312,
+      "nodeModelID": 1113,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "54400",
+      "drop": 20
+    },
+    "111313": {
+      "ID": 111313,
+      "nodeModelID": 1113,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "66000",
+      "drop": 30
+    },
+    "121111": {
+      "ID": 121111,
+      "nodeModelID": 1211,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "46900",
+      "drop": 10
+    },
+    "121112": {
+      "ID": 121112,
+      "nodeModelID": 1211,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "56200",
+      "drop": 20
+    },
+    "121113": {
+      "ID": 121113,
+      "nodeModelID": 1211,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "72100",
+      "drop": 30
+    },
+    "121211": {
+      "ID": 121211,
+      "nodeModelID": 1212,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "53100",
+      "drop": 10
+    },
+    "121212": {
+      "ID": 121212,
+      "nodeModelID": 1212,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "62500",
+      "drop": 20
+    },
+    "121213": {
+      "ID": 121213,
+      "nodeModelID": 1212,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "86000",
+      "drop": 30
+    },
+    "121311": {
+      "ID": 121311,
+      "nodeModelID": 1213,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "59600",
+      "drop": 10
+    },
+    "121312": {
+      "ID": 121312,
+      "nodeModelID": 1213,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "74900",
+      "drop": 20
+    },
+    "121313": {
+      "ID": 121313,
+      "nodeModelID": 1213,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "98300",
+      "drop": 30
+    },
+    "131111": {
+      "ID": 131111,
+      "nodeModelID": 1311,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "65100",
+      "drop": 10
+    },
+    "131112": {
+      "ID": 131112,
+      "nodeModelID": 1311,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "80700",
+      "drop": 20
+    },
+    "131113": {
+      "ID": 131113,
+      "nodeModelID": 1311,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "99400",
+      "drop": 30
+    },
+    "131211": {
+      "ID": 131211,
+      "nodeModelID": 1312,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "80100",
+      "drop": 10
+    },
+    "131212": {
+      "ID": 131212,
+      "nodeModelID": 1312,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "94600",
+      "drop": 20
+    },
+    "131213": {
+      "ID": 131213,
+      "nodeModelID": 1312,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "120K",
+      "drop": 30
+    },
+    "131311": {
+      "ID": 131311,
+      "nodeModelID": 1313,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "100K",
+      "drop": 10
+    },
+    "131312": {
+      "ID": 131312,
+      "nodeModelID": 1313,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "110K",
+      "drop": 20
+    },
+    "131313": {
+      "ID": 131313,
+      "nodeModelID": 1313,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "150K",
+      "drop": 30
+    },
+    "141111": {
+      "ID": 141111,
+      "nodeModelID": 1411,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "120K",
+      "drop": 10
+    },
+    "141112": {
+      "ID": 141112,
+      "nodeModelID": 1411,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "150K",
+      "drop": 20
+    },
+    "141113": {
+      "ID": 141113,
+      "nodeModelID": 1411,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "190K",
+      "drop": 30
+    },
+    "141211": {
+      "ID": 141211,
+      "nodeModelID": 1412,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "140K",
+      "drop": 10
+    },
+    "141212": {
+      "ID": 141212,
+      "nodeModelID": 1412,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "160K",
+      "drop": 20
+    },
+    "141213": {
+      "ID": 141213,
+      "nodeModelID": 1412,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "200K",
+      "drop": 30
+    },
+    "141311": {
+      "ID": 141311,
+      "nodeModelID": 1413,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "160K",
+      "drop": 10
+    },
+    "141312": {
+      "ID": 141312,
+      "nodeModelID": 1413,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "190K",
+      "drop": 20
+    },
+    "141313": {
+      "ID": 141313,
+      "nodeModelID": 1413,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "240K",
+      "drop": 30
+    },
+    "151111": {
+      "ID": 151111,
+      "nodeModelID": 1511,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "180K",
+      "drop": 10
+    },
+    "151112": {
+      "ID": 151112,
+      "nodeModelID": 1511,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "210K",
+      "drop": 20
+    },
+    "151113": {
+      "ID": 151113,
+      "nodeModelID": 1511,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "260K",
+      "drop": 30
+    },
+    "151211": {
+      "ID": 151211,
+      "nodeModelID": 1512,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "210K",
+      "drop": 10
+    },
+    "151212": {
+      "ID": 151212,
+      "nodeModelID": 1512,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "240K",
+      "drop": 20
+    },
+    "151213": {
+      "ID": 151213,
+      "nodeModelID": 1512,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "300K",
+      "drop": 30
+    },
+    "151311": {
+      "ID": 151311,
+      "nodeModelID": 1513,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "290K",
+      "drop": 10
+    },
+    "151312": {
+      "ID": 151312,
+      "nodeModelID": 1513,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "350K",
+      "drop": 20
+    },
+    "151313": {
+      "ID": 151313,
+      "nodeModelID": 1513,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "450K",
+      "drop": 30
+    },
+    "161111": {
+      "ID": 161111,
+      "nodeModelID": 1611,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "330K",
+      "drop": 10
+    },
+    "161112": {
+      "ID": 161112,
+      "nodeModelID": 1611,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "400K",
+      "drop": 20
+    },
+    "161113": {
+      "ID": 161113,
+      "nodeModelID": 1611,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "510K",
+      "drop": 30
+    },
+    "161211": {
+      "ID": 161211,
+      "nodeModelID": 1612,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "380K",
+      "drop": 10
+    },
+    "161212": {
+      "ID": 161212,
+      "nodeModelID": 1612,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "470K",
+      "drop": 20
+    },
+    "161213": {
+      "ID": 161213,
+      "nodeModelID": 1612,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "590K",
+      "drop": 30
+    },
+    "161311": {
+      "ID": 161311,
+      "nodeModelID": 1613,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "540K",
+      "drop": 10
+    },
+    "161312": {
+      "ID": 161312,
+      "nodeModelID": 1613,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "640K",
+      "drop": 20
+    },
+    "161313": {
+      "ID": 161313,
+      "nodeModelID": 1613,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "770K",
+      "drop": 30
+    },
+    "171111": {
+      "ID": 171111,
+      "nodeModelID": 1711,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "600K",
+      "drop": 10
+    },
+    "171112": {
+      "ID": 171112,
+      "nodeModelID": 1711,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "710K",
+      "drop": 20
+    },
+    "171113": {
+      "ID": 171113,
+      "nodeModelID": 1711,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "850K",
+      "drop": 30
+    },
+    "171211": {
+      "ID": 171211,
+      "nodeModelID": 1712,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "720K",
+      "drop": 10
+    },
+    "171212": {
+      "ID": 171212,
+      "nodeModelID": 1712,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "830K",
+      "drop": 20
+    },
+    "171213": {
+      "ID": 171213,
+      "nodeModelID": 1712,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "1000K",
+      "drop": 30
+    },
+    "171311": {
+      "ID": 171311,
+      "nodeModelID": 1713,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "940K",
+      "drop": 10
+    },
+    "171312": {
+      "ID": 171312,
+      "nodeModelID": 1713,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "1090K",
+      "drop": 20
+    },
+    "171313": {
+      "ID": 171313,
+      "nodeModelID": 1713,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "1310K",
+      "drop": 30
+    },
+    "181111": {
+      "ID": 181111,
+      "nodeModelID": 1811,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "1020K",
+      "drop": 10
+    },
+    "181112": {
+      "ID": 181112,
+      "nodeModelID": 1811,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "1170K",
+      "drop": 20
+    },
+    "181113": {
+      "ID": 181113,
+      "nodeModelID": 1811,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "1410K",
+      "drop": 30
+    },
+    "181211": {
+      "ID": 181211,
+      "nodeModelID": 1812,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "1250K",
+      "drop": 10
+    },
+    "181212": {
+      "ID": 181212,
+      "nodeModelID": 1812,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "1440K",
+      "drop": 20
+    },
+    "181213": {
+      "ID": 181213,
+      "nodeModelID": 1812,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "1730K",
+      "drop": 30
+    },
+    "181311": {
+      "ID": 181311,
+      "nodeModelID": 1813,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "1500K",
+      "drop": 10
+    },
+    "181312": {
+      "ID": 181312,
+      "nodeModelID": 1813,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "1730K",
+      "drop": 20
+    },
+    "181313": {
+      "ID": 181313,
+      "nodeModelID": 1813,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "2080K",
+      "drop": 30
+    },
+    "191111": {
+      "ID": 191111,
+      "nodeModelID": 1911,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "1640K",
+      "drop": 10
+    },
+    "191112": {
+      "ID": 191112,
+      "nodeModelID": 1911,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "1890K",
+      "drop": 20
+    },
+    "191113": {
+      "ID": 191113,
+      "nodeModelID": 1911,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "2280K",
+      "drop": 30
+    },
+    "191211": {
+      "ID": 191211,
+      "nodeModelID": 1912,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "1870K",
+      "drop": 10
+    },
+    "191212": {
+      "ID": 191212,
+      "nodeModelID": 1912,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "2150K",
+      "drop": 20
+    },
+    "191213": {
+      "ID": 191213,
+      "nodeModelID": 1912,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "2600K",
+      "drop": 30
+    },
+    "191311": {
+      "ID": 191311,
+      "nodeModelID": 1913,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "2350K",
+      "drop": 10
+    },
+    "191312": {
+      "ID": 191312,
+      "nodeModelID": 1913,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "2710K",
+      "drop": 20
+    },
+    "191313": {
+      "ID": 191313,
+      "nodeModelID": 1913,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "3250K",
+      "drop": 30
+    },
+    "201111": {
+      "ID": 201111,
+      "nodeModelID": 2011,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "2520K",
+      "drop": 10
+    },
+    "201112": {
+      "ID": 201112,
+      "nodeModelID": 2011,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "2890K",
+      "drop": 20
+    },
+    "201113": {
+      "ID": 201113,
+      "nodeModelID": 2011,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "3470K",
+      "drop": 30
+    },
+    "201211": {
+      "ID": 201211,
+      "nodeModelID": 2012,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "2740K",
+      "drop": 10
+    },
+    "201212": {
+      "ID": 201212,
+      "nodeModelID": 2012,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "3140K",
+      "drop": 20
+    },
+    "201213": {
+      "ID": 201213,
+      "nodeModelID": 2012,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "3750K",
+      "drop": 30
+    },
+    "201311": {
+      "ID": 201311,
+      "nodeModelID": 2013,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "3360K",
+      "drop": 10
+    },
+    "201312": {
+      "ID": 201312,
+      "nodeModelID": 2013,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "3840K",
+      "drop": 20
+    },
+    "201313": {
+      "ID": 201313,
+      "nodeModelID": 2013,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "4600K",
+      "drop": 30
+    },
+    "211111": {
+      "ID": 211111,
+      "nodeModelID": 2111,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "3290K",
+      "drop": 10
+    },
+    "211112": {
+      "ID": 211112,
+      "nodeModelID": 2111,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "3750K",
+      "drop": 20
+    },
+    "211113": {
+      "ID": 211113,
+      "nodeModelID": 2111,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "4480K",
+      "drop": 30
+    },
+    "211211": {
+      "ID": 211211,
+      "nodeModelID": 2112,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "3690K",
+      "drop": 10
+    },
+    "211212": {
+      "ID": 211212,
+      "nodeModelID": 2112,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "4200K",
+      "drop": 20
+    },
+    "211213": {
+      "ID": 211213,
+      "nodeModelID": 2112,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "5000K",
+      "drop": 30
+    },
+    "211311": {
+      "ID": 211311,
+      "nodeModelID": 2113,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "4070K",
+      "drop": 10
+    },
+    "211312": {
+      "ID": 211312,
+      "nodeModelID": 2113,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "4610K",
+      "drop": 20
+    },
+    "211313": {
+      "ID": 211313,
+      "nodeModelID": 2113,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "5490K",
+      "drop": 30
+    },
+    "221111": {
+      "ID": 221111,
+      "nodeModelID": 2211,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "4340K",
+      "drop": 10
+    },
+    "221112": {
+      "ID": 221112,
+      "nodeModelID": 2211,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "4900K",
+      "drop": 20
+    },
+    "221113": {
+      "ID": 221113,
+      "nodeModelID": 2211,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "5820K",
+      "drop": 30
+    },
+    "221211": {
+      "ID": 221211,
+      "nodeModelID": 2212,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "4650K",
+      "drop": 10
+    },
+    "221212": {
+      "ID": 221212,
+      "nodeModelID": 2212,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "5240K",
+      "drop": 20
+    },
+    "221213": {
+      "ID": 221213,
+      "nodeModelID": 2212,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "6210K",
+      "drop": 30
+    },
+    "221311": {
+      "ID": 221311,
+      "nodeModelID": 2213,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "5330K",
+      "drop": 10
+    },
+    "221312": {
+      "ID": 221312,
+      "nodeModelID": 2213,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "5990K",
+      "drop": 20
+    },
+    "221313": {
+      "ID": 221313,
+      "nodeModelID": 2213,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "7090K",
+      "drop": 30
+    },
+    "231111": {
+      "ID": 231111,
+      "nodeModelID": 2311,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "5630K",
+      "drop": 10
+    },
+    "231112": {
+      "ID": 231112,
+      "nodeModelID": 2311,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "6310K",
+      "drop": 20
+    },
+    "231113": {
+      "ID": 231113,
+      "nodeModelID": 2311,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "7450K",
+      "drop": 30
+    },
+    "231211": {
+      "ID": 231211,
+      "nodeModelID": 2312,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "5960K",
+      "drop": 10
+    },
+    "231212": {
+      "ID": 231212,
+      "nodeModelID": 2312,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "6690K",
+      "drop": 20
+    },
+    "231213": {
+      "ID": 231213,
+      "nodeModelID": 2312,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "7900K",
+      "drop": 30
+    },
+    "231311": {
+      "ID": 231311,
+      "nodeModelID": 2313,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "6350K",
+      "drop": 10
+    },
+    "231312": {
+      "ID": 231312,
+      "nodeModelID": 2313,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "7110K",
+      "drop": 20
+    },
+    "231313": {
+      "ID": 231313,
+      "nodeModelID": 2313,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "8380K",
+      "drop": 30
+    },
+    "241111": {
+      "ID": 241111,
+      "nodeModelID": 2411,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "6980K",
+      "drop": 10
+    },
+    "241112": {
+      "ID": 241112,
+      "nodeModelID": 2411,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "7790K",
+      "drop": 20
+    },
+    "241113": {
+      "ID": 241113,
+      "nodeModelID": 2411,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "9170K",
+      "drop": 30
+    },
+    "241211": {
+      "ID": 241211,
+      "nodeModelID": 2412,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "7340K",
+      "drop": 10
+    },
+    "241212": {
+      "ID": 241212,
+      "nodeModelID": 2412,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "8170K",
+      "drop": 20
+    },
+    "241213": {
+      "ID": 241213,
+      "nodeModelID": 2412,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "9590K",
+      "drop": 30
+    },
+    "241311": {
+      "ID": 241311,
+      "nodeModelID": 2413,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "8030K",
+      "drop": 10
+    },
+    "241312": {
+      "ID": 241312,
+      "nodeModelID": 2413,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "8920K",
+      "drop": 20
+    },
+    "241313": {
+      "ID": 241313,
+      "nodeModelID": 2413,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "10460K",
+      "drop": 30
+    },
+    "251111": {
+      "ID": 251111,
+      "nodeModelID": 2511,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "8910K",
+      "drop": 10
+    },
+    "251112": {
+      "ID": 251112,
+      "nodeModelID": 2511,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "9870K",
+      "drop": 20
+    },
+    "251113": {
+      "ID": 251113,
+      "nodeModelID": 2511,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "11540K",
+      "drop": 30
+    },
+    "251211": {
+      "ID": 251211,
+      "nodeModelID": 2512,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "9710K",
+      "drop": 10
+    },
+    "251212": {
+      "ID": 251212,
+      "nodeModelID": 2512,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "10710K",
+      "drop": 20
+    },
+    "251213": {
+      "ID": 251213,
+      "nodeModelID": 2512,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "12510K",
+      "drop": 30
+    },
+    "251311": {
+      "ID": 251311,
+      "nodeModelID": 2513,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "10330K",
+      "drop": 10
+    },
+    "251312": {
+      "ID": 251312,
+      "nodeModelID": 2513,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "11370K",
+      "drop": 20
+    },
+    "251313": {
+      "ID": 251313,
+      "nodeModelID": 2513,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "13260K",
+      "drop": 30
+    },
+    "261111": {
+      "ID": 261111,
+      "nodeModelID": 2611,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "10580K",
+      "drop": 10
+    },
+    "261112": {
+      "ID": 261112,
+      "nodeModelID": 2611,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "11640K",
+      "drop": 20
+    },
+    "261113": {
+      "ID": 261113,
+      "nodeModelID": 2611,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "13570K",
+      "drop": 30
+    },
+    "261211": {
+      "ID": 261211,
+      "nodeModelID": 2612,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "10990K",
+      "drop": 10
+    },
+    "261212": {
+      "ID": 261212,
+      "nodeModelID": 2612,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "12070K",
+      "drop": 20
+    },
+    "261213": {
+      "ID": 261213,
+      "nodeModelID": 2612,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "14050K",
+      "drop": 30
+    },
+    "261311": {
+      "ID": 261311,
+      "nodeModelID": 2613,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "11760K",
+      "drop": 10
+    },
+    "261312": {
+      "ID": 261312,
+      "nodeModelID": 2613,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "12880K",
+      "drop": 20
+    },
+    "261313": {
+      "ID": 261313,
+      "nodeModelID": 2613,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "14950K",
+      "drop": 30
+    },
+    "271111": {
+      "ID": 271111,
+      "nodeModelID": 2711,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "18170K",
+      "drop": 10
+    },
+    "271112": {
+      "ID": 271112,
+      "nodeModelID": 2711,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "19840K",
+      "drop": 20
+    },
+    "271113": {
+      "ID": 271113,
+      "nodeModelID": 2711,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "22990K",
+      "drop": 30
+    },
+    "271211": {
+      "ID": 271211,
+      "nodeModelID": 2712,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "23970K",
+      "drop": 10
+    },
+    "271212": {
+      "ID": 271212,
+      "nodeModelID": 2712,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "26130K",
+      "drop": 20
+    },
+    "271213": {
+      "ID": 271213,
+      "nodeModelID": 2712,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "30210K",
+      "drop": 30
+    },
+    "271311": {
+      "ID": 271311,
+      "nodeModelID": 2713,
+      "type": 1,
+      "nationalDrop": "1124,0,10",
+      "firstPassDrop": "",
+      "proposeFAP": "30640K",
+      "drop": 10
+    },
+    "271312": {
+      "ID": 271312,
+      "nodeModelID": 2713,
+      "type": 2,
+      "nationalDrop": "1124,0,20",
+      "firstPassDrop": "",
+      "proposeFAP": "33400K",
+      "drop": 20
+    },
+    "271313": {
+      "ID": 271313,
+      "nodeModelID": 2713,
+      "type": 3,
+      "nationalDrop": "1124,0,30",
+      "firstPassDrop": "1111,0,50",
+      "proposeFAP": "38620K",
+      "drop": 30
+    }
+  },
+  "clearance": {
+    "1": {
+      "clearanceID": 1,
+      "clearanceTypeID": 3,
+      "clearanceCondition": 6,
+      "description": "6 người sống sót"
+    },
+    "2": {
+      "clearanceID": 2,
+      "clearanceTypeID": 4,
+      "clearanceCondition": 4,
+      "description": "Thắng trong 4 lượt"
+    },
+    "3": {
+      "clearanceID": 3,
+      "clearanceTypeID": 2,
+      "clearanceCondition": 70,
+      "description": "Tổng HP còn>70%"
+    },
+    "4": {
+      "clearanceID": 4,
+      "clearanceTypeID": 3,
+      "clearanceCondition": 4,
+      "description": "4 người sống sót"
+    },
+    "5": {
+      "clearanceID": 5,
+      "clearanceTypeID": 4,
+      "clearanceCondition": 3,
+      "description": "Thắng trong 3 lượt"
+    },
+    "6": {
+      "clearanceID": 6,
+      "clearanceTypeID": 2,
+      "clearanceCondition": 60,
+      "description": "Tổng HP còn>60%"
+    }
+  },
+  "rewards": [
+    {
+      "floorModelID": 11,
+      "stars": 3,
+      "reward": "1124,0,50"
+    },
+    {
+      "floorModelID": 11,
+      "stars": 6,
+      "reward": "1124,0,75"
+    },
+    {
+      "floorModelID": 11,
+      "stars": 9,
+      "reward": "1124,0,125||1602,16020030,1"
+    },
+    {
+      "floorModelID": 12,
+      "stars": 3,
+      "reward": "1124,0,50"
+    },
+    {
+      "floorModelID": 12,
+      "stars": 6,
+      "reward": "1124,0,75"
+    },
+    {
+      "floorModelID": 12,
+      "stars": 9,
+      "reward": "1124,0,125||1602,16020030,1"
+    },
+    {
+      "floorModelID": 13,
+      "stars": 3,
+      "reward": "1124,0,50"
+    },
+    {
+      "floorModelID": 13,
+      "stars": 6,
+      "reward": "1124,0,75"
+    },
+    {
+      "floorModelID": 13,
+      "stars": 9,
+      "reward": "1124,0,125||1602,16020030,1"
+    },
+    {
+      "floorModelID": 14,
+      "stars": 3,
+      "reward": "1124,0,75"
+    },
+    {
+      "floorModelID": 14,
+      "stars": 6,
+      "reward": "1124,0,125"
+    },
+    {
+      "floorModelID": 14,
+      "stars": 9,
+      "reward": "1124,0,200||1602,16020030,1"
+    },
+    {
+      "floorModelID": 15,
+      "stars": 3,
+      "reward": "1124,0,75"
+    },
+    {
+      "floorModelID": 15,
+      "stars": 6,
+      "reward": "1124,0,125||1602,16020030,1"
+    },
+    {
+      "floorModelID": 15,
+      "stars": 9,
+      "reward": "1124,0,200||1602,16020030,2"
+    },
+    {
+      "floorModelID": 16,
+      "stars": 3,
+      "reward": "1124,0,75"
+    },
+    {
+      "floorModelID": 16,
+      "stars": 6,
+      "reward": "1124,0,125||1602,16020030,1"
+    },
+    {
+      "floorModelID": 16,
+      "stars": 9,
+      "reward": "1124,0,200||1602,16020030,2"
+    },
+    {
+      "floorModelID": 17,
+      "stars": 3,
+      "reward": "1124,0,100"
+    },
+    {
+      "floorModelID": 17,
+      "stars": 6,
+      "reward": "1124,0,150||1602,16020030,1"
+    },
+    {
+      "floorModelID": 17,
+      "stars": 9,
+      "reward": "1124,0,250||1602,16020030,2"
+    },
+    {
+      "floorModelID": 18,
+      "stars": 3,
+      "reward": "1124,0,100"
+    },
+    {
+      "floorModelID": 18,
+      "stars": 6,
+      "reward": "1124,0,150||1602,16020030,1"
+    },
+    {
+      "floorModelID": 18,
+      "stars": 9,
+      "reward": "1124,0,250||1602,16020030,2"
+    },
+    {
+      "floorModelID": 19,
+      "stars": 3,
+      "reward": "1124,0,100"
+    },
+    {
+      "floorModelID": 19,
+      "stars": 6,
+      "reward": "1124,0,150||1602,16020030,1"
+    },
+    {
+      "floorModelID": 19,
+      "stars": 9,
+      "reward": "1124,0,250||1602,16020030,2"
+    },
+    {
+      "floorModelID": 20,
+      "stars": 3,
+      "reward": "1124,0,125||1602,16020030,1"
+    },
+    {
+      "floorModelID": 20,
+      "stars": 6,
+      "reward": "1124,0,200||1602,16020030,2"
+    },
+    {
+      "floorModelID": 20,
+      "stars": 9,
+      "reward": "1124,0,325||1602,16020030,3"
+    },
+    {
+      "floorModelID": 21,
+      "stars": 3,
+      "reward": "1124,0,125||1602,16020030,1"
+    },
+    {
+      "floorModelID": 21,
+      "stars": 6,
+      "reward": "1124,0,200||1602,16020030,2"
+    },
+    {
+      "floorModelID": 21,
+      "stars": 9,
+      "reward": "1124,0,325||1602,16020030,3"
+    },
+    {
+      "floorModelID": 22,
+      "stars": 3,
+      "reward": "1124,0,125||1602,16020030,1"
+    },
+    {
+      "floorModelID": 22,
+      "stars": 6,
+      "reward": "1124,0,200||1602,16020030,2"
+    },
+    {
+      "floorModelID": 22,
+      "stars": 9,
+      "reward": "1124,0,325||1602,16020030,3"
+    },
+    {
+      "floorModelID": 23,
+      "stars": 3,
+      "reward": "1124,0,150||1602,16020030,1"
+    },
+    {
+      "floorModelID": 23,
+      "stars": 6,
+      "reward": "1124,0,225||1602,16020030,2"
+    },
+    {
+      "floorModelID": 23,
+      "stars": 9,
+      "reward": "1124,0,375||1602,16020030,3"
+    },
+    {
+      "floorModelID": 24,
+      "stars": 3,
+      "reward": "1124,0,150||1602,16020030,1"
+    },
+    {
+      "floorModelID": 24,
+      "stars": 6,
+      "reward": "1124,0,225||1602,16020030,2"
+    },
+    {
+      "floorModelID": 24,
+      "stars": 9,
+      "reward": "1124,0,375||1602,16020030,3"
+    },
+    {
+      "floorModelID": 25,
+      "stars": 3,
+      "reward": "1124,0,150||1602,16020030,1"
+    },
+    {
+      "floorModelID": 25,
+      "stars": 6,
+      "reward": "1124,0,225||1602,16020030,2"
+    },
+    {
+      "floorModelID": 25,
+      "stars": 9,
+      "reward": "1124,0,375||1602,16020030,3"
+    },
+    {
+      "floorModelID": 26,
+      "stars": 3,
+      "reward": "1124,0,175||1602,16020030,1"
+    },
+    {
+      "floorModelID": 26,
+      "stars": 6,
+      "reward": "1124,0,275||1602,16020030,2"
+    },
+    {
+      "floorModelID": 26,
+      "stars": 9,
+      "reward": "1124,0,450||1602,16020030,3"
+    },
+    {
+      "floorModelID": 27,
+      "stars": 3,
+      "reward": "1124,0,175||1602,16020030,1"
+    },
+    {
+      "floorModelID": 27,
+      "stars": 6,
+      "reward": "1124,0,275||1602,16020030,2"
+    },
+    {
+      "floorModelID": 27,
+      "stars": 9,
+      "reward": "1124,0,450||1602,16020031,1"
+    }
+  ],
+  "buffs": {
+    "901": {
+      "ID": 901,
+      "needStars": 9,
+      "oddsMin": 1,
+      "oddsMax": 1250,
+      "fightattrID": 402,
+      "addValue": 600,
+      "description": "{06ff00}HP+6%",
+      "PIC": "xzyy_33"
+    },
+    "902": {
+      "ID": 902,
+      "needStars": 9,
+      "oddsMin": 1251,
+      "oddsMax": 2500,
+      "fightattrID": 401,
+      "addValue": 600,
+      "description": "{06ff00}Công+6%",
+      "PIC": "xzyy_32"
+    },
+    "903": {
+      "ID": 903,
+      "needStars": 9,
+      "oddsMin": 2501,
+      "oddsMax": 3750,
+      "fightattrID": 301,
+      "addValue": 800,
+      "description": "{06ff00}Chính Xác+8%",
+      "PIC": "xzyy_27"
+    },
+    "904": {
+      "ID": 904,
+      "needStars": 9,
+      "oddsMin": 3751,
+      "oddsMax": 5000,
+      "fightattrID": 302,
+      "addValue": 600,
+      "description": "{06ff00}Né+6%",
+      "PIC": "xzyy_31"
+    },
+    "905": {
+      "ID": 905,
+      "needStars": 9,
+      "oddsMin": 5001,
+      "oddsMax": 6250,
+      "fightattrID": 303,
+      "addValue": 600,
+      "description": "{06ff00}Bạo+6%",
+      "PIC": "xzyy_30"
+    },
+    "906": {
+      "ID": 906,
+      "needStars": 9,
+      "oddsMin": 6251,
+      "oddsMax": 7500,
+      "fightattrID": 305,
+      "addValue": 800,
+      "description": "{06ff00}Đỡ+8%",
+      "PIC": "xzyy_28"
+    },
+    "907": {
+      "ID": 907,
+      "needStars": 9,
+      "oddsMin": 7501,
+      "oddsMax": 8750,
+      "fightattrID": 410,
+      "addValue": 600,
+      "description": "{06ff00}Sát Thương+6%",
+      "PIC": "xzyy_29"
+    },
+    "908": {
+      "ID": 908,
+      "needStars": 9,
+      "oddsMin": 8751,
+      "oddsMax": 10000,
+      "fightattrID": 411,
+      "addValue": 600,
+      "description": "{06ff00}Giảm ST+6%",
+      "PIC": "xzyy_34"
+    },
+    "601": {
+      "ID": 601,
+      "needStars": 6,
+      "oddsMin": 1,
+      "oddsMax": 1250,
+      "fightattrID": 402,
+      "addValue": 400,
+      "description": "{06ff00}HP+4%",
+      "PIC": "xzyy_33"
+    },
+    "602": {
+      "ID": 602,
+      "needStars": 6,
+      "oddsMin": 1251,
+      "oddsMax": 2500,
+      "fightattrID": 401,
+      "addValue": 400,
+      "description": "{06ff00}Công+4%",
+      "PIC": "xzyy_32"
+    },
+    "603": {
+      "ID": 603,
+      "needStars": 6,
+      "oddsMin": 2501,
+      "oddsMax": 3750,
+      "fightattrID": 301,
+      "addValue": 600,
+      "description": "{06ff00}Chính Xác+6%",
+      "PIC": "xzyy_27"
+    },
+    "604": {
+      "ID": 604,
+      "needStars": 6,
+      "oddsMin": 3751,
+      "oddsMax": 5000,
+      "fightattrID": 302,
+      "addValue": 400,
+      "description": "{06ff00}Né+4%",
+      "PIC": "xzyy_31"
+    },
+    "605": {
+      "ID": 605,
+      "needStars": 6,
+      "oddsMin": 5001,
+      "oddsMax": 6250,
+      "fightattrID": 303,
+      "addValue": 400,
+      "description": "{06ff00}Bạo+4%",
+      "PIC": "xzyy_30"
+    },
+    "606": {
+      "ID": 606,
+      "needStars": 6,
+      "oddsMin": 6251,
+      "oddsMax": 7500,
+      "fightattrID": 305,
+      "addValue": 600,
+      "description": "{06ff00}Đỡ+6%",
+      "PIC": "xzyy_28"
+    },
+    "607": {
+      "ID": 607,
+      "needStars": 6,
+      "oddsMin": 7501,
+      "oddsMax": 8750,
+      "fightattrID": 410,
+      "addValue": 400,
+      "description": "{06ff00}Sát Thương+4%",
+      "PIC": "xzyy_29"
+    },
+    "608": {
+      "ID": 608,
+      "needStars": 6,
+      "oddsMin": 8751,
+      "oddsMax": 10000,
+      "fightattrID": 411,
+      "addValue": 400,
+      "description": "{06ff00}Giảm ST+4%",
+      "PIC": "xzyy_34"
+    },
+    "301": {
+      "ID": 301,
+      "needStars": 3,
+      "oddsMin": 1,
+      "oddsMax": 1250,
+      "fightattrID": 402,
+      "addValue": 200,
+      "description": "{06ff00}HP+2%",
+      "PIC": "xzyy_33"
+    },
+    "302": {
+      "ID": 302,
+      "needStars": 3,
+      "oddsMin": 1251,
+      "oddsMax": 2500,
+      "fightattrID": 401,
+      "addValue": 200,
+      "description": "{06ff00}Công+2%",
+      "PIC": "xzyy_32"
+    },
+    "303": {
+      "ID": 303,
+      "needStars": 3,
+      "oddsMin": 2501,
+      "oddsMax": 3750,
+      "fightattrID": 301,
+      "addValue": 400,
+      "description": "{06ff00}Chính Xác+4%",
+      "PIC": "xzyy_27"
+    },
+    "304": {
+      "ID": 304,
+      "needStars": 3,
+      "oddsMin": 3751,
+      "oddsMax": 5000,
+      "fightattrID": 302,
+      "addValue": 200,
+      "description": "{06ff00}Né+2%",
+      "PIC": "xzyy_31"
+    },
+    "305": {
+      "ID": 305,
+      "needStars": 3,
+      "oddsMin": 5001,
+      "oddsMax": 6250,
+      "fightattrID": 303,
+      "addValue": 200,
+      "description": "{06ff00}Bạo+2%",
+      "PIC": "xzyy_30"
+    },
+    "306": {
+      "ID": 306,
+      "needStars": 3,
+      "oddsMin": 6251,
+      "oddsMax": 7500,
+      "fightattrID": 305,
+      "addValue": 400,
+      "description": "{06ff00}Đỡ+4%",
+      "PIC": "xzyy_28"
+    },
+    "307": {
+      "ID": 307,
+      "needStars": 3,
+      "oddsMin": 7501,
+      "oddsMax": 8750,
+      "fightattrID": 410,
+      "addValue": 200,
+      "description": "{06ff00}Sát Thương+2%",
+      "PIC": "xzyy_29"
+    },
+    "308": {
+      "ID": 308,
+      "needStars": 3,
+      "oddsMin": 8751,
+      "oddsMax": 10000,
+      "fightattrID": 411,
+      "addValue": 200,
+      "description": "{06ff00}Giảm ST+2%",
+      "PIC": "xzyy_34"
+    }
+  },
+  "reset": {
+    "1": {
+      "ID": 1,
+      "useDiamond": 0
+    },
+    "2": {
+      "ID": 2,
+      "useDiamond": 200
+    }
+  },
+  "merit_shop": {
+    "1": {
+      "ID": 1,
+      "outResource": "1301,13010425,1",
+      "needNum": 1500,
+      "needStarNum": 20,
+      "perMaxNum": 0,
+      "totalMaxNum": 0,
+      "tabOrder": 1
+    },
+    "2": {
+      "ID": 2,
+      "outResource": "1302,13020425,1",
+      "needNum": 1500,
+      "needStarNum": 20,
+      "perMaxNum": 0,
+      "totalMaxNum": 0,
+      "tabOrder": 1
+    },
+    "3": {
+      "ID": 3,
+      "outResource": "1303,13030425,1",
+      "needNum": 1500,
+      "needStarNum": 20,
+      "perMaxNum": 0,
+      "totalMaxNum": 0,
+      "tabOrder": 1
+    },
+    "4": {
+      "ID": 4,
+      "outResource": "1304,13040425,1",
+      "needNum": 1500,
+      "needStarNum": 20,
+      "perMaxNum": 0,
+      "totalMaxNum": 0,
+      "tabOrder": 1
+    },
+    "5": {
+      "ID": 5,
+      "outResource": "1301,13010521,1",
+      "needNum": 7500,
+      "needStarNum": 60,
+      "perMaxNum": 0,
+      "totalMaxNum": 0,
+      "tabOrder": 2
+    },
+    "6": {
+      "ID": 6,
+      "outResource": "1302,13020521,1",
+      "needNum": 7500,
+      "needStarNum": 60,
+      "perMaxNum": 0,
+      "totalMaxNum": 0,
+      "tabOrder": 2
+    },
+    "7": {
+      "ID": 7,
+      "outResource": "1303,13030521,1",
+      "needNum": 7500,
+      "needStarNum": 60,
+      "perMaxNum": 0,
+      "totalMaxNum": 0,
+      "tabOrder": 2
+    },
+    "8": {
+      "ID": 8,
+      "outResource": "1304,13040521,1",
+      "needNum": 7500,
+      "needStarNum": 60,
+      "perMaxNum": 0,
+      "totalMaxNum": 0,
+      "tabOrder": 2
+    },
+    "9": {
+      "ID": 9,
+      "outResource": "1124,0,1500",
+      "needNum": 10,
+      "needStarNum": 10,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "10": {
+      "ID": 10,
+      "outResource": "1302,13020326,1",
+      "needNum": 10,
+      "needStarNum": 15,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "11": {
+      "ID": 11,
+      "outResource": "1602,16020031,1",
+      "needNum": 10,
+      "needStarNum": 20,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "12": {
+      "ID": 12,
+      "outResource": "1303,13030326,1",
+      "needNum": 10,
+      "needStarNum": 25,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "13": {
+      "ID": 13,
+      "outResource": "1602,16020017,1",
+      "needNum": 10,
+      "needStarNum": 30,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "14": {
+      "ID": 14,
+      "outResource": "1111,0,300",
+      "needNum": 10,
+      "needStarNum": 35,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "15": {
+      "ID": 15,
+      "outResource": "1303,13030424,1",
+      "needNum": 10,
+      "needStarNum": 40,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "16": {
+      "ID": 16,
+      "outResource": "1302,13020424,1",
+      "needNum": 10,
+      "needStarNum": 45,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "17": {
+      "ID": 17,
+      "outResource": "1602,16020017,2",
+      "needNum": 10,
+      "needStarNum": 50,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "18": {
+      "ID": 18,
+      "outResource": "1111,0,500",
+      "needNum": 10,
+      "needStarNum": 55,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "19": {
+      "ID": 19,
+      "outResource": "1304,13040424,1",
+      "needNum": 10,
+      "needStarNum": 60,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "20": {
+      "ID": 20,
+      "outResource": "1301,13010424,1",
+      "needNum": 10,
+      "needStarNum": 65,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "21": {
+      "ID": 21,
+      "outResource": "1602,16020033,1",
+      "needNum": 10,
+      "needStarNum": 70,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "22": {
+      "ID": 22,
+      "outResource": "1302,13020520,1",
+      "needNum": 10,
+      "needStarNum": 75,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "23": {
+      "ID": 23,
+      "outResource": "1111,0,500",
+      "needNum": 10,
+      "needStarNum": 80,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "24": {
+      "ID": 24,
+      "outResource": "1303,13030520,1",
+      "needNum": 10,
+      "needStarNum": 85,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "25": {
+      "ID": 25,
+      "outResource": "1112,0,1000000",
+      "needNum": 10,
+      "needStarNum": 90,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "26": {
+      "ID": 26,
+      "outResource": "1602,16020033,1",
+      "needNum": 10,
+      "needStarNum": 95,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "27": {
+      "ID": 27,
+      "outResource": "1304,13040520,1",
+      "needNum": 10,
+      "needStarNum": 100,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "28": {
+      "ID": 28,
+      "outResource": "1111,0,800",
+      "needNum": 10,
+      "needStarNum": 105,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "29": {
+      "ID": 29,
+      "outResource": "1112,0,2000000",
+      "needNum": 10,
+      "needStarNum": 110,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "30": {
+      "ID": 30,
+      "outResource": "1602,16020033,3",
+      "needNum": 10,
+      "needStarNum": 115,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "31": {
+      "ID": 31,
+      "outResource": "1602,16020033,4",
+      "needNum": 10,
+      "needStarNum": 120,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "32": {
+      "ID": 32,
+      "outResource": "1301,13010520,1",
+      "needNum": 10,
+      "needStarNum": 125,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "33": {
+      "ID": 33,
+      "outResource": "1111,0,1000",
+      "needNum": 10,
+      "needStarNum": 130,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "34": {
+      "ID": 34,
+      "outResource": "1112,0,3000000",
+      "needNum": 10,
+      "needStarNum": 135,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "35": {
+      "ID": 35,
+      "outResource": "1303,13030617,1",
+      "needNum": 10,
+      "needStarNum": 140,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "36": {
+      "ID": 36,
+      "outResource": "1302,13020617,1",
+      "needNum": 10,
+      "needStarNum": 145,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    },
+    "37": {
+      "ID": 37,
+      "outResource": "1304,13040617,1",
+      "needNum": 10,
+      "needStarNum": 150,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "tabOrder": 3
+    }
+  },
+  "equip_shop": {
+    "1": {
+      "ID": 1,
+      "outResource": "1301,13010503,1||1301,13010422,5",
+      "useEquip": "1301,13010404,1",
+      "equipStepNum": 10,
+      "needNum": 300,
+      "totalMaxNum": 1
+    },
+    "2": {
+      "ID": 2,
+      "outResource": "1302,13020503,1||1302,13020422,5",
+      "useEquip": "1302,13020404,1",
+      "equipStepNum": 10,
+      "needNum": 300,
+      "totalMaxNum": 1
+    },
+    "3": {
+      "ID": 3,
+      "outResource": "1303,13030503,1||1303,13030422,5",
+      "useEquip": "1303,13030404,1",
+      "equipStepNum": 10,
+      "needNum": 300,
+      "totalMaxNum": 1
+    },
+    "4": {
+      "ID": 4,
+      "outResource": "1304,13040503,1||1304,13040422,5",
+      "useEquip": "1304,13040404,1",
+      "equipStepNum": 10,
+      "needNum": 300,
+      "totalMaxNum": 1
+    },
+    "5": {
+      "ID": 5,
+      "outResource": "1301,13010602,1||1301,13010519,5",
+      "useEquip": "1301,13010503,1",
+      "equipStepNum": 10,
+      "needNum": 1500,
+      "totalMaxNum": 1
+    },
+    "6": {
+      "ID": 6,
+      "outResource": "1302,13020602,1||1302,13020519,5",
+      "useEquip": "1302,13020503,1",
+      "equipStepNum": 10,
+      "needNum": 1500,
+      "totalMaxNum": 1
+    },
+    "7": {
+      "ID": 7,
+      "outResource": "1303,13030602,1||1303,13030519,5",
+      "useEquip": "1303,13030503,1",
+      "equipStepNum": 10,
+      "needNum": 1500,
+      "totalMaxNum": 1
+    },
+    "8": {
+      "ID": 8,
+      "outResource": "1304,13040602,1||1304,13040519,5",
+      "useEquip": "1304,13040503,1",
+      "equipStepNum": 10,
+      "needNum": 1500,
+      "totalMaxNum": 1
+    },
+    "9": {
+      "ID": 9,
+      "outResource": "1301,13010701,1||1301,13010617,5",
+      "useEquip": "1301,13010602,1",
+      "equipStepNum": 10,
+      "needNum": 7500,
+      "totalMaxNum": 1
+    },
+    "10": {
+      "ID": 10,
+      "outResource": "1302,13020701,1||1302,13020617,5",
+      "useEquip": "1302,13020602,1",
+      "equipStepNum": 10,
+      "needNum": 7500,
+      "totalMaxNum": 1
+    },
+    "11": {
+      "ID": 11,
+      "outResource": "1303,13030701,1||1303,13030617,5",
+      "useEquip": "1303,13030602,1",
+      "equipStepNum": 10,
+      "needNum": 7500,
+      "totalMaxNum": 1
+    },
+    "12": {
+      "ID": 12,
+      "outResource": "1304,13040701,1||1304,13040617,5",
+      "useEquip": "1304,13040602,1",
+      "equipStepNum": 10,
+      "needNum": 7500,
+      "totalMaxNum": 1
+    }
+  }
+}

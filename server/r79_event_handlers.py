@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+from datetime import date
 import math
 import random
 import uuid
@@ -818,7 +819,7 @@ class R79EventHandlersMixin:
         claimed = set(int(x) for x in prog.get("reward_ids", []))
         return 1 if any(integral >= int(r["Credit"]) and int(r["Credit"]) not in claimed for r in self.XSSB_CREDIT_REWARDS) else 0
 
-    def _build_xssb_rank_list(self, my_integral: int) -> tuple[int, list[dict[str, Any]]]:
+    def _build_xssb_rank_list(self, instance_id: str, my_integral: int) -> tuple[int, list[dict[str, Any]]]:
         entries: list[dict[str, Any]] = []
         for prof in self._s1_account_profiles():
             pname = str(prof.state.get("player", {}).get("PlayerName", "Hero"))
@@ -826,9 +827,10 @@ class R79EventHandlersMixin:
                 score = int(my_integral)
                 is_me = True
             else:
-                p_ev = prof.event_runtime.evaluate("timed_xssb", prof.state.get("player"))
-                p_inst = prof.event_runtime.get_instance(p_ev.instance_id) if p_ev.instance_id else None
-                score = int((p_inst or {}).get("progress", {}).get("integral", 0))
+                p_inst = prof.event_runtime.get_instance(instance_id)
+                if not p_inst or p_inst.get("archived"):
+                    continue
+                score = int(p_inst.get("progress", {}).get("integral", 0))
                 is_me = False
             if score > 0:
                 entries.append({"Name": pname, "Integral": score, "is_me": is_me})
@@ -845,7 +847,7 @@ class R79EventHandlersMixin:
 
     def _build_xssb_payload(self, ev: Any, prog: dict[str, Any], *, include_static: bool = True) -> dict[str, Any]:
         my_int = int(prog.get("integral", 0))
-        my_rank, rank_list = self._build_xssb_rank_list(my_int)
+        my_rank, rank_list = self._build_xssb_rank_list(ev.instance_id, my_int)
         reward_ids = sorted(set(int(x) for x in prog.get("reward_ids", [])))
         info_block = {
             "Integral": my_int,
@@ -1305,9 +1307,61 @@ class R79EventHandlersMixin:
         prog = inst.setdefault("progress", {})
         return ev, prog
 
+    CHARGE_PERIODS = (
+        "timed_charge_single", "timed_charge_total", "timed_accum_days",
+        "timed_double_diamond", "timed_recharge_rank", "timed_charge_gift",
+        "timed_points_mall", "timed_critical_tasks",
+    )
+    SPEND_PERIODS = ("timed_use_total", "timed_consume_rank", "timed_critical_tasks")
+
+    def _add_period_charge(self, amounts: dict[str, Any], when: int, amount: int) -> None:
+        amounts["charged"] += amount
+        amounts["max_charge"] = max(amounts["max_charge"], amount)
+        day = self.clock.today_str(when)
+        amounts["by_day"][day] = amounts["by_day"].get(day, 0) + amount
+
+    def _period_economy(self, ev: Any, progress: dict[str, Any]) -> dict[str, Any]:
+        initial = {"charged": 0, "max_charge": 0, "spent": 0, "by_day": {}}
+        if not ev.eligible:
+            return initial
+        if "economy" not in progress:
+            # Recover dated orders for the existing window only. Manual replay starts clean,
+            # including when the old and new instance overlap at the same clock second.
+            reset_seq = self.event_runtime.archive_cfg.get("manual_reset_seq", {}).get(ev.event_id, 0)
+            if ev.event_id in self.CHARGE_PERIODS and ev.start_ts is not None and ev.archive_mode != "manual" and not reset_seq:
+                end = min(ev.end_ts or self.now_ts() + 1, self.now_ts() + 1)
+                for when, amount in self._legacy_period_charges(ev.start_ts, end):
+                    self._add_period_charge(initial, when, amount)
+            progress["economy"] = initial
+        return progress["economy"]
+
+    def _record_period_economy(self, *, charged: int = 0, spent: int = 0) -> None:
+        now = self.now_ts()
+        for event_id in self.CHARGE_PERIODS if charged else self.SPEND_PERIODS:
+            ev = self.event_runtime.evaluate(event_id, self.state["player"])
+            if not ev.eligible:
+                continue
+            inst = self.event_runtime.get_instance(ev.instance_id)
+            if inst is None:
+                continue
+            amounts = self._period_economy(ev, inst.setdefault("progress", {}))
+            if charged:
+                self._add_period_charge(amounts, now, charged)
+            amounts["spent"] += spent
+
+    def _charge_day_progress(self, ev: Any, progress: dict[str, Any]) -> tuple[int, int]:
+        by_day = self._period_economy(ev, progress)["by_day"]
+        longest = streak = previous = 0
+        for day in sorted(key for key, amount in by_day.items() if amount >= 60):
+            ordinal = date.fromisoformat(day).toordinal()
+            streak = streak + 1 if ordinal == previous + 1 else 1
+            longest = max(longest, streak)
+            previous = ordinal
+        return longest, int(by_day.get(self.clock.today_str(), 0))
+
     def _rpc_timed_info_get_charge_single(self, _data: Any) -> dict[str, Any]:
-        ev, _prog = self._eval_timed_sub("timed_charge_single")
-        max_single = max(self._player_total_recharged_diamonds(), 60 if int(self.state["player"].get("Vip", 0)) >= 1 else 0)
+        ev, prog = self._eval_timed_sub("timed_charge_single")
+        max_single = self._period_economy(ev, prog)["max_charge"]
         rows: list[dict[str, Any]] = []
         for tid, res_str in self.CHARGE_SINGLE_TIERS:
             claimed = bool(ev.instance_id and self.event_runtime.is_claimed(ev.instance_id, f"tier:{tid}"))
@@ -1320,8 +1374,9 @@ class R79EventHandlersMixin:
         }
 
     def _rpc_timed_info_draw_charge_single(self, data: Any) -> dict[str, Any]:
+        ev, prog = self._eval_timed_sub("timed_charge_single")
         tid = int(data[1]) if isinstance(data, list) and len(data) >= 2 else (int(data[0]) if isinstance(data, list) and data else 0)
-        max_single = max(self._player_total_recharged_diamonds(), 60 if int(self.state["player"].get("Vip", 0)) >= 1 else 0)
+        max_single = self._period_economy(ev, prog)["max_charge"]
         res_str = next((rs for t, rs in self.CHARGE_SINGLE_TIERS if t == tid), None)
         if not res_str or max_single < tid:
             self._last_rpc_context["status"] = -1
@@ -1339,8 +1394,8 @@ class R79EventHandlersMixin:
         return {"BaseGetGameResourceList": base_res}
 
     def _rpc_timed_info_get_charge_total(self, _data: Any) -> dict[str, Any]:
-        ev, _prog = self._eval_timed_sub("timed_charge_total")
-        total_c = self._player_total_recharged_diamonds()
+        ev, prog = self._eval_timed_sub("timed_charge_total")
+        total_c = self._period_economy(ev, prog)["charged"]
         rows: list[dict[str, Any]] = []
         for tid, res_str in self.CHARGE_TOTAL_TIERS:
             claimed = bool(ev.instance_id and self.event_runtime.is_claimed(ev.instance_id, f"tier:{tid}"))
@@ -1353,8 +1408,9 @@ class R79EventHandlersMixin:
         }
 
     def _rpc_timed_info_draw_charge_total(self, data: Any) -> dict[str, Any]:
+        ev, prog = self._eval_timed_sub("timed_charge_total")
         tid = int(data[1]) if isinstance(data, list) and len(data) >= 2 else (int(data[0]) if isinstance(data, list) and data else 0)
-        total_c = self._player_total_recharged_diamonds()
+        total_c = self._period_economy(ev, prog)["charged"]
         res_str = next((rs for t, rs in self.CHARGE_TOTAL_TIERS if t == tid), None)
         if not res_str or total_c < tid:
             self._last_rpc_context["status"] = -1
@@ -1372,8 +1428,8 @@ class R79EventHandlersMixin:
         return {"BaseGetGameResourceList": base_res}
 
     def _rpc_timed_info_get_use_total(self, _data: Any) -> dict[str, Any]:
-        ev, _prog = self._eval_timed_sub("timed_use_total")
-        total_u = self._player_total_spent_diamonds()
+        ev, prog = self._eval_timed_sub("timed_use_total")
+        total_u = self._period_economy(ev, prog)["spent"]
         rows: list[dict[str, Any]] = []
         for tid, res_str in self.USE_TOTAL_TIERS:
             claimed = bool(ev.instance_id and self.event_runtime.is_claimed(ev.instance_id, f"tier:{tid}"))
@@ -1386,8 +1442,9 @@ class R79EventHandlersMixin:
         }
 
     def _rpc_timed_info_draw_use_total(self, data: Any) -> dict[str, Any]:
+        ev, prog = self._eval_timed_sub("timed_use_total")
         tid = int(data[0]) if isinstance(data, list) and data else 0
-        total_u = self._player_total_spent_diamonds()
+        total_u = self._period_economy(ev, prog)["spent"]
         res_str = next((rs for t, rs in self.USE_TOTAL_TIERS if t == tid), None)
         if not res_str or total_u < tid:
             self._last_rpc_context["status"] = -1
@@ -1406,9 +1463,8 @@ class R79EventHandlersMixin:
 
     def _rpc_timed_info_get_charge_days(self, data: Any) -> list[dict[str, Any]]:
         act_id = int(data[0]) if isinstance(data, list) and data else 4405
-        ev, _prog = self._eval_timed_sub("timed_accum_days")
-        recharged = self._player_total_recharged_diamonds()
-        days_cnt = max(1 if recharged > 0 else 0, min(5, recharged // 60))
+        ev, prog = self._eval_timed_sub("timed_accum_days")
+        days_cnt, today_charge = self._charge_day_progress(ev, prog)
         rows: list[dict[str, Any]] = []
         for tid, need_d, res_str in self.CHARGE_DAYS_TIERS:
             claimed = bool(ev.instance_id and self.event_runtime.is_claimed(ev.instance_id, f"day:{tid}"))
@@ -1419,7 +1475,7 @@ class R79EventHandlersMixin:
                 "ActivityId": act_id,
                 "ChargeDaysEndTime": int(ev.end_ts or self.clock.next_midnight_ts()),
                 "ChargeDaysTotal": days_cnt,
-                "DailyNum": recharged,
+                "DailyNum": today_charge,
                 "NeedNum": 60,
                 "ChargeDaysDrawNums": rows,
             }
@@ -1427,8 +1483,8 @@ class R79EventHandlersMixin:
 
     def _rpc_timed_info_draw_charge_days(self, data: Any) -> dict[str, Any]:
         tid = int(data[1]) if isinstance(data, list) and len(data) >= 2 else (int(data[0]) if isinstance(data, list) and data else 0)
-        recharged = self._player_total_recharged_diamonds()
-        days_cnt = max(1 if recharged > 0 else 0, min(5, recharged // 60))
+        ev, prog = self._eval_timed_sub("timed_accum_days")
+        days_cnt, _today_charge = self._charge_day_progress(ev, prog)
         row = next(((need_d, rs) for t, need_d, rs in self.CHARGE_DAYS_TIERS if t == tid), None)
         if not row or days_cnt < row[0]:
             self._last_rpc_context["status"] = -1
@@ -1446,8 +1502,8 @@ class R79EventHandlersMixin:
         return {"BaseGetGameResourceList": base_res}
 
     def _rpc_timed_info_get_double_diamond(self, _data: Any) -> dict[str, Any]:
-        ev, _prog = self._eval_timed_sub("timed_double_diamond")
-        recharged = self._player_total_recharged_diamonds()
+        ev, prog = self._eval_timed_sub("timed_double_diamond")
+        recharged = self._period_economy(ev, prog)["max_charge"]
         rows: list[dict[str, Any]] = []
         for tid in self.DOUBLE_DIAMOND_TIERS:
             claimed = bool(ev.instance_id and self.event_runtime.is_claimed(ev.instance_id, f"tier:{tid}"))
@@ -1460,8 +1516,9 @@ class R79EventHandlersMixin:
         }
 
     def _rpc_timed_info_draw_double_diamond(self, data: Any) -> dict[str, Any]:
+        ev, prog = self._eval_timed_sub("timed_double_diamond")
         tid = int(data[0]) if isinstance(data, list) and data else 0
-        recharged = self._player_total_recharged_diamonds()
+        recharged = self._period_economy(ev, prog)["max_charge"]
         if tid not in self.DOUBLE_DIAMOND_TIERS or recharged < tid:
             self._last_rpc_context["status"] = -1
             return {}
@@ -1524,17 +1581,24 @@ class R79EventHandlersMixin:
     ]
 
     def _build_charge_or_use_rank(self, *, is_charge: bool) -> dict[str, Any]:
+        event_id = "timed_recharge_rank" if is_charge else "timed_consume_rank"
+        ev, progress = self._eval_timed_sub(event_id)
+        key = "charged" if is_charge else "spent"
+        my_val = self._period_economy(ev, progress)[key]
         entries: list[dict[str, Any]] = []
         for prof in self._s1_account_profiles():
             pname = str(prof.state.get("player", {}).get("PlayerName", "Hero"))
-            val = self._player_total_recharged_diamonds(prof) if is_charge else self._player_total_spent_diamonds(prof)
-            entries.append({"Name": pname, "Val": val, "is_me": prof.profile_name == self.profile_name})
+            is_me = prof is self
+            inst = prof.event_runtime.get_instance(ev.instance_id) if ev.eligible and ev.instance_id else None
+            if not is_me and (not inst or inst.get("archived")):
+                continue
+            value = my_val if is_me else inst.get("progress", {}).get("economy", {}).get(key, 0)
+            entries.append({"Name": pname, "Val": value, "is_me": is_me})
         peers = [("BạchSát", 1200), ("KhuyểnDạXoa", 800), ("TửVu", 450), ("NgọcTứHồn", 200), ("PhongKhuyển", 80)]
         for bname, bval in peers:
             entries.append({"Name": bname, "Val": bval, "is_me": False})
         entries.sort(key=lambda r: (-int(r["Val"]), 0 if r["is_me"] else 1, r["Name"]))
 
-        my_val = self._player_total_recharged_diamonds() if is_charge else self._player_total_spent_diamonds()
         my_rank = -1
         rewards_out: list[dict[str, Any]] = []
         for idx, (r_num, min_need, res_str) in enumerate(self.RANK_REWARD_TEMPLATE):
@@ -1586,7 +1650,7 @@ class R79EventHandlersMixin:
     def _rpc_timed_charge_gift_get_info(self, _data: Any) -> dict[str, Any]:
         ev, prog = self._eval_timed_sub("timed_charge_gift")
         claimed = set(int(x) for x in prog.setdefault("claimed_ids", []))
-        recharged = max(60, self._player_total_recharged_diamonds())
+        recharged = self._period_economy(ev, prog)["charged"]
         info_list: list[dict[str, Any]] = []
         for money, opts in self.CHARGE_GIFT_TIERS:
             claimed_in_tier = sum(1 for oid, _ in opts if oid in claimed)
@@ -1617,9 +1681,17 @@ class R79EventHandlersMixin:
 
     def _rpc_timed_charge_gift_receive(self, data: Any) -> dict[str, Any]:
         oid = int(data[0]) if isinstance(data, list) and data else 0
-        _ev, prog = self._eval_timed_sub("timed_charge_gift")
-        res_str = next((rs for _m, opts in self.CHARGE_GIFT_TIERS for o_id, rs in opts if o_id == oid), None)
-        if not res_str:
+        ev, prog = self._eval_timed_sub("timed_charge_gift")
+        tier = next(((money, opts, rs) for money, opts in self.CHARGE_GIFT_TIERS
+                     for option_id, rs in opts if option_id == oid), None)
+        if not ev.eligible or not tier:
+            self._last_rpc_context["status"] = -1
+            return {}
+        money, options, res_str = tier
+        claimed = set(prog.get("claimed_ids", []))
+        quota = min(3, self._period_economy(ev, prog)["charged"] // money)
+        used = sum(option_id in claimed for option_id, _ in options)
+        if oid in claimed or used >= quota:
             self._last_rpc_context["status"] = -1
             return {}
         ok, base_res, _ = self.event_runtime.claim_milestone(
@@ -1631,7 +1703,6 @@ class R79EventHandlersMixin:
         if not ok:
             self._last_rpc_context["status"] = -1
             return {}
-        claimed = set(int(x) for x in prog.setdefault("claimed_ids", []))
         claimed.add(oid)
         prog["claimed_ids"] = sorted(claimed)
         self.save()
@@ -1649,7 +1720,7 @@ class R79EventHandlersMixin:
 
     def _build_points_mall_payload(self, ev: Any, prog: dict[str, Any]) -> dict[str, Any]:
         spent_score = int(prog.get("spent_score", 0))
-        total_score = max(100, self._player_total_recharged_diamonds())
+        total_score = self._period_economy(ev, prog)["charged"]
         cur_score = max(0, total_score - spent_score)
         bought_map = prog.setdefault("bought", {})
         goods_info: list[dict[str, Any]] = []
@@ -1906,10 +1977,10 @@ class R79EventHandlersMixin:
         (9, "Tiêu Phí Kim Cương", 100, "1111,0,88||1605,16050055,2"),
     ]
 
-    def _critical_task_done_num(self, task_type: int) -> int:
+    def _critical_task_done_num(self, task_type: int, ev: Any, progress: dict[str, Any]) -> int:
         stats = self.state.get("stats", {})
         if task_type == 1:
-            return self._player_total_recharged_diamonds()
+            return self._period_economy(ev, progress)["charged"]
         if task_type == 2:
             return max(int(stats.get("arena_Win", 0)), 1 if int(self.state["player"].get("Lv", 1)) >= 6 else 0)
         if task_type == 3:
@@ -1925,18 +1996,18 @@ class R79EventHandlersMixin:
         if task_type == 8:
             return int(stats.get("zcsf_count", 0))
         if task_type == 9:
-            return self._player_total_spent_diamonds()
+            return self._period_economy(ev, progress)["spent"]
         return 0
 
     def _build_critical_tasks_list(self) -> list[dict[str, Any]]:
-        ev, _prog = self._eval_timed_sub("timed_critical_tasks")
+        ev, prog = self._eval_timed_sub("timed_critical_tasks")
         ct_cfg = self.game_data.get("critical_tasks_type", {})
         exp_ts = int(ev.end_ts or self.clock.next_midnight_ts())
         out: list[dict[str, Any]] = []
         for t_type, title, need_num, rew_str in self.CRITICAL_TASK_SPECS:
             desc_fmt = str(ct_cfg.get(str(t_type), {}).get("description", f"{title} %s"))
             desc = desc_fmt.replace("%s", str(need_num)) if "%s" in desc_fmt else f"{desc_fmt} ({need_num})"
-            done = min(need_num, self._critical_task_done_num(t_type))
+            done = min(need_num, self._critical_task_done_num(t_type, ev, prog))
             drawn = bool(ev.instance_id and self.event_runtime.is_claimed(ev.instance_id, f"task:{t_type}"))
             out.append(
                 {
@@ -1968,7 +2039,8 @@ class R79EventHandlersMixin:
             self._last_rpc_context["status"] = -1
             return {}
         _tt, _title, need_num, rew_str = spec
-        if self._critical_task_done_num(t_type) < need_num:
+        ev, prog = self._eval_timed_sub("timed_critical_tasks")
+        if self._critical_task_done_num(t_type, ev, prog) < need_num:
             self._last_rpc_context["status"] = -1
             return {}
         ok, base_res, _ = self.event_runtime.claim_milestone(

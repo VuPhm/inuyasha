@@ -19,11 +19,13 @@ Features:
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import copy
 import hashlib
 import hmac
 import http.server
 import json
+import logging
 import math
 import mimetypes
 import os
@@ -41,6 +43,7 @@ import zlib
 from pathlib import Path
 from typing import Any
 
+from bdd_handlers import BddHandlersMixin
 from combat_sim import simulate_fight_info
 from economy_audit import ResourceLedger
 from event_handlers import EventHandlersMixin
@@ -346,7 +349,7 @@ def _parse_resource_str(res_str: str) -> list[tuple[int, int, int]]:
     return out
 
 
-class ProfileStore(EventHandlersMixin):
+class ProfileStore(EventHandlersMixin, BddHandlersMixin):
     """Single-profile game state & RPC engine backed by extracted VN/EN config."""
 
     DEBUG_STARTER_HERO_IDS = ["12011004", "12011005", "12012005", "12011006"]
@@ -392,6 +395,8 @@ class ProfileStore(EventHandlersMixin):
             build_default_event_registry(self.game_data),
             self.state,
         )
+        if self.state.get("fashions"):
+            self._recalc_all_slots_and_fap()
 
     def now_ts(self) -> int:
         return self.clock.now()
@@ -624,7 +629,7 @@ class ProfileStore(EventHandlersMixin):
     LEGACY_RESOURCE_REMAPPING: dict[tuple[int, int], tuple[int, int]] = {
         (1503, 15030101): (1503, 15032101),
     }
-    _ATTR_RESOURCE_TYPES: frozenset[int] = frozenset({1101, 1102, 1103, 1111, 1112, 1115, 1116, 1117, 1120})
+    _ATTR_RESOURCE_TYPES: frozenset[int] = frozenset({1101, 1102, 1103, 1111, 1112, 1115, 1116, 1117, 1120, 1124})
 
     def _is_valid_resource(self, rtype: int, rmodel: int) -> bool:
         """Check whether (TypeId, ModelId) exists in game_data and can be rendered by client."""
@@ -851,6 +856,22 @@ class ProfileStore(EventHandlersMixin):
             "FSP": int(rec.get("FSP", 0)),
         }
 
+    def _fashion_collection_stats(self) -> Counter[int]:
+        # FashionAttributeLayer sums one copy per owned model, preferring its upgraded copy.
+        owned_steps: dict[str, int] = {}
+        for item in self.state.get("fashions", []):
+            model = str(item["FashionModelId"])
+            if not owned_steps.get(model, 0):
+                owned_steps[model] = int(item.get("Step", 0))
+        result: Counter[int] = Counter()
+        table = self.game_data.get("fashion_step", {})
+        for model, step in owned_steps.items():
+            row = table.get(model, {}).get(str(step), {})
+            for target, attr, amount in _parse_resource_str(row.get("heroAttrStrR", "")):
+                if target == 2:  # VN labels this scope "all allies".
+                    result[attr] += amount
+        return result
+
     def _compute_slot_property(
         self,
         slot: dict[str, Any],
@@ -964,6 +985,11 @@ class ProfileStore(EventHandlersMixin):
         if tr_ap_pct_bonus > 0:
             ap1 = int(ap1 * (1.0 + tr_ap_pct_bonus / 10000.0))
         def1 = hero_def + eq_def + set_def + star_bonus["DEF"] + glory_bonus["DEF"]
+        if include_player_star and hasattr(self, "state") and self.state.get("fashions"):
+            fashion = self._fashion_collection_stats()
+            ap1 += fashion[431]  # APADD
+            hp1 += fashion[432]  # HPADD
+            def1 += fashion[433]  # DEFADD
         fsp = int(cfg.get("FSP", 500)) + step_attr["FSP"] + eq_fsp
         fap = int(hp1 + ap1 * 5 + def1 * 5)
 
@@ -1355,6 +1381,7 @@ class ProfileStore(EventHandlersMixin):
             1116: "HeroCoin",
             1117: "HeroEXP",
             1120: "BossCoin",
+            1124: "Merit",
         }
 
         for idx, (rtype, rmodel, rnum) in enumerate(res_tuples):
@@ -1388,19 +1415,7 @@ class ProfileStore(EventHandlersMixin):
                     )
             elif rtype in (1301, 1302, 1303, 1304):
                 for copy_i in range(rnum):
-                    eq_inst = {
-                        "Id": str(uuid.uuid4()),
-                        "EquipModelId": rmodel,
-                        "Lv": 0,
-                        "Step": 0,
-                        "Gold": 0,
-                        "ExtraCount": 0,
-                        "APExtra": 0,
-                        "HPExtra": 0,
-                        "DEFExtra": 0,
-                        "DAMADDExtra": 0,
-                        "DAMCUTExtra": 0,
-                    }
+                    eq_inst = self._build_equip_instance(rmodel)
                     self.state["equips"].append(eq_inst)
                     new_equips.append(eq_inst)
                     self.ledger.record_grant_event(
@@ -1518,6 +1533,9 @@ class ProfileStore(EventHandlersMixin):
             bundle["Goods"] = new_goods
         if new_fashions:
             bundle["Fashion"] = new_fashions
+            self._recalc_all_slots_and_fap()
+            if hasattr(self, "_last_rpc_context"):
+                self._last_rpc_context["slots_changed"] = True
         if "boss_battle" in self.state:
             self.state["boss_battle"]["jifen"] = int(self.state["player"].get("BossCoin", self.state["boss_battle"].get("jifen", 0)))
         return [bundle] if bundle else []
@@ -1774,6 +1792,18 @@ class ProfileStore(EventHandlersMixin):
             "Explore.BuyExploreNum": self._rpc_explore_buy,
             "Explore.DrawDailyReward": self._rpc_explore_draw_daily,
             "LightenStar.GetLightenStarInfo": self._rpc_lighten_star_info,
+            "BddInfo.Info": self._rpc_bdd_info,
+            "BddInfo.GetFightInfo": self._rpc_bdd_get_fight_info,
+            "BddInfo.Fight": self._rpc_bdd_fight,
+            "BddInfo.RewardBox": self._rpc_bdd_reward_box,
+            "BddInfo.GetBuffs": self._rpc_bdd_get_buffs,
+            "BddInfo.SelectBuff": self._rpc_bdd_select_buff,
+            "BddInfo.Reset": self._rpc_bdd_reset,
+            "BddInfo.Ranking": self._rpc_bdd_ranking,
+            "BddInfo.OneKeyThreeStar": self._rpc_bdd_sweep,
+            "BddInfo.BuyShop": self._rpc_bdd_buy_shop,
+            "BddInfo.EquipShopInfo": self._rpc_bdd_equip_shop_info,
+            "BddInfo.EquipShopExchange": self._rpc_bdd_equip_shop_exchange,
             "LightenStar.LightenStar": self._rpc_lighten_star_up,
             "LightenStar.LightenStarForOneKey": self._rpc_lighten_star_one_key,
             "ShopGoods.ShopGoodsList": self._rpc_shop_goods_list,
@@ -1956,9 +1986,14 @@ class ProfileStore(EventHandlersMixin):
         handled = fn is not None
         self._sync_events()
         before_diamond = int(self.state.get("player", {}).get("Diamond", 0))
-        value = fn(data) if fn else {}
+        with self.ledger.capture_diamond_debits() as diamond_debits:
+            value = fn(data) if fn else {}
         status = int(self._last_rpc_context.get("status", 0))
         if status == 0:
+            actual_cost = max(diamond_debits.get(str(self.state["player"]["PlayerId"]), 0),
+                              self._last_rpc_context.get("diamond_spent", 0))
+            if actual_cost:
+                self._record_period_economy(spent=actual_cost)
             dia_spent = self._last_rpc_context.get(
                 "diamond_spent", before_diamond - int(self.state.get("player", {}).get("Diamond", 0)),
             )
@@ -1971,6 +2006,8 @@ class ProfileStore(EventHandlersMixin):
                 self._record_daily_task_progress(23, dia_spent)
                 if isinstance(value, dict) and "TasksInfo" in value:
                     value = self._build_daily_task_payload()
+                self.save()
+            elif actual_cost:
                 self.save()
         self._sync_events()
         self._sync_player_recover_times()
@@ -1991,6 +2028,7 @@ class ProfileStore(EventHandlersMixin):
             avatar = {k: v for k, v in self.state["player"].items() if k != "Lv"}
             if self._last_rpc_context.get("lv_changed"):
                 avatar["Lv"] = self.state["player"]["Lv"]
+            if self._last_rpc_context.get("lv_changed") or self._last_rpc_context.get("explore_changed"):
                 avatar["XYCurCount"] = int(self.state.get("explore", {}).get("RemainNum", 15))
             if self._last_rpc_context.get("slots_changed"):
                 avatar["SlotInfo"] = self.state["slots"]
@@ -2334,8 +2372,12 @@ class ProfileStore(EventHandlersMixin):
             reqs = _parse_resource_str(str(rec_cfg.get("recruitUse", "")))
             default_cost = 280 if rtype == 3 else (2680 if rtype == 30 else 80)
             cost = int(reqs[0][2]) if reqs and reqs[0][0] == 1111 else default_cost
+            welfare = self.event_runtime.get_active_timed_events(4417, self.state["player"])
+            if welfare:
+                percent = int(welfare[0][0].metadata.get("extra_info", {}).get("RefNum", 100))
+                cost = (cost * percent + 99) // 100  # RecruitScene.lua uses math.ceil.
             if int(self.state["player"].get("Diamond", 0)) < cost:
-                self._last_rpc_context["status"] = -1
+                self._last_rpc_context["status"] = -1105
                 return {}
             self.ledger.apply_player_delta(
                 self.state["player"],
@@ -2596,56 +2638,107 @@ class ProfileStore(EventHandlersMixin):
         self.save()
         return {"SlotFormationInfo": self.state["embattle"]}
 
+    @staticmethod
+    def _build_equip_instance(model: int) -> dict[str, Any]:
+        return {
+            "Id": str(uuid.uuid4()),
+            "EquipModelId": model,
+            "Lv": 0,
+            "Step": 0,
+            "Gold": 0,
+            "ExtraCount": 0,
+            "APExtra": 0,
+            "HPExtra": 0,
+            "DEFExtra": 0,
+            "DAMADDExtra": 0,
+            "DAMCUTExtra": 0,
+        }
+
     def _compose_equips(self, equip_ids: list[str]) -> tuple[list[str], list[dict[str, Any]]]:
-        equips_by_id = {e["Id"]: e for e in self.state.get("equips", [])}
-        mats = [equips_by_id[eid] for eid in equip_ids if eid in equips_by_id]
-        if len(mats) < 5:
+        def reject(status: int) -> tuple[list[str], list[dict[str, Any]]]:
+            self._last_rpc_context["status"] = status
             return [], []
-        mats = mats[:5]
-        equips_cfg = self.game_data.get("equips", {})
-        first_cfg = equips_cfg.get(str(mats[0]["EquipModelId"]), {})
-        color_lv = int(first_cfg.get("colorLV", 1))
-        type_id = int(first_cfg.get("typeID", 1304))
 
-        ec_cfg = self.game_data.get("equip_color", {}).get(str(color_lv), {})
-        next_color = int(ec_cfg.get("colorFinally", color_lv + 1))
-        gold_cost = int(ec_cfg.get("colorUpUseNum", 1000))
-        if gold_cost > 0:
-            self.ledger.apply_player_delta(
-                self.state["player"],
-                self.profile_name,
-                "Gold",
-                -gold_cost,
-                source=f"equip_compose:color_{color_lv}",
+        if len(equip_ids) != 5:
+            return reject(-1317)
+        ids = set(equip_ids)
+        if len(ids) != 5:
+            return reject(-1320)
+        equips = self.state["equips"]
+        equips_by_id = {item["Id"]: item for item in equips}
+        if ids - equips_by_id.keys():
+            return reject(-1301)
+        equipped = {
+            slot.get(key, {}).get("Id")
+            for slot in self.state["slots"] for key in self.EQUIP_TYPE_TO_SLOT_KEY.values()
+        }
+        materials = [equips_by_id[eid] for eid in equip_ids]
+        if ids & equipped:
+            return reject(-1304)
+        if any(int(item.get("Step", 0)) for item in materials):
+            return reject(-1323)
+
+        models = self.game_data["equips"]
+        recipes = self.game_data["equip_color"]
+        configs = [models.get(str(item["EquipModelId"])) for item in materials]
+        if not all(configs):
+            return reject(-1311)
+        color = int(configs[0]["colorLV"])
+        if any(int(config["colorLV"]) != color for config in configs):
+            return reject(-1325)
+        recipe = recipes.get(str(color), {})
+        next_color = int(recipe.get("colorFinally", 0))
+        if next_color <= color:
+            return reject(-1321)
+        type_id = int(configs[0]["typeID"])
+        output = min(
+            (int(mid) for mid, info in models.items()
+             if int(info["colorLV"]) == next_color and int(info["typeID"]) == type_id),
+            default=0,
+        )
+        if not output or not self._is_valid_resource(type_id, output):
+            return reject(-1331)
+        player = self.state["player"]
+        gold = int(player["Gold"])
+        cost = int(recipe["colorUpUseNum"])
+        if gold < cost:
+            return reject(-1118)
+
+        result = self._build_equip_instance(output)
+        count_before = self.state["stats"]["equip_compose_count"]
+        player["Gold"] = gold - cost
+        self.state["equips"] = [item for item in equips if item["Id"] not in ids] + [result]
+        self._inc_stat("equip_compose_count")
+        try:
+            self.save()
+        except OSError:
+            player["Gold"] = gold
+            self.state["equips"] = equips
+            self.state["stats"]["equip_compose_count"] = count_before
+            logging.exception("Could not save equipment composition")
+            return reject(-7)
+
+        # Inventory and Gold commit together. The audit trail follows the committed save.
+        try:
+            self.ledger.record_grant_event(
+                account_id=str(player["PlayerId"]), profile=self.profile_name, resource_type="Gold",
+                amount=-cost, balance_after=player["Gold"], source=f"equip_compose:color_{color}",
             )
-
-        # Pick deterministic Set Out / matching type next-color equip (e.g. 5x 13040130 -> 13040215 Set Out Necklace)
-        candidates = sorted(
-            [
-                int(eid)
-                for eid, item in equips_cfg.items()
-                if int(item.get("colorLV", 0)) == next_color and int(item.get("typeID", 0)) == type_id
-            ]
-        )
-        out_model_id = candidates[0] if candidates else 13040215
-        consumed_ids = [m["Id"] for m in mats]
-        self.state["equips"] = [e for e in self.state["equips"] if e["Id"] not in set(consumed_ids)]
-        base_res = self._grant_resources_from_tuples(
-            [(type_id, out_model_id, 1)],
-            source=f"equip_compose:{out_model_id}",
-            tx_prefix=f"equip_compose:{self.profile_name}:{uuid.uuid4()}",
-        )
-        self._inc_stat("equip_compose_count", 1)
-        return consumed_ids, base_res
+            self.ledger.record_grant_event(
+                account_id=str(player["PlayerId"]), profile=self.profile_name, resource_type=f"Equip:{output}",
+                amount=1, balance_after=len(self.state["equips"]), source=f"equip_compose:{output}",
+            )
+        except OSError:
+            logging.exception("Could not audit committed equipment composition")
+        return equip_ids, [{"Equip": [result]}]
 
     def _rpc_equip_compose(self, data: Any) -> dict[str, Any]:
-        equip_ids = list(data[0]) if isinstance(data, list) and data and isinstance(data[0], list) else []
-        consumed, base_res = self._compose_equips([str(x) for x in equip_ids])
-        if not consumed:
-            self._last_rpc_context["status"] = -1
+        equip_ids = data[0] if isinstance(data, list) and len(data) == 1 and isinstance(data[0], list) else []
+        if not all(isinstance(eid, str) for eid in equip_ids):
+            self._last_rpc_context["status"] = -48
             return {}
-        self.save()
-        return {"ConsumeList": consumed, "BaseGetGameResourceList": base_res}
+        consumed, base_res = self._compose_equips(equip_ids)
+        return {"ConsumeList": consumed, "BaseGetGameResourceList": base_res} if consumed else {}
 
     def _rpc_equip_one_key_compose(self, _data: Any) -> dict[str, Any]:
         equips_cfg = self.game_data.get("equips", {})
@@ -2657,7 +2750,7 @@ class ProfileStore(EventHandlersMixin):
         }
         buckets: dict[int, list[str]] = {}
         for eq in self.state.get("equips", []):
-            if eq["Id"] in equipped_ids:
+            if eq["Id"] in equipped_ids or int(eq.get("Step", 0)):
                 continue
             clv = int(equips_cfg.get(str(eq["EquipModelId"]), {}).get("colorLV", 0))
             if clv in (1, 2, 3):
@@ -2672,7 +2765,12 @@ class ProfileStore(EventHandlersMixin):
                 consumed, base_res = self._compose_equips(batch)
                 consumed_all.extend(consumed)
                 res_all.extend(base_res)
-        self.save()
+                if self._last_rpc_context["status"] == -7:
+                    break
+            if self._last_rpc_context["status"] == -7:
+                break
+        if consumed_all:
+            self._last_rpc_context["status"] = 0
         return {"ConsumeList": consumed_all, "BaseGetGameResourceList": res_all}
 
     def _level_up_equip(self, eq: dict[str, Any], target_max_lv: int) -> bool:
@@ -3351,53 +3449,144 @@ class ProfileStore(EventHandlersMixin):
         return hero
 
     def _rpc_hero_step_up(self, data: Any) -> dict[str, Any]:
-        hero_id = str(data[0]) if isinstance(data, list) and len(data) >= 1 else ""
-        mat_ids = set(str(x) for x in (data[1] if isinstance(data, list) and len(data) >= 2 and isinstance(data[1], list) else []))
-        hero = next((h for h in self.state["heroes"] if h["Id"] == hero_id), None)
+        def reject(status: int) -> dict[str, Any]:
+            self._last_rpc_context["status"] = status
+            return {}
+
+        if not isinstance(data, list) or len(data) not in (2, 3):
+            return reject(-47)
+        hero_id, materials = data[:2]
+        if materials == {}:  # Lua can encode an empty table as a JSON object.
+            materials = []
+        if (not isinstance(hero_id, str) or not isinstance(materials, list)
+                or any(not isinstance(entity_id, str) or not entity_id for entity_id in materials)):
+            return reject(-48)
+        material_ids = set(materials)
+        if len(material_ids) != len(materials):
+            return reject(-1221)
+        if hero_id in material_ids:
+            return reject(-1220)
+
+        heroes = {h["Id"]: h for h in self.state["heroes"]}
+        hero = heroes.get(hero_id)
         if not hero:
-            self._last_rpc_context["status"] = -1
-            return {}
+            return reject(-1201)
+        hero_model = int(hero["HeroModelId"])
+        cfg = self.game_data["heroes"].get(str(hero_model), {})
+        cur_step = int(hero["Step"])
+        if len(data) == 3:
+            if type(data[2]) is not int:
+                return reject(-48)
+            if data[2] != cur_step:
+                return reject(-39)
 
-        cfg = self.game_data["heroes"].get(str(hero["HeroModelId"]), {})
-        step_cls = int(cfg.get("stepUpClassID", 0))
-        cur_step = int(hero.get("Step", 0))
-        step_row = self.game_data.get("hero_step", {}).get(str(step_cls * 1000 + cur_step))
-        if not step_row or int(hero["Lv"]) < int(step_row.get("needLv", 1)):
-            self._last_rpc_context["status"] = -1
-            return {}
+        steps = self.game_data.get("hero_step", {})
+        row_id = int(cfg.get("stepUpClassID", 0)) * 1000 + cur_step
+        row = steps.get(str(row_id))
+        if not row:
+            return reject(-1212)
+        if str(row_id + 1) not in steps:
+            return reject(-1214)
+        if int(hero["Lv"]) < int(row["needLv"]):
+            return reject(-1217)
 
-        reqs = _parse_resource_str(str(step_row.get("upUse", "")))
-        for rtype, rmodel, rnum in reqs:
-            if rtype == 1112 and int(self.state["player"]["Gold"]) < rnum:
-                self._last_rpc_context["status"] = -1
-                return {}
-            elif rtype in (1401, 1402):
-                continue  # Checked against submitted material entities if equips/treasures
-            elif rtype >= 1500:
-                g = next((x for x in self.state["goods"] if int(x["GoodsModelId"]) == rmodel), None)
-                if not g or int(g["Num"]) < rnum:
-                    self._last_rpc_context["status"] = -1
-                    return {}
+        gold_cost = 0
+        goods_costs: Counter[int] = Counter()
+        entity_costs: Counter[tuple[int, int]] = Counter()
+        for resource_type, model, count in _parse_resource_str(row["upUse"]):
+            if resource_type == 1112:
+                gold_cost += count
+            elif resource_type in (1401, 1402):
+                entity_costs[resource_type, model] += count
+            elif resource_type == 1605:
+                goods_costs[model] += count
+            else:
+                return reject(-1212)
+        if row["useNum"]:
+            entity_costs[1201, hero_model] += int(row["useNum"])
 
-        for rtype, rmodel, rnum in reqs:
-            if rtype == 1112 and rnum > 0:
-                self.ledger.apply_player_delta(
-                    self.state["player"], self.profile_name, "Gold", -rnum, source=f"hero_step_up:{hero['HeroModelId']}"
+        # Legacy requests are unambiguous unless two consecutive recipes use no entity IDs.
+        if len(data) == 2 and not entity_costs and (previous := steps.get(str(row_id - 1))):
+            previous_costs = _parse_resource_str(previous["upUse"])
+            if not previous["useNum"] and all(kind in (1112, 1605) for kind, _, _ in previous_costs):
+                return reject(-47)
+        if len(material_ids) != sum(entity_costs.values()):
+            return reject(-1602)
+
+        player = self.state["player"]
+        if int(player["Gold"]) < gold_cost:
+            return reject(-1118)
+        # The client totals all stacks for a model. Plan the same deduction before mutating any stack.
+        goods_remaining = goods_costs.copy()
+        goods_updates: dict[str, int] = {}
+        for item in self.state["goods"]:
+            model = int(item["GoodsModelId"])
+            count = min(goods_remaining[model], int(item["Num"]))
+            if count > 0:
+                goods_updates[item["Id"]] = int(item["Num"]) - count
+                goods_remaining[model] -= count
+        if any(goods_remaining.values()):
+            return reject(-1802)
+
+        slots = self.state["slots"]
+        deployed = {slot.get("HeroId") for slot in slots}
+        equipped = {slot.get(key, {}).get("Id") for slot in slots for key in ("Book", "Horse")}
+        treasures = {t["Id"]: t for t in self.state["treasures"]}
+        submitted: Counter[tuple[int, int]] = Counter()
+        for entity_id in materials:
+            if material_hero := heroes.get(entity_id):
+                if entity_id in deployed:
+                    return reject(-1206)
+                if int(material_hero["Lv"]) != 1 or int(material_hero["Step"]) != 0:
+                    return reject(-1602)
+                submitted[1201, int(material_hero["HeroModelId"])] += 1
+            elif treasure := treasures.get(entity_id):
+                if entity_id in equipped:
+                    return reject(-1405)
+                if int(treasure["Lv"]) != 0 or int(treasure["Step"]) != 0:
+                    return reject(-1602)
+                model = int(treasure["TreasureModelId"])
+                resource_type = int(self.game_data["treasures"].get(str(model), {}).get("typeID", 0))
+                submitted[resource_type, model] += 1
+            else:
+                return reject(-1602)
+        if submitted != entity_costs:
+            return reject(-1602)
+
+        # RPCs hold the profile lock. The atomic JSON replace commits all inventory and the step together.
+        before = copy.deepcopy({key: self.state[key] for key in ("player", "slots", "heroes", "treasures", "goods")})
+        try:
+            player["Gold"] = int(player["Gold"]) - gold_cost
+            for item in self.state["goods"]:
+                if item["Id"] in goods_updates:
+                    item["Num"] = goods_updates[item["Id"]]
+            self.state["goods"] = [
+                item for item in self.state["goods"] if goods_updates.get(item["Id"], 1) > 0
+            ]
+            self.state["heroes"] = [h for h in self.state["heroes"] if h["Id"] not in material_ids]
+            self.state["treasures"] = [t for t in self.state["treasures"] if t["Id"] not in material_ids]
+            hero["Step"] = cur_step + 1
+            self._recalc_all_slots_and_fap()
+            self.save()
+        except Exception as exc:
+            self.state.update(before)
+            if not isinstance(exc, OSError):
+                raise
+            logging.exception("Could not save hero breakthrough")
+            return reject(-7)
+
+        if gold_cost:
+            try:
+                self.ledger.record_grant_event(
+                    account_id=str(player["PlayerId"]), profile=self.profile_name,
+                    resource_type="Gold", amount=-gold_cost, balance_after=player["Gold"],
+                    source=f"hero_step_up:{hero_model}",
                 )
-            elif rtype >= 1500 and rnum > 0:
-                for g in self.state["goods"]:
-                    if int(g["GoodsModelId"]) == rmodel:
-                        g["Num"] = max(0, int(g["Num"]) - rnum)
-                        break
-
-        if mat_ids:
-            self.state["heroes"] = [h for h in self.state["heroes"] if h["Id"] not in mat_ids]
-            self.state["equips"] = [e for e in self.state["equips"] if e["Id"] not in mat_ids]
-
-        hero["Step"] = cur_step + 1
-        self._recalc_all_slots_and_fap()
+            except OSError:
+                logging.exception("Could not audit committed hero breakthrough")
+        for model in goods_costs:
+            self._mark_goods_changed(model)
         self._last_rpc_context["slots_changed"] = True
-        self.save()
         return hero
 
     def _explore_payload(self) -> dict[str, Any]:
@@ -3529,69 +3718,100 @@ class ProfileStore(EventHandlersMixin):
         out["BaseGetGameResourceList"] = base_res
         return out
 
+    def _available_lighten_stars(self, star_id: int) -> int:
+        tree = self.game_data["attrtree"]
+        spent = sum(int(tree.get(str(node), {}).get("needStar", 0)) for node in range(1, star_id + 1))
+        return max(0, int(self.state["battle"].get("StarCount", 0)) - spent)
+
     def _lighten_star_payload(self) -> dict[str, Any]:
-        add_info: list[dict[str, Any]] = []
-        for slot_id in range(1, 7):
-            bonuses = self._get_slot_star_bonuses(slot_id)
-            if bonuses["AP"] > 0:
-                add_info.append({"SlotId": slot_id, "FightAttr": 431, "AddValue": bonuses["AP"]})
-            if bonuses["HP"] > 0:
-                add_info.append({"SlotId": slot_id, "FightAttr": 432, "AddValue": bonuses["HP"]})
-            if bonuses["DEF"] > 0:
-                add_info.append({"SlotId": slot_id, "FightAttr": 433, "AddValue": bonuses["DEF"]})
+        add_info = [
+            {"SlotId": slot, "FightAttr": attr, "AddValue": bonuses[field]}
+            for slot in range(1, 7)
+            for bonuses in [self._get_slot_star_bonuses(slot)]
+            for attr, field in ((431, "AP"), (432, "HP"), (433, "DEF"))
+            if bonuses[field] > 0
+        ]
+        star_id = int(self.state["player"].get("StarId", 0))
         return {
-            "StarId": int(self.state["player"].get("StarId", 0)),
-            "StarCount": int(self.state["battle"].get("StarCount", 0)),
+            "StarId": star_id,
+            "StarCount": self._available_lighten_stars(star_id),
+            "StarCountTotal": int(self.state["battle"].get("StarCount", 0)),
+            "UnlockedSlotIds": sorted(int(row["ID"]) for row in self.game_data["attrtree_slots"].values()
+                                      if star_id >= int(row["needAttrTreeID"])),
             "AddValueInfo": add_info,
         }
 
     def _rpc_lighten_star_info(self, _data: Any) -> dict[str, Any]:
         return self._lighten_star_payload()
 
-    def _step_lighten_star_once(self) -> bool:
-        cur_id = int(self.state["player"].get("StarId", 0))
-        tree = self.game_data.get("attrtree", {})
-        nxt = tree.get(str(cur_id + 1))
-        if not nxt:
-            return False
-        need_lv = int(nxt.get("needLV", 1))
-        need_star = int(nxt.get("needStar", 3))
-        need_gold = int(nxt.get("needGold", 1500))
-        used_stars = sum(int(tree.get(str(i), {}).get("needStar", 0)) for i in range(1, cur_id + 1))
-        avail_stars = int(self.state["battle"].get("StarCount", 0)) - used_stars
-        if int(self.state["player"]["Lv"]) < need_lv or avail_stars < need_star or int(self.state["player"]["Gold"]) < need_gold:
-            return False
-        self.ledger.apply_player_delta(self.state["player"], self.profile_name, "Gold", -need_gold, source=f"lighten_star:{cur_id + 1}")
-        self.state["player"]["StarId"] = cur_id + 1
-        xunyu_add = int(nxt.get("xunyuAddNum", 0))
-        if xunyu_add > 0:
-            exp_st = self.state.setdefault("explore", self._default_explore_state())
-            exp_st["MaxNum"] = int(exp_st.get("MaxNum", 25)) + xunyu_add
-            exp_st["RemainNum"] = int(exp_st.get("RemainNum", 0)) + xunyu_add
-        self._inc_stat("lighten_star_count", 1)
-        self._record_daily_task_progress(4, 1)
-        return True
+    def _advance_lighten_stars(self, limit: int) -> dict[str, Any]:
+        player = self.state["player"]
+        original = int(player.get("StarId", 0))
+        tree = self.game_data["attrtree"]
+        available = self._available_lighten_stars(original)
+        gold = int(player["Gold"])
+        status = 0
+        current = original
+        for _ in range(limit):
+            row = tree.get(str(current + 1))
+            if not row:
+                status = -2211
+                break
+            if int(player["Lv"]) < int(row["needLV"]):
+                status = -2212
+                break
+            if available < int(row["needStar"]):
+                status = -2213
+                break
+            if gold < int(row["needGold"]):
+                status = -1118
+                break
+            available -= int(row["needStar"])
+            gold -= int(row["needGold"])
+            current += 1
+        if current == original:
+            self._last_rpc_context["status"] = status
+            return {}
+
+        before = copy.deepcopy(self.state)
+        try:
+            player["StarId"] = current
+            player["Gold"] = gold
+            # VN stores the cumulative exploration bonus, so only grant the change.
+            delta = int(tree[str(current)]["xunyuAddNum"]) - int(tree[str(original)]["xunyuAddNum"])
+            if delta > 0:
+                explore = self.state.setdefault("explore", self._default_explore_state())
+                explore["MaxNum"] = int(explore["MaxNum"]) + delta
+                explore["RemainNum"] = int(explore["RemainNum"]) + delta
+            self._inc_stat("lighten_star_count", current - original)
+            self._record_daily_task_progress(4, current - original)
+            self._recalc_all_slots_and_fap()
+            self.save()
+        except OSError:
+            self.state.clear()
+            self.state.update(before)
+            logging.exception("Could not save Insight Pursuit")
+            self._last_rpc_context["status"] = -7
+            return {}
+
+        cost = int(before["player"]["Gold"]) - gold
+        if cost:
+            try:
+                self.ledger.record_grant_event(
+                    account_id=str(player["PlayerId"]), profile=self.profile_name, resource_type="Gold",
+                    amount=-cost, balance_after=gold, source=f"lighten_star:{current}",
+                )
+            except OSError:
+                logging.exception("Could not audit committed Insight Pursuit")
+        self._last_rpc_context["slots_changed"] = True
+        self._last_rpc_context["explore_changed"] = delta > 0
+        return self._lighten_star_payload()
 
     def _rpc_lighten_star_up(self, _data: Any) -> dict[str, Any]:
-        if not self._step_lighten_star_once():
-            self._last_rpc_context["status"] = -1
-            return {}
-        self._recalc_all_slots_and_fap()
-        self._last_rpc_context["slots_changed"] = True
-        self.save()
-        return self._lighten_star_payload()
+        return self._advance_lighten_stars(1)
 
     def _rpc_lighten_star_one_key(self, _data: Any) -> dict[str, Any]:
-        progressed = 0
-        while progressed < 50 and self._step_lighten_star_once():
-            progressed += 1
-        if progressed == 0:
-            self._last_rpc_context["status"] = -1
-            return {}
-        self._recalc_all_slots_and_fap()
-        self._last_rpc_context["slots_changed"] = True
-        self.save()
-        return self._lighten_star_payload()
+        return self._advance_lighten_stars(50)
 
     def _shop_goods_price_for_step(self, goods_model_id: int, step_num: int, fallback: int) -> int:
         price_tbl = self.game_data.get("shop_goods_price", {}).get(str(goods_model_id), {})
@@ -4575,6 +4795,25 @@ class ProfileStore(EventHandlersMixin):
                     diamonds += int(card["price"])
         return diamonds
 
+    def _legacy_period_charges(self, start: int, end: int) -> list[tuple[int, int]]:
+        """Recover only timestamped, completed purchases from saves made before R7.13."""
+        charges: list[tuple[int, int]] = []
+        state = self.state.get("charge_state", {})
+        for orders, card in (("orders", False), ("card_orders", True)):
+            for order in state.get(orders, {}).values():
+                when = int(order.get("completed_at") or 0)
+                if not start <= when < end or order.get("status") != "completed" or order.get("period_economy_tracked"):
+                    continue
+                if card:
+                    tier = CARD_MODEL_CFG.get(int(order.get("CardId", 0)))
+                    amount = int(tier["price"]) if tier else 0
+                else:
+                    tier = self._resolve_charge_tier(order.get("ProductId"))
+                    amount = int(tier["GamePoint"]) if tier else 0
+                if amount:
+                    charges.append((when, amount))
+        return charges
+
     def _apply_simulated_charge(
         self,
         tier: dict[str, Any],
@@ -4613,6 +4852,7 @@ class ProfileStore(EventHandlersMixin):
         )
         p["ChargeNum"] = int(p.get("ChargeNum", 0)) + base_diamonds
         self._inc_stat("recharged_diamonds", base_diamonds)
+        self._record_period_economy(charged=base_diamonds)
         self._record_pray_tree_recharge(base_diamonds)
         self._record_slot_recharge(base_diamonds)
         if is_first:
@@ -4652,6 +4892,7 @@ class ProfileStore(EventHandlersMixin):
             ord_entry["status"] = "completed"
             ord_entry["completed_at"] = int(time.time())
             ord_entry["pray_tree_tracked"] = True
+            ord_entry["period_economy_tracked"] = True
             tx_key = f"order:{self.profile_name}:{order_id}"
         return self._apply_simulated_charge(
             tier,
@@ -4719,6 +4960,7 @@ class ProfileStore(EventHandlersMixin):
             ord_entry["status"] = "completed"
             ord_entry["completed_at"] = int(time.time())
             ord_entry["pray_tree_tracked"] = True
+            ord_entry["period_economy_tracked"] = True
             tx_key = f"cardact:{self.profile_name}:{order_id}"
         now = int(time.time())
         cards = self.state.setdefault("month_cards", {})
@@ -4741,6 +4983,7 @@ class ProfileStore(EventHandlersMixin):
         )
         p["ChargeNum"] = int(p.get("ChargeNum", 0)) + int(cfg["price"])
         self._inc_stat("recharged_diamonds", int(cfg["price"]))
+        self._record_period_economy(charged=int(cfg["price"]))
         self._record_pray_tree_recharge(int(cfg["price"]))
         self._record_slot_recharge(int(cfg["price"]))
         self._sync_player_recover_times(p)
@@ -6442,6 +6685,8 @@ class ProfileStore(EventHandlersMixin):
                 self.state["goods"] = [g for g in self.state["goods"] if int(g.get("Num", 0)) > 0]
                 self._mark_goods_changed(rm)
         target["Step"] = step + 1
+        self._recalc_all_slots_and_fap()
+        self._last_rpc_context["slots_changed"] = True
         self.save()
         return {"FashionInfo": copy.deepcopy(target)}
 
@@ -7059,20 +7304,56 @@ class ProfileStore(EventHandlersMixin):
             "mystery_shop",
             {"normal": None, "senior": None, "free_date": "", "free_count": free_max, "gold_count": 0},
         )
-        today = time.strftime("%Y-%m-%d")
-        if ms.get("free_date") != today:
+        now = self.now_ts()
+        today = self.clock.today_str(now)
+        config = self.game_data["mystery_shop_config"]
+        interval = int(config["freeRefreshCD"])
+        # Use VN server-day boundaries. Store the most recent credited period so polling
+        # and reopening the shop cannot award the same free refresh twice.
+        midnight = self.clock.midnight_ts(now)
+        normal_period = midnight + (now - midnight) // interval * interval
+        changed = False
+        if "free_period" not in ms:
+            if not ms.get("free_date"):
+                ms["free_count"] = free_max
             ms["free_date"] = today
-            ms["free_count"] = free_max
+            ms["free_period"] = normal_period
+            changed = True
+        elif normal_period > ms["free_period"]:
+            elapsed = (normal_period - ms["free_period"]) // interval
+            ms["free_count"] = min(free_max, ms["free_count"] + elapsed)
+            ms["free_period"] = normal_period
+            changed = True
+        if today > ms.get("free_date", ""):
+            ms["free_date"] = today
             ms["gold_count"] = 0
+            changed = True
+
+        normal_deadline = ms["free_period"] + interval
+        senior_hours = [int(config[field] * 86400) for field in ("seniorRefreshTimeFirst", "seniorRefreshTimeSecond")]
+        senior_deadline = next(
+            (midnight + seconds for seconds in sorted(senior_hours) if midnight + seconds > now),
+            midnight + 86400 + min(senior_hours),
+        )
+        deadlines = ms.setdefault("deadlines", {})
+        # Attach deadlines to legacy stock before it can be rerolled, preserving sold entries.
+        for shop, deadline in (("normal", normal_deadline), ("senior", senior_deadline)):
+            if shop not in deadlines:
+                deadlines[shop] = deadline
+                changed = True
         key = "senior" if senior else "normal"
-        if not ms.get(key):
+        if ms.get(key) is None or now >= deadlines[key]:
             ms[key] = self._build_mystery_shop_items(1 if senior else 0)
+            deadlines[key] = senior_deadline if senior else normal_deadline
+            changed = True
+        if changed:
             self.save()
         return {
             "FreeCount": int(ms.get("free_count", free_max)),
             "GoldCount": int(ms.get("gold_count", 0)),
             "RefreshMysteryShopMaxNum": max_refresh,
             "MysteryShopGoodsList": ms[key],
+            "LastFreshDate": deadlines[key],
         }
 
     def _rpc_mystery_shop_get_info(self, _data: Any) -> dict[str, Any]:
@@ -7085,30 +7366,29 @@ class ProfileStore(EventHandlersMixin):
         ms_state = self._mystery_shop_state(senior=senior)
         ms = self.state["mystery_shop"]
         ms_cfg = self.game_data.get("mystery_shop_config", {})
+        if refresh_type not in (1, 2, 3):
+            self._last_rpc_context["status"] = -48
+            return {}
         if refresh_type == 1:
             if int(ms.get("free_count", 0)) <= 0:
-                self._last_rpc_context["status"] = -1
+                self._last_rpc_context["status"] = -2105
                 return {}
             ms["free_count"] = int(ms["free_count"]) - 1
         elif refresh_type == 2:
             res_str = str(ms_cfg.get("seniorRefreshUseResource" if senior else "refreshUseResource", "1605,16050010,1"))
-            rt, rm, rn = _parse_resource_str(res_str)[0]
-            tok = next((g for g in self.state.get("goods", []) if int(g.get("GoodsModelId", 0)) == rm), None)
-            if not tok or int(tok.get("Num", 0)) < rn:
-                self._last_rpc_context["status"] = -1
+            _, model, count = _parse_resource_str(res_str)[0]
+            if not self._consume_goods_qty(model, count):
+                self._last_rpc_context["status"] = -1802
                 return {}
-            tok["Num"] = int(tok["Num"]) - rn
-            if tok["Num"] <= 0:
-                self.state["goods"] = [g for g in self.state["goods"] if g["Id"] != tok["Id"]]
-            self._mark_goods_changed(rm)
+            self._mark_goods_changed(model)
             ms["gold_count"] = int(ms.get("gold_count", 0)) + 1
         else:
             if int(ms.get("gold_count", 0)) >= int(ms_state["RefreshMysteryShopMaxNum"]):
-                self._last_rpc_context["status"] = -1
+                self._last_rpc_context["status"] = -2107
                 return {}
             cost = int(ms_cfg.get("seniorRefreshUseDiamond" if senior else "refreshUseDiamond", 20))
             if int(self.state["player"].get("Diamond", 0)) < cost:
-                self._last_rpc_context["status"] = -1
+                self._last_rpc_context["status"] = -1105
                 return {}
             self.ledger.apply_player_delta(
                 self.state["player"],
@@ -7122,14 +7402,15 @@ class ProfileStore(EventHandlersMixin):
         ms["senior" if senior else "normal"] = self._build_mystery_shop_items(1 if senior else 0)
         self._inc_stat("mystery_refresh", 1)
         self.save()
-        return self._mystery_shop_state(senior=senior)
+        return dict(ms_state, FreeCount=ms["free_count"], GoldCount=ms["gold_count"],
+                    MysteryShopGoodsList=ms["senior" if senior else "normal"])
 
     def _rpc_mystery_shop_refresh(self, data: Any) -> dict[str, Any]:
-        rtype = int(data[0]) if isinstance(data, list) and data else 1
+        rtype = data[0] if isinstance(data, list) and len(data) == 1 and type(data[0]) is int else 0
         return self._do_mystery_shop_refresh(rtype, senior=False)
 
     def _rpc_mystery_shop_senior_refresh(self, data: Any) -> dict[str, Any]:
-        rtype = int(data[0]) if isinstance(data, list) and data else 1
+        rtype = data[0] if isinstance(data, list) and len(data) == 1 and type(data[0]) is int else 0
         return self._do_mystery_shop_refresh(rtype, senior=True)
 
     def _do_mystery_shop_buy(self, goods_id: str, senior: bool) -> dict[str, Any]:
@@ -7699,6 +7980,7 @@ class GameEmulatorState:
         resolved_audit = Path(audit_path) if audit_path is not None else (resolved_dir / "audit_ledger.jsonl")
         self.trace_path = Path(trace_path) if trace_path is not None else Path(preset["trace_path"])
         self.game_data = json.loads(GAME_DATA_PATH.read_text(encoding="utf-8"))
+        self.game_data["bdd"] = json.loads((SERVER_DIR / "bdd_data.json").read_text(encoding="utf-8"))
         self.clock_path = resolved_dir / "clock_state.json"
         if persist and self.clock_path.exists():
             try:

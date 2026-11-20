@@ -2085,6 +2085,8 @@ class ProfileStore(EventHandlersMixin):
             }
             for idx, mid in enumerate(open_submodules, start=1)
         ]
+        # Event red dots can initialize starter goods. Include those grants in this inventory snapshot.
+        red_dots = self._compute_red_dot_info()
         all_goods = self.state.get("goods", [])
         hero_debris = [g for g in all_goods if int(g.get("GoodsModelId", 0)) // 10000 == 1501]
         equip_debris = [g for g in all_goods if int(g.get("GoodsModelId", 0)) // 10000 == 1502]
@@ -2113,7 +2115,7 @@ class ProfileStore(EventHandlersMixin):
             "RebornGoodsList": [],
             "RebornnComposeStatus": [],
             "OpencontestState": 1,
-            "RedDotInfo": self._compute_red_dot_info(),
+            "RedDotInfo": red_dots,
         }
 
     def _rpc_sync_avatar(self, _data: Any) -> dict[str, Any]:
@@ -4901,13 +4903,6 @@ class ProfileStore(EventHandlersMixin):
             for nid, st in self.state.get("elite", {}).get("nodes", {}).items()
             if int(st.get("Flag", 0)) >= 2
         ]
-        top4_eq_scores = sorted(
-            [
-                int(cfg.get("colorLV", 1)) * 1000 + int(eq.get("Lv", 0)) * 50 + int(eq.get("ExtraCount", 0)) * 20
-                for eq, cfg in equipped_equips
-            ],
-            reverse=True,
-        )[:4]
         slot_slot_names = {37: "Weapon", 38: "Helmet", 39: "Clothes", 40: "Necklace"}
 
         scalars: dict[int, int] = {
@@ -4926,7 +4921,6 @@ class ProfileStore(EventHandlersMixin):
             16: int(stats.get("mystery_refresh", 0)),
             17: int(stats.get("boss_fights", 0)),
             18: sum(int(ch.get("StarCount", 0)) for ch in chapters.values()),
-            19: sum(top4_eq_scores) // max(1, len(top4_eq_scores)) if len(top4_eq_scores) >= 4 else 0,
             22: int(stats.get("daydayfund_count", 0)),
             23: int(stats.get("sta_pills_used", 0)),
             24: int(stats.get("vit_pills_used", 0)),
@@ -4956,6 +4950,15 @@ class ProfileStore(EventHandlersMixin):
     ) -> tuple[bool, int]:
         c1 = int(row.get("completeCondition1", 0))
         c2 = int(row.get("completeCondition2", 0))
+        if tid == 19:
+            step_item_lv = self.game_data.get("equip_step_item_lv", {})
+            qualifying = {
+                eq["Id"] for eq, cfg in equipped_equips
+                if int(cfg.get("itemLv", 0))
+                + step_item_lv.get(str(eq["EquipModelId"]), {}).get(str(eq.get("Step", 0)), 0) >= c1
+            }
+            count = min(4, len(qualifying))
+            return count == 4, count
         if c2 > 0:
             if tid == 5:
                 val = sum(1 for eq, _ in equipped_equips if int(eq.get("Lv", 0)) >= c2)
@@ -4970,7 +4973,7 @@ class ProfileStore(EventHandlersMixin):
         return val >= c1, val
 
     def _build_success_target_info(self) -> dict[str, Any]:
-        now = int(time.time())
+        now = self.now_ts()
         st = self.state.setdefault(
             "success_target",
             {"start_ts": now, "drawn": {}, "drawn_days": [], "if_draw": 0, "exchange_counts": {}},
@@ -4994,6 +4997,7 @@ class ProfileStore(EventHandlersMixin):
             rows = sorted(reward_tbl.get(tid_str, []), key=lambda r: int(r.get("sequence", 0)))
             drawn_seqs = [int(x) for x in drawn_map.get(tid_str, [])]
             seq_info: dict[str, int] = {}
+            claimable: dict[str, bool] = {}
             completed_count = 0
 
             for row in rows:
@@ -5003,10 +5007,11 @@ class ProfileStore(EventHandlersMixin):
                 seq_info[str(seq)] = val
                 if 1 <= aday <= 7:
                     day_total[aday] += 1
-                    if done:
+                    if done or seq in drawn_seqs:
                         day_finish[aday] += 1
                 unlocked = (aday <= 7 and aday <= cur_day) or (aday == 8 and (if_draw == 1 or cur_day >= 8))
-                if unlocked and done:
+                claimable[str(seq)] = unlocked and done and seq not in drawn_seqs
+                if claimable[str(seq)] or seq in drawn_seqs:
                     completed_count += 1
 
             target_list.append(
@@ -5016,6 +5021,7 @@ class ProfileStore(EventHandlersMixin):
                     "ReachedNum": scalars.get(tid, 0),
                     "DrawNums": ",".join(str(x) for x in sorted(set(drawn_seqs))),
                     "SequenceInfo": seq_info,
+                    "Claimable": claimable,
                 }
             )
 
@@ -5027,16 +5033,17 @@ class ProfileStore(EventHandlersMixin):
                 "TotalTargetCount": max(1, day_total[d]),
             }
             for d in range(1, min(7, cur_day) + 1)
-            if d not in drawn_days
+            if d not in drawn_days and day_finish[d] > 0
         ]
         cur_cap_day = min(7, cur_day)
         return {
             "Day": cur_day,
             "EndDate": end_date,
-            "IfDraw": if_draw,
+            "IfDraw": int(bool(if_draw) or (cur_day >= 8 and not draw_day)),
             "FinishTargetCount": day_finish.get(cur_cap_day, 0),
             "TotalTargetCount": max(1, day_total.get(cur_cap_day, 1)),
             "DrawDay": draw_day,
+            "DrawnDays": sorted(drawn_days),
             "TargetList": target_list,
         }
 
@@ -5044,71 +5051,82 @@ class ProfileStore(EventHandlersMixin):
         return self._build_success_target_info()
 
     def _rpc_success_target_draw_reward(self, data: Any) -> dict[str, Any]:
-        if not isinstance(data, list) or len(data) < 2:
-            self._last_rpc_context["status"] = -1
+        try:
+            tid, seq = int(data[0]), int(data[1])
+        except (TypeError, ValueError, KeyError, IndexError):
+            self._last_rpc_context["status"] = -3121
             return {}
-        tid = int(data[0])
-        seq = int(data[1])
         info = self._build_success_target_info()
-        cur_day = int(info["Day"])
-        if_draw = int(info["IfDraw"])
         rows = self.game_data.get("success_target_reward", {}).get(str(tid), [])
         row = next((r for r in rows if int(r.get("sequence", 0)) == seq), None)
         if not row:
-            self._last_rpc_context["status"] = -1
+            self._last_rpc_context["status"] = -3121
             return {}
-        aday = int(row.get("appearDay", 1))
-        unlocked = (aday <= 7 and aday <= cur_day) or (aday == 8 and (if_draw == 1 or cur_day >= 8))
         st = self.state["success_target"]
-        drawn = st.setdefault("drawn", {}).setdefault(str(tid), [])
-        if not unlocked or seq in drawn:
-            self._last_rpc_context["status"] = -1
+        if seq in st.get("drawn", {}).get(str(tid), []):
+            self._last_rpc_context["status"] = -3137
             return {}
-        scalars, equipped_equips, deployed_heroes = self._success_target_metrics(cur_day)
-        done, _ = self._evaluate_success_row(tid, row, scalars, equipped_equips, deployed_heroes)
-        if not done:
-            self._last_rpc_context["status"] = -1
+        target = next((t for t in info["TargetList"] if t["TargetId"] == tid), None)
+        if not target or not target["Claimable"].get(str(seq)):
+            self._last_rpc_context["status"] = -6001
             return {}
-        drawn.append(seq)
+        tuples = _parse_resource_str(str(row.get("resourceList", "")))
+        if not self._can_receive_goods_outputs(tuples):
+            return {}
         base_res = self._grant_resources_from_tuples(
-            _parse_resource_str(str(row.get("resourceList", ""))),
+            tuples,
             source=f"success_target:{tid}:{seq}",
             tx_prefix=f"successtarget:{self.profile_name}:{tid}:{seq}",
         )
+        st.setdefault("drawn", {}).setdefault(str(tid), []).append(seq)
         self.save()
-        return {"BaseGetGameResourceList": base_res}
+        return {"BaseGetGameResourceList": base_res, "FinishTargetCount": info["FinishTargetCount"]}
 
-    def _rpc_success_target_draw_total_reward(self, _data: Any) -> dict[str, Any]:
+    def _rpc_success_target_draw_total_reward(self, data: Any) -> dict[str, Any]:
         info = self._build_success_target_info()
         st = self.state["success_target"]
-        if int(st.get("if_draw", 0)) == 1:
-            self._last_rpc_context["status"] = -1
+        drawn_days = set(int(d) for d in st.get("drawn_days", []))
+        try:
+            day = int(data[0]) if data else None
+        except (TypeError, ValueError, KeyError, IndexError):
+            self._last_rpc_context["status"] = -6004
+            return {}
+        if day in drawn_days or int(st.get("if_draw", 0)) == 1:
+            self._last_rpc_context["status"] = -3137
+            return {}
+        targets = [entry for entry in info["DrawDay"] if day is None or entry["Day"] == day]
+        if day is None and info["Day"] < 8 or day is not None and not targets:
+            self._last_rpc_context["status"] = -6004
             return {}
         time_tbl = self.game_data.get("success_time_model", {})
         tuples: list[tuple[int, int, int]] = []
-        drawn_days = set(int(d) for d in st.get("drawn_days", []))
-        for d_entry in info.get("DrawDay", []):
-            day = int(d_entry["Day"])
-            if day in drawn_days:
-                continue
-            t_cfg = next((v for v in time_tbl.values() if int(v.get("openDay", 0)) == day and not v.get("isSuccess")), None)
-            if t_cfg and int(d_entry.get("FinishTargetCount", 0)) > 0:
+        for d_entry in targets:
+            day_number = d_entry["Day"]
+            t_cfg = next((v for v in time_tbl.values() if int(v.get("openDay", 0)) == day_number and not v.get("isSuccess")), None)
+            if t_cfg:
                 res_list = _parse_resource_str(str(t_cfg.get("resourceList", "")))
                 if res_list:
                     rt, rm, rn = res_list[0]
                     scaled = math.ceil(int(d_entry["FinishTargetCount"]) / max(1, int(d_entry["TotalTargetCount"])) * rn)
-                    if scaled > 0:
-                        tuples.append((rt, rm, scaled))
-            drawn_days.add(day)
-        st["drawn_days"] = sorted(drawn_days)
-        st["if_draw"] = 1
+                    tuples.append((rt, rm, scaled))
+        if not self._can_receive_goods_outputs(tuples):
+            return {}
+        claimed_days = {entry["Day"] for entry in targets}
+        remaining = [entry for entry in info["DrawDay"] if entry["Day"] not in claimed_days]
         base_res = self._grant_resources_from_tuples(
             tuples,
             source="success_target_total",
-            tx_prefix=f"successtarget_total:{self.profile_name}:{self.state['player']['PlayerId']}",
+            tx_prefix=f"successtarget_total:{self.profile_name}:{self.state['player']['PlayerId']}:{day or 'final'}",
         )
+        st["drawn_days"] = sorted(drawn_days | claimed_days)
+        st["if_draw"] = int(info["Day"] >= 8 and not remaining)
         self.save()
-        return {"BaseGetGameResourceList": base_res}
+        return {
+            "BaseGetGameResourceList": base_res,
+            "DrawDay": remaining,
+            "DrawnDays": st["drawn_days"],
+            "IfDraw": st["if_draw"],
+        }
 
     def _iter_success_purchase_rows(self) -> list[dict[str, Any]]:
         purchase_tbl = self.game_data.get("success_purchase_model", {})

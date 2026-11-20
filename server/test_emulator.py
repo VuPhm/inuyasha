@@ -2183,11 +2183,11 @@ class EmulatorProtocolTest(unittest.TestCase):
             self.assertGreaterEqual(len(dr_ok["Value"]["BaseGetGameResourceList"]), 1)
             self.assertEqual(
                 emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "DrawReward", "Data": [3, 1], "ServerId": 1})["Status"],
-                -1,
+                -3137,
             )
             self.assertEqual(
                 emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "DrawReward", "Data": [3, 2], "ServerId": 1})["Status"],
-                -1,
+                -6001,
             )
 
             # ExchangeInfo & Exchange
@@ -2197,13 +2197,14 @@ class EmulatorProtocolTest(unittest.TestCase):
             ex_buy = emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "Exchange", "Data": [1, 1], "ServerId": 1})
             self.assertEqual(ex_buy["Status"], 0)
 
-            # DrawTotalReward flips IfDraw to 1 and cannot replay
+            # The no-argument final claim is available after the seven-day phase.
+            prof.state["success_target"]["start_ts"] -= 7 * 86400
             tot = emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "DrawTotalReward", "Data": [], "ServerId": 1})
             self.assertEqual(tot["Status"], 0)
             self.assertEqual(emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "GetInfo", "Data": [], "ServerId": 1})["Value"]["IfDraw"], 1)
             self.assertEqual(
                 emu.handle_rpc({"ModuleName": "SuccessTargetInfo", "MethodName": "DrawTotalReward", "Data": [], "ServerId": 1})["Status"],
-                -1,
+                -3137,
             )
 
     def test_36_r7_4_box_choice_including_ur_quality18(self) -> None:
@@ -2535,7 +2536,7 @@ class EmulatorProtocolTest(unittest.TestCase):
             self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "GetTimedRecruitInfo", "Data": [], "ServerId": 1})["Value"]["DrawGoldHero"], 0)
 
             # Reject hero outside 16060008 before granting valid UR
-            self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "DrawGoldHero", "Data": [12011002], "ServerId": 1})["Status"], -1)
+            self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "DrawGoldHero", "Data": [12011002], "ServerId": 1})["Status"], -3123)
             ur_ok = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "DrawGoldHero", "Data": [12012005], "ServerId": 1})
             self.assertEqual(ur_ok["Status"], 0)
             self.assertEqual(ur_ok["Value"]["RecruitInfo"]["DrawGoldHero"], 1)
@@ -3904,6 +3905,158 @@ class R712DeltaTest(unittest.TestCase):
         value = loot(14020502)["Value"]
         self.assertEqual(list(value["LootInfo"].values()), [15040201])
         self.assertEqual(loot(14020502)["Status"], -1120)
+
+
+class R7121RewardTest(unittest.TestCase):
+    @staticmethod
+    def call(emu, module, method, *data):
+        return emu.handle_rpc({"ServerId": 1, "ModuleName": module, "MethodName": method, "Data": list(data)})
+
+    @staticmethod
+    def seed_banner(profile, banner):
+        _, event = profile._timed_recruit_active(explicit_act_id=banner)
+        prog = profile._ensure_timed_recruit_prog(banner, event.instance_id)
+        prog["pending_gold_hero"] = True
+        return event.instance_id
+
+    def test_banner_hero_choice_binds_all_six_heroes_to_exact_banner_and_instance(self):
+        for banner, heroes in ((81, (12011004, 12012005, 12013005)), (82, (12011002, 12012004, 12013003))):
+            for chosen in heroes:
+                with self.subTest(banner=banner, chosen=chosen), tempfile.TemporaryDirectory() as dest:
+                    root = Path(dest)
+                    emu = R712DeltaTest.emulator(root, new_player=True)
+                    profile = emu.get_profile_by_name("normal")
+                    other = 82 if banner == 81 else 81
+                    event_id = self.seed_banner(profile, banner)
+                    peer_event_id = self.seed_banner(profile, other)
+                    self.call(emu, "TimedRecruitInfo", "SelectBanner", other)
+                    snap = self.call(emu, "TimedRecruitInfo", "GetTimedRecruitInfo", banner)["Value"]
+                    self.assertEqual((snap["ActivityEnumId"], snap["EventInstanceId"], snap["DrawGoldHero"]), (banner, event_id, 0))
+                    rpc = lambda *args: self.call(emu, "TimedRecruitInfo", "DrawGoldHero", *args)
+                    num = len(profile.state["heroes"])
+                    self.assertEqual(rpc(chosen, other, peer_event_id)["Status"], -3123)
+                    self.assertEqual(rpc(chosen, banner, "expired")["Status"], -3106)
+                    self.assertEqual(rpc(chosen, 999)["Status"], -3115)
+                    self.assertEqual(len(profile.state["heroes"]), num)
+
+                    picked = rpc(chosen, banner, event_id)
+                    self.assertEqual(picked["Status"], 0)
+                    self.assertEqual([h["HeroModelId"] for b in picked["Value"]["BaseGetGameResourceList"] for h in b["Hero"]], [chosen])
+                    self.assertEqual(picked["Value"]["RecruitInfo"]["DrawGoldHero"], 1)
+                    self.assertEqual(rpc(chosen, banner, event_id)["Status"], -3116)
+                    self.assertEqual(self.call(emu, "TimedRecruitInfo", "GetTimedRecruitInfo", other)["Value"]["DrawGoldHero"], 0)
+                    emu = R712DeltaTest.emulator(root)
+                    self.assertEqual(rpc(chosen, banner, event_id)["Status"], -3116)
+                    self.assertEqual(len(emu.get_profile_by_name("normal").state["heroes"]), num + 1)
+
+    def test_full_bag_preserves_pending_choice_and_can_retry_after_reload(self):
+        with tempfile.TemporaryDirectory() as dest:
+            root = Path(dest)
+            emu = R712DeltaTest.emulator(root, new_player=True)
+            profile = emu.get_profile_by_name("normal")
+            event_id = self.seed_banner(profile, 81)
+            profile.state["player"]["Diamond"] = 100
+            profile.state["heroes"].extend(profile._build_hero_instance(12011014) for _ in range(300))
+            self.call(emu, "Player", "GetInitData")
+            profile.save()
+            rejected = self.call(emu, "TimedRecruitInfo", "DrawGoldHero", 12011004, 81, event_id)
+            self.assertEqual((rejected["Status"], rejected["Value"]), (-2005, {}))
+            emu = R712DeltaTest.emulator(root)
+            profile = emu.get_profile_by_name("normal")
+            prog = profile.event_runtime.get_instance(event_id)["progress"]
+            self.assertTrue(prog["pending_gold_hero"])
+            self.assertEqual(prog.get("ur_grant_seq", 0), 0)
+            self.assertEqual(profile.state["player"]["Diamond"], 100)
+            self.assertEqual(self.call(emu, "Bag", "BagExpand", 5)["Status"], 0)
+            self.assertEqual(self.call(emu, "TimedRecruitInfo", "DrawGoldHero", 12011004, 81, event_id)["Status"], 0)
+            self.assertEqual(sum(h["HeroModelId"] == 12011004 for h in profile.state["heroes"]), 1)
+
+    def test_achievement_4918_counts_distinct_equipped_item_levels_and_prevalidates_grant(self):
+        with tempfile.TemporaryDirectory() as dest:
+            root = Path(dest)
+            emu = R712DeltaTest.emulator(root, new_player=True)
+            profile = emu.get_profile_by_name("normal")
+            info = lambda: next(t for t in self.call(emu, "SuccessTargetInfo", "GetInfo")["Value"]["TargetList"] if t["TargetId"] == 19)
+            claim = lambda: self.call(emu, "SuccessTargetInfo", "DrawReward", 19, 5)
+            for kind, model, slot in ((1301, 13010716, "Weapon"), (1302, 13020716, "Helmet"),
+                                      (1303, 13030716, "Clothes"), (1304, 13040716, "Necklace")):
+                [eq] = profile._grant_resources_from_tuples(
+                    [(kind, model, 1)], source="r7121-test", tx_prefix=f"r7121:{model}",
+                )[0]["Equip"]
+                eq.update(Lv=78, Step=0 if kind == 1304 else 1)
+                profile.state["slots"][0][slot] = eq
+            profile.state["success_target"] = {"start_ts": emu.clock.now() - 8 * 86400}
+            target = info()
+            self.assertEqual(target["SequenceInfo"]["5"], 3)
+            self.assertFalse(target["Claimable"]["5"])
+            self.assertEqual((claim()["Status"], info()["DrawNums"]), (-6001, ""))
+            profile.state["equips"][-1]["Step"] = 1
+            self.assertEqual(info()["SequenceInfo"]["5"], 4)
+            self.assertTrue(info()["Claimable"]["5"])
+
+            row = profile.game_data["success_target_reward"]["19"][4]
+            reward = row["resourceList"]
+            row["resourceList"] += "||2000,20004001,1"
+            before = profile.state["player"]["Diamond"]
+            self.assertEqual(claim()["Status"], -2009)
+            self.assertEqual(profile.state["player"]["Diamond"], before)
+            self.assertEqual(info()["DrawNums"], "")
+            row["resourceList"] = reward
+            self.assertEqual(claim()["Status"], 0)
+            self.assertEqual(profile.state["player"]["Diamond"], before + 100)
+            emu = R712DeltaTest.emulator(root)
+            self.assertEqual(claim()["Status"], -3137)
+            self.assertEqual(info()["DrawNums"], "5")
+            self.assertFalse(info()["Claimable"]["5"])
+            self.assertEqual(emu.get_profile_by_name("normal").state["player"]["Diamond"], before + 100)
+
+    def test_daily_achievement_chest_only_claims_the_requested_day(self):
+        with tempfile.TemporaryDirectory() as dest:
+            root = Path(dest)
+            emu = R712DeltaTest.emulator(root, new_player=True)
+            profile = emu.get_profile_by_name("normal")
+            profile.state["success_target"] = {"start_ts": emu.clock.now() - 86400}
+            info = self.call(emu, "SuccessTargetInfo", "GetInfo")["Value"]
+            self.assertEqual([day["Day"] for day in info["DrawDay"]], [1, 2])
+            self.assertFalse(next(t for t in info["TargetList"] if t["TargetId"] == 3)["Claimable"]["3"])
+            total = lambda *args: self.call(emu, "SuccessTargetInfo", "DrawTotalReward", *args)
+            self.assertEqual(total(3)["Status"], -6004)
+            self.assertEqual(total()["Status"], -6004)
+            day1 = total(1)
+            self.assertEqual(day1["Status"], 0)
+            self.assertEqual(day1["Value"]["DrawnDays"], [1])
+            self.assertEqual(day1["Value"]["IfDraw"], 0)
+            self.assertEqual([entry["Day"] for entry in day1["Value"]["DrawDay"]], [2])
+            emu = R712DeltaTest.emulator(root)
+            before = emu.get_profile_by_name("normal").state["player"]["Diamond"]
+            self.assertEqual(total(1)["Status"], -3137)
+            self.assertEqual(emu.get_profile_by_name("normal").state["player"]["Diamond"], before)
+            self.assertEqual(total(2)["Value"]["DrawnDays"], [1, 2])
+
+    def test_older_smash_egg_ledger_seed_without_saved_goods_recovers_on_init(self):
+        with tempfile.TemporaryDirectory() as dest:
+            root = Path(dest)
+            emu = R712DeltaTest.emulator(root, new_player=True)
+            profile = emu.get_profile_by_name("normal")
+            player_id = profile.state["player"]["PlayerId"]
+            event = profile.event_runtime.evaluate("timed_smash_egg", profile.state["player"])
+            profile.save()
+            key = f"evt:normal:{player_id}:{event.instance_id}:starter_hammers:0:goods:16050061"
+            profile.ledger.record_grant_event(
+                account_id=player_id, profile="normal", resource_type="Goods:16050061",
+                amount=5, balance_after=5, source="smash_egg_starter_hammers", idempotency_key=key,
+            )
+            for _ in range(2):
+                emu = R712DeltaTest.emulator(root)
+                init = self.call(emu, "Player", "GetInitData")
+                self.assertEqual(init["Status"], 0)
+                hammers = [goods["Num"] for goods in init["Value"]["GoodsPropsInfo"] if goods["GoodsModelId"] == 16050061]
+                self.assertEqual(hammers, [5])
+                profile = emu.get_profile_by_name("normal")
+                self.assertEqual(profile._get_goods_qty(16050061), 5)
+                self.assertTrue(profile.event_runtime.get_instance(event.instance_id)["progress"]["starter_hammers_seeded"])
+            entries = [json.loads(line) for line in (root / "audit_ledger.jsonl").read_text().splitlines()]
+            self.assertEqual(sum(row["idempotency_key"] == key for row in entries), 1)
 
 
 if __name__ == "__main__":

@@ -619,6 +619,7 @@ class EventHandlersMixin(R79EventHandlersMixin):
         avail_banners = [int(ed.metadata.get("activity_id", 0)) for ed, _ in self._timed_recruit_all_active()]
         return {
             "ActivityEnumId": act_id,
+            "EventInstanceId": ev.instance_id,
             "AvailableBanners": avail_banners,
             "MyRank": my_rank,
             "MyCredit": my_credit,
@@ -845,38 +846,47 @@ class EventHandlersMixin(R79EventHandlersMixin):
         }
 
     def _rpc_timed_recruit_draw_gold_hero(self, data: Any) -> dict[str, Any]:
-        hero_model_id = int(data[0]) if isinstance(data, list) and data else 0
-        explicit_id = self._extract_optional_banner_id(data, 1)
+        try:
+            hero_model_id = int(data[0])
+            explicit_id = int(data[1]) if len(data) > 1 else None
+        except (TypeError, ValueError, KeyError, IndexError):
+            self._last_rpc_context["status"] = -3123
+            return {}
         ev_def, ev = self._timed_recruit_active(explicit_act_id=explicit_id)
         if not ev_def or not ev or not ev.eligible or not ev.instance_id:
-            self._last_rpc_context["status"] = -1
+            self._last_rpc_context["status"] = -3115
+            return {}
+        if len(data) > 2 and data[2] != ev.instance_id:
+            self._last_rpc_context["status"] = -3106
             return {}
 
         act_id = int(ev_def.metadata.get("activity_id", 81))
         cfg = self.game_data.get("timed_recruit_model", {}).get(str(act_id), {})
         prog = self._ensure_timed_recruit_prog(act_id, ev.instance_id)
         if not prog.get("pending_gold_hero"):
-            self._last_rpc_context["status"] = -1
+            self._last_rpc_context["status"] = -3116
             return {}
 
         box_code = str(int(cfg.get("goldHeroModelID", 16060008)))
         valid_hids = {
             int(v.get("outputModelID", 0))
             for v in self.game_data.get("goods_output", {}).get(box_code, {}).values()
+            if int(v.get("outputTypeID", 0)) == 1201
         }
         if hero_model_id not in valid_hids:
-            self._last_rpc_context["status"] = -1
+            self._last_rpc_context["status"] = -3123
             return {}
-        if not self._check_hero_capacity(1):
+        reward = [(1201, hero_model_id, 1)]
+        if not self._can_receive_goods_outputs(reward):
             return {}
 
         seq = int(prog.get("ur_grant_seq", 0)) + 1
-        prog["ur_grant_seq"] = seq
         base_res = self._grant_resources_from_tuples(
-            [(1201, hero_model_id, 1)],
+            reward,
             source=f"timed_recruit_ur:{act_id}:{hero_model_id}",
             tx_prefix=f"evt:{ev.instance_id}:ur:{seq}",
         )
+        prog["ur_grant_seq"] = seq
         prog["pending_gold_hero"] = False
         self._inc_stat("total_recruits", 1)
         snap = self._build_timed_recruit_snapshot(ev_def, ev)

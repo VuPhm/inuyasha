@@ -1048,6 +1048,7 @@ def patch_standalone_workspace(
     )
 
     patch_r712_lua(STANDALONE_WORK / "assets" / "src")
+    patch_reward_claim_lua(STANDALONE_WORK / "assets" / "src")
 
     # 6b. Bundle VN-adapted TW 1.4 Config/*.lua tables missing from VN 5.0.4.98 APK
     for cfg_name in (
@@ -1274,6 +1275,214 @@ function TimedPrayTree:refreshUi(missTime, needDiamond, currentDiamond, rewards)
         CacheData:set("TimedPrayTree", cache)''',
             '',
         ),
+    ])
+
+
+def patch_reward_claim_lua(src: Path) -> None:
+    patch_luac_text(src / "TimedActivity" / "TimedRecruitChoiceBoxLayer.luac", [
+        (
+            '    self.data = params.data\n',
+            '    self.data = params.data\n'
+            '    self.mBannerId = params.data.ActivityEnumId\n'
+            '    self.mEventInstanceId = params.data.EventInstanceId\n',
+        ),
+        (
+            '    LoadingWait:begin(self)\n'
+            '    HttpRequest("TimedRecruitInfo", "DrawGoldHero", {heroID}, function(result)\n'
+            '        LoadingWait:ends()',
+            '    if self.mDrawingHero then return end\n'
+            '    self.mDrawingHero = true\n'
+            '    LoadingWait:begin(self)\n'
+            '    HttpRequest("TimedRecruitInfo", "DrawGoldHero", {heroID, self.mBannerId, self.mEventInstanceId}, function(result)\n'
+            '        self.mDrawingHero = false\n'
+            '        LoadingWait:ends()',
+        ),
+    ])
+    patch_luac_text(src / "OpenActivity" / "SuccessTargetLayer.luac", [
+        (
+            'function SuccessTargetLayer:createAwardList(awardInfo,lastListView)',
+            '''function SuccessTargetLayer:canClaimTarget(target, sequence)
+    return target.Claimable and target.Claimable[tostring(sequence)] == true
+        and not target.DrawNums[sequence]
+end
+
+function SuccessTargetLayer:targetProgress(target, row)
+    local reached = target.SequenceInfo[tostring(row.sequence)] or target.ReachedNum
+    local model = SuccessTargetModel.items[row.targetID].modelID
+    if model == 4918 then
+        return reached, 4
+    end
+    if model == 4907 and row.completeCondition1 > 6 then
+        return math.max(0, reached - 6), row.completeCondition1 - 6
+    end
+    if model == 4913 or model == 4907 then
+        return self:canClaimTarget(target, row.sequence) and 1 or 0, 1
+    end
+    return reached, row.completeCondition1
+end
+
+function SuccessTargetLayer:createAwardList(awardInfo,lastListView)''',
+        ),
+        (
+            '        --创建界面UI的函数\n        local function uiFunc( ... )',
+            '        local function drawAble()\n'
+            '            return self:canClaimTarget(targetInfo, v.sequence)\n'
+            '        end\n\n'
+            '        --创建界面UI的函数\n        local function uiFunc( ... )',
+        ),
+        (
+            '''            --一些特殊的奖励需要用到SequenceInfo
+            -- 索引为字符串
+            if targetInfo.SequenceInfo[tostring(v.sequence)] then
+                targetInfo.ReachedNum = targetInfo.SequenceInfo[tostring(v.sequence)]
+            end
+
+
+            --能否领取该奖励
+            local function drawAble( ... )
+                --  特殊情况
+                if targetInfo.SequenceInfo[tostring(v.sequence)] then
+                    --装备进阶活动需要特殊处理下
+                    if SuccessTargetModel.items[v.targetID].modelID == 4918 then
+                        return targetInfo.ReachedNum >= 4
+                    else
+                        return targetInfo.ReachedNum >= v.completeCondition1
+                    end
+                else
+                    return targetInfo.Sequence >= v.sequence
+                end
+            end
+
+            --进度的字符串
+            --能领取的显示绿色不能的红色
+            local c = not drawAble() and "{e71312}" or ColorList.green
+
+
+
+            local progressStr = c .. targetInfo.ReachedNum .."/" .. v.completeCondition1
+
+            --精英猛将活动需要特殊处理下
+            if SuccessTargetModel.items[v.targetID].modelID == 4913 then
+                local count = not drawAble() and 0 or 1
+                progressStr = c .. count .."/" .. "1"
+            end
+
+            --装备进阶活动需要特殊处理下
+            if SuccessTargetModel.items[v.targetID].modelID == 4918 then
+                local count = not drawAble() and 0 or 1
+                progressStr = c .. targetInfo.ReachedNum .."/" .. "4"
+            end
+
+
+            if SuccessTargetModel.items[v.targetID].modelID == 4907 then
+                 --小伙伴
+                if v.completeCondition1 > 6 then
+                    local reachedNum = targetInfo.ReachedNum - 6
+                    reachedNum = reachedNum < 0 and 0 or reachedNum
+                    progressStr = c .. reachedNum .."/" .. (v.completeCondition1 - 6)
+                else
+                    local count = not drawAble() and 0 or 1
+                    progressStr = c .. count .."/" .. "1"
+                end
+            end''',
+            '''            local c = drawAble() and ColorList.green or "{e71312}"
+            local reached, goal = self:targetProgress(targetInfo, v)
+            local progressStr = c .. reached .. "/" .. goal''',
+        ),
+        (
+            '''         --能否领取该奖励
+        local function drawAble( ... )
+            --  特殊情况
+            if targetInfo.SequenceInfo[tostring(v.sequence)] then
+                --装备进阶活动需要特殊处理下
+                if SuccessTargetModel.items[v.targetID].modelID == 4918 then
+                    return targetInfo.SequenceInfo[tostring(v.sequence)] >= 4
+                else
+                    return targetInfo.SequenceInfo[tostring(v.sequence)] >= v.completeCondition1
+                end
+            else
+                return targetInfo.Sequence >= v.sequence
+            end
+        end''',
+            '',
+        ),
+        (
+            '                            targetInfo.DrawNums[v.sequence] = v.sequence',
+            '                            targetInfo.DrawNums[v.sequence] = v.sequence\n'
+            '                            targetInfo.Claimable[tostring(v.sequence)] = false',
+        ),
+        (
+            '                            serverInfo.FinishTargetCount = serverInfo.FinishTargetCount + 1',
+            '                            serverInfo.FinishTargetCount = response.Value.FinishTargetCount',
+        ),
+        (
+            '''                                local reachNum = serverInfo.TargetList[m].ReachedNum
+                                --一些特殊的奖励需要用到SequenceInfo
+                                -- 索引为字符串
+                                if serverInfo.TargetList[m].SequenceInfo[tostring(y.sequence)] then
+                                    reachNum = serverInfo.TargetList[m].SequenceInfo[tostring(y.sequence)]
+                                end
+                                if SuccessTargetModel.items[m].modelID == 4918 then
+                                    if reachNum >= 4 and not serverInfo.TargetList[m].DrawNums[y.sequence] then
+                                        return true
+                                    end
+                                else
+                                    if reachNum >= y.completeCondition1 and not serverInfo.TargetList[m].DrawNums[y.sequence] then
+                                        return true
+                                    end
+                                end''',
+            '''                                if self:canClaimTarget(serverInfo.TargetList[m], y.sequence) then
+                                    return true
+                                end''',
+        ),
+        (
+            '''                                        local reachNum = serverInfo.TargetList[tID].ReachedNum
+                                        --一些特殊的奖励需要用到SequenceInfo
+                                        -- 索引为字符串
+                                        if serverInfo.TargetList[tID].SequenceInfo[tostring(n.sequence)] then
+                                            reachNum = serverInfo.TargetList[tID].SequenceInfo[tostring(n.sequence)]
+                                        end
+
+                                        --装备进阶特殊处理下
+                                        if SuccessTargetModel.items[tID].modelID == 4918 then
+                                            if reachNum >= 4 and not serverInfo.TargetList[tID].DrawNums[n.sequence] then
+                                                return true
+                                            end
+                                        else
+                                            if reachNum >= n.completeCondition1 and not serverInfo.TargetList[tID].DrawNums[n.sequence] then
+                                                return true
+                                            end
+                                        end''',
+            '''                                        if self:canClaimTarget(serverInfo.TargetList[tID], n.sequence) then
+                                            return true
+                                        end''',
+        ),
+        (
+            '''                                for k,v in pairs(serverInfo.DrawDay) do
+                                    if v.Day == k then
+                                        table.remove(serverInfo.DrawDay,k)
+                                        break
+                                    end
+                                end''',
+            '''                                serverInfo.DrawDay = response.Value.DrawDay
+                                serverInfo.DrawnDays = response.Value.DrawnDays''',
+        ),
+        (
+            '            if k < serverInfo.Day then\n                --已经领取的添加个标示',
+            '            if self:hasDrawnDay(k) then\n                --已经领取的添加个标示',
+        ),
+        (
+            'function SuccessTargetLayer:canDrawReward( day )',
+            '''function SuccessTargetLayer:hasDrawnDay(day)
+    for _, claimedDay in ipairs(serverInfo.DrawnDays or {}) do
+        if claimedDay == day then return true end
+    end
+    return false
+end
+
+function SuccessTargetLayer:canDrawReward( day )''',
+        ),
+        ('        if not curBt and k == serverInfo.Day then', '        if not curBt and k == math.min(serverInfo.Day, endDay) then'),
     ])
 
 

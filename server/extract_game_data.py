@@ -418,6 +418,10 @@ def main() -> None:
         "nodes": nodes,
         "guide_npcs": guide_npcs,
         "equips": equips,
+        "equip_step_item_lv": {
+            model: {step: row["itemLv"] for step, row in steps.items() if "itemLv" in row}
+            for model, steps in parse_nested_lua_items(os.path.join(cfg_dir, "EquipStepRelation.lua")).items()
+        } if os.path.exists(os.path.join(cfg_dir, "EquipStepRelation.lua")) else {},
         "equip_color": equip_color,
         "equip_lv_up": equip_lv_up,
         "equip_group": equip_group,

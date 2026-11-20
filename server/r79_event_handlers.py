@@ -9,6 +9,7 @@ import random
 import uuid
 from typing import Any
 
+from economy_audit import DuplicateTransactionError
 from event_runtime import STATUS_ACTIVE
 
 
@@ -471,19 +472,26 @@ class R79EventHandlersMixin:
         self._sync_events()
         ev = self.event_runtime.evaluate("timed_smash_egg", self.state["player"])
         inst = self.event_runtime.get_instance(ev.instance_id) if ev.instance_id else None
-        if inst is None:
+        if not ev.eligible or inst is None:
             return ev, {}
         prog = inst.setdefault("progress", {})
         prog.setdefault("smash_count", 0)
         prog.setdefault("records", [])
         if not prog.get("starter_hammers_seeded"):
-            prog["starter_hammers_seeded"] = True
             if self._get_goods_qty(self.GOLDEN_HAMMER_MODEL_ID) == 0:
-                self._grant_resources_from_tuples(
-                    [(1605, self.GOLDEN_HAMMER_MODEL_ID, 5)],
-                    source="smash_egg_starter_hammers",
-                    tx_prefix=f"evt:{self.profile_name}:{self.state['player']['PlayerId']}:{ev.instance_id}:starter_hammers",
-                )
+                try:
+                    self._grant_resources_from_tuples(
+                        [(1605, self.GOLDEN_HAMMER_MODEL_ID, 5)],
+                        source="smash_egg_starter_hammers",
+                        tx_prefix=f"evt:{self.profile_name}:{self.state['player']['PlayerId']}:{ev.instance_id}:starter_hammers",
+                    )
+                except DuplicateTransactionError:
+                    # Older builds could log the seed on a read without saving the profile.
+                    # The single goods grant restores the stack before it records the ledger entry.
+                    if self._get_goods_qty(self.GOLDEN_HAMMER_MODEL_ID) != 5:
+                        raise
+            prog["starter_hammers_seeded"] = True
+            self.save()
         return ev, prog
 
     def _smash_egg_red_dot(self) -> int:

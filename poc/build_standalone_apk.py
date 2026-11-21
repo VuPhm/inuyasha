@@ -309,6 +309,7 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
         "event_handlers.py",
         "r79_event_handlers.py",
         "event_runtime.py",
+        "combat_effects.py",
         "combat_sim.py",
         "economy_audit.py",
         "game_data.json",

@@ -44,7 +44,8 @@ from pathlib import Path
 from typing import Any, Callable
 
 from bdd_handlers import BddHandlersMixin
-from combat_sim import MAX_RAGE, simulate_fight_info, supports_talent_buff
+from combat_effects import MAX_RAGE, supports_talent_buff
+from combat_sim import simulate_fight_info
 from economy_audit import ResourceLedger
 from event_handlers import EventHandlersMixin
 from event_runtime import EventClock, EventRuntime, build_default_event_registry
@@ -1774,7 +1775,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "DAMCUT": stats.get("DAMCUT", 0),
             "DAMADDR": stats.get("DAMADDR", 0),
             "DAMCUTR": stats.get("DAMCUTR", 0),
-            "BuffList": ",".join(bid for bid in buff_ids if bid in buff_cfg and supports_talent_buff(buff_cfg[bid])),
+            "BuffList": ",".join(bid for bid in buff_ids if bid in buff_cfg and supports_talent_buff(buff_cfg[bid], buff_cfg)),
             "IsBoss": is_boss,
             "BodyTypeR": 12500 if is_boss else 10000,
             "Step": step if self.profile_name == "normal" else max(1, step),

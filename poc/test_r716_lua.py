@@ -72,7 +72,8 @@ class R716LuaTest(unittest.TestCase):
                 if source then return assert(loadstring(source, name)) end
             end)
             require("CSCommon.ServerInterface")
-            function scenario(attacker, rp, buffs, seed)
+            function scenario(attacker, rp, buffs, seed, options)
+                options=options or {}
                 local function unit(model, initialRP)
                     local row = HeroModel.items[model]
                     return {HP=100000,TotalHp=100000,AP=900,DEF=0,RP=initialRP,
@@ -82,13 +83,17 @@ class R716LuaTest(unittest.TestCase):
                 end
                 local heroes={}
                 for i=1,12 do heroes[i]={} end
-                heroes[1],heroes[9]=unit(attacker,rp),unit(12011005,100)
+                heroes[1],heroes[9]=unit(attacker,rp),unit(options.enemy or 12011005,options.enemyRP or 100)
                 heroes[1].BuffList=buffs
+                heroes[9].BuffList=options.enemyBuffs or ""
+                if options.crit ~= nil then heroes[1].CRI=options.crit end
+                if options.enemyCrit ~= nil then heroes[9].CRI=options.enemyCrit end
+                if options.hp then heroes[1].HP=options.hp end
                 local wave=ConvertDataToBattleData({FightObjs={{Heros=heroes,
                     TeamData={{Fsp=9000,Fap=10000},{Fsp=1,Fap=1000}},Pets={},RandNum=seed,IsPVP=false}}})[1]
                 local calc=newObject(require("CSCommon.BattleCalc"))
                 assert(calc:init(wave.heros,wave.teamData,wave.petData,4,wave.randNums,wave.isPvP))
-                calc:fightATimes({autoPlay=true})
+                if not options.defer then calc:fightATimes({autoPlay=true}) end
                 return calc
             end
         """)

@@ -1,10 +1,10 @@
 # Lộ Trình Phục Hồi Dự Án — InuYasha: Seek Jade (`VN 5.0.4.98`)
 
-**Bản S1 chính trên Pixel 3 XL:** R7.15.1, APK standalone 832 | **Đã nghiệm thu với save QA:** R7.16, APK standalone 834 | **Checkpoint:** `checkpoint-vn-r7.16` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
+**Bản S1 chính trên Pixel 3 XL:** R7.15.1, APK standalone 832 | **Đã nghiệm thu với save QA:** R7.17, APK standalone 835 | **Checkpoint:** `checkpoint-vn-r7.17` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
 
 ---
 
-## I. Hiện trạng Baseline Đã Đạt (`R1 – R7.16`)
+## I. Hiện trạng Baseline Đã Đạt (`R1 – R7.17`)
 
 | Mốc | Trạng thái | Thành phần đã khôi phục & kiểm chứng |
 | :--- | :---: | :--- |
@@ -25,6 +25,7 @@
 | **R7.15 (APK 828)** | **QA backend** | Mở 18 ải Mộ Thần Binh, phục hồi Tiến Giai và hoàn tác trang bị. Kiểm kê 20 model Kim và các nguồn cấp. [Nghiệm thu R7.15](R7_15_ACCEPTANCE_REPORT.md). |
 | **R7.15.1 (APK 832)** | **Đã nghiệm thu** | Duyên Phận áp dụng vào trận, Đồng Đội lưu theo hồ sơ, Tiến Giai đúng giá và sao quét Mộ Thần Binh chính xác. 105/105 Python, 21/21 Lua. Cài đè giữ đủ bốn save S1 trên Pixel. [Báo cáo R7.15.1](R7_15_1_ACCEPTANCE_REPORT.md). |
 | **R7.16 (APK 834)** | **Đã nghiệm thu với save QA trên Pixel** | Lượt hồi Tầm Ngọc, tài năng tướng và tính Nộ theo Lua VN, đối chiếu quái ở chương đầu/giữa/cuối. 112/112 Python, 24/24 Lua. [Báo cáo R7.16](R7_16_ACCEPTANCE_REPORT.md). |
+| **R7.17 (APK 835)** | **Đã nghiệm thu với save QA trên Pixel** | Hoàn thiện 255 dòng tài năng, phục hồi buff theo lượt và tiên công trong mô phỏng, kiểm kê NPC gốc ở 15 ải có kịch bản. 120/120 Python, 27/27 Lua. [Báo cáo R7.17](R7_17_ACCEPTANCE_REPORT.md). |
 
 ---
 
@@ -117,4 +118,5 @@ R7.6 triển khai theo hướng cân bằng — **không** dồn toàn bộ roun
 | **R7.15** *(Lát hai đã nghiệm thu)* | 18 ải Mộ Thần Binh, Tiến Giai trang bị VN và quyền nhận thưởng theo kỷ lục. | 100/100 Python, 14/14 Lua. Giữ 33 ải ngoài lát khóa, tiếp tục tìm nguồn đội NPC gốc và nguồn cấp Kim. [Báo cáo](R7_15_ACCEPTANCE_REPORT.md). |
 | **R7.15.1** *(Đã nghiệm thu trên Pixel)* | Duyên Phận và Đồng Đội, Tiến Giai dấu +, quét và mở khóa Mộ Thần Binh. | 105/105 Python, 21/21 Lua. APK 832 cài đè 827 và bảo toàn save S1. [Báo cáo](R7_15_1_ACCEPTANCE_REPORT.md). |
 | **R7.16** *(Đã nghiệm thu trên Pixel)* | Tầm Ngọc đồng bộ theo backend, tài năng đột phá, đối chiếu Combat và quái theo chương. | APK 834 và `checkpoint-vn-r7.16`. Lát sau tiếp tục tìm roster gốc theo wave, buff có thời hạn, khống chế và hệ số FAP tài năng. [Báo cáo](R7_16_ACCEPTANCE_REPORT.md). |
+| **R7.17** *(Đã nghiệm thu với save QA trên Pixel)* | Buff theo lượt, khống chế, miễn và kháng, hiệu ứng Nộ và điều kiện HP. Đối chiếu sâu NPC chương 1, 35 và 70. | APK 835 và `checkpoint-vn-r7.17`. Còn 120 dòng tài năng cần xử lý đủ và cần nguồn roster đánh thường theo wave. [Báo cáo](R7_17_ACCEPTANCE_REPORT.md). |
 | **Round sau** | Guild cục bộ (`3400`), Co-op NPC (`Teambattle 2319`) | Mở rộng khi đã đối chiếu đủ cấu hình và luồng UI |

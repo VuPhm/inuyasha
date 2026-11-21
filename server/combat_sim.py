@@ -4,21 +4,15 @@ from __future__ import annotations
 
 import math
 import random
+from collections import Counter, defaultdict, deque
 from dataclasses import dataclass
 from typing import Any
+
+from combat_effects import BattleEffects, LOCK_HEALING, MAX_RAGE, PARALYSIS, SILENCE, STUN
 
 PVE_FRIEND_ORDER = [1, 2, 3, 4, 5, 6]
 PVE_ENEMY_ORDER = [9, 8, 7, 12, 11, 10]
 PVP_ENEMY_ORDER = [7, 8, 9, 10, 11, 12]
-MAX_RAGE = 200  # CSCommon/Hero.lua
-
-
-def supports_talent_buff(row: dict[str, Any]) -> bool:
-    """Match the unbounded, immediate self-RP gains after an attack crit."""
-    return (row["triggerCondition1"] in (1, 2, 3) and row["triggerCondition2"] == 2
-            and row["typeEnum"] == 2 and row["refAttr"] == 0 and row["targetCampEnum"] == 3
-            and row["addAttrEnum"] == 205 and row["addType"] == 1 and row["addValue"] > 0
-            and row["maxNum"] == -1 and row["maxTime"] == -1)
 
 
 @dataclass
@@ -109,7 +103,7 @@ def _apply_attack(
     units: dict[int, dict[str, Any]],
     attacks_cfg: dict[str, Any],
     rng: random.Random,
-    buffs_cfg: dict[str, Any],
+    effects: BattleEffects,
 ) -> None:
     """Execute single hero turn using CSCommon/FightExpression.lua formulas."""
     atk = units[atk_pos]
@@ -118,8 +112,12 @@ def _apply_attack(
     ra_skill = attacks_cfg.get(str(ra_id), {})
     na_skill = attacks_cfg.get(str(na_id), {})
 
+    if effects.has(atk_pos, STUN):
+        return
     need_rp = int(ra_skill.get("useRP", 100))
-    use_skill = bool(ra_skill) and int(atk["RP"]) >= need_rp
+    use_skill = bool(ra_skill) and int(atk["RP"]) >= need_rp and not effects.has(atk_pos, SILENCE)
+    if not use_skill and effects.has(atk_pos, PARALYSIS):
+        return
     skill = ra_skill if use_skill else na_skill
     if not skill:
         return
@@ -129,78 +127,75 @@ def _apply_attack(
     targets = _select_targets(atk_pos, atk_camp, units, skill, rng)
     factor = float(skill.get("factor", 10000)) / 10000.0
     is_heal = int(skill.get("type", 0)) == 1
-    atk_ap = float(atk.get("AP", 0))
+    active_attack = (1, 3 if use_skill else 2)
+    active_defense = (8,) if is_heal else (4, 6 if use_skill else 5)
+    action_mods = defaultdict(Counter)
+    effects.apply(atk_pos, atk_pos, None, targets, active_attack, (1,), action_mods)
 
     if use_skill:
         atk["RP"] = 0
 
-    any_crit = False
-    hit_target = False
+    after_action: set[int] = set()
     attack_rage = 0
     for tpos in targets:
         vic = units[tpos]
         if vic["HP"] <= 0:
             continue
+        hit_mods = defaultdict(Counter)
+        effects.apply(atk_pos, atk_pos, tpos, [tpos], active_attack, (1,), hit_mods, compared=True)
+        effects.apply(tpos, atk_pos, atk_pos, [atk_pos], active_defense, (1,), hit_mods)
+        effects.apply(tpos, atk_pos, atk_pos, [atk_pos], active_defense, (1,), hit_mods, compared=True)
+
+        def stat(pos, field, default=0):
+            return units[pos].get(field, default) + action_mods[pos][field] + hit_mods[pos][field]
+
+        atk_ap = stat(atk_pos, "AP") * (1 + stat(atk_pos, "APR") / 10000)
+        roll = rng.randrange(100)
+        phases = {5}
         if is_heal:
-            hit_target = True
-            heal = atk_ap * factor + atk.get("CP", 0) + vic.get("BCP", 0)
-            base_heal = max(0, heal * (1 + (atk.get("CPR", 0) + vic.get("BCPR", 0)) / 10000))
-            cri_prob = max(0.0, float(atk.get("CRI", 0)) / 100.0)
-            is_crit = rng.uniform(0, 100) < cri_prob
-            any_crit |= is_crit
-            heal_val = max(1, math.ceil(base_heal * (1.5 if is_crit else 1.0))) if base_heal > 0 else 0
-            vic["HP"] = min(int(vic["TotalHp"]), int(vic["HP"]) + heal_val)
-            continue
-
-        vic_def = float(vic.get("DEF", 0))
-        hurt_strength = max(atk_ap - vic_def, atk_ap * 0.1)
-        if use_skill:
-            org_hurt = hurt_strength * factor * max(0.1, 1.0 + (atk_rp_snapshot - need_rp) / 200.0)
+            heal = atk_ap * factor + stat(atk_pos, "CP") + stat(tpos, "BCP")
+            base_heal = max(0, heal * (1 + (stat(atk_pos, "CPR") + stat(tpos, "BCPR")) / 10000))
+            if roll < stat(atk_pos, "CRI") / 100:
+                phases.add(2)
+                base_heal = max(1, base_heal * 1.5)
+            if not effects.has(tpos, LOCK_HEALING):
+                vic["HP"] = min(vic["TotalHp"], vic["HP"] + math.ceil(base_heal))
         else:
-            org_hurt = hurt_strength * factor
-        damaddr = float(atk.get("DAMADDR", 0)) / 10000.0
-        damcutr = float(vic.get("DAMCUTR", 0)) / 10000.0
-        normal_hurt = org_hurt * max(0.01, 1.0 + (damaddr - damcutr))
-
-        val_dod = max(float(vic.get("DOD", 0)) / 100.0 - float(atk.get("HIT", 10000)) / 100.0 + 100.0, 0.0)
-        val_cri = max(float(atk.get("CRI", 0)) / 100.0 - float(vic.get("TEN", 0)) / 100.0, 0.0)
-        val_blo = max(float(vic.get("BLO", 0)) / 100.0 - float(atk.get("BOG", 0)) / 100.0, 0.0)
-        roll = rng.uniform(0.0, 100.0)
-
-        if roll < val_dod:
-            dmg = 0
-        elif roll < val_dod + val_cri:
-            any_crit = True
-            crit_rate = 1.5 + (float(atk.get("CRId", 0)) - float(vic.get("TEND", 0))) / 10000.0
-            dmg = max(1, math.ceil(normal_hurt * max(1.1, crit_rate)))
-        elif roll < val_dod + val_cri + val_blo:
-            dmg = max(1, math.ceil(normal_hurt * 0.5))
-        else:
-            dmg = max(1, math.ceil(normal_hurt))
-
-        if dmg > 0:
-            hit_target = True
-            net_dmg = max(1, int(dmg + float(atk.get("DAMADD", 0)) - float(vic.get("DAMCUT", 0))))
-            damage = min(vic["HP"], net_dmg)
+            vic_def = stat(tpos, "DEF") * (1 + stat(tpos, "DEFR") / 10000)
+            hurt_strength = max(atk_ap - vic_def, atk_ap * 0.1)
+            rage_scale = 1 + (atk_rp_snapshot - need_rp) / 200 if use_skill else 1
+            rate = (stat(atk_pos, "DAMADDR") - stat(tpos, "DAMCUTR")) / 10000
+            dmg = hurt_strength * factor * rage_scale * max(0.01, 1 + rate)
+            dodge = max((stat(tpos, "DOD") - stat(atk_pos, "HIT", 10000)) / 100 + 100, 0)
+            crit = max((stat(atk_pos, "CRI") - stat(tpos, "TEN")) / 100, 0)
+            block = max((stat(tpos, "BLO") - stat(atk_pos, "BOG")) / 100, 0)
+            if roll < dodge:
+                after_action.add(3)
+                effects.apply(tpos, atk_pos, atk_pos, [atk_pos], active_defense, (3,), hit_mods)
+                effects.apply(atk_pos, atk_pos, tpos, [tpos], active_attack, (3,), hit_mods, target_only=True)
+                continue
+            if roll < dodge + crit:
+                phases.add(2)
+                dmg = max(1, math.ceil(dmg * (1.5 + (stat(atk_pos, "CRId") - stat(tpos, "TEND")) / 10000)))
+            elif roll < dodge + crit + block:
+                phases.add(4)
+                dmg = max(1, math.ceil(dmg * 0.5))
+            else:
+                dmg = math.ceil(dmg)
+            damage = min(vic["HP"], max(1, dmg + stat(atk_pos, "DAMADD") - stat(tpos, "DAMCUT")))
             vic["HP"] -= damage
             if not vic.get("IsBoss"):
-                vic["RP"] = min(MAX_RAGE, int(vic["RP"]) + damage * 100 // vic["OpeningHP"])
+                effects.rage(tpos, damage * 100 // vic["OpeningHP"])
             if vic["HP"] == 0 and not atk.get("IsBoss"):
                 attack_rage += 25
+        effects.apply(tpos, atk_pos, atk_pos, [atk_pos], active_defense, phases, hit_mods)
+        effects.apply(atk_pos, atk_pos, tpos, [tpos], active_attack, phases, hit_mods, target_only=True)
+        after_action.update(phases)
 
-    if not use_skill and hit_target:
+    if not use_skill and 5 in after_action:
         attack_rage += 20 if atk.get("IsBoss") else 25
-    atk["RP"] = min(MAX_RAGE, int(atk["RP"]) + attack_rage)
-
-    # FightAttack.lua tracks whether any target crit and executes self buffs once after the attack.
-    if any_crit and buffs_cfg and isinstance(atk.get("BuffList"), str):
-        conditions = (1, 3 if use_skill else 2)
-        for buff_id in dict.fromkeys(atk["BuffList"].split(",")):
-            row = buffs_cfg.get(buff_id)
-            if not row or not supports_talent_buff(row) or row["triggerCondition1"] not in conditions:
-                continue
-            if row["triggerOdds"] >= 10000 or rng.randrange(10000) < row["triggerOdds"]:
-                atk["RP"] = min(MAX_RAGE, int(atk["RP"]) + row["addValue"] // 100)
+    effects.rage(atk_pos, attack_rage)
+    effects.apply(atk_pos, atk_pos, None, targets, active_attack, after_action, action_mods, target_only=False)
 
 
 def simulate_fight_info(
@@ -247,25 +242,31 @@ def simulate_fight_info(
 
         ally_total_fsp = sum(int(u.get("FSP", 0)) for p, u in units.items() if p <= 6 and u["HP"] > 0)
         enemy_total_fsp = sum(int(u.get("FSP", 0)) for p, u in units.items() if p > 6 and u["HP"] > 0)
-        friend_first = ally_total_fsp >= enemy_total_fsp
+        teams = wave.get("TeamData") or [{}, {}]
+        first_side = int((teams[0].get("Fsp", ally_total_fsp), teams[0].get("Fap", 0))
+                         < (teams[1].get("Fsp", enemy_total_fsp), teams[1].get("Fap", 0)))
+        effects = BattleEffects(units, attacks_cfg, buffs_cfg, rng)
+        first_turn = True
 
         for _rnd in range(1, max_rounds + 1):
             total_rounds += 1
-            order = []
-            f_live = [p for p in PVE_FRIEND_ORDER if p in units and units[p]["HP"] > 0]
-            e_live = [p for p in enemy_order if p in units and units[p]["HP"] > 0]
-            first_q, second_q = (f_live, e_live) if friend_first else (e_live, f_live)
-            max_len = max(len(first_q), len(second_q))
-            for i in range(max_len):
-                if i < len(first_q):
-                    order.append(first_q[i])
-                if i < len(second_q):
-                    order.append(second_q[i])
-
-            for pos in order:
-                if pos not in units or units[pos]["HP"] <= 0:
+            order = [deque(p for p in side if p in units) for side in (PVE_FRIEND_ORDER, enemy_order)]
+            side = first_side
+            while order[0] or order[1]:
+                if not order[side]:
+                    side ^= 1
+                pos = order[side].popleft()
+                effects.tick(pos, before=True)
+                if units[pos]["HP"] <= 0:
+                    # An already defeated caster's effects still age when its slot comes up.
+                    effects.tick(pos, before=False)
                     continue
-                _apply_attack(pos, units, attacks_cfg, rng, buffs_cfg)
+                if first_turn:
+                    effects.start(pos)
+                    first_turn = False
+                _apply_attack(pos, units, attacks_cfg, rng, effects)
+                effects.tick(pos, before=False)
+                side ^= 1
                 allies_up = any(units[p]["HP"] > 0 for p in units if p <= 6)
                 enemies_up = any(units[p]["HP"] > 0 for p in units if p > 6)
                 if not allies_up or not enemies_up:

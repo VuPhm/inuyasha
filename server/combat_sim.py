@@ -10,6 +10,15 @@ from typing import Any
 PVE_FRIEND_ORDER = [1, 2, 3, 4, 5, 6]
 PVE_ENEMY_ORDER = [9, 8, 7, 12, 11, 10]
 PVP_ENEMY_ORDER = [7, 8, 9, 10, 11, 12]
+MAX_RAGE = 200  # CSCommon/Hero.lua
+
+
+def supports_talent_buff(row: dict[str, Any]) -> bool:
+    """Match the unbounded, immediate self-RP gains after an attack crit."""
+    return (row["triggerCondition1"] in (1, 2, 3) and row["triggerCondition2"] == 2
+            and row["typeEnum"] == 2 and row["refAttr"] == 0 and row["targetCampEnum"] == 3
+            and row["addAttrEnum"] == 205 and row["addType"] == 1 and row["addValue"] > 0
+            and row["maxNum"] == -1 and row["maxTime"] == -1)
 
 
 @dataclass
@@ -100,6 +109,7 @@ def _apply_attack(
     units: dict[int, dict[str, Any]],
     attacks_cfg: dict[str, Any],
     rng: random.Random,
+    buffs_cfg: dict[str, Any],
 ) -> None:
     """Execute single hero turn using CSCommon/FightExpression.lua formulas."""
     atk = units[atk_pos]
@@ -108,9 +118,11 @@ def _apply_attack(
     ra_skill = attacks_cfg.get(str(ra_id), {})
     na_skill = attacks_cfg.get(str(na_id), {})
 
-    need_rp = int(ra_skill.get("useRP", 100) or 100)
+    need_rp = int(ra_skill.get("useRP", 100))
     use_skill = bool(ra_skill) and int(atk["RP"]) >= need_rp
-    skill = ra_skill if use_skill else (na_skill or ra_skill)
+    skill = ra_skill if use_skill else na_skill
+    if not skill:
+        return
     atk_rp_snapshot = int(atk["RP"])
 
     atk_camp = 1 if atk_pos <= 6 else 2
@@ -120,18 +132,22 @@ def _apply_attack(
     atk_ap = float(atk.get("AP", 0))
 
     if use_skill:
-        atk["RP"] = max(0, int(atk["RP"]) - need_rp)
-    else:
-        atk["RP"] = int(atk["RP"]) + 25
+        atk["RP"] = 0
 
+    any_crit = False
+    hit_target = False
+    attack_rage = 0
     for tpos in targets:
         vic = units[tpos]
         if vic["HP"] <= 0:
             continue
         if is_heal:
-            base_heal = max(atk_ap * factor + float(atk.get("CP", 0)) + float(vic.get("BCP", 0)), 0.0)
+            hit_target = True
+            heal = atk_ap * factor + atk.get("CP", 0) + vic.get("BCP", 0)
+            base_heal = max(0, heal * (1 + (atk.get("CPR", 0) + vic.get("BCPR", 0)) / 10000))
             cri_prob = max(0.0, float(atk.get("CRI", 0)) / 100.0)
             is_crit = rng.uniform(0, 100) < cri_prob
+            any_crit |= is_crit
             heal_val = max(1, math.ceil(base_heal * (1.5 if is_crit else 1.0))) if base_heal > 0 else 0
             vic["HP"] = min(int(vic["TotalHp"]), int(vic["HP"]) + heal_val)
             continue
@@ -154,6 +170,7 @@ def _apply_attack(
         if roll < val_dod:
             dmg = 0
         elif roll < val_dod + val_cri:
+            any_crit = True
             crit_rate = 1.5 + (float(atk.get("CRId", 0)) - float(vic.get("TEND", 0))) / 10000.0
             dmg = max(1, math.ceil(normal_hurt * max(1.1, crit_rate)))
         elif roll < val_dod + val_cri + val_blo:
@@ -162,14 +179,36 @@ def _apply_attack(
             dmg = max(1, math.ceil(normal_hurt))
 
         if dmg > 0:
+            hit_target = True
             net_dmg = max(1, int(dmg + float(atk.get("DAMADD", 0)) - float(vic.get("DAMCUT", 0))))
-            vic["HP"] = max(0, int(vic["HP"]) - net_dmg)
+            damage = min(vic["HP"], net_dmg)
+            vic["HP"] -= damage
+            if not vic.get("IsBoss"):
+                vic["RP"] = min(MAX_RAGE, int(vic["RP"]) + damage * 100 // vic["OpeningHP"])
+            if vic["HP"] == 0 and not atk.get("IsBoss"):
+                attack_rage += 25
+
+    if not use_skill and hit_target:
+        attack_rage += 20 if atk.get("IsBoss") else 25
+    atk["RP"] = min(MAX_RAGE, int(atk["RP"]) + attack_rage)
+
+    # FightAttack.lua tracks whether any target crit and executes self buffs once after the attack.
+    if any_crit and buffs_cfg and isinstance(atk.get("BuffList"), str):
+        conditions = (1, 3 if use_skill else 2)
+        for buff_id in dict.fromkeys(atk["BuffList"].split(",")):
+            row = buffs_cfg.get(buff_id)
+            if not row or not supports_talent_buff(row) or row["triggerCondition1"] not in conditions:
+                continue
+            if row["triggerOdds"] >= 10000 or rng.randrange(10000) < row["triggerOdds"]:
+                atk["RP"] = min(MAX_RAGE, int(atk["RP"]) + row["addValue"] // 100)
 
 
 def simulate_fight_info(
     fight_info: dict[str, Any],
     attacks_cfg: dict[str, Any],
     max_rounds: int = 30,
+    *,
+    buffs_cfg: dict[str, Any] | None = None,
 ) -> CombatOutcome:
     """
     Evaluate all waves of a FightInfo payload using real combat math.
@@ -177,6 +216,7 @@ def simulate_fight_info(
     Respects IsPVP turn order ([7..12] vs [9,8,7,12,11,10]) and never rigs outcomes.
     """
     fight_objs = fight_info.get("FightObjs", [])
+    buffs_cfg = buffs_cfg or {}
     waves_hp: list[list[dict[str, int]]] = []
     ally_carry_hp: dict[int, int] = {}
     ally_carry_rp: dict[int, int] = {}
@@ -198,10 +238,11 @@ def simulate_fight_info(
             u = dict(obj)
             u["HP"] = int(u.get("HP", 0))
             u["TotalHp"] = int(u.get("TotalHp", max(1, u["HP"])))
-            u["RP"] = int(u.get("RP", 50))
+            u["RP"] = min(MAX_RAGE, int(u.get("RP", 50)))
             if idx <= 6 and w_idx > 0 and idx in ally_carry_hp:
                 u["HP"] = ally_carry_hp[idx]
                 u["RP"] = ally_carry_rp.get(idx, u["RP"])
+            u["OpeningHP"] = max(1, u["HP"])
             units[idx] = u
 
         ally_total_fsp = sum(int(u.get("FSP", 0)) for p, u in units.items() if p <= 6 and u["HP"] > 0)
@@ -224,7 +265,7 @@ def simulate_fight_info(
             for pos in order:
                 if pos not in units or units[pos]["HP"] <= 0:
                     continue
-                _apply_attack(pos, units, attacks_cfg, rng)
+                _apply_attack(pos, units, attacks_cfg, rng, buffs_cfg)
                 allies_up = any(units[p]["HP"] > 0 for p in units if p <= 6)
                 enemies_up = any(units[p]["HP"] > 0 for p in units if p > 6)
                 if not allies_up or not enemies_up:
@@ -236,7 +277,8 @@ def simulate_fight_info(
                 break
 
         wave_hp_list = [
-            {"PosId": p, "HeroModelId": int(units[p]["HeroModelId"]), "HP": int(units[p]["HP"])}
+            {"PosId": p, "HeroModelId": int(units[p]["HeroModelId"]), "HP": int(units[p]["HP"]),
+             "RP": int(units[p]["RP"])}
             for p in sorted(units)
         ]
         waves_hp.append(wave_hp_list)

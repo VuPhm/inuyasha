@@ -1053,6 +1053,9 @@ def patch_standalone_workspace(
     patch_reward_claim_lua(STANDALONE_WORK / "assets" / "src")
     patch_mystery_shop_lua(STANDALONE_WORK / "assets" / "src")
     patch_r714_lua(STANDALONE_WORK / "assets" / "src")
+    patch_r715_lua(STANDALONE_WORK / "assets" / "src")
+    patch_r7151_lua(STANDALONE_WORK / "assets" / "src")
+    patch_r716_explore_lua(STANDALONE_WORK / "assets" / "src")
     patch_luac_text(STANDALONE_WORK / "assets" / "src" / "Equipment" / "EquipmentComposeLayer.luac", [
         (
             '        if colorLV < 8 then    --排除最高等级的装备',
@@ -1484,6 +1487,340 @@ function XzyyMainScene:refeshData(needAction)''',
             '                end',
         ),
         ('NetworkResData:deleteEquipItems(equipment)', 'NetworkResData:deleteEquipItems(selected)'),
+    ])
+
+
+def patch_r715_lua(src: Path) -> None:
+    patch_luac_text(src / "Equipment" / "EquipmentCommon.luac", [
+        (
+            "        local dataset = EquipLvUpuseRelation.items[colorLV]\n",
+            "        local dataset = EquipLvUpuseRelation.items[colorLV]\n"
+            "        if not dataset or not dataset[level] then return nil end\n",
+        ),
+    ])
+    patch_luac_text(src / "Equipment" / "Module" / "EquipmentEnhanceLayer.luac", [
+        (
+            "    -- 提示信息\n    local reminderLabel = ui.newLabel({",
+            "    local nextCost = Equipment.getEnhanceCost(equipObj)\n"
+            "    if nextCost == nil then\n"
+            "        local unavailable = ui.newLabel({text = \"Trang bị này chưa có giá cường hóa trong dữ liệu VN.\",\n"
+            "            size = 22, color = ColorList.ccWhite, needOutLine = true})\n"
+            "        unavailable:align(display.CENTER, nodeSize.width / 2, nodeSize.height / 2)\n"
+            "        container:addChild(unavailable)\n"
+            "        return container\n"
+            "    end\n"
+            "    -- 提示信息\n    local reminderLabel = ui.newLabel({",
+        ),
+        ("value= Equipment.getEnhanceCost(equipObj),", "value= nextCost,"),
+    ])
+    patch_luac_text(src / "NewXZYY" / "XzyyMainScene.luac", [
+        (
+            "    for i,v in pairs(BddWraithShopRelation.items) do\n",
+            "    self.mIsRed = false\n"
+            "    for i,v in pairs(BddWraithShopRelation.items) do\n",
+        ),
+        ("v.needStarNum <= self.mCurrentStar then", "v.needStarNum <= self.mMaxStar then"),
+    ])
+
+
+def patch_r716_explore_lua(src: Path) -> None:
+    patch_luac_text(src / "Practice" / "XunYuScene.luac", [
+        (
+            '        while restoreTime < 0 do\n'
+            '            restoreTime = restoreTime + self.model.restore_interval\n'
+            '        end\n'
+            '        time = restoreTime',
+            '        time = math.max(0, restoreTime)',
+        ),
+        (
+            '        self:requestSync()\n\n        self:executeGuide()',
+            '        self:setTimeEvent(true)\n'
+            '        self:requestSync()\n\n        self:executeGuide()',
+        ),
+        (
+            '    if CacheData:get("XunYuScene.auto_state") then',
+            '    if self.model.player.Vip >= self.model.auto_viplv and CacheData:get("XunYuScene.auto_state") then',
+        ),
+        (
+            '        if self.model.xun_num > 0 then\n            if checkBagSpace() then',
+            '        if self.model.request_running or self.model.action_running then return end\n'
+            '        if self.model.xun_num == 0 and self.model.restore_time <= 0 then\n'
+            '            self:requestSync(true)\n'
+            '        elseif self.model.xun_num > 0 then\n            if checkBagSpace() then',
+        ),
+        (
+            '''        local time = self.model.restore_time - delta
+        if time < 0 then
+            time = self.model.restore_interval
+            self.model.xun_num = self.model.xun_num + 1
+            self.handler.xun_num()
+        end
+        self.model.restore_time = time
+        self.handler.restore_time()''',
+            '''        self.model.restore_time = math.max(0, self.model.restore_time - delta)
+        self.handler.restore_time()
+        if self.model.restore_time <= 0 then
+            self:requestSync(true)
+        end''',
+        ),
+        (
+            'function XunYuScene:requestSync()\n    self.model.request_block = true',
+            'function XunYuScene:requestSync(silent)\n'
+            '    if self.model.request_running then return end\n'
+            '    self.model.request_block = not silent',
+        ),
+        (
+            'function XunYuScene:handleSync(ok, content)\n    if not ok then return end\n    self.model.request_block = false',
+            'function XunYuScene:handleSync(ok, content)\n'
+            '    self.model.request_block = false\n'
+            '    if not ok then\n'
+            '        self.model.restore_time = 5\n'
+            '        return\n'
+            '    end',
+        ),
+        (
+            '    self.handler.xun_num()\n    self:setTimeEvent(true)',
+            '    self.handler.xun_num()\n    self.handler.restore_time()',
+        ),
+        (
+            '    self.model.restore_time = XunYuRecoverTime - now',
+            '    self.model.restore_time = math.max(0, XunYuRecoverTime - now)',
+        ),
+        (
+            '    self.model.restore_time = content["RecoverTime"] - now',
+            '    XunYuRecoverTime = content["RecoverTime"]\n'
+            '    self.model.restore_time = math.max(0, XunYuRecoverTime - now)\n'
+            '    self.handler.restore_time()',
+        ),
+        (
+            '    self.model.restore_time = content["RecoverTime"] - now',
+            '    XunYuRecoverTime = content["RecoverTime"]\n'
+            '    self.model.restore_time = math.max(0, XunYuRecoverTime - now)\n'
+            '    self.handler.restore_time()',
+        ),
+        (
+            'function XunYuScene:requestBuy()\n    self.model.request_block = true',
+            'function XunYuScene:requestBuy()\n'
+            '    if self.model.request_running then return end\n'
+            '    self.model.request_block = true',
+        ),
+        (
+            '    if not ok then return end\n\n    local now = NetworkResData:getCurrentTime()',
+            '    if not ok then\n'
+            '        if content == -5103 then\n'
+            '            self._buyview:removeSelf()\n'
+            '            self:requestSync(true)\n'
+            '        end\n'
+            '        return\n'
+            '    end\n\n    local now = NetworkResData:getCurrentTime()',
+        ),
+        (
+            '        self.model.action_running = false\n        return\n    end\n\n    local now =',
+            '        self.model.action_running = false\n'
+            '        if content == -5101 then self:requestSync(true) end\n'
+            '        return\n    end\n\n    local now =',
+        ),
+        (
+            '        else\n            print("[error] no response")\n        end',
+            '        else\n'
+            '            table.insert(args, false)\n'
+            '            config.callback(unpack(args))\n'
+            '        end',
+        ),
+    ])
+
+
+def patch_r7151_lua(src: Path) -> None:
+    patch_luac_text(src / "Common" / "ConfigFunc.luac", [
+        (
+            "        if not params.slotId or params.slotId < 1 or params.slotId >= MAX_HERO_SLOT_COUNT  then",
+            "        if not params.slotId or (not params.isMateSlot and (params.slotId < 1 or params.slotId >= MAX_HERO_SLOT_COUNT)) then",
+        ),
+    ])
+    patch_luac_text(src / "Formation" / "PlayerFormationLayer.luac", [
+        (
+            '        self.mSlotAPLabel:setString(string.format("%d", APValue))',
+            '        self.mSlotAPLabel:setString(string.format("%d", property.AP or math.floor(APValue)))',
+        ),
+        (
+            '        self.mSlotDEFLabel:setString(string.format("%d", DEFValue))',
+            '        self.mSlotDEFLabel:setString(string.format("%d", property.DEF or math.floor(DEFValue)))',
+        ),
+        (
+            '        self.mSlotHPLabel:setString(string.format("%d", HPValue))',
+            '        self.mSlotHPLabel:setString(string.format("%d", property.HP or math.floor(HPValue)))',
+        ),
+    ])
+    patch_luac_text(src / "Formation" / "MyFormationLayer.luac", [
+        ('ret.AP = ret.AP + property.APHero * (property.APHeroR / 10000)',
+         'ret.AP = property.AP or math.floor(ret.AP + property.APHero * (property.APHeroR / 10000))'),
+        ('ret.DEF = ret.DEF + property.DEFHero * (property.DEFHeroR / 10000)',
+         'ret.DEF = property.DEF or math.floor(ret.DEF + property.DEFHero * (property.DEFHeroR / 10000))'),
+        ('ret.HP = ret.HP + ret.AP * (property.APToHPHeroR / 10000)',
+         'ret.HP = property.HP or math.floor(ret.HP + ret.AP * (property.APToHPHeroR / 10000))'),
+        ('--                ret.FAP = tempSlot.FAP or 0', '                ret.FAP = property.FAP or tempSlot.FAP or 0'),
+    ])
+    patch_luac_text(src / "Hero" / "GetHeroAttribute.luac", [
+        (
+            '                totalInfor.FSP  = v.Property.FSP+ dValueInfor.FSP',
+            '''                local property = v.Property
+                if property.ActivePrIds then
+                    totalInfor.AP = property.AP + math.floor((property.AP1 + dValueInfor.AP) * property.APR1 / 10000)
+                        - math.floor(property.AP1 * property.APR1 / 10000)
+                    totalInfor.HP = property.HP + math.floor((property.HP1 + dValueInfor.HP) * property.HPR1 / 10000)
+                        - math.floor(property.HP1 * property.HPR1 / 10000)
+                    totalInfor.DEF = property.DEF + math.floor((property.DEF1 + dValueInfor.DEF) * property.DEFR1 / 10000)
+                        - math.floor(property.DEF1 * property.DEFR1 / 10000)
+                end
+                totalInfor.FSP  = v.Property.FSP+ dValueInfor.FSP''',
+        ),
+    ])
+    patch_luac_text(src / "Equipment" / "EquipmentCommon.luac", [
+        (
+            '            for _, equipItem in ipairs({slotItem.Weapon, slotItem.Helmet, slotItem.Necklace, slotItem.Clothes}) do\n'
+            '                if IdIsValid(equipItem.Id) then',
+            '            for _, key in ipairs({"Weapon", "Helmet", "Necklace", "Clothes"}) do\n'
+            '                local equipItem = slotItem[key]\n'
+            '                if equipItem and IdIsValid(equipItem.Id) then',
+        ),
+        (
+            '            for _, treasureItem in ipairs({slotItem.Book, slotItem.Horse}) do\n'
+            '                if IdIsValid(treasureItem.Id) then',
+            '            for _, key in ipairs({"Book", "Horse"}) do\n'
+            '                local treasureItem = slotItem[key]\n'
+            '                if treasureItem and IdIsValid(treasureItem.Id) then',
+        ),
+    ])
+    patch_luac_text(src / "Equipment" / "EquipmentScene.luac", [
+        (
+            '    HttpRequest("Equip", ifLead and "EquipColorLeadUp" or "EquipStepUp", {entityId, materials[1].Id}, function(retVal)',
+            '''    local view = self._subview
+    local step = view and view.data and view.data.Step
+    local payload = {entityId, materials[1].Id}
+    if not ifLead then payload[3] = step end
+    HttpRequest("Equip", ifLead and "EquipColorLeadUp" or "EquipStepUp", payload, function(retVal)''',
+        ),
+        (
+            '''        local callfunc = function()
+            self._jinjieLayer:refreshData()
+            self._jinjieLayer.mEntityId = retVal.Value.EquipInfo.Id
+            self._jinjieLayer:createEquipment(self._shenqiId,true)
+        end
+
+        self._slotlist = Equip.getSlotList()
+
+        local tempObj = {}
+        local tempData = self._slotlist[soltId].dataset
+        for i ,v in pairs(tempData) do
+            if v.Id == retVal.Value.EquipInfo.Id then
+                tempObj = v
+                break
+            end
+        end
+
+        self._subview:handleRequest(tempObj,callfunc)''',
+            '''        local info = retVal.Value.EquipInfo
+        local callfunc
+        if soltId and self._jinjieLayer then
+            callfunc = function()
+                self._jinjieLayer:refreshData()
+                self._jinjieLayer.mEntityId = info.Id
+                self._jinjieLayer:createEquipment(self._shenqiId, true)
+            end
+        end
+
+        self._slotlist = Equip.getSlotList()
+        if view and self._subview == view then
+            view:handleRequest(Equip.newEquipment(clone(info)), callfunc)
+        end''',
+        ),
+    ])
+    patch_luac_text(src / "Equipment" / "NewArtifactLayer.luac", [
+        (
+            '''   local tempObj = {}
+   local tempData = self.mSlotlist[soltInfor.slotId].dataset
+   for i ,v in pairs(tempData) do
+       if v.Id == soltInfor.Id then
+           tempObj = v
+           break
+       end
+   end''',
+            '''   local tempObj
+   if equipmentEnum[index] == ResourcetypeSub.eBook or equipmentEnum[index] == ResourcetypeSub.eHorse then
+       tempObj = Equip.newTreasure(clone(NetworkResData:getTreasure(soltInfor.Id)))
+   else
+       tempObj = Equip.newEquipment(clone(NetworkResData:getEquipment(soltInfor.Id)))
+   end
+   if not tempObj then return end''',
+        ),
+    ])
+    patch_luac_text(src / "Common" / "Ctrl.luac", [
+        ('function Ctrl.newCountNode(params, player)\n',
+         'function Ctrl.newCountNode(params, player)\n'
+         '    local formatCount = params.exact and string.formatNumberThousands or NumberToBigUnit\n'),
+        ('text= NumberToBigUnit(item.value),', 'text= formatCount(item.value),'),
+        ('item.label:setString(NumberToBigUnit(to))', 'item.label:setString(formatCount(to))'),
+        ('item.label:setString(NumberToBigUnit(tween))', 'item.label:setString(formatCount(tween))'),
+        ('item.label:setString(NumberToBigUnit(value))', 'item.label:setString(formatCount(value))'),
+    ])
+    patch_luac_text(src / "Equipment" / "Module" / "EquipmentExtraLayer.luac", [
+        (
+            '    local tempString\n    local tempInfor = {',
+            '    local tempString\n    local active = tempObj:getStepRelation()[tempObj.Step]\n    local tempInfor = {',
+        ),
+        ('tostring(tempObj.AP + tempObj.APUP * tempObj.Lv)',
+         'tostring(tempObj.AP + tempObj.APUP * tempObj.Lv + active.AP)'),
+        ('tostring(tempObj.AP + tempObj.APUP * tempObj.Lv + tempInfor.AP)',
+         'tostring(tempObj.AP + tempObj.APUP * tempObj.Lv + active.AP + tempInfor.AP)'),
+        ('tostring(tempObj.HP+ tempObj.HPUP * tempObj.Lv)',
+         'tostring(tempObj.HP + tempObj.HPUP * tempObj.Lv + active.HP)'),
+        ('tostring(tempObj.HP + tempObj.HPUP * tempObj.Lv + tempInfor.HP)',
+         'tostring(tempObj.HP + tempObj.HPUP * tempObj.Lv + active.HP + tempInfor.HP)'),
+        ('tostring(tempObj.DEF+ tempObj.DEFUP * tempObj.Lv)',
+         'tostring(tempObj.DEF + tempObj.DEFUP * tempObj.Lv + active.DEF)'),
+        ('tostring(tempObj.DEF + tempObj.DEFUP * tempObj.Lv + tempInfor.DEF)',
+         'tostring(tempObj.DEF + tempObj.DEFUP * tempObj.Lv + active.DEF + tempInfor.DEF)'),
+        ('    --"本次可激活进阶大师"\n',
+         '    local tiers = equipObj:getStepRelation()\n'
+         '    local needLv = tiers[equipObj.Step].needLV\n'
+         '    local needsEnhancement = tiers[equipObj.Step + 1] and equipObj.Lv < needLv\n'),
+        ('text = TR("本次可激活进阶大师"),',
+         'text = needsEnhancement and string.format("Cần Cường Hóa Lv%d", needLv) or "Chỉ số của trang bị",'),
+        ('            value= gold_cost,\n', '            value= gold_cost,\n            exact= true,\n'),
+    ])
+    patch_luac_text(src / "NewXZYY" / "XzyyMainScene.luac", [
+        ('if self.mMaxThreeFloor < (self.mFloor + 10) then', 'if not self.mCanSweep then'),
+        ('if self.mMaxThreeFloor < (self.mFloor + 10) or not isOpen then',
+         'if not self.mCanSweep or not isOpen then'),
+        ('        self.mMaxThreeFloor = event.Value.Info.MaxThreeFloor\n        --层信息',
+         '        self.mCanSweep = event.Value.Info.CanSweep\n        --层信息'),
+        ('        self.mMaxThreeFloor = event.Value.Info.MaxThreeFloor\n        --层信息',
+         '        self.mCanSweep = event.Value.Info.CanSweep\n        --层信息'),
+        ('        self.mMaxThreeFloor = event.Value.Info.MaxThreeFloor\n        --层信息',
+         '        self.mCanSweep = event.Value.Info.CanSweep\n        --层信息'),
+        ('boxGetGameResourceList = event.Value.BoxGetGameResourceList, callBack',
+         'boxGetGameResourceList = event.Value.BoxGetGameResourceList, gainedStars = event.Value.SweepStarCount, callBack'),
+    ])
+    patch_luac_text(src / "NewXZYY" / "XzyyOneKeyLayer.luac", [
+        ('    self.mFloor = pargams.currentFloor', '    self.mFloor = pargams.currentFloor\n'
+         '    self.mGainedStars = pargams.gainedStars'),
+        ('#self.mRewardList * 3),', 'self.mGainedStars or #self.mRewardList * 3),'),
+    ])
+    patch_luac_text(src / "NewXZYY" / "XzyyPrepareFightLayer.luac", [
+        ('NodeId % 10, BddNodeModel.items[NodeId].name',
+         '(BddNodeModel.items[NodeId].floorModelID - 11) * 3 + NodeId % 10, BddNodeModel.items[NodeId].name'),
+    ])
+    patch_luac_text(src / "Adventure" / "BattleSettleLayer.luac", [
+        ('self.mXZYYData.Nandu, self.mFightResult.result, self.mFightResult.data, self.mFightResult.optional or {}',
+         'self.mXZYYData.Nandu, self.mFightResult.result == true, self.mFightResult.data or "", self.mFightResult.optional or {}'),
+        ('function BattleSettleLayer:responseXZYY(event)\n    LoadingWait:ends()\n    if event.Value and event.Value.IsSuccess == true then',
+         '''function BattleSettleLayer:responseXZYY(event)
+    LoadingWait:ends()
+    if not event or event.Status ~= 0 or not event.Value then
+        self:onClose()
+        return
+    end
+    if event.Value.IsSuccess == true then'''),
     ])
 
 

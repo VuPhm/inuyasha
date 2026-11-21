@@ -138,7 +138,7 @@ class R714DeltaTest(unittest.TestCase):
         value = reply["Value"]
         self.assertEqual(len(value["Catalogue"]), 51)
         self.assertEqual(len(self.profile.game_data["bdd"]["points"]), 153)
-        self.assertEqual(value["PlayableCount"], 6)
+        self.assertEqual(value["PlayableCount"], 18)
         self.assertTrue(value["Simulation"])
         self.assertEqual([item["Locked"] for item in value["NodeInfo"]], [False, True, True])
         self.assertEqual(self.bdd("GetFightInfo", 1311, 1)["Status"], -1716)
@@ -164,6 +164,7 @@ class R714DeltaTest(unittest.TestCase):
         self.profile._recalc_all_slots_and_fap()
         self.profile.save()
 
+    @patch("bdd_handlers.PLAYABLE_FLOORS", (11, 12))
     def test_bdd_real_loss_sealed_round_and_all_six_wins_with_reload(self):
         weak = self.bdd("GetFightInfo", 1111, 1)["Value"]
         bad = self.bdd("Fight", 1111, 1, True, "", {}, "wrong-token")

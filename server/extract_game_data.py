@@ -198,6 +198,9 @@ def main() -> None:
     player_lv = parse_simple_lua_items(os.path.join(cfg_dir, "PlayerLvRelation.lua"))
     hero_lv = parse_simple_lua_items(os.path.join(cfg_dir, "HeroLvRelation.lua"))
     hero_step = parse_simple_lua_items(os.path.join(cfg_dir, "HeroStepRelation.lua"))
+    hero_talents = parse_nested_lua_items(os.path.join(cfg_dir, "HeroTalRelation.lua"))
+    talent_models = parse_simple_lua_items(os.path.join(cfg_dir, "TalModel.lua"))
+    combat_buffs = parse_simple_lua_items(os.path.join(cfg_dir, "BuffModel.lua"))
     equips = parse_simple_lua_items(os.path.join(cfg_dir, "EquipModel.lua"))
     equip_color = parse_simple_lua_items(os.path.join(cfg_dir, "EquipColorRelation.lua"))
     equip_lv_up = parse_nested_lua_items(os.path.join(cfg_dir, "EquipLvUpuseRelation.lua"))
@@ -221,6 +224,7 @@ def main() -> None:
     attrtree_slots = parse_simple_lua_items(os.path.join(cfg_dir, "AttrtreeSlotRelation.lua"))
     attrtree = parse_array_lua_items(os.path.join(cfg_dir, "AttrtreeModel.lua"), id_key="ID")
     explore_base_awards = parse_simple_lua_items(os.path.join(cfg_dir, "ExploreBaseAwardsRelation.lua"))
+    explore_reset_use = parse_simple_lua_items(os.path.join(cfg_dir, "ExploreResetUseRelation.lua"))
     explore_reward_model = parse_simple_lua_items(os.path.join(cfg_dir, "ExploreRewardModel.lua"))
     explore_reward_nums = parse_array_lua_items(os.path.join(cfg_dir, "ExploreRewardNumsRelation.lua"), id_key="ID")
 
@@ -427,16 +431,22 @@ def main() -> None:
         "player_lv": player_lv,
         "hero_lv": hero_lv,
         "hero_step": hero_step,
+        "hero_talents": hero_talents,
+        "talent_models": talent_models,
+        "combat_buffs": combat_buffs,
         "heroes": heroes,
+        "hero_bonds": {
+            hero: [relations[order]["PRModelId"] for order in sorted(relations, key=int)]
+            for hero, relations in parse_nested_lua_items(os.path.join(cfg_dir, "HeroPrRelation.lua")).items()
+        },
+        "bonds": parse_simple_lua_items(os.path.join(cfg_dir, "PrModel.lua")),
         "attacks": attacks,
         "chapters": chapters,
         "nodes": nodes,
         "guide_npcs": guide_npcs,
         "equips": equips,
-        "equip_step_item_lv": {
-            model: {step: row["itemLv"] for step, row in steps.items() if "itemLv" in row}
-            for model, steps in parse_nested_lua_items(os.path.join(cfg_dir, "EquipStepRelation.lua")).items()
-        } if os.path.exists(os.path.join(cfg_dir, "EquipStepRelation.lua")) else {},
+        "equip_steps": parse_nested_lua_items(os.path.join(cfg_dir, "EquipStepRelation.lua"))
+        if os.path.exists(os.path.join(cfg_dir, "EquipStepRelation.lua")) else {},
         "equip_color": equip_color,
         "equip_lv_up": equip_lv_up,
         "equip_group": equip_group,
@@ -449,6 +459,7 @@ def main() -> None:
         "attrtree_slots": attrtree_slots,
         "attrtree": attrtree,
         "explore_base_awards": explore_base_awards,
+        "explore_reset_use": explore_reset_use,
         "explore_reward_model": explore_reward_model,
         "explore_reward_nums": explore_reward_nums,
         "nightmare_chapters": nightmare_chapters,

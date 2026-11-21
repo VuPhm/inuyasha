@@ -438,7 +438,8 @@ class EmulatorProtocolTest(unittest.TestCase):
 
         for nid in (1311, 1312, 1313, 1314, 1315, 1316, 1317, 1318):
             prof.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [13, nid, 1, True, "", False]})
-        prof.handle_rpc({"ModuleName": "Explore", "MethodName": "OneKeyExplore", "Data": []})
+        prof.state["player"].update(Vip=3, VIPLv=3)
+        self.assertEqual(prof.handle_rpc({"ModuleName": "Explore", "MethodName": "OneKeyExplore", "Data": []})["Status"], 0)
         self.assertGreaterEqual(prof.state["player"]["Lv"], 10)
 
     def test_09_battle_defeat_and_reward_idempotency_guards(self) -> None:
@@ -551,22 +552,25 @@ class EmulatorProtocolTest(unittest.TestCase):
         fap_4pc = prof.state["slots"][0]["FAP"]
         self.assertGreater(fap_4pc, fap_2pc)
 
-        # Explore: BuyExploreNum (-20 Diamond, +5 RemainNum) & DrawDailyReward (50/75/100) threshold + idempotency
+        # VN only offers a purchase at zero. The first purchase grants ten turns for 50 diamonds.
+        prof.state["player"].update(Vip=3, VIPLv=3)
+        prof.state["explore"]["RemainNum"] = 0
         exp_buy = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "BuyExploreNum", "Data": []})
         self.assertEqual(exp_buy["Status"], 0)
         self.assertEqual(exp_buy["Value"]["ResetNum"], 1)
-        self.assertEqual(prof.state["player"]["Diamond"], 116)
+        self.assertEqual(exp_buy["Value"]["RemainNum"], 10)
+        self.assertEqual(prof.state["player"]["Diamond"], 86)
 
         early_daily = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "DrawDailyReward", "Data": [50]})
-        self.assertEqual(early_daily["Status"], -1)
+        self.assertEqual(early_daily["Status"], -5104)
         while prof.state["explore"]["DailyNum"] < 50:
             if prof.state["explore"]["RemainNum"] <= 0:
                 prof.state["explore"]["RemainNum"] = 10
-            prof.handle_rpc({"ModuleName": "Explore", "MethodName": "OneKeyExplore", "Data": []})
+            self.assertEqual(prof.handle_rpc({"ModuleName": "Explore", "MethodName": "OneKeyExplore", "Data": []})["Status"], 0)
         ok_daily = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "DrawDailyReward", "Data": [50]})
         self.assertEqual(ok_daily["Status"], 0)
         dup_daily = prof.handle_rpc({"ModuleName": "Explore", "MethodName": "DrawDailyReward", "Data": [50]})
-        self.assertEqual(dup_daily["Status"], -1)
+        self.assertEqual(dup_daily["Status"], -7003)
 
     def test_11_isolated_save_reload_and_r3_trace_replay(self) -> None:
         # Ensure tests NEVER mutate real server/saves/* or server/rpc_trace.log

@@ -1102,7 +1102,7 @@ class EventHandlersMixin(R79EventHandlersMixin):
                             break
 
         if verified_hurt is None:
-            outcome = simulate_fight_info(fight_info, self.game_data["attacks"])
+            outcome = simulate_fight_info(fight_info, self.game_data["attacks"], buffs_cfg=self.game_data["combat_buffs"])
             last_wave = outcome.verify_data.get("hp", [[]])[-1]
             rem_hp = next((int(u["HP"]) for u in last_wave if int(u.get("PosId", 0)) == 8), boss_max_hp)
             verified_hurt = max(1000, boss_max_hp - rem_hp)

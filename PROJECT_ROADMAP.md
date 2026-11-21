@@ -1,10 +1,10 @@
 # Lộ Trình Phục Hồi Dự Án — InuYasha: Seek Jade (`VN 5.0.4.98`)
 
-**Bản đã nghiệm thu:** R7.14, APK standalone 827 | **Checkpoint:** `checkpoint-vn-r7.14` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
+**Bản S1 chính trên Pixel 3 XL:** R7.15.1, APK standalone 832 | **Đã nghiệm thu với save QA:** R7.16, APK standalone 834 | **Checkpoint:** `checkpoint-vn-r7.16` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
 
 ---
 
-## I. Hiện trạng Baseline Đã Đạt (`R1 – R7.14`)
+## I. Hiện trạng Baseline Đã Đạt (`R1 – R7.16`)
 
 | Mốc | Trạng thái | Thành phần đã khôi phục & kiểm chứng |
 | :--- | :---: | :--- |
@@ -22,6 +22,9 @@
 | **R7.12.2 (APK 824)** | **Đã nghiệm thu** | Đột Phá tiêu đúng nguyên liệu và đồng bộ Túi. Cài đè trên Pixel giữ đủ bốn save S1. [Nghiệm thu R7.12.2](R7_12_2_ACCEPTANCE_REPORT.md). |
 | **R7.13 (APK 825)** | **Đã nghiệm thu** | Shop Thần Bí, hợp thành đỏ, chiêu mộ 4417, thời trang và tiến trình theo kỳ. Cài đè giữ đủ bốn save S1 trên Pixel. [Nghiệm thu R7.13](R7_13_ACCEPTANCE_REPORT.md). |
 | **R7.14 (APK 827)** | **Đã nghiệm thu** | Đồng bộ sao Ngộ Đạo, xác minh giới hạn Hợp Thành VN, mở danh mục 51 ải Mộ Thần Binh và sáu trận mô phỏng. [Nghiệm thu R7.14](R7_14_ACCEPTANCE_REPORT.md). |
+| **R7.15 (APK 828)** | **QA backend** | Mở 18 ải Mộ Thần Binh, phục hồi Tiến Giai và hoàn tác trang bị. Kiểm kê 20 model Kim và các nguồn cấp. [Nghiệm thu R7.15](R7_15_ACCEPTANCE_REPORT.md). |
+| **R7.15.1 (APK 832)** | **Đã nghiệm thu** | Duyên Phận áp dụng vào trận, Đồng Đội lưu theo hồ sơ, Tiến Giai đúng giá và sao quét Mộ Thần Binh chính xác. 105/105 Python, 21/21 Lua. Cài đè giữ đủ bốn save S1 trên Pixel. [Báo cáo R7.15.1](R7_15_1_ACCEPTANCE_REPORT.md). |
+| **R7.16 (APK 834)** | **Đã nghiệm thu với save QA trên Pixel** | Lượt hồi Tầm Ngọc, tài năng tướng và tính Nộ theo Lua VN, đối chiếu quái ở chương đầu/giữa/cuối. 112/112 Python, 24/24 Lua. [Báo cáo R7.16](R7_16_ACCEPTANCE_REPORT.md). |
 
 ---
 
@@ -111,4 +114,7 @@ R7.6 triển khai theo hướng cân bằng — **không** dồn toàn bộ roun
 | **R7.12.2** *(Đã nghiệm thu)* | Đồng bộ đá sau Đột Phá và tiêu đúng nguyên liệu VN | 76/76 Python, 8/8 Lua. APK 824 cài đè giữ đủ bốn save S1 trên Pixel. [Báo cáo](R7_12_2_ACCEPTANCE_REPORT.md). |
 | **R7.13** *(Đã nghiệm thu)* | Đồng hồ Shop Thần Bí, hợp thành đỏ, phí 4417, chỉ số thời trang và nạp/tiêu theo kỳ | 86/86 Python, 9/9 Lua. Test the Delta và nâng cấp 824 → 825 trên Pixel. [Báo cáo](R7_13_ACCEPTANCE_REPORT.md). |
 | **R7.14A/B** *(Lát đầu đã nghiệm thu)* | Ngộ Đạo, giới hạn Hợp Thành và Mộ Thần Binh. Danh mục 51 ải, chơi sáu ải mô phỏng có thưởng và tiến trình S1. | 94/94 Python, 12/12 Lua. Giữ 45 ải còn lại khóa đến khi có nguồn đội hình/chỉ số gốc hoặc lát mô phỏng tiếp theo đã cân chỉnh. [Audit nguồn](R7_14_SOURCE_AUDIT.md). |
+| **R7.15** *(Lát hai đã nghiệm thu)* | 18 ải Mộ Thần Binh, Tiến Giai trang bị VN và quyền nhận thưởng theo kỷ lục. | 100/100 Python, 14/14 Lua. Giữ 33 ải ngoài lát khóa, tiếp tục tìm nguồn đội NPC gốc và nguồn cấp Kim. [Báo cáo](R7_15_ACCEPTANCE_REPORT.md). |
+| **R7.15.1** *(Đã nghiệm thu trên Pixel)* | Duyên Phận và Đồng Đội, Tiến Giai dấu +, quét và mở khóa Mộ Thần Binh. | 105/105 Python, 21/21 Lua. APK 832 cài đè 827 và bảo toàn save S1. [Báo cáo](R7_15_1_ACCEPTANCE_REPORT.md). |
+| **R7.16** *(Đã nghiệm thu trên Pixel)* | Tầm Ngọc đồng bộ theo backend, tài năng đột phá, đối chiếu Combat và quái theo chương. | APK 834 và `checkpoint-vn-r7.16`. Lát sau tiếp tục tìm roster gốc theo wave, buff có thời hạn, khống chế và hệ số FAP tài năng. [Báo cáo](R7_16_ACCEPTANCE_REPORT.md). |
 | **Round sau** | Guild cục bộ (`3400`), Co-op NPC (`Teambattle 2319`) | Mở rộng khi đã đối chiếu đủ cấu hình và luồng UI |

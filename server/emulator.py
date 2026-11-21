@@ -41,10 +41,10 @@ import uuid
 import zipfile
 import zlib
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from bdd_handlers import BddHandlersMixin
-from combat_sim import simulate_fight_info
+from combat_sim import MAX_RAGE, simulate_fight_info, supports_talent_buff
 from economy_audit import ResourceLedger
 from event_handlers import EventHandlersMixin
 from event_runtime import EventClock, EventRuntime, build_default_event_registry
@@ -395,8 +395,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             build_default_event_registry(self.game_data),
             self.state,
         )
-        if self.state.get("fashions"):
-            self._recalc_all_slots_and_fap()
+        self._recalc_all_slots_and_fap()
 
     def now_ts(self) -> int:
         return self.clock.now()
@@ -444,7 +443,8 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "ResetNum": 0,
             "MaxResetNum": 5,
             "DrawnNums": "",
-            "RecoverTime": int(time.time()) + int(ec.get("restoreFightNumDaily", 900)),
+            "RecoverTime": self.now_ts() + int(ec.get("restoreFightNumDaily", 900)),
+            "Day": self.clock.today_str(),
         }
 
     def _normalize_loaded_state(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -587,6 +587,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             h.setdefault("RebornStep", 0)
             h.setdefault("Lv", 1)
             h.setdefault("Step", 0)
+        data.setdefault("mates", {})
         for eq in data.get("equips", []):
             eq.setdefault("Step", 0)
             eq.setdefault("Lv", 0)
@@ -856,6 +857,21 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "FSP": int(rec.get("FSP", 0)),
         }
 
+    def _hero_talent_rows(self, model: int, step: int) -> list[dict[str, Any]]:
+        relations = self.game_data.get("hero_talents", {}).get(str(model), {})
+        attained = dict.fromkeys(row["TALModelID"] for rank, row in relations.items() if int(rank) <= step)
+        talents = self.game_data.get("talent_models", {})
+        return [talents[str(talent)] for talent in attained if str(talent) in talents]
+
+    @staticmethod
+    def _add_talent_attributes(stats: Counter[int], talents: list[dict[str, Any]], scope: int) -> None:
+        for row in talents:
+            if row["attrEffectRange"] != scope or not row["attrStr"]:
+                continue
+            for pair in row["attrStr"].split(","):
+                attr, amount = pair.split("|", 1)
+                stats[int(attr)] += int(amount)
+
     def _fashion_collection_stats(self) -> Counter[int]:
         # FashionAttributeLayer sums one copy per owned model, preferring its upgraded copy.
         owned_steps: dict[str, int] = {}
@@ -877,6 +893,8 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         slot: dict[str, Any],
         heroes_by_id: dict[str, dict[str, Any]],
         include_player_star: bool = True,
+        formation_models: set[int] | None = None,
+        team_talents: Counter[int] | None = None,
     ) -> dict[str, Any]:
         hero_id = slot.get("HeroId", EMPTY_ENTITY_ID)
         hero = heroes_by_id.get(hero_id)
@@ -894,10 +912,17 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         hero["HP"] = hero_hp
         hero["AP"] = hero_ap
         hero["DEF"] = hero_def
+        talent = Counter(team_talents or {})
+        self._add_talent_attributes(talent, self._hero_talent_rows(hero["HeroModelId"], step), scope=1)
+        bonds = self._active_bonds(slot, int(hero["HeroModelId"]), formation_models) if formation_models is not None else []
+        ap_rate = 10000 + talent[401] + sum(bond["APR"] for bond in bonds)
+        hp_rate = 10000 + talent[402] + sum(bond["HPR"] for bond in bonds)
+        def_rate = 10000 + talent[403] + sum(bond["DEFR"] for bond in bonds)
 
         eq_hp, eq_ap, eq_def, eq_fsp = 0, 0, 0, 0
         group_counts: dict[int, int] = {}
         equips_cfg = self.game_data.get("equips", {})
+        step_table = self.game_data["equip_steps"]
         for key in ("Weapon", "Helmet", "Clothes", "Necklace"):
             eq = slot.get(key)
             if eq and eq.get("EquipModelId"):
@@ -906,6 +931,10 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
                 eq_hp += int(m.get("HP", 0) + m.get("HPUP", 0) * elv)
                 eq_ap += int(m.get("AP", 0) + m.get("APUP", 0) * elv)
                 eq_def += int(m.get("DEF", 0) + m.get("DEFUP", 0) * elv)
+                stats = step_table.get(str(eq["EquipModelId"]), {}).get(str(eq.get("Step", 0)), {})
+                eq_hp += stats.get("HP", 0)
+                eq_ap += stats.get("AP", 0)
+                eq_def += stats.get("DEF", 0)
                 eq_fsp += int(m.get("FSP", 0))
                 gid = int(m.get("equipGroupID", 0))
                 if gid > 0:
@@ -990,6 +1019,13 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             ap1 += fashion[431]  # APADD
             hp1 += fashion[432]  # HPADD
             def1 += fashion[433]  # DEFADD
+        # The VN Property calculation has separate terms for the hero's rate and other flat stats.
+        ap_extra = ap1 - hero_ap + talent[202]
+        hp_extra = hp1 - hero_hp + talent[201]
+        def_extra = def1 - hero_def + talent[203]
+        ap1 = hero_ap * ap_rate // 10000 + ap_extra
+        hp1 = hero_hp * hp_rate // 10000 + hp_extra
+        def1 = hero_def * def_rate // 10000 + def_extra
         fsp = int(cfg.get("FSP", 500)) + step_attr["FSP"] + eq_fsp
         fap = int(hp1 + ap1 * 5 + def1 * 5)
 
@@ -1000,38 +1036,75 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "SPD": fsp,
             "FSP": fsp,
             "FAP": fap,
-            "AP1": ap1,
-            "APR1": 10000,
-            "AP2": 0,
+            "AP1": hero_ap,
+            "APR1": ap_rate,
+            "AP2": ap_extra,
             "APR2": 0,
             "APAdd": 0,
             "APHero": 0,
             "APHeroR": 0,
-            "DEF1": def1,
-            "DEFR1": 10000,
-            "DEF2": 0,
+            "DEF1": hero_def,
+            "DEFR1": def_rate,
+            "DEF2": def_extra,
             "DEFR2": 0,
             "DEFAdd": 0,
             "DEFHero": 0,
             "DEFHeroR": 0,
-            "HP1": hp1,
-            "HPR1": 10000,
-            "HP2": 0,
+            "HP1": hero_hp,
+            "HPR1": hp_rate,
+            "HP2": hp_extra,
             "HPR2": 0,
             "HPAdd": 0,
             "HPHero": 0,
             "HPHeroR": 0,
             "APToHPHeroR": 0,
-            "RP": int(cfg.get("RP", 50)),
-            "HIT": int(cfg.get("HIT", 10000)),
-            "DOD": int(cfg.get("DOD", 0)),
-            "CRI": int(cfg.get("CRI", 0)),
-            "TEN": int(cfg.get("TEN", 0)),
-            "BLO": int(cfg.get("BLO", 0)),
-            "BOG": int(cfg.get("BOG", 0)),
-            "CRId": int(cfg.get("CRID", 0)),
-            "TEND": int(cfg.get("TEND", 0)),
+            "RP": min(MAX_RAGE, int(cfg.get("RP", 50)) + talent[205]),
+            "HIT": int(cfg.get("HIT", 10000)) + talent[301],
+            "DOD": int(cfg.get("DOD", 0)) + talent[302],
+            "CRI": int(cfg.get("CRI", 0)) + talent[303],
+            "TEN": int(cfg.get("TEN", 0)) + talent[304],
+            "BLO": int(cfg.get("BLO", 0)) + talent[305],
+            "BOG": int(cfg.get("BOG", 0)) + talent[306],
+            "CRId": int(cfg.get("CRID", 0)) + talent[307],
+            "TEND": int(cfg.get("TEND", 0)) + talent[308],
+            "CP": talent[404], "BCP": talent[405], "CPR": talent[406], "BCPR": talent[407],
+            "DAMADD": talent[408], "DAMCUT": talent[409], "DAMADDR": talent[410], "DAMCUTR": talent[411],
+            "ActivePrIds": [bond["ID"] for bond in bonds],
         }
+
+    def _active_bonds(self, slot: dict[str, Any], hero_model: int, formation: set[int]) -> list[dict[str, Any]]:
+        equipped = {
+            item[model_key]
+            for keys, model_key in ((self.EQUIP_TYPE_TO_SLOT_KEY.values(), "EquipModelId"),
+                                    (("Book", "Horse"), "TreasureModelId"))
+            for key in keys
+            if (item := slot.get(key)) and item.get("Id") not in (None, "", EMPTY_ENTITY_ID) and item.get(model_key)
+        }
+        result = []
+        for bond_id in self.game_data.get("hero_bonds", {}).get(str(hero_model), ()):
+            bond = self.game_data["bonds"][str(bond_id)]
+            candidates = formation if bond["typeID"] == 1201 else equipped
+            groups = str(bond["member"]).split(",")
+            if all(any(int(model) in candidates for model in group.split("|")) for group in groups):
+                result.append(bond)
+        return result
+
+    def _mate_slot_unlocked(self, slot_id: int) -> bool:
+        row = self.game_data["attrtree_slots"].get(str(20 + slot_id))
+        return slot_id > 0 and bool(row and self.state["player"].get("StarId", 0) >= row["needAttrTreeID"])
+
+    def _mate_slot_info(self) -> list[dict[str, Any]]:
+        heroes = {hero["Id"]: hero["HeroModelId"] for hero in self.state["heroes"]}
+        mates = []
+        for number, hero_id in self.state.get("mates", {}).items():
+            slot_id = int(number)
+            if self._mate_slot_unlocked(slot_id) and hero_id in heroes:
+                mates.append({"SlotId": slot_id, "HeroId": hero_id, "HeroModelId": heroes[hero_id]})
+        return sorted(mates, key=lambda row: row["SlotId"])
+
+    def _deployed_hero_ids(self) -> set[str]:
+        return {slot["HeroId"] for slot in (*self.state["slots"], *self._mate_slot_info())
+                if slot.get("HeroId") not in (None, "", EMPTY_ENTITY_ID)}
 
     def _get_slot_star_bonuses(self, slot_id: int) -> dict[str, int]:
         """Compute cumulative AttrtreeModel HP/AP/DEF bonuses for a given battle slot."""
@@ -1089,9 +1162,18 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
 
     def _recalc_all_slots_and_fap(self) -> None:
         heroes_by_id = {h["Id"]: h for h in self.state["heroes"]}
+        formation = {heroes_by_id[hero_id]["HeroModelId"]
+                     for hero_id in self._deployed_hero_ids() if hero_id in heroes_by_id}
+        team_talents: Counter[int] = Counter()
+        for slot in self.state["slots"]:
+            hero = heroes_by_id.get(slot.get("HeroId"))
+            if hero:
+                self._add_talent_attributes(team_talents, self._hero_talent_rows(hero["HeroModelId"], hero["Step"]), scope=2)
         total_fap = 0
         for slot in self.state["slots"]:
-            slot["Property"] = self._compute_slot_property(slot, heroes_by_id)
+            slot["Property"] = self._compute_slot_property(
+                slot, heroes_by_id, formation_models=formation, team_talents=team_talents,
+            )
             slot["FAP"] = int(slot["Property"]["FAP"])
             if slot.get("HeroId") and slot["HeroId"] != EMPTY_ENTITY_ID:
                 total_fap += int(slot["Property"]["FAP"])
@@ -1554,11 +1636,12 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         if new_lv > old_lv:
             self.state["player"]["Lv"] = new_lv
             crit_num = int(self.game_data.get("explore_config", {}).get("critNum", 5))
-            exp_st = self.state.setdefault("explore", self._default_explore_state())
-            exp_st["RemainNum"] = min(
-                int(exp_st.get("MaxNum", 25)) + 50,
-                int(exp_st.get("RemainNum", 0)) + crit_num * (new_lv - old_lv),
-            )
+            exp_st = self._explore_snapshot()
+            if exp_st["RemainNum"] < exp_st["MaxNum"]:
+                exp_st["RemainNum"] = min(exp_st["MaxNum"], exp_st["RemainNum"] + crit_num * (new_lv - old_lv))
+            if exp_st["RemainNum"] >= exp_st["MaxNum"]:
+                exp_st["RecoverTime"] = 0
+            self.state["explore"] = exp_st
             for lv_step in range(old_lv + 1, new_lv + 1):
                 lv_row = self.game_data.get("player_lv", {}).get(str(lv_step), {})
                 bonus_tuples: list[tuple[int, int, int]] = []
@@ -1627,6 +1710,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         reborn_step: int = 0,
         override_stats: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        stats = override_stats or {}
         if override_stats:
             hp = int(override_stats["HP"] * hp_mult)
             ap = int(override_stats["AP"] * ap_mult)
@@ -1657,6 +1741,9 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             crid = int(cfg.get("CRID", 0))
             tend = int(cfg.get("TEND", 0))
 
+        buff_cfg = self.game_data.get("combat_buffs", {})
+        buff_ids = dict.fromkeys(buff for row in self._hero_talent_rows(cfg["ID"], step)
+                                 for buff in row["buffList"].split(",") if buff)
         return {
             "HP": hp,
             "TotalHp": hp,
@@ -1679,15 +1766,15 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "RaceId": cfg.get("raceID", 1),
             "FSP": fsp,
             "DAM": 0,
-            "CP": 0,
-            "BCP": 0,
-            "CPR": 0,
-            "BCPR": 0,
-            "DAMADD": 0,
-            "DAMCUT": 0,
-            "DAMADDR": 0,
-            "DAMCUTR": 0,
-            "BuffList": [],
+            "CP": stats.get("CP", 0),
+            "BCP": stats.get("BCP", 0),
+            "CPR": stats.get("CPR", 0),
+            "BCPR": stats.get("BCPR", 0),
+            "DAMADD": stats.get("DAMADD", 0),
+            "DAMCUT": stats.get("DAMCUT", 0),
+            "DAMADDR": stats.get("DAMADDR", 0),
+            "DAMCUTR": stats.get("DAMCUTR", 0),
+            "BuffList": ",".join(bid for bid in buff_ids if bid in buff_cfg and supports_talent_buff(buff_cfg[bid])),
             "IsBoss": is_boss,
             "BodyTypeR": 12500 if is_boss else 10000,
             "Step": step if self.profile_name == "normal" else max(1, step),
@@ -1762,6 +1849,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "Hero.HeroRefine": self._rpc_hero_refine,
             "Hero.HeroRebirth": self._rpc_hero_rebirth,
             "Slot.HeroCombat": self._rpc_slot_hero_combat,
+            "Slot.MateinfoCombat": self._rpc_slot_mate_combat,
             "Slot.OneKeyEquipCombat": self._rpc_slot_one_key_equip_combat,
             "Slot.SlotFormations": self._rpc_slot_formations,
             "SlotFormation.GetFormation": self._rpc_get_formation,
@@ -1770,6 +1858,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "Equip.EquipOneKeyCompose": self._rpc_equip_one_key_compose,
             "Equip.OneKeyEquipLvUp": self._rpc_one_key_equip_lv_up,
             "Equip.EquipLvUpForCount": self._rpc_equip_lv_up_for_count,
+            "Equip.EquipStepUp": self._rpc_equip_step_up,
             "Equip.EquipRefine": self._rpc_equip_refine,
             "Equip.EquipRebirth": self._rpc_equip_rebirth,
             "Treasure.TreasureRefine": self._rpc_treasure_refine,
@@ -1989,7 +2078,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         with self.ledger.capture_diamond_debits() as diamond_debits:
             value = fn(data) if fn else {}
         status = int(self._last_rpc_context.get("status", 0))
-        if status == 0:
+        if status == 0 and not self._last_rpc_context.get("spend_recorded"):
             actual_cost = max(diamond_debits.get(str(self.state["player"]["PlayerId"]), 0),
                               self._last_rpc_context.get("diamond_spent", 0))
             if actual_cost:
@@ -2135,7 +2224,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "EquipInfo": self.state.get("equips", []),
             "TreasureInfo": self.state.get("treasures", []),
             "SlotInfo": self.state["slots"],
-            "MateInfo": [],
+            "MateInfo": self._mate_slot_info(),
             "SlotFormationInfo": self.state["embattle"],
             "GoodsHeroDebrisInfo": hero_debris,
             "GoodsEquipDebrisInfo": equip_debris,
@@ -2145,7 +2234,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "SkillList": [],
             "ModulesInfo": modules,
             "StarSignInfo": [],
-            "XYCurCount": int(self.state.get("explore", {}).get("RemainNum", 15)),
+            "XYCurCount": self._explore_snapshot()["RemainNum"],
             "FashionInfo": self.state.get("fashions", []),
             "GemInfo": [],
             "PetInfo": [],
@@ -2175,7 +2264,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         )
         if after != before or new_trig != old_trig:
             self.save()
-        return dict(p)
+        return {**p, "XYCurCount": self._explore_snapshot()["RemainNum"]}
 
     STEP_REWARD_MAP: dict[int, list[tuple[int, int, int]]] = {
         76001: [(1304, 13040130, 5)],   # 5 white necklaces if not dropped in 1-3 (BattleLayer.lua:2812)
@@ -2226,6 +2315,40 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         stats = self.state.setdefault("stats", dict(DEFAULT_PLAYER_STATS))
         stats[key] = int(stats.get(key, 0)) + int(delta)
         return int(stats[key])
+
+    def _reject_resource_change(self, status: int) -> dict[str, Any]:
+        self._last_rpc_context["status"] = status
+        return {}
+
+    def _commit_resource_change(self, apply: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+        """Commit the save before publishing ledger entries."""
+        before = copy.deepcopy(self.state)
+        context = self._last_rpc_context.copy()
+        ledger = self.ledger
+        staged = ResourceLedger(vip_model=ledger.vip_model)
+        self.ledger = staged
+        try:
+            result = apply()
+            self.save()
+        except Exception as exc:
+            self.state.clear()
+            self.state.update(before)
+            self._last_rpc_context = context
+            if not isinstance(exc, OSError):
+                raise
+            logging.exception("Could not save resource transaction")
+            return self._reject_resource_change(-7)
+        finally:
+            self.ledger = ledger
+        try:
+            for entry in staged.list_transactions():
+                ledger.record_grant_event(**{key: entry[key] for key in (
+                    "account_id", "profile", "resource_type", "amount", "balance_after",
+                    "source", "idempotency_key", "actor", "metadata",
+                )})
+        except OSError:
+            logging.exception("Could not audit committed resource transaction")
+        return result
 
     def _consume_goods(self, goods_model_id: int, count: int) -> bool:
         """Atomically verify and deduct count units of goods_model_id from bag."""
@@ -2480,6 +2603,8 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         if not target_slot:
             self._last_rpc_context["status"] = -1
             return {}
+        if hero_id != target_slot["HeroId"] and hero_id in self._deployed_hero_ids():
+            return self._reject_resource_change(-1206)
 
         if hero_id == EMPTY_ENTITY_ID:
             target_slot["HeroId"] = EMPTY_ENTITY_ID
@@ -2496,6 +2621,36 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         self._last_rpc_context["slots_changed"] = True
         self.save()
         return {"SlotInfo": self.state["slots"]}
+
+    def _rpc_slot_mate_combat(self, data: Any) -> dict[str, Any]:
+        if (not isinstance(data, list) or len(data) != 2
+                or type(data[0]) is not int or not isinstance(data[1], str)):
+            return self._reject_resource_change(-48)
+        slot_id, hero_id = data
+        if not self._mate_slot_unlocked(slot_id):
+            return self._reject_resource_change(-1127)
+
+        mates = self.state["mates"]
+        key = str(slot_id)
+        selected = {"SlotId": slot_id, "HeroId": EMPTY_ENTITY_ID, "HeroModelId": 0}
+        if hero_id not in ("", EMPTY_ENTITY_ID):
+            hero = next((hero for hero in self.state["heroes"] if hero["Id"] == hero_id), None)
+            if not hero:
+                return self._reject_resource_change(-1201)
+            if mates.get(key) != hero_id and hero_id in self._deployed_hero_ids():
+                return self._reject_resource_change(-1206)
+            selected.update(HeroId=hero_id, HeroModelId=hero["HeroModelId"])
+
+        def change_mate():
+            if selected["HeroModelId"]:
+                mates[key] = hero_id
+            else:
+                mates.pop(key, None)
+            self._recalc_all_slots_and_fap()
+            self._last_rpc_context["slots_changed"] = True
+            return {"MateInfo": [selected]}
+
+        return self._commit_resource_change(change_mate)
 
     def _rpc_slot_one_key_equip_combat(self, data: Any) -> dict[str, Any]:
         if not isinstance(data, list) or len(data) < 7:
@@ -2519,7 +2674,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
                 eq = equips_by_id[eid]
                 # Unequip from any other slot first
                 for other in self.state["slots"]:
-                    if other.get(skey, {}).get("Id") == eid:
+                    if (other.get(skey) or {}).get("Id") == eid:
                         other.pop(skey, None)
                 target_slot[skey] = {
                     "Id": eq["Id"],
@@ -2575,7 +2730,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             },
             "SlotInfo": self.state["slots"],
             "SlotInfos": slot_infos,
-            "MateInfos": [],
+            "MateInfos": self._mate_slot_info(),
             "SlotFormationInfo": self.state["embattle"],
             "SkillInfos": [],
             "CombatPet": None,
@@ -2779,9 +2934,10 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         clv = str(equips_cfg.get(str(eq["EquipModelId"]), {}).get("colorLV", 1))
         costs = lv_up_tbl.get(clv, {})
         cur_lv = int(eq.get("Lv", 0))
-        if cur_lv >= target_max_lv:
+        row = costs.get(str(cur_lv))
+        if cur_lv >= target_max_lv or (clv == "8" and not row):
             return False
-        cost = int(costs.get(str(cur_lv), {}).get("lvUpUseNum", 0))
+        cost = int((row or {}).get("lvUpUseNum", 0))
         if int(self.state["player"]["Gold"]) < cost:
             return False
         if cost > 0:
@@ -2802,7 +2958,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         equips_by_id = {e["Id"]: e for e in self.state.get("equips", [])}
         for slot in self.state["slots"]:
             for key in ("Weapon", "Helmet", "Clothes", "Necklace"):
-                if slot.get(key, {}).get("Id") in equips_by_id:
+                if (slot.get(key) or {}).get("Id") in equips_by_id:
                     eq = equips_by_id[slot[key]["Id"]]
                     slot[key]["Lv"] = eq["Lv"]
                     slot[key]["Step"] = int(eq.get("Step", 0))
@@ -2813,15 +2969,19 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         equips_by_id = {e["Id"]: e for e in self.state.get("equips", [])}
         max_eq_lv = int(self.state["player"]["Lv"]) * 2
         updated: list[dict[str, Any]] = []
+        missing_cost = False
         for eid in equip_ids:
             eq = equips_by_id.get(str(eid))
             if not eq:
                 continue
-            upgraded = False
+            if not self._has_equip_enhancement_cost(eq):
+                missing_cost = True
+                continue
             while self._level_up_equip(eq, max_eq_lv):
-                upgraded = True
-            if upgraded or eq["Id"] in equips_by_id:
-                updated.append(eq)
+                pass
+            updated.append(eq)
+        if not updated and missing_cost:
+            return self._reject_resource_change(-1331)
         self._sync_slot_equips()
         self._last_rpc_context["slots_changed"] = True
         self.save()
@@ -2834,6 +2994,8 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         if not eq:
             self._last_rpc_context["status"] = -1
             return {}
+        if not self._has_equip_enhancement_cost(eq):
+            return self._reject_resource_change(-1331)
         max_eq_lv = int(self.state["player"]["Lv"]) * 2
         lv_up_list: list[int] = []
         for _ in range(max(1, count)):
@@ -2844,6 +3006,74 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         self._last_rpc_context["slots_changed"] = True
         self.save()
         return {"EquipInfo": eq, "LvUpList": lv_up_list}
+
+    def _has_equip_enhancement_cost(self, equip: dict[str, Any]) -> bool:
+        color = str(self.game_data["equips"][str(equip["EquipModelId"])]["colorLV"])
+        return color != "8" or str(equip["Lv"]) in self.game_data["equip_lv_up"].get(color, {})
+
+    def _equipped_item_ids(self) -> set[str]:
+        return {slot[key]["Id"] for slot in self.state["slots"]
+                for key in self.EQUIP_TYPE_TO_SLOT_KEY.values() if (slot.get(key) or {}).get("Id")}
+
+    def _rpc_equip_step_up(self, data: Any) -> dict[str, Any]:
+        if (not isinstance(data, list) or len(data) not in (2, 3)
+                or any(type(eid) is not str for eid in data[:2])):
+            return self._reject_resource_change(-1316)
+        equip_id, material_id = data[:2]
+        if equip_id == material_id:
+            return self._reject_resource_change(-1316)
+        if self.state["player"]["Lv"] < self.game_data["module_subs"]["1403"]["openLv"]:
+            return self._reject_resource_change(-1127)
+        inventory = {item["Id"]: item for item in self.state["equips"]}
+        equip, material = inventory.get(equip_id), inventory.get(material_id)
+        if not equip:
+            return self._reject_resource_change(-1301)
+        model = str(equip["EquipModelId"])
+        step = int(equip["Step"])
+        if len(data) == 3:
+            if type(data[2]) is not int:
+                return self._reject_resource_change(-1316)
+            if data[2] != step:
+                return self._reject_resource_change(-39)
+        steps = self.game_data["equip_steps"].get(model, {})
+        row = steps.get(str(step))
+        if not row:
+            return self._reject_resource_change(-1312)
+        if str(step + 1) not in steps:
+            return self._reject_resource_change(-1313)
+        if not material:
+            return self._reject_resource_change(-1315)
+        if equip["Lv"] < row["needLV"]:
+            return self._reject_resource_change(-1314)
+        if material_id in self._equipped_item_ids():
+            return self._reject_resource_change(-1304)
+        if material.get("Step", 0):
+            return self._reject_resource_change(-1324)
+        config = self.game_data["equips"]
+        target, ingredient = config[model], config[str(material["EquipModelId"])]
+        if target["typeID"] != ingredient["typeID"]:
+            return self._reject_resource_change(-1326)
+        if target["colorLV"] != ingredient["colorLV"]:
+            return self._reject_resource_change(-1315)
+        cost = row["stepUpUseNum"]
+        player = self.state["player"]
+        if int(player["Gold"]) < cost:
+            return self._reject_resource_change(-1118)
+
+        def advance():
+            self.ledger.apply_player_delta(player, self.profile_name, "Gold", -cost, source="equip_step")
+            self.state["equips"].remove(material)
+            equip["Step"] += 1
+            equip.setdefault("StepMaterials", []).append({"ModelId": material["EquipModelId"], "Gold": cost})
+            refund = [(1112, 0, int(material.get("Gold", 0)))]
+            output = self._grant_resources_from_tuples(
+                refund, "equip_step_material", f"equip_step:{self.profile_name}:{material_id}",
+            ) if refund[0][2] > 0 else []
+            self._sync_slot_equips()
+            self._last_rpc_context["slots_changed"] = True
+            return {"EquipInfo": copy.deepcopy(equip), "BaseGetGameResourceList": output}
+
+        return self._commit_resource_change(advance)
 
     def _rpc_get_battle_info(self, _data: Any) -> dict[str, Any]:
         return {
@@ -3044,8 +3274,8 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
                 {
                     "Heros": allies + enemies,
                     "TeamData": [
-                        {"Fsp": 2000, "Fap": self.state["player"]["FAP"]},
-                        {"Fsp": 1200, "Fap": enemy_fap},
+                        {"Fsp": sum(unit.get("FSP", 0) for unit in allies), "Fap": self.state["player"]["FAP"]},
+                        {"Fsp": sum(unit.get("FSP", 0) for unit in enemies), "Fap": enemy_fap},
                     ],
                     "Pets": [],
                     "RandNum": base_seed + w_idx,
@@ -3529,7 +3759,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             return reject(-1802)
 
         slots = self.state["slots"]
-        deployed = {slot.get("HeroId") for slot in slots}
+        deployed = self._deployed_hero_ids()
         equipped = {slot.get(key, {}).get("Id") for slot in slots for key in ("Book", "Horse")}
         treasures = {t["Id"]: t for t in self.state["treasures"]}
         submitted: Counter[tuple[int, int]] = Counter()
@@ -3589,22 +3819,54 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         self._last_rpc_context["slots_changed"] = True
         return hero
 
+    def _explore_snapshot(self) -> dict[str, Any]:
+        """Evaluate the timer and VN day without consuming or granting anything."""
+        state = self._default_explore_state() | self.state["explore"]
+        now = self.now_ts()
+        today = self.clock.today_str(now)
+        day = state.get("Day") or today
+        if day < today:
+            state.update(Day=today, DailyNum=0, ResetNum=0, DrawnNums="")
+        else:
+            state["Day"] = day
+        cfg = self.game_data["explore_config"]
+        row = self.game_data["attrtree"].get(str(self.state["player"].get("StarId", 0)), {})
+        cap = int(cfg["fightNumMax"]) + int(row.get("xunyuAddNum", 0))
+        remain = max(0, int(state.get("RemainNum", cfg["fightNumStart"])))
+        next_time = int(state.get("RecoverTime", 0))
+        interval = int(cfg["restoreFightNumDaily"])
+        if remain < cap:
+            if next_time <= 0 or next_time > now + interval:
+                next_time = now + interval
+            elif next_time <= now:
+                recovered = min(cap - remain, 1 + (now - next_time) // interval)
+                remain += recovered
+                next_time += recovered * interval
+        state.update(RemainNum=remain, MaxNum=cap, RecoverTime=next_time if remain < cap else 0)
+        return state
+
     def _explore_payload(self) -> dict[str, Any]:
-        exp_st = self.state.setdefault("explore", self._default_explore_state())
+        exp_st = self.state["explore"]
         vip_lv = int(self.state.get("player", {}).get("VIPLv", self.state.get("player", {}).get("Vip", 0)))
         vip_cfg = self.game_data.get("vip_model", {}).get(str(vip_lv), {})
-        max_reset = max(1, int(vip_cfg.get("exploreMaxNum", 1)))
         return {
-            "RecoverTime": int(exp_st.get("RecoverTime", int(time.time()) + 900)),
+            "RecoverTime": exp_st["RecoverTime"],
             "ResetNum": int(exp_st.get("ResetNum", 0)),
-            "MaxResetNum": max_reset,
-            "RemainNum": int(exp_st.get("RemainNum", 15)),
-            "MaxNum": int(exp_st.get("MaxNum", 25)),
+            "MaxResetNum": int(vip_cfg.get("exploreMaxNum", 0)),
+            "RemainNum": exp_st["RemainNum"],
+            "MaxNum": exp_st["MaxNum"],
             "DailyNum": int(exp_st.get("DailyNum", 0)),
             "DrawnNums": str(exp_st.get("DrawnNums", "")),
         }
 
     def _rpc_explore_get_info(self, _data: Any) -> dict[str, Any]:
+        snapshot = self._explore_snapshot()
+        self._last_rpc_context["explore_changed"] = True
+        if snapshot != self.state["explore"]:
+            def sync():
+                self.state["explore"] = snapshot
+                return self._explore_payload()
+            return self._commit_resource_change(sync)
         return self._explore_payload()
 
     def _do_explore_once(self) -> tuple[int, int, list[tuple[int, int, int]]]:
@@ -3638,85 +3900,96 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         return reward_id, drop_text_id, tuples
 
     def _rpc_explore_run(self, _data: Any) -> dict[str, Any]:
-        exp_st = self.state.setdefault("explore", self._default_explore_state())
-        if int(exp_st.get("RemainNum", 0)) <= 0:
-            self._last_rpc_context["status"] = -1
-            return {}
-        reward_id, drop_text_id, tuples = self._do_explore_once()
-        base_res = self._grant_resources_from_tuples(
-            tuples,
-            source="explore",
-            tx_prefix=f"explore:{self.profile_name}:{uuid.uuid4()}",
-        )
-        old_lv, new_lv = self._sync_level_from_exp()
-        if new_lv != old_lv:
-            self._last_rpc_context["lv_changed"] = True
-            self._last_rpc_context["slots_changed"] = True
-        self.save()
-        out = self._explore_payload()
-        out.update({"RewardModelId": reward_id, "DropTextId": drop_text_id, "BaseGetGameResourceList": base_res})
-        return out
+        return self._run_explore(1, "explore")
 
     def _rpc_explore_one_key(self, _data: Any) -> dict[str, Any]:
-        exp_st = self.state.setdefault("explore", self._default_explore_state())
-        rem = int(exp_st.get("RemainNum", 0))
-        if rem <= 0:
-            self._last_rpc_context["status"] = -1
-            return {}
-        count = min(rem, 10)
-        totals: dict[tuple[int, int], int] = {}
-        last_rid = 1
-        last_did = 3
-        for _ in range(count):
-            last_rid, last_did, ts = self._do_explore_once()
-            for rtype, rmodel, rnum in ts:
-                totals[(rtype, rmodel)] = totals.get((rtype, rmodel), 0) + rnum
-        merged = [(k[0], k[1], v) for k, v in totals.items() if v > 0]
-        base_res = self._grant_resources_from_tuples(
-            merged,
-            source="explore_one_key",
-            tx_prefix=f"explore1k:{self.profile_name}:{uuid.uuid4()}",
-        )
-        old_lv, new_lv = self._sync_level_from_exp()
-        if new_lv != old_lv:
-            self._last_rpc_context["lv_changed"] = True
-            self._last_rpc_context["slots_changed"] = True
-        self.save()
-        out = self._explore_payload()
-        out.update({"RewardModelId": last_rid, "DropTextId": last_did, "BaseGetGameResourceList": base_res})
-        return out
+        if self.state["player"]["Vip"] < self.game_data["module_subs"]["5201"]["advancedOpenVIPLv"]:
+            return self._reject_resource_change(-5004)
+        return self._run_explore(10, "explore_one_key")
+
+    def _run_explore(self, requested: int, source: str) -> dict[str, Any]:
+        snapshot = self._explore_snapshot()
+        count = min(snapshot["RemainNum"], requested)
+        if count <= 0:
+            return self._reject_resource_change(-5101)
+
+        def explore():
+            self.state["explore"] = snapshot
+            totals: dict[tuple[int, int], int] = {}
+            for _ in range(count):
+                reward, drop, drops = self._do_explore_once()
+                for rtype, rmodel, num in drops:
+                    totals[(rtype, rmodel)] = totals.get((rtype, rmodel), 0) + num
+            if snapshot["RemainNum"] < snapshot["MaxNum"] and not snapshot["RecoverTime"]:
+                snapshot["RecoverTime"] = self.now_ts() + int(self.game_data["explore_config"]["restoreFightNumDaily"])
+            base_res = self._grant_resources_from_tuples(
+                [(rtype, model, num) for (rtype, model), num in totals.items() if num > 0],
+                source=source, tx_prefix=f"{source}:{self.profile_name}:{uuid.uuid4()}",
+            )
+            old_lv, new_lv = self._sync_level_from_exp()
+            if old_lv != new_lv:
+                self._last_rpc_context.update(lv_changed=True, slots_changed=True)
+            self._last_rpc_context["explore_changed"] = True
+            return {**self._explore_payload(), "RewardModelId": reward, "DropTextId": drop,
+                    "BaseGetGameResourceList": base_res}
+
+        return self._commit_resource_change(explore)
 
     def _rpc_explore_buy(self, _data: Any) -> dict[str, Any]:
-        exp_st = self.state.setdefault("explore", self._default_explore_state())
-        max_reset = self._explore_payload()["MaxResetNum"]
-        if int(exp_st.get("ResetNum", 0)) >= max_reset or int(self.state["player"]["Diamond"]) < 20:
-            self._last_rpc_context["status"] = -1
-            return {}
-        self.ledger.apply_player_delta(self.state["player"], self.profile_name, "Diamond", -20, source="explore_buy")
-        exp_st["ResetNum"] = int(exp_st.get("ResetNum", 0)) + 1
-        exp_st["RemainNum"] = int(exp_st.get("RemainNum", 0)) + 5
-        self.save()
-        return self._explore_payload()
+        snapshot = self._explore_snapshot()
+        player = self.state["player"]
+        max_reset = int(self.game_data["vip_model"][str(player["Vip"])]["exploreMaxNum"])
+        if snapshot["RemainNum"] > 0:
+            return self._reject_resource_change(-5103)
+        if snapshot["ResetNum"] >= max_reset:
+            return self._reject_resource_change(-5102)
+        offers = self.game_data["explore_reset_use"]
+        row = offers[str(min(snapshot["ResetNum"] + 1, len(offers)))]
+        cost = row["useDiamond"]
+        if player["Diamond"] < cost:
+            return self._reject_resource_change(-1105)
+
+        def buy():
+            self.state["explore"] = snapshot
+            self.ledger.apply_player_delta(player, self.profile_name, "Diamond", -cost, source="explore_buy")
+            snapshot["ResetNum"] += 1
+            snapshot["RemainNum"] += row["buyNum"]
+            self._record_period_economy(spent=cost)
+            self._inc_stat("spent_diamonds", cost)
+            self._record_daily_task_progress(23, cost)
+            self._last_rpc_context.update(explore_changed=True, spend_recorded=True)
+            return self._explore_payload()
+
+        return self._commit_resource_change(buy)
 
     def _rpc_explore_draw_daily(self, data: Any) -> dict[str, Any]:
-        num = int(data[0]) if isinstance(data, list) and data else 50
-        exp_st = self.state.setdefault("explore", self._default_explore_state())
-        drawn = [x for x in str(exp_st.get("DrawnNums", "")).split(",") if x]
+        if not isinstance(data, list) or len(data) != 1 or type(data[0]) is not int:
+            return self._reject_resource_change(-48)
+        num = data[0]
+        snapshot = self._explore_snapshot()
+        drawn = [x for x in str(snapshot.get("DrawnNums", "")).split(",") if x]
         row = self.game_data.get("explore_reward_nums", {}).get(str(num))
-        if not row or int(exp_st.get("DailyNum", 0)) < num or str(num) in drawn:
-            self._last_rpc_context["status"] = -1
+        if not row:
+            return self._reject_resource_change(-48)
+        if snapshot["DailyNum"] < num:
+            return self._reject_resource_change(-5104)
+        if str(num) in drawn:
+            return self._reject_resource_change(-7003)
+        rewards = _parse_resource_str(str(row["rewards"]))
+        if not self._can_receive_goods_outputs(rewards):
             return {}
-        drawn.append(str(num))
-        exp_st["DrawnNums"] = ",".join(drawn)
-        base_res = self._grant_resources_from_tuples(
-            _parse_resource_str(str(row.get("rewards", ""))),
-            source=f"explore_daily:{num}",
-            tx_prefix=f"explore_daily:{self.profile_name}:{self.state['player']['PlayerId']}:{num}",
-        )
-        self.save()
-        out = self._explore_payload()
-        out["BaseGetGameResourceList"] = base_res
-        return out
+
+        def draw():
+            self.state["explore"] = snapshot
+            snapshot["DrawnNums"] = ",".join((*drawn, str(num)))
+            base_res = self._grant_resources_from_tuples(
+                rewards, source=f"explore_daily:{num}",
+                tx_prefix=f"explore_daily:{self.profile_name}:{self.state['player']['PlayerId']}:{snapshot['Day']}:{num}",
+            )
+            self._last_rpc_context["explore_changed"] = True
+            return {**self._explore_payload(), "BaseGetGameResourceList": base_res}
+
+        return self._commit_resource_change(draw)
 
     def _available_lighten_stars(self, star_id: int) -> int:
         tree = self.game_data["attrtree"]
@@ -3774,15 +4047,16 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             return {}
 
         before = copy.deepcopy(self.state)
+        # VN stores the cumulative exploration bonus, so only grant the change.
+        delta = int(tree[str(current)]["xunyuAddNum"]) - int(tree[str(original)]["xunyuAddNum"])
         try:
+            if delta > 0:
+                explore = self._explore_snapshot()
+                explore["MaxNum"] += delta
+                explore["RemainNum"] += delta
+                self.state["explore"] = explore
             player["StarId"] = current
             player["Gold"] = gold
-            # VN stores the cumulative exploration bonus, so only grant the change.
-            delta = int(tree[str(current)]["xunyuAddNum"]) - int(tree[str(original)]["xunyuAddNum"])
-            if delta > 0:
-                explore = self.state.setdefault("explore", self._default_explore_state())
-                explore["MaxNum"] = int(explore["MaxNum"]) + delta
-                explore["RemainNum"] = int(explore["RemainNum"]) + delta
             self._inc_stat("lighten_star_count", current - original)
             self._record_daily_task_progress(4, current - original)
             self._recalc_all_slots_and_fap()
@@ -5163,7 +5437,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             15: sum(int(h.get("Lv", 1)) for h, _ in deployed_heroes),
             16: int(stats.get("mystery_refresh", 0)),
             17: int(stats.get("boss_fights", 0)),
-            18: sum(int(ch.get("StarCount", 0)) for ch in chapters.values()),
+            18: int(self.state.get("bdd", {}).get("max_stars", 0)),
             22: int(stats.get("daydayfund_count", 0)),
             23: int(stats.get("sta_pills_used", 0)),
             24: int(stats.get("vit_pills_used", 0)),
@@ -5194,11 +5468,11 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         c1 = int(row.get("completeCondition1", 0))
         c2 = int(row.get("completeCondition2", 0))
         if tid == 19:
-            step_item_lv = self.game_data.get("equip_step_item_lv", {})
+            equip_steps = self.game_data["equip_steps"]
             qualifying = {
                 eq["Id"] for eq, cfg in equipped_equips
                 if int(cfg.get("itemLv", 0))
-                + step_item_lv.get(str(eq["EquipModelId"]), {}).get(str(eq.get("Step", 0)), 0) >= c1
+                + equip_steps.get(str(eq["EquipModelId"]), {}).get(str(eq.get("Step", 0)), {}).get("itemLv", 0) >= c1
             }
             count = min(4, len(qualifying))
             return count == 4, count
@@ -5685,7 +5959,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
                 fight_info = pending["fight_info"]
             else:
                 fight_info = self._build_boss_fight_info(boss, is_full)
-            outcome = simulate_fight_info(fight_info, self.game_data["attacks"])
+            outcome = simulate_fight_info(fight_info, self.game_data["attacks"], buffs_cfg=self.game_data["combat_buffs"])
             last_wave = outcome.verify_data.get("hp", [[]])[-1]
             sim_boss_hp = next((int(u["HP"]) for u in last_wave if int(u.get("PosId", 0)) == 8), old_hp)
         else:
@@ -6307,7 +6581,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         }
 
         self.ledger.apply_player_delta(p, self.profile_name, "STA", -sta_cost, source=f"pvp_sta:{target_rank}")
-        outcome = simulate_fight_info(fight_info, self.game_data["attacks"])
+        outcome = simulate_fight_info(fight_info, self.game_data["attacks"], buffs_cfg=self.game_data["combat_buffs"])
         is_win = 1 if outcome.won else 0
         self._inc_stat("pvp_fights", 1)
         self._record_daily_task_progress(5, 1)
@@ -6721,11 +6995,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         if not req_ids:
             self._last_rpc_context["status"] = -1
             return {}
-        deployed_ids = {
-            str(s.get("HeroId"))
-            for s in self.state.get("slots", [])
-            if int(s.get("HeroModelId", 0)) > 0 and s.get("HeroId")
-        }
+        deployed_ids = self._deployed_hero_ids()
         heroes_by_id = {str(h["Id"]): h for h in self.state.get("heroes", [])}
         heroes_cfg = self.game_data.get("heroes", {})
         targets: list[dict[str, Any]] = []
@@ -7027,11 +7297,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
     def _rpc_hero_rebirth(self, data: Any) -> dict[str, Any]:
         """Reset non-deployed upgraded Hero back to Lv 1 Step 0 and refund HeroEXP, Gold, Stones, and dupes."""
         hero_id = self._rebirth_target_id(data)
-        deployed_ids = {
-            str(s.get("HeroId"))
-            for s in self.state.get("slots", [])
-            if int(s.get("HeroModelId", 0)) > 0 and s.get("HeroId")
-        }
+        deployed_ids = self._deployed_hero_ids()
         hero = next((h for h in self.state.get("heroes", []) if str(h.get("Id")) == hero_id), None)
         if not hero or hero_id in deployed_ids:
             self._last_rpc_context["status"] = -1
@@ -7109,62 +7375,53 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         return {"HeroInfo": copy.deepcopy(hero), "BaseGetGameResourceList": base_res}
 
     def _rpc_equip_rebirth(self, data: Any) -> dict[str, Any]:
-        """Reset unequipped Equip back to Lv 0 Step 0 and refund all invested Gold."""
+        """Reset unequipped gear and return its enhancement and recorded step costs."""
         equip_id = self._rebirth_target_id(data)
-        equipped_ids = {
-            slot[k]["Id"]
-            for slot in self.state.get("slots", [])
-            for k in ("Weapon", "Helmet", "Clothes", "Necklace")
-            if isinstance(slot.get(k), dict) and slot[k].get("Id")
-        }
         eq = next((e for e in self.state.get("equips", []) if str(e.get("Id")) == equip_id), None)
-        if not eq or equip_id in equipped_ids:
-            self._last_rpc_context["status"] = -1
-            return {}
+        if not eq:
+            return self._reject_resource_change(-1301)
+        if equip_id in self._equipped_item_ids():
+            return self._reject_resource_change(-1304)
 
         cur_lv = int(eq.get("Lv", 0))
         cur_step = int(eq.get("Step", 0))
         if cur_lv <= 0 and cur_step <= 0:
-            self._last_rpc_context["status"] = -1
-            return {}
+            return self._reject_resource_change(-1308)
 
         cfg = self.game_data.get("equips", {}).get(str(eq["EquipModelId"]), {})
         quality = str(int(cfg.get("quality", 30)))
         rb_tbl = self.game_data.get("equip_rebirth", {}).get(quality, {})
-        dia_cost = int(rb_tbl.get(str(cur_step), {}).get("useDiamond", 0))
-        if int(self.state["player"].get("Diamond", 0)) < dia_cost:
-            self._last_rpc_context["status"] = -1
-            return {}
-        if dia_cost > 0:
-            self.ledger.apply_player_delta(
-                self.state["player"],
-                self.profile_name,
-                "Diamond",
-                -dia_cost,
-                source=f"equip_rebirth:{eq['EquipModelId']}",
-            )
+        if str(cur_step) not in rb_tbl:
+            return self._reject_resource_change(-1308)
+        dia_cost = rb_tbl[str(cur_step)]["useDiamond"]
+        player = self.state["player"]
+        if int(player.get("Diamond", 0)) < dia_cost:
+            return self._reject_resource_change(-1105)
 
         clv = str(int(cfg.get("colorLV", 1)))
         lv_tbl = self.game_data.get("equip_lv_up", {}).get(clv, {})
         computed_gold = sum(int(lv_tbl.get(str(lv_i), {}).get("lvUpUseNum", 0)) for lv_i in range(cur_lv))
         refund_gold = max(int(eq.get("Gold", 0)), computed_gold)
+        materials = eq.get("StepMaterials", [])
+        refund_gold += sum(material["Gold"] for material in materials)
+        refunds = [(1112, 0, refund_gold)] if refund_gold > 0 else []
+        refunds.extend((self.game_data["equips"][str(material["ModelId"])]["typeID"], material["ModelId"], 1)
+                       for material in materials)
 
-        eq["Lv"] = 0
-        eq["Step"] = 0
-        eq["Gold"] = 0
-        refund_tuples = [(1112, 0, refund_gold)] if refund_gold > 0 else []
-        base_res = (
-            self._grant_resources_from_tuples(
-                refund_tuples,
-                source=f"equip_rebirth:{eq['EquipModelId']}",
-                tx_prefix=f"equip_rebirth:{self.profile_name}:{equip_id}:{uuid.uuid4()}",
-            )
-            if refund_tuples
-            else []
-        )
-        self._inc_stat("rebirth_count", 1)
-        self.save()
-        return {"EquipInfo": copy.deepcopy(eq), "BaseGetGameResourceList": base_res}
+        def rebirth():
+            source = f"equip_rebirth:{eq['EquipModelId']}"
+            if dia_cost:
+                self.ledger.apply_player_delta(player, self.profile_name, "Diamond", -dia_cost, source=source)
+                self._last_rpc_context["diamond_spent"] = dia_cost
+            eq.update(Lv=0, Step=0, Gold=0)
+            eq.pop("StepMaterials", None)
+            output = self._grant_resources_from_tuples(
+                refunds, source=source, tx_prefix=f"{source}:{equip_id}:{uuid.uuid4()}",
+            ) if refunds else []
+            self._inc_stat("rebirth_count", 1)
+            return {"EquipInfo": copy.deepcopy(eq), "BaseGetGameResourceList": output}
+
+        return self._commit_resource_change(rebirth)
 
     def _rpc_treasure_rebirth(self, data: Any) -> dict[str, Any]:
         """Reset unequipped Treasure back to Lv 0 Step 0 EXP 0 and refund EXP fodders + Step materials."""

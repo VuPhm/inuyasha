@@ -1,18 +1,21 @@
-"""Mộ Thần Binh's VN catalogue and first two floors of offline encounters."""
+"""Mộ Thần Binh's VN catalogue and first six floors of offline encounters."""
 
 from __future__ import annotations
 
-import copy
-import logging
 import random
 import uuid
-from typing import Any, Callable
+from typing import Any
 
 from combat_sim import CombatOutcome, simulate_fight_info
-from economy_audit import ResourceLedger
 from r79_event_handlers import _parse_res_tuples
 
-PLAYABLE_FLOORS = (11, 12)
+PLAYABLE_FLOORS = range(11, 17)
+
+
+def bdd_recommended_fap(raw: str) -> int:
+    """VN stores plain numbers and later values suffixed with K."""
+    value = str(raw).strip()
+    return int(value[:-1]) * 1000 if value.endswith("K") else int(value)
 
 
 class BddHandlersMixin:
@@ -37,6 +40,16 @@ class BddHandlersMixin:
     def _bdd_floor_stars(self, floor: int) -> int:
         stars = self._bdd_state().get("stars", {})
         return sum(stars.get(str(row["ID"]), 0) for row in self._bdd_nodes_for_floor(floor))
+
+    def _bdd_pending_buff(self) -> int | None:
+        state = self._bdd_state()
+        if "pending_buff" in state:
+            return state["pending_buff"]
+        # APK 827 ended at floor 12 and did not offer its buff after the box.
+        if (self._bdd_next_node() == 1311 and not state.get("pending_reward")
+                and state.get("last_buff_floor", 0) < 12):
+            return 12
+        return None
 
     def _bdd_offer_buff(self, floor: int) -> list[dict[str, int]]:
         state = self._bdd_state()
@@ -63,7 +76,7 @@ class BddHandlersMixin:
         next_node = self._bdd_next_node()
         floor = next_node // 100 if next_node is not None else max(PLAYABLE_FLOORS) + 1
         pending_reward = state.get("pending_reward")
-        pending_buff = state.get("pending_buff")
+        pending_buff = self._bdd_pending_buff()
         selection = state.get("buffs", {})
         stars = state.get("stars", {})
         totals = sum(stars.values())
@@ -84,6 +97,8 @@ class BddHandlersMixin:
                 "NeedDrawReward": bool(pending_reward), "NeedSelectBuff": bool(pending_buff),
                 "BeforeFloorStarCount": self._bdd_floor_stars(pending_reward or pending_buff or floor - 1),
                 "CanUseStarCount": totals - state.get("used_buff_stars", 0),
+                "CanSweep": bool(next_node is not None and not pending_reward and not pending_buff
+                                 and self._bdd_sweep_is_open() and floor in state.get("three_star_floors", [])),
                 "Feats": int(self.state["player"].get("Merit", 0)),
             },
             "NodeInfo": [{**item, "Passed": state.get("best", {}).get(str(item["Id"])) == 3}
@@ -126,7 +141,7 @@ class BddHandlersMixin:
         foes = [self._hero_fight_obj(self.game_data["heroes"][str(row["pic"])], is_boss=index == 0)
                 for index, row in enumerate(roster)]
         point = cfg["points"][str(node * 100 + 10 + difficulty)]
-        target = int(point["proposeFAP"])
+        target = bdd_recommended_fap(point["proposeFAP"])
         current = self._bdd_fap(foes)
         for hero in foes:
             for key in ("HP", "AP", "DEF"):
@@ -145,40 +160,10 @@ class BddHandlersMixin:
     def _bdd_cleared(rule: dict[str, Any], outcome: CombatOutcome) -> bool:
         kind, limit = rule["clearanceTypeID"], rule["clearanceCondition"]
         return outcome.won and (
-            (kind == 2 and outcome.ally_hp_pct >= limit)
+            (kind == 2 and outcome.ally_hp_pct > limit)
             or (kind == 3 and outcome.ally_alive >= limit)
             or (kind == 4 and outcome.total_rounds <= limit)
         )
-
-    def _bdd_transaction(self, apply: Callable[[], dict[str, Any]]) -> dict[str, Any]:
-        """Commit the player and run state once, then emit audit entries."""
-        before = copy.deepcopy(self.state)
-        context = self._last_rpc_context.copy()
-        ledger = self.ledger
-        staged = ResourceLedger(vip_model=ledger.vip_model)
-        self.ledger = staged
-        try:
-            result = apply()
-            self.save()
-        except Exception as exc:
-            self.state.clear()
-            self.state.update(before)
-            self._last_rpc_context = context
-            if not isinstance(exc, OSError):
-                raise
-            logging.exception("Could not save Mộ Thần Binh")
-            return self._bdd_reject(-7)
-        finally:
-            self.ledger = ledger
-        try:
-            for entry in staged.list_transactions():
-                ledger.record_grant_event(**{key: entry[key] for key in (
-                    "account_id", "profile", "resource_type", "amount", "balance_after",
-                    "source", "idempotency_key", "actor", "metadata",
-                )})
-        except OSError:
-            logging.exception("Could not audit committed Mộ Thần Binh transaction")
-        return result
 
     def _rpc_bdd_get_fight_info(self, data: Any) -> dict[str, Any]:
         if not self._bdd_is_open():
@@ -187,7 +172,7 @@ class BddHandlersMixin:
             return self._bdd_reject(-48)
         node, difficulty = data
         state = self._bdd_state()
-        if node != self._bdd_next_node() or state.get("pending_reward") or state.get("pending_buff"):
+        if node != self._bdd_next_node() or state.get("pending_reward") or self._bdd_pending_buff():
             return self._bdd_reject(-1716)
         if difficulty not in (1, 2, 3) or not any(self._bdd_allies()):
             return self._bdd_reject(-1713)
@@ -202,7 +187,7 @@ class BddHandlersMixin:
             state["pending_fight"] = {"node": node, "difficulty": difficulty, "payload": payload}
             return payload
 
-        return self._bdd_transaction(prepare)
+        return self._commit_resource_change(prepare)
 
     def _bdd_record_win(self, node: int, difficulty: int) -> list[tuple[int, int, int]]:
         state = self._bdd_state()
@@ -228,14 +213,13 @@ class BddHandlersMixin:
         if fid not in first:
             drops.extend(_parse_res_tuples(point["firstPassDrop"]))
             first.append(fid)
-        self._record_daily_task_progress(21)
         self._inc_stat("bdd_Win")
         return drops
 
     def _rpc_bdd_fight(self, data: Any) -> dict[str, Any]:
         if not self._bdd_is_open():
             return self._bdd_reject(-1127)
-        if not isinstance(data, list) or len(data) != 6:
+        if not isinstance(data, list) or len(data) != 6 or any(type(value) is not int for value in data[:2]):
             return self._bdd_reject(-48)
         node, difficulty = data[:2]
         state = self._bdd_state()
@@ -244,11 +228,14 @@ class BddHandlersMixin:
             return self._bdd_reject(-39)
         rule_id = self.game_data["bdd"]["nodes"][str(node)]["clearanceID"]
         rule = self.game_data["bdd"]["clearance"][str(rule_id)]
-        outcome = simulate_fight_info(pending["payload"]["FightInfo"], self.game_data["attacks"])
+        outcome = simulate_fight_info(
+            pending["payload"]["FightInfo"], self.game_data["attacks"], buffs_cfg=self.game_data["combat_buffs"],
+        )
         won = self._bdd_cleared(rule, outcome)
 
         def settle():
             state.pop("pending_fight")
+            self._record_bdd_attempt()
             rewards = self._bdd_record_win(node, difficulty) if won else []
             output = self._grant_resources_from_tuples(rewards, "bdd_fight", f"bdd:{data[5]}") if rewards else []
             return {
@@ -257,7 +244,15 @@ class BddHandlersMixin:
                 "Turns": outcome.total_rounds, "AlliesAlive": outcome.ally_alive, "RemainingHPPercent": outcome.ally_hp_pct,
             }
 
-        return self._bdd_transaction(settle)
+        return self._commit_resource_change(settle)
+
+    def _record_bdd_attempt(self, count: int = 1) -> None:
+        self._record_daily_task_progress(21, count)
+        event = self.event_runtime.evaluate("timed_critical_tasks", self.state["player"])
+        instance = self.event_runtime.get_instance(event.instance_id) if event.eligible else None
+        if instance is not None:
+            progress = instance.setdefault("progress", {})
+            progress["bdd_attempts"] = int(progress.get("bdd_attempts", 0)) + count
 
     def _bdd_box(self, floor: int, stars: int) -> list[tuple[int, int, int]]:
         row = next(item for item in self.game_data["bdd"]["rewards"]
@@ -280,12 +275,12 @@ class BddHandlersMixin:
                 self._bdd_box(*data), "bdd_floor_box", f"bdd_box:{state.get('run', 0)}:{floor}",
             )}
 
-        return self._bdd_transaction(reward)
+        return self._commit_resource_change(reward)
 
     def _rpc_bdd_get_buffs(self, _data: Any) -> Any:
         if not self._bdd_is_open():
             return self._bdd_reject(-1127)
-        floor = self._bdd_state().get("pending_buff")
+        floor = self._bdd_pending_buff()
         if not floor:
             return self._bdd_reject(-39)
         return self._bdd_offer_buff(floor)
@@ -294,7 +289,7 @@ class BddHandlersMixin:
         state = self._bdd_state()
         if not self._bdd_is_open():
             return self._bdd_reject(-1127)
-        floor = state.get("pending_buff")
+        floor = self._bdd_pending_buff()
         if not floor or not isinstance(data, list) or len(data) != 1:
             return self._bdd_reject(-39)
         offer = next((row for row in self._bdd_offer_buff(floor) if row["Id"] == data[0]), None)
@@ -311,10 +306,11 @@ class BddHandlersMixin:
             attr = str(row["fightattrID"])
             buffs[attr] = buffs.get(attr, 0) + row["addValue"]
             state["used_buff_stars"] = used + cost
-            state.pop("pending_buff")
+            state.pop("pending_buff", None)
+            state["last_buff_floor"] = floor
             return self._bdd_payload()
 
-        return self._bdd_transaction(select)
+        return self._commit_resource_change(select)
 
     def _rpc_bdd_reset(self, _data: Any) -> dict[str, Any]:
         state = self._bdd_state()
@@ -337,13 +333,13 @@ class BddHandlersMixin:
             if cost:
                 self.ledger.apply_player_delta(player, self.profile_name, "Diamond", -cost, source="bdd_reset")
                 self._last_rpc_context["diamond_spent"] = cost
-            for key in ("stars", "buffs", "used_buff_stars", "pending_fight", "pending_reward", "pending_buff"):
+            for key in ("stars", "buffs", "used_buff_stars", "pending_fight", "pending_reward", "pending_buff", "last_buff_floor"):
                 state.pop(key, None)
             state["run"] = state.get("run", 0) + 1
             state["daily_resets"] = {today: count + 1}
             return self._bdd_payload()
 
-        return self._bdd_transaction(reset)
+        return self._commit_resource_change(reset)
 
     def _rpc_bdd_ranking(self, _data: Any) -> Any:
         if not self._bdd_is_open():
@@ -391,39 +387,46 @@ class BddHandlersMixin:
                 resources, "bdd_shop", f"bdd_shop:{shop_id}:{purchase['total'] + 1}",
             ), "BuyShopInfo": self._bdd_shop_info(), "Feats": player["Merit"]}
 
-        return self._bdd_transaction(buy)
+        return self._commit_resource_change(buy)
 
-    def _rpc_bdd_sweep(self, _data: Any) -> dict[str, Any]:
-        if not self._bdd_is_open():
-            return self._bdd_reject(-1127)
+    def _bdd_sweep_is_open(self) -> bool:
         player = self.state["player"]
         rule = self.game_data["module_subs"]["2508"]
-        if not (player["Lv"] >= rule["openLv"]
-                or (player["Lv"] >= rule["VIPNeedLv"] and player.get("VIPLv", 0) >= rule["advancedOpenVIPLv"])):
+        return (player["Lv"] >= rule["openLv"]
+                or (player["Lv"] >= rule["VIPNeedLv"] and player.get("VIPLv", 0) >= rule["advancedOpenVIPLv"]))
+
+    def _rpc_bdd_sweep(self, _data: Any) -> dict[str, Any]:
+        if not self._bdd_sweep_is_open():
             return self._bdd_reject(-1127)
         state = self._bdd_state()
         node = self._bdd_next_node()
-        if node is None or state.get("pending_reward") or state.get("pending_buff") or state.get("pending_fight"):
+        if node is None or state.get("pending_reward") or self._bdd_pending_buff():
             return self._bdd_reject(-1716)
         floor = node // 100
         if floor not in state.get("three_star_floors", []):
             return self._bdd_reject(-1717)
 
         def sweep():
-            rewards = []
+            state.pop("pending_fight", None)
+            prefix = f"bdd_sweep:{state.get('run', 0)}:{floor}"
+            base = []
+            cleared = 0
             for row in self._bdd_nodes_for_floor(floor):
-                if not state.get("stars", {}).get(str(row["ID"])):
-                    rewards.extend(self._bdd_record_win(row["ID"], 3))
+                node_id = row["ID"]
+                if not state.get("stars", {}).get(str(node_id)):
+                    rewards = self._bdd_record_win(node_id, 3)
+                    base.extend(self._grant_resources_from_tuples(rewards, "bdd_sweep", f"{prefix}:{node_id}"))
+                    cleared += 1
+            self._record_bdd_attempt(cleared)
             state.pop("pending_reward")
             if self._bdd_next_node() is not None:
                 state["pending_buff"] = floor
-            prefix = f"bdd_sweep:{state.get('run', 0)}:{floor}"
-            base = self._grant_resources_from_tuples(rewards, "bdd_sweep", prefix)
             box = self._grant_resources_from_tuples(self._bdd_box(floor, self._bdd_floor_stars(floor) // 3 * 3),
                                                    "bdd_floor_box", prefix + ":box")
-            return dict(self._bdd_payload(), BaseGetGameResourceList=base, BoxGetGameResourceList=box)
+            return dict(self._bdd_payload(), BaseGetGameResourceList=base, BoxGetGameResourceList=box,
+                        SweepStarCount=cleared * 3)
 
-        return self._bdd_transaction(sweep)
+        return self._commit_resource_change(sweep)
 
     def _rpc_bdd_equip_shop_info(self, _data: Any) -> dict[str, Any]:
         if not self._bdd_is_open():
@@ -452,8 +455,7 @@ class BddHandlersMixin:
         if len(ids) != count or not all(isinstance(item, str) for item in ids) or len(set(ids)) != count:
             return self._bdd_reject(-1317)
         equips = {item["Id"]: item for item in self.state["equips"]}
-        equipped = {slot.get(key, {}).get("Id") for slot in self.state["slots"]
-                    for key in self.EQUIP_TYPE_TO_SLOT_KEY.values()}
+        equipped = self._equipped_item_ids()
         if set(ids) & equipped:
             return self._bdd_reject(-1304)
         if any(item not in equips or equips[item]["EquipModelId"] != model or equips[item].get("Step", 0) != row["equipStepNum"]
@@ -470,4 +472,4 @@ class BddHandlersMixin:
             output = self._grant_resources_from_tuples(resources, "bdd_equip_shop", f"bdd_equip_shop:{shop_id}:{used + 1}")
             return dict(self._rpc_bdd_equip_shop_info([]), Feats=player["Merit"], BaseGetGameResourceList=output)
 
-        return self._bdd_transaction(exchange)
+        return self._commit_resource_change(exchange)

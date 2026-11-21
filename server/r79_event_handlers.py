@@ -1992,7 +1992,7 @@ class R79EventHandlersMixin:
         if task_type == 6:
             return max(int(stats.get("normal_Win", 0)), len(self.state.get("battle", {}).get("completed_nodes", [])))
         if task_type == 7:
-            return int(stats.get("bdd_Win", 0))
+            return int(progress.get("bdd_attempts", 0)) if ev.eligible else 0
         if task_type == 8:
             return int(stats.get("zcsf_count", 0))
         if task_type == 9:
@@ -2069,7 +2069,7 @@ class R79EventHandlersMixin:
         arena_rank = int(prof.state.get("arena", {}).get("rank", 100))
         equip_score = max(lv * 300, len(prof.state.get("equips", [])) * 850)
         xxbz_dmg = max(int(stats.get("mystery_treasure_max_dmg", 0)), lv * 8000)
-        bdd_stars = max(int(stats.get("bdd_max_stars", 0)), lv * 2)
+        bdd_stars = int(prof.state.get("bdd", {}).get("max_stars", 0))
         fap = max(int(p.get("FAP", 5000)), lv * 26000)
         return {
             "Lv": lv,

@@ -883,7 +883,7 @@ def patch_standalone_workspace(
                 '        for bIdx, bItem in ipairs(self.mBannerList) do\n'
                 '            local bId = bItem.ActivityId\n'
                 '            local isCur = (bId == self.mActivityInfo.enumId)\n'
-                '            local shortName = bId == 81 and "Sessho (81)" or (bId == 82 and "InuTaishou (82)" or ("Banner " .. tostring(bId)))\n'
+                '            local shortName = bId == 81 and "Sessho (81)" or (bId == 82 and "InuTaishou (82)" or (bId == 83 and "Thần Tướng D (83)" or ("Banner " .. tostring(bId))))\n'
                 '            local tabBtn = ui.newButton({\n'
                 '                normalImage = isCur and "c_77.png" or "c_7.png",\n'
                 '                text = shortName,\n'
@@ -1097,6 +1097,19 @@ def patch_standalone_workspace(
     # 8. Merge OBB res/* directly into assets/res/* for 1-file installation
     merged_n = merge_obb_into_assets(STANDALONE_WORK)
     print(f"Merged {merged_n} OBB resource files directly into APK assets/res/")
+
+    # 9. Bundle Banner 83 / Tứ Đấu Thần / Inu Kimi assets missing from VN APK/OBB
+    b83_dir = ROOT_DIR / "android" / "assets_b83"
+    if b83_dir.exists():
+        b83_n = 0
+        for src_file in sorted(b83_dir.rglob("*")):
+            if src_file.is_file():
+                rel = src_file.relative_to(b83_dir)
+                dst_file = STANDALONE_WORK / "assets" / rel
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_file, dst_file)
+                b83_n += 1
+        print(f"Bundled {b83_n} Banner 83 assets from {b83_dir}")
 
 
 def patch_r712_lua(src: Path) -> None:

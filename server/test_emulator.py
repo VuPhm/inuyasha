@@ -2336,6 +2336,8 @@ class EmulatorProtocolTest(unittest.TestCase):
             emu.clock.set_fixed(anchor + 259200 + 100)
             self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 82)
             emu.clock.set_fixed(anchor + 2 * 259200 + 100)
+            self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 83)
+            emu.clock.set_fixed(anchor + 3 * 259200 + 100)
             self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 81)
 
     def test_39_r7_5_daily_dinner_vit_windows(self) -> None:
@@ -2958,12 +2960,12 @@ class EmulatorProtocolTest(unittest.TestCase):
 
             init_r = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [], "ServerId": 1})
             banners_9300 = [x["ActivityId"] for x in init_r["Avatar"]["TimedActivityOpenInfo"]["9300"]]
-            self.assertEqual(banners_9300, [81, 82])
+            self.assertEqual(banners_9300, [81, 82, 83])
 
             # Pull & claim credit chest on Banner 81
             info81 = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "SelectBanner", "Data": [81], "ServerId": 1})
             self.assertEqual(info81["Value"]["ActivityEnumId"], 81)
-            self.assertEqual(info81["Value"]["AvailableBanners"], [81, 82])
+            self.assertEqual(info81["Value"]["AvailableBanners"], [81, 82, 83])
             self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "Recruit", "Data": [30], "ServerId": 1})["Status"], 0)
             self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "DrawCreditReward", "Data": [60], "ServerId": 1})["Status"], 0)
 

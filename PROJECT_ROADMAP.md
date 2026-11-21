@@ -1,6 +1,6 @@
 # Lộ Trình Phục Hồi Dự Án — InuYasha: Seek Jade (`VN 5.0.4.98`)
 
-**Bản S1 chính trên Pixel 3 XL:** R7.15.1, APK standalone 832 | **Đã nghiệm thu với save QA:** R7.18, APK standalone 836 | **Checkpoint:** `checkpoint-vn-r7.18` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
+**Bản S1 chính trên Pixel 3 XL:** R7.15.1, APK standalone 832 | **Đã nghiệm thu với save QA:** R7.18.1, APK standalone 837 | **Checkpoint:** `checkpoint-vn-r7.18.1` | **Mục tiêu dài hạn:** Khôi phục đầy đủ nhất có thể nội dung, sự kiện và tính năng của *InuYasha: Seek Jade* cho trải nghiệm cá nhân và nhiều tài khoản cục bộ trên một thiết bị mà không cần máy chủ chính thức hay kết nối Internet.
 
 ---
 
@@ -27,6 +27,7 @@
 | **R7.16 (APK 834)** | **Đã nghiệm thu với save QA trên Pixel** | Lượt hồi Tầm Ngọc, tài năng tướng và tính Nộ theo Lua VN, đối chiếu quái ở chương đầu/giữa/cuối. 112/112 Python, 24/24 Lua. [Báo cáo R7.16](R7_16_ACCEPTANCE_REPORT.md). |
 | **R7.17 (APK 835)** | **Đã nghiệm thu với save QA trên Pixel** | Hoàn thiện 255 dòng tài năng, phục hồi buff theo lượt và tiên công trong mô phỏng, kiểm kê NPC gốc ở 15 ải có kịch bản. 120/120 Python, 27/27 Lua. [Báo cáo R7.17](R7_17_ACCEPTANCE_REPORT.md). |
 | **R7.18 (APK 836)** | **Đã nghiệm thu với save QA trên Pixel** | 39/51 ải Mộ Thần Binh, sửa rương cuối và chuyển tầng từ save 832, thêm 6 dòng tài năng Nộ và đối chứng hai kỹ năng NPC. Nâng cấp QA trực tiếp 832 → 836. 126/126 Python, 31/31 Lua. [Báo cáo R7.18](R7_18_ACCEPTANCE_REPORT.md). |
+| **R7.18.1 (APK 837)** | **Đã nghiệm thu với save QA trên Pixel** | Khôi phục **Banner 83 (Thần Tướng D: Inu Kimi & Tứ Đấu Thần)**, bổ sung 9 asset còn thiếu từ ZH/TH, mở song song `81/82/83`, rương `16060034`/`16060033` và ghép 150 mảnh. Nâng cấp QA trực tiếp 832 → 837 bảo toàn 100% 4 save S1. 132/132 Python. [Báo cáo R7.18.1](R7_18_1_ACCEPTANCE_REPORT.md). |
 
 ---
 
@@ -121,4 +122,5 @@ R7.6 triển khai theo hướng cân bằng — **không** dồn toàn bộ roun
 | **R7.16** *(Đã nghiệm thu trên Pixel)* | Tầm Ngọc đồng bộ theo backend, tài năng đột phá, đối chiếu Combat và quái theo chương. | APK 834 và `checkpoint-vn-r7.16`. Lát sau tiếp tục tìm roster gốc theo wave, buff có thời hạn, khống chế và hệ số FAP tài năng. [Báo cáo](R7_16_ACCEPTANCE_REPORT.md). |
 | **R7.17** *(Đã nghiệm thu với save QA trên Pixel)* | Buff theo lượt, khống chế, miễn và kháng, hiệu ứng Nộ và điều kiện HP. Đối chiếu sâu NPC chương 1, 35 và 70. | APK 835 và `checkpoint-vn-r7.17`. Còn 120 dòng tài năng cần xử lý đủ và cần nguồn roster đánh thường theo wave. [Báo cáo](R7_17_ACCEPTANCE_REPORT.md). |
 | **R7.18** *(Đã nghiệm thu với save QA trên Pixel)* | Mộ Thần Binh 39/51 ải và kiểm kê nguồn Kim. Khôi phục tẩy hiệu ứng, hao HP để tăng sát thương và cấp Nộ cho đồng đội ít Nộ nhất. | APK 836 và `checkpoint-vn-r7.18`. Còn 12 ải Mộ Thần Binh, 114 dòng tài năng cần xử lý đủ và cần dữ liệu VN về nguồn cấp Kim đầu tiên cùng roster đánh thường. [Báo cáo](R7_18_ACCEPTANCE_REPORT.md). |
-| **Round sau** | Guild cục bộ (`3400`), Co-op NPC (`Teambattle 2319`) | Mở rộng khi đã đối chiếu đủ cấu hình và luồng UI |
+| **R7.18.1** *(Đã nghiệm thu với save QA trên Pixel)* | Khôi phục Banner 83 (Inu Kimi & Tứ Đấu Thần), bổ sung 9 asset, giữ độc lập 81/82/83 và nâng cấp 832 → 837. | APK 837 và `checkpoint-vn-r7.18.1`. 132/132 Python PASS. [Báo cáo](R7_18_1_ACCEPTANCE_REPORT.md). |
+| **R7.19** *(Kế tiếp)* | Tiếp tục mở rộng Mộ Thần Binh (12 ải cuối 40–51), hoàn thiện các dòng tài năng còn lại trong `combat_effects.py` và rà soát Guild cục bộ (`3400`) / Co-op NPC (`Teambattle 2319`). | Bám sát dữ liệu VN gốc, giữ nguyên STABLE R6.2 và 4 save S1. |

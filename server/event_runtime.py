@@ -416,16 +416,16 @@ def build_default_event_registry(game_data: dict[str, Any]) -> dict[str, EventDe
         )
 
     # Verified TimedRecruit banners from TimedRecruitModel (9300).
-    # Only 81 & 82 have 100% UI/icon assets verified in VN APK/OBB.
+    # 81, 82, and 83 (with supplemented VN/ZH/TH assets) have 100% UI/combat/icon assets.
     tr_names = {
         81: "Sesshomaru Thần Tướng",
         82: "InuYasha Thức Tỉnh",
-        83: "Kikyo (Tài nguyên chưa đủ)",
+        83: "Tứ Đấu Thần / Inu Kimi",
         84: "Giới Hạn 84 (Thiếu icon)",
         85: "Giới Hạn 85 (Thiếu icon)",
         86: "Giới Hạn 86 (Thiếu icon)",
     }
-    tr_complete_assets = {81, 82}
+    tr_complete_assets = {81, 82, 83}
     tr_models = game_data.get("timed_recruit_model", {})
     tr_open_lv = _parse_module_open_lv(game_data, 9300, 1)
     for key in sorted(tr_models, key=lambda x: int(x)):
@@ -466,6 +466,7 @@ class EventRuntime:
     DEFAULT_CONCURRENT_EVENTS: list[str] = [
         "timed_recruit:81",
         "timed_recruit:82",
+        "timed_recruit:83",
         "timed_money_tree",
         "timed_pray_tree",
         "timed_smash_egg",
@@ -516,6 +517,20 @@ class EventRuntime:
                     cur_list.append(eid)
             ac["concurrent_events"] = cur_list
             ac["r79_migrated"] = True
+        ac.setdefault("rotation_pool", ["timed_recruit:81", "timed_recruit:82", "timed_recruit:83"])
+        if not ac.get("r7181_migrated"):
+            cur_list = [str(x) for x in ac.get("concurrent_events", [])]
+            if "timed_recruit:83" not in cur_list:
+                if "timed_recruit:82" in cur_list:
+                    cur_list.insert(cur_list.index("timed_recruit:82") + 1, "timed_recruit:83")
+                else:
+                    cur_list.append("timed_recruit:83")
+            ac["concurrent_events"] = cur_list
+            rot_pool = [str(x) for x in ac.get("rotation_pool", [])]
+            if "timed_recruit:83" not in rot_pool:
+                rot_pool.append("timed_recruit:83")
+            ac["rotation_pool"] = rot_pool
+            ac["r7181_migrated"] = True
         ac.setdefault("period_mode", "daily_utc7")
         ac.setdefault("period_sec", 86400)
         ac.setdefault("period_anchor_ts", cls.DEFAULT_ROTATION_ANCHOR_TS)
@@ -523,7 +538,6 @@ class EventRuntime:
         ac.setdefault("carry_over_pity", False)
         ac.setdefault("carry_over_policy", {})
         ac.setdefault("manual_reset_seq", {})
-        ac.setdefault("rotation_pool", ["timed_recruit:81", "timed_recruit:82"])
         ac.setdefault("rotation_duration_sec", 259200)
         ac.setdefault("rotation_anchor_ts", cls.DEFAULT_ROTATION_ANCHOR_TS)
         ac.setdefault("manual_active", None)

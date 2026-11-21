@@ -2394,7 +2394,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
     def _check_hero_capacity(self, incoming: int) -> bool:
         if incoming <= 0:
             return True
-        deployed = {str(slot.get("HeroId")) for slot in self.state["slots"]}
+        deployed = self._deployed_hero_ids()
         used = sum(str(hero["Id"]) not in deployed for hero in self.state["heroes"])
         if used + incoming > self._bag_info(5)["Size"]:
             self._last_rpc_context["status"] = -2005  # VN ServerMessage: hero bag full

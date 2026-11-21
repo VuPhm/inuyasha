@@ -971,6 +971,51 @@ def patch_standalone_workspace(
                 '        method   = "DrawGoldHero",\n'
                 '        data     = {heroID, self.activityEnumId or (self.mActivityInfo and self.mActivityInfo.enumId)},',
             ),
+            (
+                'function LimittedTimedRecruitLayer:handleRecruit(ok, content, type)\n'
+                '    if not ok then return end',
+                'function LimittedTimedRecruitLayer:handleRecruit(ok, content, type)\n'
+                '    if not ok then\n'
+                '        if content == -2005 then\n'
+                '            checkBagSpace({checkBag = {BagType.eHero}, parent = self})\n'
+                '        end\n'
+                '        return\n'
+                '    end',
+            ),
+            (
+                '        Ctrl.showRewardList(\n'
+                '            content,\n'
+                '            function(type)\n'
+                '                self:requestRecruit(type)\n'
+                '            end,\n'
+                '            nil,\n'
+                '            self.mBaseData,\n'
+                '            self.ActivityEnumId\n'
+                '        )',
+                '        Ctrl.showRewardList(\n'
+                '            content,\n'
+                '            function(type)\n'
+                '                self:requestRecruit(type)\n'
+                '            end,\n'
+                '            function()\n'
+                '                if self.mBaseData and self.mBaseData.DrawGoldHero == 0 then\n'
+                '                    local activityId = self.ActivityEnumId\n'
+                '                    local config = TimedRecruitModel.items[activityId]\n'
+                '                    local layer = require("TimedActivity.TimedRecruitChoiceBoxLayer").new({\n'
+                '                        outid = config.goldHeroModelID,\n'
+                '                        recruit = type,\n'
+                '                        data = self.mBaseData,\n'
+                '                        callBack = function(recruit)\n'
+                '                            self:requestRecruit(recruit)\n'
+                '                        end,\n'
+                '                    })\n'
+                '                    display.getRunningScene():addChild(layer)\n'
+                '                end\n'
+                '            end,\n'
+                '            self.mBaseData,\n'
+                '            self.ActivityEnumId\n'
+                '        )',
+            ),
         ],
     )
 
@@ -1131,6 +1176,47 @@ def patch_r712_lua(src: Path) -> None:
             '[-2008] = TR("战灵背包已满"),\n'
             '\t[-2009] = "Phần thưởng này chưa được hỗ trợ. Vật phẩm vẫn còn trong túi.",\n'
             '\t[-2010] = "Không còn mảnh bảo vật phù hợp để tìm.",',
+        ),
+    ])
+    patch_luac_text(src / "Task" / "TaskRewardPreviewLayer.luac", [
+        (
+            '            elseif status == 1 then\n'
+            '                if checkBagSpace() == true then\n'
+            '                    if params.callback then',
+            '            elseif status == 1 then\n'
+            '                local needBags, seenBags = {}, {}\n'
+            '                local function addBag(bid)\n'
+            '                    if bid and not seenBags[bid] then\n'
+            '                        seenBags[bid] = true\n'
+            '                        table.insert(needBags, bid)\n'
+            '                    end\n'
+            '                end\n'
+            '                for _, item in ipairs(params.rewards or {}) do\n'
+            '                    local rt = item.resourceTypeSub or item.resourcetypeSub\n'
+            '                    if rt == ResourcetypeSub.eHero then\n'
+            '                        addBag(BagType.eHero)\n'
+            '                    elseif ResourceSubIsEquip(rt) or ResourceSubIsTreasure(rt) then\n'
+            '                        addBag(BagType.eEquip)\n'
+            '                    elseif rt and math.floor(rt / 100) == 16 then\n'
+            '                        addBag(BagType.eProps)\n'
+            '                    end\n'
+            '                end\n'
+            '                if #needBags == 0 or checkBagSpace({checkBag = needBags}) == true then\n'
+            '                    if params.callback then',
+        ),
+    ])
+    patch_luac_text(src / "Store" / "RecruitScene.luac", [
+        (
+            'function RecruitScene:responseRecruit(response)\n'
+            '    LoadingWait:ends()\n'
+            '    if response and response.Status == 0 then',
+            'function RecruitScene:responseRecruit(response)\n'
+            '    LoadingWait:ends()\n'
+            '    if response and response.Status == -2005 then\n'
+            '        checkBagSpace({checkBag = {BagType.eHero}, parent = self})\n'
+            '        return\n'
+            '    end\n'
+            '    if response and response.Status == 0 then',
         ),
     ])
     patch_luac_text(src / "Config" / "BagModel.luac", [

@@ -315,6 +315,7 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
         "game_data.json",
         "bdd_handlers.py",
         "bdd_data.json",
+        "teambattle_handlers.py",
     ]
     dest_zip.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(dest_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
@@ -1102,6 +1103,7 @@ def patch_standalone_workspace(
     patch_r715_lua(STANDALONE_WORK / "assets" / "src")
     patch_r7151_lua(STANDALONE_WORK / "assets" / "src")
     patch_r716_explore_lua(STANDALONE_WORK / "assets" / "src")
+    patch_r721_teambattle_lua(STANDALONE_WORK / "assets" / "src")
     patch_luac_text(STANDALONE_WORK / "assets" / "src" / "Equipment" / "EquipmentComposeLayer.luac", [
         (
             '        if colorLV < 8 then    --排除最高等级的装备',
@@ -2065,6 +2067,30 @@ def patch_r7151_lua(src: Path) -> None:
         return
     end
     if event.Value.IsSuccess == true then'''),
+    ])
+
+
+def patch_r721_teambattle_lua(src: Path) -> None:
+    """Fix R7.21 Teambattle scene error-status checks and immediate InviteAll refresh."""
+    patch_luac_text(src / "InstanceZones" / "InstanceNewMainScene.luac", [
+        (
+            "        if event.Value and event.Value.TeamsInfo then",
+            "        if event and event.Status == 0 and event.Value and event.Value.TeamsInfo then",
+        ),
+        (
+            "        if event.Value and event.Value then",
+            "        if event and event.Status == 0 and event.Value and event.Value.TeamId then",
+        ),
+    ])
+    patch_luac_text(src / "InstanceZones" / "TeamWaitScene.luac", [
+        (
+            "                       if self.mSelectType == 2 then\n"
+            "                           if not self.mScheduleHandle then",
+            "                       if self.mSelectType == 1 then\n"
+            "                           self:requestTeamInfor()\n"
+            "                       elseif self.mSelectType == 2 then\n"
+            "                           if not self.mScheduleHandle then",
+        ),
     ])
 
 

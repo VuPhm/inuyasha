@@ -3783,11 +3783,20 @@ class R712DeltaTest(unittest.TestCase):
                 self.assertEqual(self.rpc(prof, "Timespike", "ReceivedReward")["Status"], 0)
             item = next(g for g in prof.state["goods"] if g["GoodsModelId"] == 16020039)
             self.assertEqual(item["Num"], 3)
-            for count in (1, 3):
-                rejected = self.rpc(prof, "Goods", "GoodsUse", item["Id"], 16020039, count)
-                self.assertEqual(rejected["Status"], -2009)
-                self.assertNotIn("GoodsInfo", rejected["Avatar"])
-                self.assertEqual(prof._get_goods_qty(16020039), 3)
+            out_code = str(prof.game_data["goods_model"]["16020039"]["goodsOutputOddsCode"])
+            rows = list(prof.game_data["goods_output"][out_code].values())
+            orig_types = [r["outputTypeID"] for r in rows]
+            try:
+                for row in rows:
+                    row["outputTypeID"] = 9999
+                for count in (1, 3):
+                    rejected = self.rpc(prof, "Goods", "GoodsUse", item["Id"], 16020039, count)
+                    self.assertEqual(rejected["Status"], -2009)
+                    self.assertNotIn("GoodsInfo", rejected["Avatar"])
+                    self.assertEqual(prof._get_goods_qty(16020039), 3)
+            finally:
+                for row, orig in zip(rows, orig_types):
+                    row["outputTypeID"] = orig
             self.assertEqual(self.rpc(prof, "HeroRecruit", "Recruit", 1, 0)["Status"], 0)
             reloaded = self.emulator(Path(dest)).get_profile_by_name("normal")
             self.assertEqual(reloaded._get_goods_qty(16020039), 3)
@@ -4003,7 +4012,7 @@ class R7121RewardTest(unittest.TestCase):
 
             row = profile.game_data["success_target_reward"]["19"][4]
             reward = row["resourceList"]
-            row["resourceList"] += "||2000,20004001,1"
+            row["resourceList"] += "||9999,99999999,1"
             before = profile.state["player"]["Diamond"]
             self.assertEqual(claim()["Status"], -2009)
             self.assertEqual(profile.state["player"]["Diamond"], before)

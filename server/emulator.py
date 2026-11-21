@@ -49,6 +49,7 @@ from combat_sim import simulate_fight_info
 from economy_audit import ResourceLedger
 from event_handlers import EventHandlersMixin
 from event_runtime import EventClock, EventRuntime, build_default_event_registry
+from teambattle_handlers import TeambattleHandlersMixin
 
 SERVER_DIR = Path(__file__).resolve().parent
 _default_root = SERVER_DIR.parent
@@ -350,7 +351,7 @@ def _parse_resource_str(res_str: str) -> list[tuple[int, int, int]]:
     return out
 
 
-class ProfileStore(EventHandlersMixin, BddHandlersMixin):
+class ProfileStore(EventHandlersMixin, BddHandlersMixin, TeambattleHandlersMixin):
     """Single-profile game state & RPC engine backed by extracted VN/EN config."""
 
     DEBUG_STARTER_HERO_IDS = ["12011004", "12011005", "12012005", "12011006"]
@@ -451,6 +452,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
     def _normalize_loaded_state(self, data: dict[str, Any]) -> dict[str, Any]:
         """Ensure loaded states have required fields without altering saved progress."""
         data.setdefault("equips", [])
+        data.setdefault("gems", [])
         data.setdefault("treasures", [])
         data.setdefault("treasure_debris", [])
         data.setdefault("treasure_protect_end", 0)
@@ -653,6 +655,8 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             return str(td.get("treasureModelID", 0)) in self.game_data.get("treasures", {})
         if rtype == 1901:
             return mkey in self.game_data.get("fashion_model", {})
+        if rtype == 2000:
+            return mkey in self.game_data.get("gem_model", {})
         gm = self.game_data.get("goods_model", {}).get(mkey)
         return bool(gm and int(gm.get("typeID", rtype)) == rtype)
 
@@ -700,6 +704,10 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
                 mid = int(item.get("FashionModelId", 0))
                 if not self._is_valid_resource(1901, mid):
                     raise ValueError(f"Invalid Fashion resource ModelId={mid} in {context}")
+            for item in bundle.get("Gem", []):
+                mid = int(item.get("ModelId", 0))
+                if not self._is_valid_resource(2000, mid):
+                    raise ValueError(f"Invalid Gem resource ModelId={mid} in {context}")
 
     def _boss_drop_for_model(self, model_id: int) -> dict[str, int]:
         """Select a validated DropResource entry for a LuckBoss model ID."""
@@ -1453,6 +1461,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
         new_treasure_debris: list[dict[str, Any]] = []
         new_goods: list[dict[str, Any]] = []
         new_fashions: list[dict[str, Any]] = []
+        new_gems: list[dict[str, Any]] = []
 
         attr_map = {
             1101: "EXP",
@@ -1573,6 +1582,21 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
                         source=source,
                         idempotency_key=f"{tx_prefix}:{idx}:fashion:{copy_i}:{f_inst['Id']}",
                     )
+            elif rtype == 2000:
+                gems_list = self.state.setdefault("gems", [])
+                for copy_i in range(rnum):
+                    gem_inst = {"Id": str(uuid.uuid4()), "ModelId": rmodel}
+                    gems_list.append(gem_inst)
+                    new_gems.append({**gem_inst, "ResourceTypeSub": rtype, "Num": 1})
+                    self.ledger.record_grant_event(
+                        account_id=str(self.state["player"]["PlayerId"]),
+                        profile=self.profile_name,
+                        resource_type=f"Gem:{rmodel}",
+                        amount=1,
+                        balance_after=len(gems_list),
+                        source=source,
+                        idempotency_key=f"{tx_prefix}:{idx}:gem:{copy_i}:{gem_inst['Id']}",
+                    )
             else:
                 existing = next((g for g in self.state["goods"] if g["GoodsModelId"] == rmodel), None)
                 if existing:
@@ -1619,6 +1643,8 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             self._recalc_all_slots_and_fap()
             if hasattr(self, "_last_rpc_context"):
                 self._last_rpc_context["slots_changed"] = True
+        if new_gems:
+            bundle["Gem"] = new_gems
         if "boss_battle" in self.state:
             self.state["boss_battle"]["jifen"] = int(self.state["player"].get("BossCoin", self.state["boss_battle"].get("jifen", 0)))
         return [bundle] if bundle else []
@@ -1967,7 +1993,28 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "YiYuan.GetInfo": self._rpc_yiyuan_get_info,
             "YiYuan.Join": self._rpc_yiyuan_join,
             "YiYuan.DrawReward": self._rpc_yiyuan_draw_reward,
-            "TeambattleInfo.GetInviteInfo": lambda _d: {},
+            "TeambattleInfo.GetInviteInfo": self._rpc_teambattle_get_invite_info,
+            "TeambattleInfo.UpdateAllInviteFlag": self._rpc_teambattle_update_all_invite_flag,
+            "TeambattleInfo.CreatTeams": self._rpc_teambattle_creat_teams,
+            "TeambattleInfo.FightForMatch": self._rpc_teambattle_fight_for_match,
+            "TeambattleInfo.GetMyTeamInfo": self._rpc_teambattle_get_my_team_info,
+            "TeambattleInfo.GetFriendsOrGuildMembers": self._rpc_teambattle_get_friends_or_guild,
+            "TeambattleInfo.InviteFriends": self._rpc_teambattle_invite_friends,
+            "TeambattleInfo.InviteFriendsForOneKey": self._rpc_teambattle_invite_one_key,
+            "TeambattleInfo.InviteAll": self._rpc_teambattle_invite_all,
+            "TeambattleInfo.KickOutTeam": self._rpc_teambattle_kick_out_team,
+            "TeambattleInfo.DismissTeam": self._rpc_teambattle_dismiss_team,
+            "TeambattleInfo.ExitTeam": self._rpc_teambattle_dismiss_team,
+            "TeambattleInfo.InterTeam": self._rpc_teambattle_inter_team,
+            "TeambattleInfo.Fight": self._rpc_teambattle_fight,
+            "TeambattleFightinfo.GetInfo": self._rpc_teambattle_get_info,
+            "TeambattleFightinfo.DrawFirstReward": self._rpc_teambattle_draw_first_reward,
+            "TeambattleHoldinfo.HeroHold": self._rpc_teambattle_hero_hold,
+            "TeambattleHoldinfo.GetHoldInfo": self._rpc_teambattle_get_hold_info,
+            "TeambattleHoldinfo.DrawHoldReward": self._rpc_teambattle_draw_hold_reward,
+            "TeambattleHoldinfo.QuickDrawHoldReward": self._rpc_teambattle_quick_draw_hold_reward,
+            "TeambattleShopinfo.ShopInfo": self._rpc_teambattle_shop_info,
+            "TeambattleShopinfo.BuyShop": self._rpc_teambattle_buy_shop,
             "GiftLogin.SignInfo": self._rpc_gift_login_info,
             "GiftLogin.DrawGiftBox": self._rpc_gift_login_draw,
             "GiftLv.LvGiftBags": self._rpc_gift_lv_bags,
@@ -2237,7 +2284,7 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             "StarSignInfo": [],
             "XYCurCount": self._explore_snapshot()["RemainNum"],
             "FashionInfo": self.state.get("fashions", []),
-            "GemInfo": [],
+            "GemInfo": self.state.get("gems", []),
             "PetInfo": [],
             "WarfarespiritInfo": [],
             "RebornGoodsList": [],

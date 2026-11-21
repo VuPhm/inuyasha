@@ -331,6 +331,15 @@ def main() -> None:
     equip_rebirth = parse_nested_lua_items(os.path.join(cfg_dir, "EquipRebirthRelation.lua"))
     treasure_rebirth = parse_nested_lua_items(os.path.join(cfg_dir, "TreasureRebirthRelation.lua"))
     reborn_lv = parse_simple_lua_items(os.path.join(cfg_dir, "RebornLvModel.lua"))
+    gem_model = parse_simple_lua_items(os.path.join(cfg_dir, "GemModel.lua"))
+
+    teambattle_config = parse_singleton_lua_item(os.path.join(cfg_dir, "TeambattleConfig.lua"))
+    teambattle_nodes = parse_simple_lua_items(os.path.join(cfg_dir, "TeambattleNodeModel.lua"))
+    teambattle_hold_drops = parse_simple_lua_items(os.path.join(cfg_dir, "TeambattleHoldDropoddsRelation.lua"))
+    teambattle_hero_drops = parse_simple_lua_items(os.path.join(cfg_dir, "TeambattleNodeDropHeroRelation.lua"))
+    teambattle_shop = parse_simple_lua_items(os.path.join(cfg_dir, "TeambattleShopModel.lua"))
+    teambattle_player_npcs = parse_array_lua_list(os.path.join(cfg_dir, "TeambattlePlayerNpc.lua"))
+    teambattle_hero_npcs = parse_array_lua_list(os.path.join(cfg_dir, "TeambattleHeroNpc.lua"))
 
     data = {
         "source": source_label,
@@ -415,6 +424,13 @@ def main() -> None:
             "equip_rebirth": sum(len(v) for v in equip_rebirth.values()),
             "treasure_rebirth": sum(len(v) for v in treasure_rebirth.values()),
             "reborn_lv": len(reborn_lv),
+            "gem_model": len(gem_model),
+            "teambattle_nodes": len(teambattle_nodes),
+            "teambattle_hold_drops": len(teambattle_hold_drops),
+            "teambattle_hero_drops": len(teambattle_hero_drops),
+            "teambattle_shop": len(teambattle_shop),
+            "teambattle_player_npcs": len(teambattle_player_npcs),
+            "teambattle_hero_npcs": len(teambattle_hero_npcs),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -535,6 +551,14 @@ def main() -> None:
         "equip_rebirth": equip_rebirth,
         "treasure_rebirth": treasure_rebirth,
         "reborn_lv": reborn_lv,
+        "gem_model": gem_model,
+        "teambattle_config": teambattle_config,
+        "teambattle_nodes": teambattle_nodes,
+        "teambattle_hold_drops": teambattle_hold_drops,
+        "teambattle_hero_drops": teambattle_hero_drops,
+        "teambattle_shop": teambattle_shop,
+        "teambattle_player_npcs": teambattle_player_npcs,
+        "teambattle_hero_npcs": teambattle_hero_npcs,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

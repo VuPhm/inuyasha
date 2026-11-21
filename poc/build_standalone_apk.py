@@ -1405,6 +1405,25 @@ end
 function XzyyMainScene:refeshData(needAction)''',
         ),
         (
+            '        local guan = (self.mFloor - 1) * 3 + self.mNode % 10 - 1',
+            '        local guan = self.mClearedCount',
+        ),
+        (
+            '            if v.floorModelID == (self.mFloor + 10 - 1) then',
+            '            if v.floorModelID == self.mRewardFloor then',
+        ),
+        (
+            'HttpRequest("BddInfo","RewardBox", {self.mFloor + 10 - 1,tempReward.stars }',
+            'HttpRequest("BddInfo","RewardBox", {self.mRewardFloor,tempReward.stars }',
+        ),
+        *([(
+            '        self.mLastFloorStar = event.Value.Info.BeforeFloorStarCount',
+            '        local info = event.Value.Info\n'
+            '        self.mLastFloorStar = info.BeforeFloorStarCount\n'
+            '        self.mRewardFloor = info.RewardFloor\n'
+            '        self.mClearedCount = info.ClearedCount',
+        )] * 3),
+        (
             '                        --请求BUff信息\n'
             '                        if self.mIsNeedBuff == true then\n'
             '                            self:requestSelectBuffList()\n'

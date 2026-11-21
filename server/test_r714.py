@@ -138,7 +138,7 @@ class R714DeltaTest(unittest.TestCase):
         value = reply["Value"]
         self.assertEqual(len(value["Catalogue"]), 51)
         self.assertEqual(len(self.profile.game_data["bdd"]["points"]), 153)
-        self.assertEqual(value["PlayableCount"], 18)
+        self.assertEqual(value["PlayableCount"], 39)
         self.assertTrue(value["Simulation"])
         self.assertEqual([item["Locked"] for item in value["NodeInfo"]], [False, True, True])
         self.assertEqual(self.bdd("GetFightInfo", 1311, 1)["Status"], -1716)

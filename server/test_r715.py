@@ -180,6 +180,7 @@ class R715DeltaTest(unittest.TestCase):
         p._recalc_all_slots_and_fap()
         p.save()
 
+    @patch("bdd_handlers.PLAYABLE_FLOORS", range(11, 17))
     def test_18_stage_run_rewards_buffs_shop_reset_and_achievements(self):
         p = self.profile
         p.state["success_target"]["start_ts"] = self.now - 6 * 86400

@@ -1,4 +1,4 @@
-"""Mộ Thần Binh's VN catalogue and first six floors of offline encounters."""
+"""Mộ Thần Binh's VN catalogue and offline encounters."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any
 from combat_sim import CombatOutcome, simulate_fight_info
 from r79_event_handlers import _parse_res_tuples
 
-PLAYABLE_FLOORS = range(11, 17)
+PLAYABLE_FLOORS = range(11, 24)
 
 
 def bdd_recommended_fap(raw: str) -> int:
@@ -45,10 +45,16 @@ class BddHandlersMixin:
         state = self._bdd_state()
         if "pending_buff" in state:
             return state["pending_buff"]
-        # APK 827 ended at floor 12 and did not offer its buff after the box.
-        if (self._bdd_next_node() == 1311 and not state.get("pending_reward")
-                and state.get("last_buff_floor", 0) < 12):
-            return 12
+        next_node = self._bdd_next_node()
+        if next_node is None or state.get("pending_reward"):
+            return None
+        # Earlier playable slices ended after their last box, with no buff scheduled.
+        floor, node_number = divmod(next_node, 100)
+        previous = floor - 1
+        if (node_number == 11 and previous in PLAYABLE_FLOORS
+                and state.get("last_buff_floor", 0) < previous
+                and all(state.get("stars", {}).get(str(row["ID"])) for row in self._bdd_nodes_for_floor(previous))):
+            return previous
         return None
 
     def _bdd_offer_buff(self, floor: int) -> list[dict[str, int]]:
@@ -96,6 +102,8 @@ class BddHandlersMixin:
                 "NeedReset": next_node is None and not pending_reward,
                 "NeedDrawReward": bool(pending_reward), "NeedSelectBuff": bool(pending_buff),
                 "BeforeFloorStarCount": self._bdd_floor_stars(pending_reward or pending_buff or floor - 1),
+                "RewardFloor": pending_reward or 0,
+                "ClearedCount": sum(bool(count) for count in stars.values()),
                 "CanUseStarCount": totals - state.get("used_buff_stars", 0),
                 "CanSweep": bool(next_node is not None and not pending_reward and not pending_buff
                                  and self._bdd_sweep_is_open() and floor in state.get("three_star_floors", [])),

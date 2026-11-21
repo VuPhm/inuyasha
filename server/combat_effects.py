@@ -14,6 +14,7 @@ CONTROL = frozenset(range(501, 506))
 CONTROL_IMMUNITY = {attr - 200: attr for attr in range(701, 706)}
 IMMUNE_RAGE_LOSS = 706
 IMMUNITIES = frozenset((*CONTROL_IMMUNITY.values(), IMMUNE_RAGE_LOSS))
+CLEAR_DEBUFFS = 499
 STATS = {
     202: "AP", 203: "DEF", 301: "HIT", 302: "DOD", 303: "CRI", 304: "TEN",
     305: "BLO", 306: "BOG", 307: "CRId", 308: "TEND", 401: "APR", 403: "DEFR",
@@ -36,8 +37,14 @@ def _supports_effect(row: dict[str, Any], buffs: dict[str, Any], *, attached: bo
         return True
     if row["maxNum"] == 0 or row["maxTime"] == 0 or row["triggerCondition1"] not in (1, 2, 3, 4, 5, 6, 8):
         return False
-    if camp not in (0, 3) and (camp != 1 or row["targetEnum"] != 6):
+    lowest_rage_ally = kind == 2 and attr == 205 and row["targetEnum"] == 11 and row["targetNum"] == 1
+    if camp not in (0, 3) and (camp != 1 or (row["targetEnum"] != 6 and not lowest_rage_ally)):
         return False
+    if attr == CLEAR_DEBUFFS:
+        return not attached and kind == 2 and camp == 0 and phase == 5
+    if kind == 1:
+        return (not attached and attr == 410 and phase == 1 and camp == 3
+                and row["refAttr"] == 201 and row["refValue"] > 0 and row["addType"] == 1)
     if attr in IMMUNITIES:
         return kind == 2 and camp == 3 and row["addType"] == 1 and row["addValue"] > 0
     if attr in CONTROL:
@@ -173,6 +180,8 @@ class BattleEffects:
             else:
                 recipients = [p for p in self.units if (p <= 6) == (owner <= 6)]
             recipients = [p for p in recipients if self.units[p]["HP"] > 0]
+            if camp == 1 and row["targetEnum"] == 11:
+                recipients = sorted((p for p in recipients if p != owner), key=lambda p: (self.units[p]["RP"], p))[:1]
             if not recipients:
                 continue
             if kind in (3, 4, 9):
@@ -193,9 +202,16 @@ class BattleEffects:
                         self._apply_child(child, target, attacker)
             elif row["triggerOdds"] >= 10000 or self.rng.randrange(10000) < row["triggerOdds"]:
                 for target in recipients:
+                    if attr == CLEAR_DEBUFFS:
+                        self.active[target][:] = [active for active in self.active[target] if not active.row["isDebuff"]]
+                        continue
                     if attr == 205:
                         self.rage(target, math.floor(row["addValue"] / 100 + 0.5), from_buff=True)
                         continue
+                    if kind == 1:
+                        unit = self.units[owner]
+                        cost = math.ceil(max(unit["HP"], unit["TotalHp"]) * row["refValue"] / 10000)
+                        unit["HP"] = max(1, unit["HP"] - cost)
                     stat = STATS[attr]
                     value = (self.units[target].get(stat, 0) * row["addValue"] / 10000
                              if row["addType"] == 2 else row["addValue"] / 100)

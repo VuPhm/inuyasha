@@ -84,6 +84,13 @@ class R716LuaTest(unittest.TestCase):
                 local heroes={}
                 for i=1,12 do heroes[i]={} end
                 heroes[1],heroes[9]=unit(attacker,rp),unit(options.enemy or 12011005,options.enemyRP or 100)
+                if options.ally then
+                    heroes[2]=unit(options.ally,options.allyRP or 0)
+                    heroes[2].BuffList=options.allyBuffs or ""
+                end
+                if options.secondAlly then
+                    heroes[3]=unit(options.secondAlly,options.secondAllyRP or 0)
+                end
                 heroes[1].BuffList=buffs
                 heroes[9].BuffList=options.enemyBuffs or ""
                 if options.crit ~= nil then heroes[1].CRI=options.crit end

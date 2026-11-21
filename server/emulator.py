@@ -7016,17 +7016,20 @@ class ProfileStore(EventHandlersMixin, BddHandlersMixin):
             self._last_rpc_context["status"] = -1
             return {}
 
-        tuples: list[tuple[int, int, int]] = []
+        totals: dict[tuple[int, int], int] = {}
         remove_ids = {h["Id"] for h in targets}
         for h in targets:
             cfg = heroes_cfg.get(str(h["HeroModelId"]), {})
-            tuples.extend(_parse_resource_str(str(cfg.get("outputResource", ""))))
-        self.state["heroes"] = [h for h in self.state.get("heroes", []) if h["Id"] not in remove_ids]
+            for rtype, rmodel, rnum in _parse_resource_str(str(cfg.get("outputResource", ""))):
+                if rnum > 0:
+                    totals[(rtype, rmodel)] = totals.get((rtype, rmodel), 0) + rnum
+        tuples: list[tuple[int, int, int]] = [(rt, rm, rn) for (rt, rm), rn in totals.items()]
         base_res = self._grant_resources_from_tuples(
             tuples,
             source="hero_refine",
             tx_prefix=f"hero_refine:{self.profile_name}:{uuid.uuid4()}",
         )
+        self.state["heroes"] = [h for h in self.state.get("heroes", []) if h["Id"] not in remove_ids]
         self.save()
         return {"BaseGetGameResourceList": base_res}
 

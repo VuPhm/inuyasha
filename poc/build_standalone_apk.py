@@ -1746,6 +1746,131 @@ def patch_r716_explore_lua(src: Path) -> None:
             '            config.callback(unpack(args))\n'
             '        end',
         ),
+        (
+            'function XunYuScene:onExitTransitionStart()\n'
+            '    self:setTimeEvent(false)\n'
+            'end',
+            'function XunYuScene:onExitTransitionStart()\n'
+            '    self:setTimeEvent(false)\n'
+            '    self.model.action_running = false\n'
+            '    self.model.request_running = false\n'
+            '    self.model.xun_run = false\n'
+            'end',
+        ),
+        (
+            '    else\n'
+            '        ShowRewardGoods(resourceList)\n'
+            '    end',
+            '    else\n'
+            '        self.model.action_running = false\n'
+            '        ShowRewardGoods(resourceList)\n'
+            '    end',
+        ),
+        (
+            '            if self.model.request_running then\n'
+            '                self:runXunyuAction(callback)\n'
+            '            else\n'
+            '                return callback and callback()\n'
+            '            end',
+            '            if self.model.request_running then\n'
+            '                self:runXunyuAction(callback)\n'
+            '            else\n'
+            '                self.model.action_running = false\n'
+            '                return callback and callback()\n'
+            '            end',
+        ),
+    ])
+    patch_luac_text(src / "Disassemble" / "DisassembleNewScene.luac", [
+        (
+            '            if QualityModel.items[heroModelItem.quality].colorLV <=4 then\n'
+            '                table.insert(self.mAutoLianHeroList2, v)\n'
+            '            end',
+            '            if QualityModel.items[heroModelItem.quality].colorLV <= 5 and heroModelItem.quality < 18 and heroModelItem.specialType ~= 255 and not v.IsLock and not v.IfLock then\n'
+            '                table.insert(self.mAutoLianHeroList2, v)\n'
+            '            end',
+        ),
+        (
+            '            if not self.mAutoLianList or #self.mAutoLianList <= 0 then\n'
+            '                ui.showFlashView({parent = cc.Director:getInstance():getRunningScene(), text = TR("没有可一键炼化的材料！")})\n'
+            '                return\n'
+            '            end\n\n'
+            '            -- for i ,v in pairs(self.mSelectList) do\n'
+            '            --     table.insert(self.mCellList, v.data)\n'
+            '            -- end\n'
+            '            -- self.mSelectList = {}\n'
+            '            for i ,v in pairs(self.mAutoLianList) do\n'
+            '                local temp ={}\n'
+            '                temp.index = self.mMoveIndex\n'
+            '                temp.data =  v\n'
+            '                table.insert(self.mSelectList, temp)\n'
+            '            end\n'
+            '            self.mIsAutoLianhua = true\n'
+            '            self:requestLianhua()',
+            '            if not self.mAutoLianList or #self.mAutoLianList <= 0 then\n'
+            '                ui.showFlashView({parent = cc.Director:getInstance():getRunningScene(), text = TR("没有可一键炼化的材料！")})\n'
+            '                return\n'
+            '            end\n'
+            '            local function doBatchRefine()\n'
+            '                for i ,v in pairs(self.mAutoLianList) do\n'
+            '                    local temp ={}\n'
+            '                    temp.index = self.mMoveIndex\n'
+            '                    temp.data =  v\n'
+            '                    table.insert(self.mSelectList, temp)\n'
+            '                end\n'
+            '                self.mIsAutoLianhua = true\n'
+            '                self:requestLianhua()\n'
+            '            end\n'
+            '            if self.mSelectType == typeTable.eHero then\n'
+            '                local orangeCnt = 0\n'
+            '                for _, hv in ipairs(self.mAutoLianList) do\n'
+            '                    local hm = HeroModel.items[hv.HeroModelId]\n'
+            '                    if hm and QualityModel.items[hm.quality].colorLV == 5 then\n'
+            '                        orangeCnt = orangeCnt + 1\n'
+            '                    end\n'
+            '                end\n'
+            '                local confirmMsg = string.format("Xác nhận chuyển hóa nhanh %d tướng (trong đó có %d tướng Cam)?\\nKhông bao gồm tướng Đỏ/UR, ra trận, đồng hành hoặc đã bồi dưỡng.", #self.mAutoLianList, orangeCnt)\n'
+            '                local confirmBox = require("Common.MessageBoxLayer").new({\n'
+            '                    bgImage = "c_43.png",\n'
+            '                    closeBtnImage = "c_15.png",\n'
+            '                    title = TR("提示"),\n'
+            '                    leftBtnTitle = TR("取消"),\n'
+            '                    rightBtnTitle = TR("确定"),\n'
+            '                    content = confirmMsg,\n'
+            '                    rightBtnCallback = function(target)\n'
+            '                        target:removeFromParent(true)\n'
+            '                        doBatchRefine()\n'
+            '                    end,\n'
+            '                })\n'
+            '                cc.Director:getInstance():getRunningScene():addChild(confirmBox, 256)\n'
+            '            else\n'
+            '                doBatchRefine()\n'
+            '            end',
+        ),
+        (
+            '    local lianhuaLable2 = ui.newLabel({\n'
+            '        text = TR("橙色以下") ,',
+            '    local lianhuaLable2 = ui.newLabel({\n'
+            '        text = "Cam trở xuống" ,',
+        ),
+        (
+            '    if havewaring == true then',
+            '    if havewaring == true and not self.mIsAutoLianhua then',
+        ),
+        (
+            'function DisassembleNewScene:responseLianHua(event)\n'
+            '    LoadingWait:ends()\n'
+            '    if event and event.Status == 0 then',
+            'function DisassembleNewScene:responseLianHua(event)\n'
+            '    LoadingWait:ends()\n'
+            '    if not (event and event.Status == 0) then\n'
+            '        if self.mIsAutoLianhua then\n'
+            '            self.mSelectList = {}\n'
+            '            self.mIsAutoLianhua = false\n'
+            '        end\n'
+            '        return\n'
+            '    end\n'
+            '    if event and event.Status == 0 then',
+        ),
     ])
 
 

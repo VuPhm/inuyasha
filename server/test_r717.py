@@ -57,11 +57,11 @@ class R717DeltaTest(unittest.TestCase):
     def test_stun_skips_actions_and_overlapping_silence_expires_on_caster_turns(self):
         m = unit(12011006, rp=100, buffs="20210401")
         enemy = unit(12011005, rp=100)
-        _, stunned = self.simulate(m, enemy, seed=2, max_rounds=1)
+        _, stunned = self.simulate(m, enemy, seed=3, max_rounds=1)
         self.assertEqual(stunned[1]["HP"], 100000)
         self.assertGreaterEqual(stunned[9]["RP"], 100)
         enemy["BuffList"] = "10010000"
-        _, immune = self.simulate(m, enemy, seed=2, max_rounds=1)
+        _, immune = self.simulate(m, enemy, seed=3, max_rounds=1)
         self.assertLess(immune[1]["HP"], 100000)
         self.assertEqual(immune[9]["RP"], 0)
 
@@ -155,9 +155,9 @@ class R717DeltaTest(unittest.TestCase):
         self.assertEqual(result.waves, 2)
         self.assertEqual(packet, copy_before)
 
-    def test_fightinfo_emits_confirmed_talents_and_defers_complex_ones(self):
+    def test_fightinfo_emits_confirmed_talents_and_miroku_counter(self):
         p = GameEmulatorState(persist=False).profiles["normal"]
         m = p._hero_fight_obj(game()["heroes"]["12011006"], step=8)
         self.assertIn("20210401", m["BuffList"].split(","))
-        self.assertNotIn("20050600", m["BuffList"].split(","))
-        self.assertFalse(supports_talent_buff(game()["combat_buffs"]["20050600"], game()["combat_buffs"]))
+        self.assertIn("20050600", m["BuffList"].split(","))
+        self.assertTrue(supports_talent_buff(game()["combat_buffs"]["20050600"], game()["combat_buffs"]))

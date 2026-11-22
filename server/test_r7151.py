@@ -83,8 +83,8 @@ class R7151DeltaTest(unittest.TestCase):
         self.assertEqual(result["Value"]["MateInfo"], [{"SlotId": 1, "HeroId": mate["Id"], "HeroModelId": 12011002}])
         change = self.prop()["AP1"] * 2200 // 10000
         self.assertIn(7, self.prop()["ActivePrIds"])
-        self.assertEqual(result["Avatar"]["FAP"], initial + change * 5 + self.profile._get_slot_star_bonuses(1)["HP"]
-                         + 5 * sum(self.profile._get_slot_star_bonuses(1)[key] for key in ("AP", "DEF")))
+        self.assertEqual(result["Avatar"]["FAP"], initial + change * 10 + self.profile._get_slot_star_bonuses(1)["HP"]
+                         + 10 * sum(self.profile._get_slot_star_bonuses(1)[key] for key in ("AP", "DEF")))
         self.assertEqual(self.mate(1, mate)["Avatar"]["FAP"], result["Avatar"]["FAP"])
         self.assertEqual(self.rpc("Slot", "HeroCombat", 2, mate["Id"])["Status"], -1206)
         self.assertNotEqual(self.rpc("Hero", "HeroRebirth", [mate["Id"]])["Status"], 0)
@@ -98,7 +98,7 @@ class R7151DeltaTest(unittest.TestCase):
         self.assertEqual(startup["PlayerInfo"]["FAP"], result["Avatar"]["FAP"])
         self.assertEqual(self.rpc("Slot", "SlotFormations")["Value"]["MateInfos"], startup["MateInfo"])
         alternate_result = self.mate(1, alternate)
-        self.assertEqual(alternate_result["Avatar"]["FAP"], result["Avatar"]["FAP"] - change * 5)
+        self.assertEqual(alternate_result["Avatar"]["FAP"], result["Avatar"]["FAP"] - change * 10)
         self.assertEqual(self.mate(1)["Value"]["MateInfo"][0]["HeroModelId"], 0)
         self.reload()
         self.assertEqual(self.rpc("Player", "GetInitData")["Value"]["MateInfo"], [])
@@ -121,10 +121,20 @@ class R7151DeltaTest(unittest.TestCase):
         self.assertEqual(after["ActivePrIds"], [472, 473, 476])
         self.assertEqual([after[key] for key in ("APR1", "DEFR1", "HPR1")], [12000, 11300, 11700])
         self.assertGreater(after["DEF"], prior["DEF"])
-        self.assertEqual(self.prop(2), prior_ally)
+        _, art_bonus = profile._compute_equip_artifact_state()
+        expected_ally = prior_ally.copy()
+        expected_ally["AP"] += art_bonus["AP"]
+        expected_ally["AP2"] += art_bonus["AP"]
+        expected_ally["HP"] += art_bonus["HP"]
+        expected_ally["HP2"] += art_bonus["HP"]
+        expected_ally["DEF"] += art_bonus["DEF"]
+        expected_ally["DEF2"] += art_bonus["DEF"]
+        expected_ally["FAP"] += art_bonus["HP"] + 10 * (art_bonus["AP"] + art_bonus["DEF"])
+        self.assertEqual(self.prop(2), expected_ally)
         unequip = self.rpc("Slot", "OneKeyEquipCombat", 1, *([EMPTY_ENTITY_ID] * 6))
         self.assertEqual(unequip["Status"], 0)
         self.assertEqual(self.prop(), prior)
+        self.assertEqual(self.prop(2), prior_ally)
 
     def test_equipped_gear_advances_three_steps_and_refuses_stale_requests(self):
         profile = self.profile
@@ -142,13 +152,15 @@ class R7151DeltaTest(unittest.TestCase):
             self.assertEqual(self.rpc("Equip", "EquipLvUpForCount", item["Id"], required_level - item["Lv"])["Status"], 0)
             self.assertEqual(item["Lv"], required_level)
             before_ap = self.prop()["AP"]
+            before_art_ap = profile._compute_equip_artifact_state()[1]["AP"]
             gold = profile.state["player"]["Gold"]
             result = self.rpc("Equip", "EquipStepUp", item["Id"], material["Id"], index)
             self.assertEqual(result["Status"], 0)
             self.assertEqual(result["Value"]["EquipInfo"]["Step"], index + 1)
             self.assertEqual(result["Avatar"]["SlotInfo"][0]["Weapon"]["Step"], index + 1)
             step_gain = steps[str(index + 1)]["AP"] - steps[str(index)]["AP"]
-            self.assertEqual(self.prop()["AP"], before_ap + step_gain)
+            art_ap_gain = profile._compute_equip_artifact_state()[1]["AP"] - before_art_ap
+            self.assertEqual(self.prop()["AP"], before_ap + step_gain + art_ap_gain)
             gold -= steps[str(index)]["stepUpUseNum"]
             self.assertEqual(profile.state["player"]["Gold"], gold)
             self.assertEqual(self.rpc("Equip", "EquipStepUp", item["Id"], materials[-1]["Id"], index)["Status"], -39)

@@ -769,7 +769,7 @@ class EmulatorProtocolTest(unittest.TestCase):
         self.assertEqual(eq_res["Status"], 0)
         self.assertEqual(prof.state["slots"][0]["Horse"]["TreasureModelId"], 14020501)
         self.assertEqual(prof.state["slots"][0]["Property"]["AP"], ap_before + 20)
-        self.assertEqual(prof.state["slots"][0]["FAP"], fap_before + 100)
+        self.assertEqual(prof.state["slots"][0]["FAP"], fap_before + 200)
 
         # GetInitData persists composed treasure
         init_res = prof.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [1] * 20})
@@ -815,12 +815,14 @@ class EmulatorProtocolTest(unittest.TestCase):
         self.assertEqual(efight["Value"]["CurrentNode"]["CanDraw"], "True")
         self.assertEqual(prof.state["player"]["VIT"], vit_before - 10)
         self.assertEqual(efight["Value"]["BattleInfo"]["FightCount"], 2)
+        # ElitebattleNodeDropRelation[9]: Node 11 guarantees 50 Diamond on victory (dropOdds=10000).
+        self.assertEqual(prof.state["player"]["Diamond"], 50)
 
         # DrawFirstReward grants reward once and blocks duplicate claim
         first = prof.handle_rpc({"ModuleName": "EliteBattle", "MethodName": "DrawFirstReward", "Data": [11]})
         self.assertEqual(first["Status"], 0)
         self.assertEqual(first["Value"]["NodeInfo"]["CanDraw"], "False")
-        self.assertEqual(prof.state["player"]["Diamond"], 100)
+        self.assertEqual(prof.state["player"]["Diamond"], 150)
         first_dup = prof.handle_rpc({"ModuleName": "EliteBattle", "MethodName": "DrawFirstReward", "Data": [11]})
         self.assertEqual(first_dup["Status"], -1)
 
@@ -828,7 +830,7 @@ class EmulatorProtocolTest(unittest.TestCase):
         buy = prof.handle_rpc({"ModuleName": "EliteBattle", "MethodName": "BuyFightCount", "Data": [3]})
         self.assertEqual(buy["Status"], 0)
         self.assertEqual(buy["Value"]["BattleInfo"]["BuyCount"], 1)
-        self.assertEqual(prof.state["player"]["Diamond"], 50)
+        self.assertEqual(prof.state["player"]["Diamond"], 100)
 
     def test_15_role_info_recover_times_and_extra_activity_schemas(self) -> None:
         emu = GameEmulatorState(persist=False)
@@ -1677,8 +1679,12 @@ class EmulatorProtocolTest(unittest.TestCase):
             self.assertEqual(fi_cap["Status"], -1)
             f_cap = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "Fight", "Data": [11, 1111, 1, True, "", False], "ServerId": 1})
             self.assertEqual(f_cap["Status"], -1)
+            rc_broke = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "ResetCount", "Data": [11, 1111], "ServerId": 1})
+            self.assertEqual(rc_broke["Status"], -1105)
+            normal.state["player"]["Diamond"] = 50
             rc = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "ResetCount", "Data": [11, 1111], "ServerId": 1})
             self.assertEqual(rc["Status"], 0)
+            self.assertEqual(normal.state["player"]["Diamond"], 0)
             fi_after_reset = emu.handle_rpc({"ModuleName": "Battle", "MethodName": "GetFightInfo", "Data": [11, 1111, 1], "ServerId": 1})
             self.assertEqual(fi_after_reset["Status"], 0)
 

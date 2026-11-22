@@ -316,6 +316,11 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
         "bdd_handlers.py",
         "bdd_data.json",
         "teambattle_handlers.py",
+        "nightmare_handlers.py",
+        "reborn_handlers.py",
+        "ggzj_handlers.py",
+        "gddh_handlers.py",
+        "social_handlers.py",
     ]
     dest_zip.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(dest_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:

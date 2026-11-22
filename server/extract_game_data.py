@@ -202,6 +202,8 @@ def main() -> None:
     talent_models = parse_simple_lua_items(os.path.join(cfg_dir, "TalModel.lua"))
     combat_buffs = parse_simple_lua_items(os.path.join(cfg_dir, "BuffModel.lua"))
     equips = parse_simple_lua_items(os.path.join(cfg_dir, "EquipModel.lua"))
+    equip_artifact = parse_simple_lua_items(os.path.join(cfg_dir, "EquipArtifactRelation.lua"))
+    callequip_outodds = parse_simple_lua_items(os.path.join(cfg_dir, "CallequipOutoddsBRelation.lua"))
     equip_color = parse_simple_lua_items(os.path.join(cfg_dir, "EquipColorRelation.lua"))
     equip_lv_up = parse_nested_lua_items(os.path.join(cfg_dir, "EquipLvUpuseRelation.lua"))
     equip_group = parse_nested_lua_items(os.path.join(cfg_dir, "EquipGroupActiveRelation.lua"))
@@ -212,6 +214,8 @@ def main() -> None:
         nid = str(drop.get("nodeModelID", ""))
         if nid:
             node_drops.setdefault(nid, []).append(drop)
+    battle_reset_use = parse_simple_lua_items(os.path.join(cfg_dir, "BattleResetUseRelation.lua"))
+    attrtree_heromodel = parse_simple_lua_items(os.path.join(cfg_dir, "AttrtreeHeromodelRelation.lua"))
 
     raw_guide_npcs = parse_simple_lua_items(os.path.join(cfg_dir, "BattleNodeGuidenpcRelation.lua"))
     guide_npcs = {k: v for k, v in raw_guide_npcs.items() if int(v.get("heroModelID", 0)) > 0}
@@ -230,6 +234,16 @@ def main() -> None:
 
     nightmare_chapters = parse_simple_lua_items(os.path.join(cfg_dir, "NightmareChapterModel.lua"))
     nightmare_nodes = parse_simple_lua_items(os.path.join(cfg_dir, "NightmareNodeModel.lua"))
+    nightmare_config = parse_singleton_lua_item(os.path.join(cfg_dir, "NightmareConfig.lua"))
+    nightmare_chapter_boxes = parse_simple_lua_items(os.path.join(cfg_dir, "NightmareChapterBoxRelation.lua"))
+    raw_nightmare_drops = parse_simple_lua_items(os.path.join(cfg_dir, "NightmareNodeDropModel.lua"))
+    nightmare_node_drops: dict[str, list[dict[str, Any]]] = {}
+    for drop in raw_nightmare_drops.values():
+        nid = str(drop.get("nodeModelID", ""))
+        if nid:
+            nightmare_node_drops.setdefault(nid, []).append(drop)
+    nightmare_reset_use = parse_simple_lua_items(os.path.join(cfg_dir, "NightmareResetUseRelation.lua"))
+    reborn_goods = parse_simple_lua_items(os.path.join(cfg_dir, "RebornGoodsModel.lua"))
 
     goods_model = parse_simple_lua_items(os.path.join(cfg_dir, "GoodsModel.lua"))
     shop_goods = parse_simple_lua_items(os.path.join(cfg_dir, "ShopGoodsModel.lua"))
@@ -240,6 +254,12 @@ def main() -> None:
     treasure_loot_config = parse_singleton_lua_item(os.path.join(cfg_dir, "TreasureLootConfig.lua"))
     elite_nodes = parse_simple_lua_items(os.path.join(cfg_dir, "ElitebattleNodeModel.lua"))
     elite_config = parse_singleton_lua_item(os.path.join(cfg_dir, "ElitebattleConfig.lua"))
+    raw_elite_drops = parse_simple_lua_items(os.path.join(cfg_dir, "ElitebattleNodeDropRelation.lua"))
+    elite_node_drops: dict[str, list[dict[str, Any]]] = {}
+    for drop in raw_elite_drops.values():
+        nid = str(drop.get("nodeModelID", ""))
+        if nid:
+            elite_node_drops.setdefault(nid, []).append(drop)
 
     luckboss_config = parse_singleton_lua_item(os.path.join(cfg_dir, "LuckbossConfig.lua"))
     luckboss_trigger = parse_singleton_lua_item(os.path.join(cfg_dir, "LuckbossTriggerRelation.lua"))
@@ -263,6 +283,9 @@ def main() -> None:
     goods_output = parse_nested_lua_items(os.path.join(cfg_dir, "GoodsOutputRelation.lua"))
     fashion_model = parse_simple_lua_items(os.path.join(cfg_dir, "FashionModel.lua"))
     fashion_step = parse_nested_lua_items(os.path.join(cfg_dir, "FashionStepRelation.lua"))
+    fashion_pr = parse_simple_lua_items(os.path.join(cfg_dir, "FashionPrRelation.lua"))
+    hero_step_cheer = parse_simple_lua_items(os.path.join(cfg_dir, "HeroStepCheer.lua"))
+    quality_model = parse_simple_lua_items(os.path.join(cfg_dir, "QualityModel.lua"))
 
     guide_relation = parse_nested_lua_items(os.path.join(cfg_dir, "GuideRelation.lua"))
     glory_type = parse_simple_lua_items(os.path.join(cfg_dir, "GloryTypeModel.lua"))
@@ -330,8 +353,17 @@ def main() -> None:
     hero_rebirth = parse_nested_lua_items(os.path.join(cfg_dir, "HeroRebirthRelation.lua"))
     equip_rebirth = parse_nested_lua_items(os.path.join(cfg_dir, "EquipRebirthRelation.lua"))
     treasure_rebirth = parse_nested_lua_items(os.path.join(cfg_dir, "TreasureRebirthRelation.lua"))
+    treasure_color = parse_singleton_lua_item(os.path.join(cfg_dir, "TreasureColorModel.lua"))
     reborn_lv = parse_simple_lua_items(os.path.join(cfg_dir, "RebornLvModel.lua"))
+    reborn_config = parse_singleton_lua_item(os.path.join(cfg_dir, "RebornConfig.lua"))
+    reborn_lv_active = parse_simple_lua_items(os.path.join(cfg_dir, "RebornLvActiveModel.lua"))
+    reborn_prtype = parse_simple_lua_items(os.path.join(cfg_dir, "RebornPrtypeRelation.lua"))
+    reborn_shop_odds = parse_simple_lua_items(os.path.join(cfg_dir, "RebornShopOddsRelation.lua"))
+    reborn_slots = parse_nested_lua_items(os.path.join(cfg_dir, "RebornSlotRelation.lua"))
+    hero_reborn_cheer = parse_simple_lua_items(os.path.join(cfg_dir, "HeroRebornCheer.lua"))
     gem_model = parse_simple_lua_items(os.path.join(cfg_dir, "GemModel.lua"))
+    leaderboard_config = parse_singleton_lua_item(os.path.join(cfg_dir, "LeaderboardConfig.lua"))
+    goods_djq_model = parse_simple_lua_items(os.path.join(cfg_dir, "GoodsDjqModel.lua"))
 
     teambattle_config = parse_singleton_lua_item(os.path.join(cfg_dir, "TeambattleConfig.lua"))
     teambattle_nodes = parse_simple_lua_items(os.path.join(cfg_dir, "TeambattleNodeModel.lua"))
@@ -341,6 +373,22 @@ def main() -> None:
     teambattle_player_npcs = parse_array_lua_list(os.path.join(cfg_dir, "TeambattlePlayerNpc.lua"))
     teambattle_hero_npcs = parse_array_lua_list(os.path.join(cfg_dir, "TeambattleHeroNpc.lua"))
 
+    ggzj_config = parse_singleton_lua_item(os.path.join(cfg_dir, "GgzjConfig.lua"))
+    ggzj_box_reward = parse_simple_lua_items(os.path.join(cfg_dir, "GgzjBoxRewardRelation.lua"))
+    ggzj_reward_view = parse_simple_lua_items(os.path.join(cfg_dir, "GgzjRewardViewModel.lua"))
+    ggzj_system_heroes = parse_nested_lua_items(os.path.join(cfg_dir, "GgzjSystemHeroRelation.lua"))
+
+    gddh_config = parse_singleton_lua_item(os.path.join(cfg_dir, "GddhConfig.lua"))
+    gddh_attack_reward = parse_simple_lua_items(os.path.join(cfg_dir, "GddhAttackRewardRelation.lua"))
+    gddh_buynum = parse_simple_lua_items(os.path.join(cfg_dir, "GddhBuynumRelation.lua"))
+    gddh_shop = parse_simple_lua_items(os.path.join(cfg_dir, "GddhShopModel.lua"))
+    gddh_rank_reward = parse_3level_lua_items(os.path.join(cfg_dir, "GddhRankRewardRelation.lua"), "rewardsType")
+    for rows in gddh_rank_reward.values():
+        rows.sort(key=lambda r: int(r.get("rankMin", 0)))
+    gddh_guild_reward = parse_3level_lua_items(os.path.join(cfg_dir, "GddhGuildrewardRelation.lua"), "rewardsType")
+    for rows in gddh_guild_reward.values():
+        rows.sort(key=lambda r: int(r.get("rankMin", 0)))
+
     data = {
         "source": source_label,
         "counts": {
@@ -349,10 +397,14 @@ def main() -> None:
             "chapters": len(chapters),
             "nodes": len(nodes),
             "equips": len(equips),
+            "equip_artifact": len(equip_artifact),
+            "callequip_outodds": len(callequip_outodds),
             "player_lv": len(player_lv),
             "hero_lv": len(hero_lv),
             "hero_step": len(hero_step),
             "node_drops": sum(len(v) for v in node_drops.values()),
+            "battle_reset_use": len(battle_reset_use),
+            "attrtree_heromodel": len(attrtree_heromodel),
             "guide_npcs": len(guide_npcs),
             "road_boxes": len(road_boxes),
             "chapter_boxes": len(chapter_boxes),
@@ -361,11 +413,16 @@ def main() -> None:
             "attrtree": len(attrtree),
             "nightmare_chapters": len(nightmare_chapters),
             "nightmare_nodes": len(nightmare_nodes),
+            "nightmare_chapter_boxes": len(nightmare_chapter_boxes),
+            "nightmare_node_drops": sum(len(v) for v in nightmare_node_drops.values()),
+            "nightmare_reset_use": len(nightmare_reset_use),
+            "reborn_goods": len(reborn_goods),
             "goods_model": len(goods_model),
             "shop_goods": len(shop_goods),
             "treasures": len(treasures),
             "treasure_debris": len(treasure_debris),
             "elite_nodes": len(elite_nodes),
+            "elite_node_drops": sum(len(v) for v in elite_node_drops.values()),
             "luckboss_value_shop": len(luckboss_value_shop),
             "pvp_shop": len(pvp_shop),
             "pvp_first_reward": sum(len(v) for v in pvp_first_reward.values()),
@@ -373,6 +430,9 @@ def main() -> None:
             "daydayfund_vip": len(daydayfund_vip),
             "goods_output": len(goods_output),
             "fashion_model": len(fashion_model),
+            "fashion_pr": len(fashion_pr),
+            "hero_step_cheer": len(hero_step_cheer),
+            "quality_model": len(quality_model),
             "guide_relation": len(guide_relation),
             "glory_type": len(glory_type),
             "glory_lv": len(glory_lv),
@@ -424,13 +484,27 @@ def main() -> None:
             "equip_rebirth": sum(len(v) for v in equip_rebirth.values()),
             "treasure_rebirth": sum(len(v) for v in treasure_rebirth.values()),
             "reborn_lv": len(reborn_lv),
+            "reborn_lv_active": len(reborn_lv_active),
+            "reborn_prtype": len(reborn_prtype),
+            "reborn_shop_odds": len(reborn_shop_odds),
+            "reborn_slots": len(reborn_slots),
+            "hero_reborn_cheer": len(hero_reborn_cheer),
             "gem_model": len(gem_model),
+            "goods_djq_model": len(goods_djq_model),
             "teambattle_nodes": len(teambattle_nodes),
             "teambattle_hold_drops": len(teambattle_hold_drops),
             "teambattle_hero_drops": len(teambattle_hero_drops),
             "teambattle_shop": len(teambattle_shop),
             "teambattle_player_npcs": len(teambattle_player_npcs),
             "teambattle_hero_npcs": len(teambattle_hero_npcs),
+            "ggzj_box_reward": len(ggzj_box_reward),
+            "ggzj_reward_view": len(ggzj_reward_view),
+            "ggzj_system_heroes": sum(len(v) for v in ggzj_system_heroes.values()),
+            "gddh_attack_reward": len(gddh_attack_reward),
+            "gddh_buynum": len(gddh_buynum),
+            "gddh_shop": len(gddh_shop),
+            "gddh_rank_reward": sum(len(v) for v in gddh_rank_reward.values()),
+            "gddh_guild_reward": sum(len(v) for v in gddh_guild_reward.values()),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -461,6 +535,8 @@ def main() -> None:
         "nodes": nodes,
         "guide_npcs": guide_npcs,
         "equips": equips,
+        "equip_artifact": equip_artifact,
+        "callequip_outodds": callequip_outodds,
         "equip_steps": parse_nested_lua_items(os.path.join(cfg_dir, "EquipStepRelation.lua"))
         if os.path.exists(os.path.join(cfg_dir, "EquipStepRelation.lua")) else {},
         "equip_color": equip_color,
@@ -480,6 +556,11 @@ def main() -> None:
         "explore_reward_nums": explore_reward_nums,
         "nightmare_chapters": nightmare_chapters,
         "nightmare_nodes": nightmare_nodes,
+        "nightmare_config": nightmare_config,
+        "nightmare_chapter_boxes": nightmare_chapter_boxes,
+        "nightmare_node_drops": nightmare_node_drops,
+        "nightmare_reset_use": nightmare_reset_use,
+        "reborn_goods": reborn_goods,
         "goods_model": goods_model,
         "shop_goods": shop_goods,
         "shop_goods_price": shop_goods_price,
@@ -487,6 +568,9 @@ def main() -> None:
         "treasures": treasures,
         "treasure_debris": treasure_debris,
         "elite_nodes": elite_nodes,
+        "elite_node_drops": elite_node_drops,
+        "battle_reset_use": battle_reset_use,
+        "attrtree_heromodel": attrtree_heromodel,
         "pvp_shop": pvp_shop,
         "pvp_first_reward": pvp_first_reward,
         "pvp_rank_reward": pvp_rank_reward,
@@ -495,6 +579,9 @@ def main() -> None:
         "goods_output": goods_output,
         "fashion_model": fashion_model,
         "fashion_step": fashion_step,
+        "fashion_pr": fashion_pr,
+        "hero_step_cheer": hero_step_cheer,
+        "quality_model": quality_model,
         "guide_relation": guide_relation,
         "glory_type": glory_type,
         "glory_lv": glory_lv,
@@ -550,8 +637,17 @@ def main() -> None:
         "hero_rebirth": hero_rebirth,
         "equip_rebirth": equip_rebirth,
         "treasure_rebirth": treasure_rebirth,
+        "treasure_color": treasure_color,
         "reborn_lv": reborn_lv,
+        "reborn_config": reborn_config,
+        "reborn_lv_active": reborn_lv_active,
+        "reborn_prtype": reborn_prtype,
+        "reborn_shop_odds": reborn_shop_odds,
+        "reborn_slots": reborn_slots,
+        "hero_reborn_cheer": hero_reborn_cheer,
         "gem_model": gem_model,
+        "leaderboard_config": leaderboard_config,
+        "goods_djq_model": goods_djq_model,
         "teambattle_config": teambattle_config,
         "teambattle_nodes": teambattle_nodes,
         "teambattle_hold_drops": teambattle_hold_drops,
@@ -559,6 +655,16 @@ def main() -> None:
         "teambattle_shop": teambattle_shop,
         "teambattle_player_npcs": teambattle_player_npcs,
         "teambattle_hero_npcs": teambattle_hero_npcs,
+        "ggzj_config": ggzj_config,
+        "ggzj_box_reward": ggzj_box_reward,
+        "ggzj_reward_view": ggzj_reward_view,
+        "ggzj_system_heroes": ggzj_system_heroes,
+        "gddh_config": gddh_config,
+        "gddh_attack_reward": gddh_attack_reward,
+        "gddh_buynum": gddh_buynum,
+        "gddh_shop": gddh_shop,
+        "gddh_rank_reward": gddh_rank_reward,
+        "gddh_guild_reward": gddh_guild_reward,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

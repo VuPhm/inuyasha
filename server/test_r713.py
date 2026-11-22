@@ -193,7 +193,7 @@ class R713DeltaTest(unittest.TestCase):
         reply = self.rpc("Fashion", "StepUp", "target-fashion")
         self.assertEqual(reply["Status"], 0)
         self.assertEqual(reply["Value"]["FashionInfo"]["Step"], 1)
-        delta = {"AP": 60, "HP": 400, "DEF": 20, "FAP": 800}
+        delta = {"AP": 60, "HP": 400, "DEF": 20, "FAP": 1200}
         after = reply["Avatar"]["SlotInfo"][0]["Property"]
         self.assertEqual({key: after[key] - hero_attr[key] for key in delta}, delta)
         self.assertEqual(reply["Avatar"]["GoodsInfo"]["16070004"], [])

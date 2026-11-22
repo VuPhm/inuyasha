@@ -65,7 +65,7 @@ class R718BddTest(unittest.TestCase):
         self.profile.save()
         self.reload()
         value = self.bdd()["Value"]
-        self.assertEqual((value["PlayableCount"], value["Info"]["ClearedCount"]), (39, 18))
+        self.assertEqual((value["PlayableCount"], value["Info"]["ClearedCount"]), (51, 18))
         self.assertTrue(value["Info"]["NeedSelectBuff"])
         self.assertFalse(value["Info"]["NeedReset"])
         self.assertEqual(value["Info"]["BeforeFloorStarCount"], 9)
@@ -99,6 +99,7 @@ class R718BddTest(unittest.TestCase):
             self.assertLess(figures[0], figures[1])
             self.assertLess(figures[1], figures[2])
 
+    @patch("bdd_handlers.PLAYABLE_FLOORS", range(11, 24))
     def test_39_stages_have_a_playable_route_and_preserve_shop_quests_and_sweep(self):
         self.equip_test_team()
         cfg = self.profile.game_data["bdd"]

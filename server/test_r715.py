@@ -104,8 +104,13 @@ class R715DeltaTest(unittest.TestCase):
         self.assertEqual(step(ingredient["Id"]), -1315)
         prop = p.state["slots"][0]["Property"]
         gain = p.game_data["equip_steps"]["13010801"]["1"]["AP"]
-        self.assertEqual(prop["AP"], before_ap + gain)
-        self.assertEqual(p.state["player"]["FAP"], prior_fap + gain * 5)
+        art_before = p.game_data["equip_artifact"]["1331"]
+        art_after = p.game_data["equip_artifact"]["1381"]
+        art_ap = art_after["APADD"] - art_before["APADD"]
+        art_hp = art_after["HPADD"] - art_before["HPADD"]
+        art_def = art_after["DEFADD"] - art_before["DEFADD"]
+        self.assertEqual(prop["AP"], before_ap + gain + art_ap)
+        self.assertEqual(p.state["player"]["FAP"], prior_fap + gain * 10 + art_hp + (art_ap + art_def) * 10)
         fight = self.bdd("GetFightInfo", 1111, 1)["Value"]["FightInfo"]["FightObjs"][0]["Heros"][0]
         self.assertEqual(fight["AP"], prop["AP"])
         self.assertEqual(self.equip("EquipRebirth", [target["Id"]])["Status"], -1304)

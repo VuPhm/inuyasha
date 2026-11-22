@@ -212,7 +212,7 @@ class TeambattleHandlersMixin:
 
     @staticmethod
     def _teambattle_raw_fap(units: list[dict[str, Any]]) -> int:
-        return sum(int(u.get("HP", 0)) + 5 * (int(u.get("AP", 0)) + int(u.get("DEF", 0))) for u in units if u)
+        return sum(int(u.get("HP", 0)) + 10 * (int(u.get("AP", 0)) + int(u.get("DEF", 0))) for u in units if u)
 
     def _teambattle_npc_fight_objs(self, npc_player_id: str, fight_add_pct: int = 0) -> list[dict[str, Any]]:
         heroes_cfg = self.game_data["heroes"]
@@ -260,10 +260,8 @@ class TeambattleHandlersMixin:
             )
         return allies
 
-    def _teambattle_member_fight_objs(self, member: dict[str, Any], fight_add_pct: int = 0) -> list[dict[str, Any]]:
-        if member.get("kind") == "npc":
-            return self._teambattle_npc_fight_objs(str(member["PlayerId"]), fight_add_pct=fight_add_pct)
-        allies = self._build_ally_fight_objs()
+    @staticmethod
+    def _teambattle_scale_allies(allies: list[dict[str, Any]], fight_add_pct: int) -> list[dict[str, Any]]:
         if fight_add_pct > 0:
             mult = 1.0 + fight_add_pct / 100.0
             for u in allies:
@@ -273,6 +271,20 @@ class TeambattleHandlersMixin:
                     u[field] = max(1, int(u[field] * mult))
                 u["TotalHp"] = u["HP"]
         return allies
+
+    def _teambattle_member_fight_objs(self, member: dict[str, Any], fight_add_pct: int = 0) -> list[dict[str, Any]]:
+        kind = member.get("kind")
+        if kind == "npc":
+            return self._teambattle_npc_fight_objs(str(member["PlayerId"]), fight_add_pct=fight_add_pct)
+        if kind == "social_npc" and hasattr(self, "_social_npc_fight_objs"):
+            units = self._social_npc_fight_objs(str(member["PlayerId"]), fight_add_pct=fight_add_pct)
+            return units if units is not None else [{} for _ in range(6)]
+        if kind == "peer":
+            peer = self._find_peer_by_player_id(str(member["PlayerId"]))
+            if peer is None:
+                return [{} for _ in range(6)]
+            return self._teambattle_scale_allies(peer._build_ally_fight_objs(), fight_add_pct)
+        return self._teambattle_scale_allies(self._build_ally_fight_objs(), fight_add_pct)
 
     def _teambattle_enemy_formation(self, node_id: int) -> list[dict[str, Any]]:
         """Build the 3 original chapter boss units calibrated against the node's TeambattleHeroNpc squad."""
@@ -564,17 +576,40 @@ class TeambattleHandlersMixin:
         team = tb.get("team")
         node_id = int(data[0]) if isinstance(data, list) and data else (int(team["node_id"]) if team else 1111)
         in_team_ids = {m["PlayerId"] for m in team["members"]} if team else set()
-        friend_list = [
-            {
-                "PlayerId": str(npc["Id"]),
-                "Name": str(npc["name"]),
-                "Lv": int(npc["Lv"]),
-                "FAP": int(npc["FAP"]),
-                "HeadImageId": int(npc["headImageId"]),
-            }
-            for npc in self._teambattle_npcs_for_node(node_id)
-            if str(npc["Id"]) not in in_team_ids
-        ]
+        friend_list: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+        if hasattr(self, "_social_state"):
+            social = self._social_state()
+            for fid in social.get("friends", []):
+                fid_str = str(fid)
+                if fid_str in in_team_ids or fid_str in seen_ids:
+                    continue
+                kind, card, _ = self._social_resolve_player(fid_str)
+                if kind in ("peer", "npc"):
+                    seen_ids.add(fid_str)
+                    friend_list.append(
+                        {
+                            "PlayerId": fid_str,
+                            "Name": str(card["Name"]),
+                            "Lv": int(card["Lv"]),
+                            "FAP": int(card["FAP"]),
+                            "HeadImageId": int(card["HeadImageId"]),
+                        }
+                    )
+        for npc in self._teambattle_npcs_for_node(node_id):
+            pid = str(npc["Id"])
+            if pid in in_team_ids or pid in seen_ids:
+                continue
+            seen_ids.add(pid)
+            friend_list.append(
+                {
+                    "PlayerId": pid,
+                    "Name": str(npc["name"]),
+                    "Lv": int(npc["Lv"]),
+                    "FAP": int(npc["FAP"]),
+                    "HeadImageId": int(npc["headImageId"]),
+                }
+            )
         return {"GuildPlayer": [], "FriendPlayer": friend_list}
 
     def _rpc_teambattle_invite_friends(self, data: Any) -> dict[str, Any]:
@@ -591,13 +626,34 @@ class TeambattleHandlersMixin:
         target_pid = str(data[1])
         if any(m["PlayerId"] == target_pid for m in team["members"]):
             return self._teambattle_reject(-7414)
+        node_id = int(team["node_id"])
         npc = next(
-            (n for n in self._teambattle_npcs_for_node(int(team["node_id"])) if str(n["Id"]) == target_pid),
+            (n for n in self._teambattle_npcs_for_node(node_id) if str(n["Id"]) == target_pid),
             None,
         )
-        if not npc:
+        if npc is not None:
+            team["members"].append(self._teambattle_npc_member(npc, node_id, is_closer=True))
+        elif hasattr(self, "_social_state") and target_pid in {str(x) for x in self._social_state().get("friends", [])}:
+            kind, card, _ = self._social_resolve_player(target_pid)
+            if kind not in ("peer", "npc"):
+                return self._teambattle_reject(-7413)
+            team["members"].append(
+                {
+                    "kind": "peer" if kind == "peer" else "social_npc",
+                    "PlayerId": target_pid,
+                    "Name": str(card["Name"]),
+                    "Lv": int(card["Lv"]),
+                    "FAP": int(card["FAP"]),
+                    "HeadImageId": int(card["HeadImageId"]),
+                    "FashionModelId": int(card.get("FashionModelId", 0)),
+                    "IsLeader": 0,
+                    "FightAdd": 0,
+                    "NodeModelId": node_id,
+                    "is_closer": True,
+                }
+            )
+        else:
             return self._teambattle_reject(-7413)
-        team["members"].append(self._teambattle_npc_member(npc, int(team["node_id"]), is_closer=True))
         self.save()
         return {"TeamsInfo": self._teambattle_format_teams_info(team)}
 

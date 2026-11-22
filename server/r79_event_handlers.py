@@ -152,6 +152,7 @@ class R79EventHandlersMixin:
             + int(stats.get("grab_count", 0)) * 1
             + int(stats.get("arena_Win", 0)) * 1
             + int(stats.get("ggzj_count", 0)) * 2
+            + int(stats.get("gddh_fights", 0)) * 1
             + int(stats.get("bdd_Win", 0)) * 1
             + int(stats.get("mystery_treasure_count", 0)) * 3
             + int(st.get("player", {}).get("Lv", 1)) * 5
@@ -2589,6 +2590,7 @@ class R79EventHandlersMixin:
             source=f"trader_buy:{gid}",
             tx_prefix=f"evt:{ev.instance_id}:trader:{gid}:{uuid.uuid4()}",
         )
+        self._record_daily_task_progress(26, 1)
         self.save()
         return {"BaseGetGameResourceList": base_res}
 

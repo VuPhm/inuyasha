@@ -33,8 +33,23 @@ class EventHandlersMixin(R79EventHandlersMixin):
 
     def _sync_events(self) -> None:
         """Advance/archive ended timed events and settle end-of-period rewards once."""
-        if self.event_runtime.check_and_finalize_ended_timed(on_ended=self._on_timed_event_ended):
+        changed = bool(self.event_runtime.check_and_finalize_ended_timed(on_ended=self._on_timed_event_ended))
+        if hasattr(self, "_sync_gddh_settlement") and self._sync_gddh_settlement():
+            changed = True
+        if hasattr(self, "_sync_social_daily") and self._sync_social_daily():
+            changed = True
+        if changed:
             self.save()
+
+    def _timed_welfare_mult(self, module_sub: int, default: int = 1) -> int:
+        """Return max active RefNum multiplier for a TimedWelfare module_sub."""
+        entries = self.event_runtime.get_active_timed_events(module_sub, self.state["player"])
+        mult = default
+        for ev_def, _ev_eval in entries:
+            extra = ev_def.metadata.get("extra_info") or {}
+            if isinstance(extra, dict):
+                mult = max(mult, int(extra.get("RefNum", default) or default))
+        return mult
 
     def _on_timed_event_ended(self, inst: dict[str, Any]) -> None:
         event_id = str(inst.get("event_id", ""))

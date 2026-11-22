@@ -9,7 +9,7 @@ from typing import Any
 from combat_sim import CombatOutcome, simulate_fight_info
 from r79_event_handlers import _parse_res_tuples
 
-PLAYABLE_FLOORS = range(11, 24)
+PLAYABLE_FLOORS = range(11, 28)
 
 
 def bdd_recommended_fap(raw: str) -> int:
@@ -123,7 +123,7 @@ class BddHandlersMixin:
 
     @staticmethod
     def _bdd_fap(heroes: list[dict[str, Any]]) -> int:
-        return sum(hero["HP"] + 5 * (hero["AP"] + hero["DEF"]) for hero in heroes if hero)
+        return sum(hero["HP"] + 10 * (hero["AP"] + hero["DEF"]) for hero in heroes if hero)
 
     def _bdd_allies(self) -> list[dict[str, Any]]:
         allies = self._build_ally_fight_objs()

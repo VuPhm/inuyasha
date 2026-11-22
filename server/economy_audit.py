@@ -33,6 +33,8 @@ ALLOWED_PLAYER_RESOURCES = {
     "PVPCoin": "PVPCoin",
     "BossCoin": "BossCoin",
     "Merit": "Merit",
+    "GDDHCoin": "GDDHCoin",
+    "RebornCoin": "RebornCoin",
 }
 
 DISALLOWED_BALANCE_KEYS = {"HP", "AP", "DEF", "DAM", "DAMADD", "DAMADDR", "DAMCUT", "DAMCUTR"}

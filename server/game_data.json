@@ -113,7 +113,20 @@
     "gddh_buynum": 30,
     "gddh_shop": 16,
     "gddh_rank_reward": 36,
-    "gddh_guild_reward": 8
+    "gddh_guild_reward": 8,
+    "guild_lv": 30,
+    "guild_posts": 4,
+    "guild_build_types": 3,
+    "guild_buildings": 9,
+    "guild_building_lv": 150,
+    "guild_shop": 22,
+    "guild_bosses": 3,
+    "guild_share": 1,
+    "guild_donate": 2,
+    "lv_plan_rewards": 10,
+    "vip_welfare": 21,
+    "bag_model": 9,
+    "bag_expand_use": 20
   },
   "player_config": {
     "initLv": 1,
@@ -38750,7 +38763,9 @@
       3,
       560,
       316,
-      317
+      317,
+      573,
+      584
     ],
     "12011003": [
       4,
@@ -38758,7 +38773,9 @@
       6,
       561,
       318,
-      319
+      319,
+      574,
+      585
     ],
     "12011004": [
       7,
@@ -38766,7 +38783,9 @@
       9,
       562,
       320,
-      321
+      321,
+      575,
+      586
     ],
     "12012003": [
       10,
@@ -38774,7 +38793,9 @@
       12,
       564,
       322,
-      323
+      323,
+      576,
+      587
     ],
     "12012004": [
       13,
@@ -38782,7 +38803,9 @@
       15,
       563,
       324,
-      325
+      325,
+      577,
+      588
     ],
     "12012005": [
       16,
@@ -38790,7 +38813,9 @@
       18,
       565,
       326,
-      327
+      327,
+      578,
+      589
     ],
     "12013003": [
       19,
@@ -38798,7 +38823,9 @@
       21,
       566,
       328,
-      329
+      329,
+      579,
+      590
     ],
     "12013004": [
       22,
@@ -38806,7 +38833,9 @@
       24,
       567,
       330,
-      331
+      331,
+      580,
+      591
     ],
     "12013005": [
       25,
@@ -38814,7 +38843,9 @@
       27,
       568,
       332,
-      333
+      333,
+      581,
+      592
     ],
     "12011005": [
       28,
@@ -39552,7 +39583,9 @@
       554,
       555,
       569,
-      570
+      570,
+      583,
+      594
     ],
     "12015022": [
       556,
@@ -39560,7 +39593,9 @@
       558,
       559,
       571,
-      572
+      572,
+      582,
+      593
     ]
   },
   "bonds": {
@@ -45282,6 +45317,226 @@
       "typeID": 1401,
       "APR": 0,
       "HPR": 1800,
+      "DEFR": 0
+    },
+    "573": {
+      "ID": 573,
+      "name": "Quyển Kami",
+      "intro": "Cùng Quyển Kami ra trận,HP+20%",
+      "member": "14012001",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "574": {
+      "ID": 574,
+      "name": "Quyển Tứ Hồn",
+      "intro": "Cùng Quyển Tứ Hồn ra trận,HP+20%",
+      "member": "14012002",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "575": {
+      "ID": 575,
+      "name": "Quyển Kami",
+      "intro": "Cùng Quyển Kami ra trận,HP+20%",
+      "member": "14012001",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "576": {
+      "ID": 576,
+      "name": "Quyển Tứ Hồn",
+      "intro": "Cùng Quyển Tứ Hồn ra trận,HP+20%",
+      "member": "14012002",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "577": {
+      "ID": 577,
+      "name": "Quyển Kami",
+      "intro": "Cùng Quyển Kami ra trận,HP+20%",
+      "member": "14012001",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "578": {
+      "ID": 578,
+      "name": "Quyển Tứ Hồn",
+      "intro": "Cùng Quyển Tứ Hồn ra trận,HP+20%",
+      "member": "14012002",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "579": {
+      "ID": 579,
+      "name": "Quyển Kami",
+      "intro": "Cùng Quyển Kami ra trận,HP+20%",
+      "member": "14012001",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "580": {
+      "ID": 580,
+      "name": "Quyển Tứ Hồn",
+      "intro": "Cùng Quyển Tứ Hồn ra trận,HP+20%",
+      "member": "14012002",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "581": {
+      "ID": 581,
+      "name": "Quyển Kami",
+      "intro": "Cùng Quyển Kami ra trận,HP+20%",
+      "member": "14012001",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "582": {
+      "ID": 582,
+      "name": "Quyển Tứ Hồn",
+      "intro": "Cùng Quyển Tứ Hồn ra trận,HP+20%",
+      "member": "14012002",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "583": {
+      "ID": 583,
+      "name": "Quyển Kami",
+      "intro": "Cùng Quyển Kami ra trận,HP+20%",
+      "member": "14012001",
+      "typeID": 1401,
+      "APR": 0,
+      "HPR": 2000,
+      "DEFR": 0
+    },
+    "584": {
+      "ID": 584,
+      "name": "Rồng Kami",
+      "intro": "Cùng Rồng Kami ra trận,Công+20%",
+      "member": "14022001",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
+      "DEFR": 0
+    },
+    "585": {
+      "ID": 585,
+      "name": "Phượng Hoàng Kami",
+      "intro": "Cùng Phượng Hoàng Kami ra trận,Công+20%",
+      "member": "14022002",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
+      "DEFR": 0
+    },
+    "586": {
+      "ID": 586,
+      "name": "Rồng Kami",
+      "intro": "Cùng Rồng Kami ra trận,Công+20%",
+      "member": "14022001",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
+      "DEFR": 0
+    },
+    "587": {
+      "ID": 587,
+      "name": "Phượng Hoàng Kami",
+      "intro": "Cùng Phượng Hoàng Kami ra trận,Công+20%",
+      "member": "14022002",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
+      "DEFR": 0
+    },
+    "588": {
+      "ID": 588,
+      "name": "Rồng Kami",
+      "intro": "Cùng Rồng Kami ra trận,Công+20%",
+      "member": "14022001",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
+      "DEFR": 0
+    },
+    "589": {
+      "ID": 589,
+      "name": "Phượng Hoàng Kami",
+      "intro": "Cùng Phượng Hoàng Kami ra trận,Công+20%",
+      "member": "14022002",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
+      "DEFR": 0
+    },
+    "590": {
+      "ID": 590,
+      "name": "Rồng Kami",
+      "intro": "Cùng Rồng Kami ra trận,Công+20%",
+      "member": "14022001",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
+      "DEFR": 0
+    },
+    "591": {
+      "ID": 591,
+      "name": "Phượng Hoàng Kami",
+      "intro": "Cùng Phượng Hoàng Kami ra trận,Công+20%",
+      "member": "14022002",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
+      "DEFR": 0
+    },
+    "592": {
+      "ID": 592,
+      "name": "Rồng Kami",
+      "intro": "Cùng Rồng Kami ra trận,Công+20%",
+      "member": "14022001",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
+      "DEFR": 0
+    },
+    "593": {
+      "ID": 593,
+      "name": "Rồng Kami",
+      "intro": "Cùng Rồng Kami ra trận,Công+20%",
+      "member": "14022001",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
+      "DEFR": 0
+    },
+    "594": {
+      "ID": 594,
+      "name": "Phượng Hoàng Kami",
+      "intro": "Cùng Phượng Hoàng Kami ra trận,Công+20%",
+      "member": "14022002",
+      "typeID": 1402,
+      "APR": 2000,
+      "HPR": 0,
       "DEFR": 0
     }
   },
@@ -205046,6 +205301,13 @@
       "prHeroModelIds": []
     },
     "14020605": {
+      "prHeroModelIds": [
+        12011025,
+        12011027,
+        12012033,
+        12013025,
+        12013029
+      ],
       "ID": 14020605,
       "nameC": "鬼面蝠",
       "name": "Dơi Quỷ",
@@ -205073,8 +205335,7 @@
         15040502,
         15040503,
         15040504
-      ],
-      "prHeroModelIds": "{"
+      ]
     },
     "14020606": {
       "ID": 14020606,
@@ -205145,6 +205406,13 @@
       ]
     },
     "14021109": {
+      "debrisModelIds": [
+        15040901,
+        15040902,
+        15040903,
+        15040904,
+        15040905
+      ],
       "ID": 14021109,
       "nameC": "狸猫飞艇",
       "name": "Linh Hồn Tanuki",
@@ -205167,13 +205435,19 @@
       "ifSub": true,
       "pic": "bw_21109",
       "ifEdge": 1,
-      "debrisModelIds": "{",
       "prHeroModelIds": [
         12011013,
         12012013
       ]
     },
     "14021110": {
+      "debrisModelIds": [
+        15041001,
+        15041002,
+        15041003,
+        15041004,
+        15041005
+      ],
       "ID": 14021110,
       "nameC": "膨胀狐妖",
       "name": "Hồ Yêu Hồng",
@@ -205196,13 +205470,19 @@
       "ifSub": true,
       "pic": "bw_21110",
       "ifEdge": 1,
-      "debrisModelIds": "{",
       "prHeroModelIds": [
         12011009,
         12011014
       ]
     },
     "14021111": {
+      "debrisModelIds": [
+        15041101,
+        15041102,
+        15041103,
+        15041104,
+        15041105
+      ],
       "ID": 14021111,
       "nameC": "白骨之翼",
       "name": "Chim Xương",
@@ -205225,13 +205505,19 @@
       "ifSub": true,
       "pic": "bw_21111",
       "ifEdge": 1,
-      "debrisModelIds": "{",
       "prHeroModelIds": [
         12012018,
         12013018
       ]
     },
     "14021012": {
+      "debrisModelIds": [
+        15041201,
+        15041202,
+        15041203,
+        15041204,
+        15041205
+      ],
       "ID": 14021012,
       "nameC": "死魂虫群",
       "name": "Shinidamachu",
@@ -205254,13 +205540,19 @@
       "ifSub": true,
       "pic": "bw_21012",
       "ifEdge": 1,
-      "debrisModelIds": "{",
       "prHeroModelIds": [
         12013013,
         12012011
       ]
     },
     "14021013": {
+      "debrisModelIds": [
+        15041301,
+        15041302,
+        15041303,
+        15041304,
+        15041305
+      ],
       "ID": 14021013,
       "nameC": "雷霆轮",
       "name": "Sanda",
@@ -205283,7 +205575,6 @@
       "ifSub": true,
       "pic": "bw_21013",
       "ifEdge": 1,
-      "debrisModelIds": "{",
       "prHeroModelIds": [
         12011018,
         12012010,
@@ -205291,6 +205582,25 @@
       ]
     },
     "14021014": {
+      "debrisModelIds": [
+        15041401,
+        15041402,
+        15041403,
+        15041404,
+        15041405
+      ],
+      "prHeroModelIds": [
+        12010001,
+        12010002,
+        12010003,
+        12010004,
+        12010005,
+        12010006,
+        12010007,
+        12010008,
+        12010009,
+        12010010
+      ],
       "ID": 14021014,
       "nameC": "妖气旋风",
       "name": "Senpu",
@@ -205312,11 +205622,27 @@
       "activeAttrEnumID": 401,
       "ifSub": true,
       "pic": "bw_21014",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14021615": {
+      "debrisModelIds": [
+        15041501,
+        15041502,
+        15041503,
+        15041504,
+        15041505,
+        15041506
+      ],
+      "prHeroModelIds": [
+        12011003,
+        12012005,
+        12013003,
+        12012014,
+        12012020,
+        12013014,
+        12013021,
+        12015022
+      ],
       "ID": 14021615,
       "nameC": "双首妖龙",
       "name": "Rồng Hai Đầu",
@@ -205338,11 +205664,26 @@
       "activeAttrEnumID": 401,
       "ifSub": true,
       "pic": "bw_21615",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14021616": {
+      "debrisModelIds": [
+        15041601,
+        15041602,
+        15041603,
+        15041604,
+        15041605,
+        15041606
+      ],
+      "prHeroModelIds": [
+        12011002,
+        12013005,
+        12011006,
+        12012009,
+        12013009,
+        12012021,
+        12013015
+      ],
       "ID": 14021616,
       "nameC": "炎蹄",
       "name": "Entei",
@@ -205364,11 +205705,27 @@
       "activeAttrEnumID": 401,
       "ifSub": true,
       "pic": "bw_21616",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14021617": {
+      "debrisModelIds": [
+        15041701,
+        15041702,
+        15041703,
+        15041704,
+        15041705,
+        15041706
+      ],
+      "prHeroModelIds": [
+        12012003,
+        12012004,
+        12013008,
+        12011015,
+        12012016,
+        12012019,
+        12012022,
+        12015023
+      ],
       "ID": 14021617,
       "nameC": "风使之羽",
       "name": "Lông Vũ",
@@ -205390,11 +205747,26 @@
       "activeAttrEnumID": 401,
       "ifSub": true,
       "pic": "bw_21617",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14021618": {
+      "debrisModelIds": [
+        15041801,
+        15041802,
+        15041803,
+        15041804,
+        15041805,
+        15041806
+      ],
+      "prHeroModelIds": [
+        12011007,
+        12012008,
+        12011012,
+        12011016,
+        12011021,
+        12013019,
+        12013022
+      ],
       "ID": 14021618,
       "nameC": "叉尾猫",
       "name": "Kirara",
@@ -205416,11 +205788,27 @@
       "activeAttrEnumID": 401,
       "ifSub": true,
       "pic": "bw_21618",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14021619": {
+      "debrisModelIds": [
+        15041901,
+        15041902,
+        15041903,
+        15041904,
+        15041905,
+        15041906
+      ],
+      "prHeroModelIds": [
+        12012006,
+        12011010,
+        12011017,
+        12012012,
+        12012015,
+        12013010,
+        12013011,
+        12013012
+      ],
       "ID": 14021619,
       "nameC": "千纸鹤",
       "name": "Origami",
@@ -205442,11 +205830,27 @@
       "activeAttrEnumID": 401,
       "ifSub": true,
       "pic": "bw_21619",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14021620": {
+      "debrisModelIds": [
+        15042001,
+        15042002,
+        15042003,
+        15042004,
+        15042005,
+        15042006
+      ],
+      "prHeroModelIds": [
+        12011008,
+        12013006,
+        12013007,
+        12011011,
+        12011019,
+        12011022,
+        12012017,
+        12013017
+      ],
       "ID": 14021620,
       "nameC": "三眼牛",
       "name": "Momo",
@@ -205468,9 +205872,7 @@
       "activeAttrEnumID": 401,
       "ifSub": true,
       "pic": "bw_21620",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14010501": {
       "ID": 14010501,
@@ -205600,6 +206002,14 @@
       "prHeroModelIds": []
     },
     "14010606": {
+      "prHeroModelIds": [
+        12011024,
+        12012027,
+        12012032,
+        12013026,
+        12013028,
+        12013033
+      ],
       "ID": 14010606,
       "nameC": "退魔书",
       "name": "Sách Trừ Yêu",
@@ -205627,8 +206037,7 @@
         15032602,
         15032603,
         15032604
-      ],
-      "prHeroModelIds": "{"
+      ]
     },
     "14010607": {
       "ID": 14010607,
@@ -205700,6 +206109,13 @@
       ]
     },
     "14011109": {
+      "debrisModelIds": [
+        15032901,
+        15032902,
+        15032903,
+        15032904,
+        15032905
+      ],
       "ID": 14011109,
       "nameC": "豹猫立志传",
       "name": "Sách Li Miêu",
@@ -205722,7 +206138,6 @@
       "ifSub": true,
       "pic": "bw_11109",
       "ifEdge": 1,
-      "debrisModelIds": "{",
       "prHeroModelIds": [
         12012022,
         12013020,
@@ -205730,6 +206145,13 @@
       ]
     },
     "14011110": {
+      "debrisModelIds": [
+        15033001,
+        15033002,
+        15033003,
+        15033004,
+        15033005
+      ],
       "ID": 14011110,
       "nameC": "妖刀淬炼录",
       "name": "Semashita",
@@ -205752,13 +206174,19 @@
       "ifSub": true,
       "pic": "bw_11110",
       "ifEdge": 1,
-      "debrisModelIds": "{",
       "prHeroModelIds": [
         12012019,
         12013018
       ]
     },
     "14011111": {
+      "debrisModelIds": [
+        15033101,
+        15033102,
+        15033103,
+        15033104,
+        15033105
+      ],
       "ID": 14011111,
       "nameC": "群妖图鉴",
       "name": "Sổ Yokai",
@@ -205781,7 +206209,6 @@
       "ifSub": true,
       "pic": "bw_11111",
       "ifEdge": 1,
-      "debrisModelIds": "{",
       "prHeroModelIds": [
         12011017,
         12013010,
@@ -205789,6 +206216,25 @@
       ]
     },
     "14011012": {
+      "debrisModelIds": [
+        15033201,
+        15033202,
+        15033203,
+        15033204,
+        15033205
+      ],
+      "prHeroModelIds": [
+        12010001,
+        12010002,
+        12010003,
+        12010004,
+        12010005,
+        12010006,
+        12010007,
+        12010008,
+        12010009,
+        12010010
+      ],
       "ID": 14011012,
       "nameC": "狐妖转化录",
       "name": "Rekodo",
@@ -205810,11 +206256,16 @@
       "activeAttrEnumID": 402,
       "ifSub": true,
       "pic": "bw_11012",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14011013": {
+      "debrisModelIds": [
+        15033301,
+        15033302,
+        15033303,
+        15033304,
+        15033305
+      ],
       "ID": 14011013,
       "nameC": "逆发手扎",
       "name": "Sakage",
@@ -205837,13 +206288,19 @@
       "ifSub": true,
       "pic": "bw_11013",
       "ifEdge": 1,
-      "debrisModelIds": "{",
       "prHeroModelIds": [
         12011012,
         12012023
       ]
     },
     "14011014": {
+      "debrisModelIds": [
+        15033401,
+        15033402,
+        15033403,
+        15033404,
+        15033405
+      ],
       "ID": 14011014,
       "nameC": "地狱画卷",
       "name": "Tranh Địa Ngục",
@@ -205866,7 +206323,6 @@
       "ifSub": true,
       "pic": "bw_11014",
       "ifEdge": 1,
-      "debrisModelIds": "{",
       "prHeroModelIds": [
         12011015,
         12012021,
@@ -205874,6 +206330,24 @@
       ]
     },
     "14011615": {
+      "debrisModelIds": [
+        15033501,
+        15033502,
+        15033503,
+        15033504,
+        15033505,
+        15033506
+      ],
+      "prHeroModelIds": [
+        12011002,
+        12012005,
+        12013003,
+        12011011,
+        12012018,
+        12012020,
+        12013014,
+        12013016
+      ],
       "ID": 14011615,
       "nameC": "斗牙神卷",
       "name": "Sách Taishou",
@@ -205895,11 +206369,26 @@
       "activeAttrEnumID": 402,
       "ifSub": true,
       "pic": "bw_11615",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14011616": {
+      "debrisModelIds": [
+        15033601,
+        15033602,
+        15033603,
+        15033604,
+        15033605,
+        15033606
+      ],
+      "prHeroModelIds": [
+        12012003,
+        12011008,
+        12011010,
+        12012011,
+        12012016,
+        12013012,
+        12015023
+      ],
       "ID": 14011616,
       "nameC": "奏姬秘笺",
       "name": "Sách Kanade",
@@ -205921,11 +206410,26 @@
       "activeAttrEnumID": 402,
       "ifSub": true,
       "pic": "bw_11616",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14011617": {
+      "debrisModelIds": [
+        15033701,
+        15033702,
+        15033703,
+        15033704,
+        15033705,
+        15033706
+      ],
+      "prHeroModelIds": [
+        12011003,
+        12012004,
+        12011005,
+        12012009,
+        12013007,
+        12013013,
+        12011013
+      ],
       "ID": 14011617,
       "nameC": "翠子画轴",
       "name": "Tranh Midoriko",
@@ -205947,11 +206451,26 @@
       "activeAttrEnumID": 402,
       "ifSub": true,
       "pic": "bw_11617",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14011618": {
+      "debrisModelIds": [
+        15033801,
+        15033802,
+        15033803,
+        15033804,
+        15033805,
+        15033806
+      ],
+      "prHeroModelIds": [
+        12011006,
+        12012006,
+        12012007,
+        12013009,
+        12011014,
+        12012010,
+        12015022
+      ],
       "ID": 14011618,
       "nameC": "识魂录",
       "name": "Ishikikon",
@@ -205973,11 +206492,26 @@
       "activeAttrEnumID": 402,
       "ifSub": true,
       "pic": "bw_11618",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14011619": {
+      "debrisModelIds": [
+        15033901,
+        15033902,
+        15033903,
+        15033904,
+        15033905,
+        15033906
+      ],
+      "prHeroModelIds": [
+        12011021,
+        12011022,
+        12012012,
+        12012013,
+        12012015,
+        12013011,
+        12013017
+      ],
       "ID": 14011619,
       "nameC": "曲灵妖笺",
       "name": "Akuma",
@@ -205999,11 +206533,28 @@
       "activeAttrEnumID": 402,
       "ifSub": true,
       "pic": "bw_11619",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14011620": {
+      "debrisModelIds": [
+        15034001,
+        15034002,
+        15034003,
+        15034004,
+        15034005,
+        15034006
+      ],
+      "prHeroModelIds": [
+        12011004,
+        12013005,
+        12011007,
+        12012008,
+        12013008,
+        12011009,
+        12011019,
+        12011020,
+        12013021
+      ],
       "ID": 14011620,
       "nameC": "四魂之书",
       "name": "Sách Tứ Hồn",
@@ -206025,11 +206576,27 @@
       "activeAttrEnumID": 402,
       "ifSub": true,
       "pic": "bw_11620",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14021621": {
+      "debrisModelIds": [
+        15044101,
+        15044102,
+        15044103,
+        15044104,
+        15044105,
+        15044106
+      ],
+      "prHeroModelIds": [
+        12011004,
+        12013004,
+        12011005,
+        12012007,
+        12011020,
+        12012023,
+        12013016,
+        12013020
+      ],
       "ID": 14021621,
       "nameC": "御妖飞龙",
       "name": "Rồng Yaru",
@@ -206051,11 +206618,26 @@
       "activeAttrEnumID": 401,
       "ifSub": true,
       "pic": "bw_21621",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14011621": {
+      "debrisModelIds": [
+        15034201,
+        15034202,
+        15034203,
+        15034204,
+        15034205,
+        15034206
+      ],
+      "prHeroModelIds": [
+        12013004,
+        12013006,
+        12011016,
+        12011018,
+        12012014,
+        12012017,
+        12013015
+      ],
       "ID": 14011621,
       "nameC": "阴阳师灵简",
       "name": "Sổ Onmyoji",
@@ -206077,11 +206659,29 @@
       "activeAttrEnumID": 402,
       "ifSub": true,
       "pic": "bw_11621",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14021622": {
+      "debrisModelIds": [
+        15044301,
+        15044302,
+        15044303,
+        15044304,
+        15044305,
+        15044306
+      ],
+      "prHeroModelIds": [
+        12010001,
+        12010002,
+        12010003,
+        12010004,
+        12010005,
+        12010006,
+        12010007,
+        12010008,
+        12010009,
+        12010010
+      ],
       "ID": 14021622,
       "nameC": "真·妖气旋风",
       "name": "Chân-Senpu",
@@ -206103,11 +206703,29 @@
       "activeAttrEnumID": 401,
       "ifSub": true,
       "pic": "bw_21622",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14011622": {
+      "debrisModelIds": [
+        15034401,
+        15034402,
+        15034403,
+        15034404,
+        15034405,
+        15034406
+      ],
+      "prHeroModelIds": [
+        12010001,
+        12010002,
+        12010003,
+        12010004,
+        12010005,
+        12010006,
+        12010007,
+        12010008,
+        12010009,
+        12010010
+      ],
       "ID": 14011622,
       "nameC": "真·狐妖转化录",
       "name": "Chân-Rekodo",
@@ -206129,11 +206747,17 @@
       "activeAttrEnumID": 402,
       "ifSub": true,
       "pic": "bw_11622",
-      "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": "{"
+      "ifEdge": 1
     },
     "14012001": {
+      "debrisModelIds": [
+        15034501,
+        15034502,
+        15034503,
+        15034504,
+        15034505,
+        15034506
+      ],
       "ID": 14012001,
       "nameC": "妖神卷轴",
       "name": "Quyển Kami",
@@ -206156,10 +206780,24 @@
       "ifSub": true,
       "pic": "bw_12001",
       "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": []
+      "prHeroModelIds": [
+        12011002,
+        12011004,
+        12012004,
+        12013003,
+        12013005,
+        12015023
+      ]
     },
     "14012002": {
+      "debrisModelIds": [
+        15034601,
+        15034602,
+        15034603,
+        15034604,
+        15034605,
+        15034606
+      ],
       "ID": 14012002,
       "nameC": "四魂神卷",
       "name": "Quyển Tứ Hồn",
@@ -206182,10 +206820,23 @@
       "ifSub": true,
       "pic": "bw_12002",
       "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": []
+      "prHeroModelIds": [
+        12011003,
+        12012003,
+        12012005,
+        12013004,
+        12015022
+      ]
     },
     "14022001": {
+      "debrisModelIds": [
+        15044701,
+        15044702,
+        15044703,
+        15044704,
+        15044705,
+        15044706
+      ],
       "ID": 14022001,
       "nameC": "妖神飞龙",
       "name": "Rồng Kami",
@@ -206208,10 +206859,24 @@
       "ifSub": true,
       "pic": "bw_22001",
       "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": []
+      "prHeroModelIds": [
+        12011002,
+        12011004,
+        12012004,
+        12013003,
+        12013005,
+        12015022
+      ]
     },
     "14022002": {
+      "debrisModelIds": [
+        15044801,
+        15044802,
+        15044803,
+        15044804,
+        15044805,
+        15044806
+      ],
       "ID": 14022002,
       "nameC": "妖神火凤",
       "name": "Phượng Hoàng Kami",
@@ -206234,8 +206899,13 @@
       "ifSub": true,
       "pic": "bw_22002",
       "ifEdge": 1,
-      "debrisModelIds": "{",
-      "prHeroModelIds": []
+      "prHeroModelIds": [
+        12011003,
+        12012003,
+        12012005,
+        12013004,
+        12015023
+      ]
     }
   },
   "treasure_debris": {
@@ -324509,7 +325179,7 @@
         "outputNum": 1,
         "oddsMin": 0,
         "oddsMax": 0,
-        "pic": "",
+        "pic": "xshd_101",
         "ISView": 1
       },
       "2": {
@@ -324520,7 +325190,7 @@
         "outputNum": 1,
         "oddsMin": 0,
         "oddsMax": 0,
-        "pic": "",
+        "pic": "xshd_117",
         "ISView": 1
       },
       "3": {
@@ -324531,7 +325201,7 @@
         "outputNum": 1,
         "oddsMin": 0,
         "oddsMax": 0,
-        "pic": "",
+        "pic": "xshd_100",
         "ISView": 1
       }
     },
@@ -324544,7 +325214,7 @@
         "outputNum": 1,
         "oddsMin": 0,
         "oddsMax": 0,
-        "pic": "",
+        "pic": "xshd_118",
         "ISView": 1
       },
       "2": {
@@ -324555,7 +325225,7 @@
         "outputNum": 1,
         "oddsMin": 0,
         "oddsMax": 0,
-        "pic": "",
+        "pic": "xshd_103",
         "ISView": 1
       },
       "3": {
@@ -324566,7 +325236,7 @@
         "outputNum": 1,
         "oddsMin": 0,
         "oddsMax": 0,
-        "pic": "",
+        "pic": "xshd_98",
         "ISView": 1
       }
     },
@@ -324579,7 +325249,7 @@
         "outputNum": 1,
         "oddsMin": 0,
         "oddsMax": 0,
-        "pic": "",
+        "pic": "xshd_102",
         "ISView": 1
       },
       "2": {
@@ -324590,7 +325260,7 @@
         "outputNum": 1,
         "oddsMin": 0,
         "oddsMax": 0,
-        "pic": "",
+        "pic": "xshd_119",
         "ISView": 1
       },
       "3": {
@@ -324601,7 +325271,7 @@
         "outputNum": 1,
         "oddsMin": 0,
         "oddsMax": 0,
-        "pic": "",
+        "pic": "xshd_99",
         "ISView": 1
       }
     },
@@ -339854,7 +340524,7 @@
       "firstBlessR": 0.7,
       "blessOddsR": 0.00014,
       "limitNum": 500,
-      "btnPic": ""
+      "btnPic": "sy_157"
     },
     "85": {
       "activityEnumID": 85,
@@ -339874,7 +340544,7 @@
       "firstBlessR": 0.7,
       "blessOddsR": 0.00014,
       "limitNum": 500,
-      "btnPic": ""
+      "btnPic": "sy_158"
     },
     "86": {
       "activityEnumID": 86,
@@ -339894,7 +340564,7 @@
       "firstBlessR": 0.7,
       "blessOddsR": 0.00014,
       "limitNum": 500,
-      "btnPic": ""
+      "btnPic": "sy_159"
     }
   },
   "timed_recruit_credit": {
@@ -416526,5 +417196,1815 @@
         "guildRewards": "1606,16060005,3||1112,0,70000"
       }
     ]
+  },
+  "guild_config": {
+    "reJoinGuildCD": 0,
+    "applyNumMax": 3,
+    "createGuildUseResource": "1111,0,100||1112,0,500000",
+    "dismissGuildLVMax": 5,
+    "impeachOfflineTimeMin": 168,
+    "impeachUseDiamond": 100,
+    "perMercenaryBeUseReward": "1103,0,1",
+    "shareNeedLV": 23,
+    "guildWarsNeedLv": 4,
+    "buildNeedGuildLv": 3,
+    "needGuildLv": 1,
+    "bossBattleNum": 2,
+    "buffUseDimonds": 200,
+    "addAttack": 2000,
+    "seconds": 1800,
+    "bossStartTime": 0,
+    "bossEndTime": 0.979166666667
+  },
+  "guild_lv": {
+    "1": {
+      "LV": 1,
+      "memberNumMax": 20
+    },
+    "2": {
+      "LV": 2,
+      "memberNumMax": 21
+    },
+    "3": {
+      "LV": 3,
+      "memberNumMax": 22
+    },
+    "4": {
+      "LV": 4,
+      "memberNumMax": 23
+    },
+    "5": {
+      "LV": 5,
+      "memberNumMax": 24
+    },
+    "6": {
+      "LV": 6,
+      "memberNumMax": 25
+    },
+    "7": {
+      "LV": 7,
+      "memberNumMax": 26
+    },
+    "8": {
+      "LV": 8,
+      "memberNumMax": 27
+    },
+    "9": {
+      "LV": 9,
+      "memberNumMax": 28
+    },
+    "10": {
+      "LV": 10,
+      "memberNumMax": 29
+    },
+    "11": {
+      "LV": 11,
+      "memberNumMax": 30
+    },
+    "12": {
+      "LV": 12,
+      "memberNumMax": 31
+    },
+    "13": {
+      "LV": 13,
+      "memberNumMax": 32
+    },
+    "14": {
+      "LV": 14,
+      "memberNumMax": 33
+    },
+    "15": {
+      "LV": 15,
+      "memberNumMax": 34
+    },
+    "16": {
+      "LV": 16,
+      "memberNumMax": 35
+    },
+    "17": {
+      "LV": 17,
+      "memberNumMax": 36
+    },
+    "18": {
+      "LV": 18,
+      "memberNumMax": 37
+    },
+    "19": {
+      "LV": 19,
+      "memberNumMax": 38
+    },
+    "20": {
+      "LV": 20,
+      "memberNumMax": 39
+    },
+    "21": {
+      "LV": 21,
+      "memberNumMax": 40
+    },
+    "22": {
+      "LV": 22,
+      "memberNumMax": 41
+    },
+    "23": {
+      "LV": 23,
+      "memberNumMax": 42
+    },
+    "24": {
+      "LV": 24,
+      "memberNumMax": 43
+    },
+    "25": {
+      "LV": 25,
+      "memberNumMax": 44
+    },
+    "26": {
+      "LV": 26,
+      "memberNumMax": 45
+    },
+    "27": {
+      "LV": 27,
+      "memberNumMax": 46
+    },
+    "28": {
+      "LV": 28,
+      "memberNumMax": 47
+    },
+    "29": {
+      "LV": 29,
+      "memberNumMax": 48
+    },
+    "30": {
+      "LV": 30,
+      "memberNumMax": 50
+    }
+  },
+  "guild_posts": {
+    "34001001": {
+      "ID": 34001001,
+      "name": "Tộc Trưởng",
+      "authIDList": "1,2,3,4,5,6,7,8,9,10"
+    },
+    "34001002": {
+      "ID": 34001002,
+      "name": "Tộc Phó",
+      "authIDList": "2,3,4,5,6,7,8,9,10"
+    },
+    "34001003": {
+      "ID": 34001003,
+      "name": "Tinh Anh",
+      "authIDList": "4"
+    },
+    "34001004": {
+      "ID": 34001004,
+      "name": "Thành Viên",
+      "authIDList": ""
+    }
+  },
+  "guild_build_types": {
+    "34004001": {
+      "ID": 34004001,
+      "name": "Xây Dựng 1",
+      "useResource": "1111,0,20",
+      "outputContribution": 200,
+      "outputGuildFund": 200,
+      "outputResource": "",
+      "pic": "gh_15"
+    },
+    "34004002": {
+      "ID": 34004002,
+      "name": "Xây Dựng 2",
+      "useResource": "1111,0,50",
+      "outputContribution": 400,
+      "outputGuildFund": 600,
+      "outputResource": "1605,16050016,1",
+      "pic": "sc_7"
+    },
+    "34004003": {
+      "ID": 34004003,
+      "name": "Xây Dựng 3",
+      "useResource": "1111,0,200",
+      "outputContribution": 2000,
+      "outputGuildFund": 1000,
+      "outputResource": "1605,16050016,3",
+      "pic": "sc_8"
+    }
+  },
+  "guild_buildings": {
+    "34001000": {
+      "ID": 34001000,
+      "name": "Quản Lý",
+      "intro": "XXX",
+      "pic": "gh_17",
+      "ifLvUp": false
+    },
+    "34002000": {
+      "ID": 34002000,
+      "name": "Cống Hiến",
+      "intro": "XXX",
+      "pic": "gh_18",
+      "ifLvUp": false
+    },
+    "34003000": {
+      "ID": 34003000,
+      "name": "Lính Thuê",
+      "intro": "XXX",
+      "pic": "gh_19",
+      "ifLvUp": false
+    },
+    "34004000": {
+      "ID": 34004000,
+      "name": "Sảnh",
+      "intro": "XXX",
+      "pic": "gh_17",
+      "ifLvUp": true
+    },
+    "34005000": {
+      "ID": 34005000,
+      "name": "Shop",
+      "intro": "XXX",
+      "pic": "gh_18",
+      "ifLvUp": true
+    },
+    "34006000": {
+      "ID": 34006000,
+      "name": "Hoạt Động",
+      "intro": "XXX",
+      "pic": "gh_19",
+      "ifLvUp": false
+    },
+    "34007000": {
+      "ID": 34007000,
+      "name": "Thần Thú Công Hội",
+      "intro": "XXX",
+      "pic": "gh_20",
+      "ifLvUp": false
+    },
+    "34008000": {
+      "ID": 34008000,
+      "name": "Boss Công Hội",
+      "intro": "XXX",
+      "pic": "gh_19",
+      "ifLvUp": true
+    },
+    "34009000": {
+      "ID": 34009000,
+      "name": "公会副本",
+      "intro": "XXX",
+      "pic": "gh_19",
+      "ifLvUp": false
+    }
+  },
+  "guild_building_lv": {
+    "34004000": {
+      "1": {
+        "buildingModelID": 34004000,
+        "LV": 1,
+        "totalExp": 0,
+        "battleRewardsEvery": ""
+      },
+      "2": {
+        "buildingModelID": 34004000,
+        "LV": 2,
+        "totalExp": 7000,
+        "battleRewardsEvery": ""
+      },
+      "3": {
+        "buildingModelID": 34004000,
+        "LV": 3,
+        "totalExp": 18000,
+        "battleRewardsEvery": ""
+      },
+      "4": {
+        "buildingModelID": 34004000,
+        "LV": 4,
+        "totalExp": 33000,
+        "battleRewardsEvery": ""
+      },
+      "5": {
+        "buildingModelID": 34004000,
+        "LV": 5,
+        "totalExp": 71000,
+        "battleRewardsEvery": ""
+      },
+      "6": {
+        "buildingModelID": 34004000,
+        "LV": 6,
+        "totalExp": 119000,
+        "battleRewardsEvery": ""
+      },
+      "7": {
+        "buildingModelID": 34004000,
+        "LV": 7,
+        "totalExp": 177000,
+        "battleRewardsEvery": ""
+      },
+      "8": {
+        "buildingModelID": 34004000,
+        "LV": 8,
+        "totalExp": 247000,
+        "battleRewardsEvery": ""
+      },
+      "9": {
+        "buildingModelID": 34004000,
+        "LV": 9,
+        "totalExp": 329000,
+        "battleRewardsEvery": ""
+      },
+      "10": {
+        "buildingModelID": 34004000,
+        "LV": 10,
+        "totalExp": 423000,
+        "battleRewardsEvery": ""
+      },
+      "11": {
+        "buildingModelID": 34004000,
+        "LV": 11,
+        "totalExp": 529000,
+        "battleRewardsEvery": ""
+      },
+      "12": {
+        "buildingModelID": 34004000,
+        "LV": 12,
+        "totalExp": 667000,
+        "battleRewardsEvery": ""
+      },
+      "13": {
+        "buildingModelID": 34004000,
+        "LV": 13,
+        "totalExp": 841200,
+        "battleRewardsEvery": ""
+      },
+      "14": {
+        "buildingModelID": 34004000,
+        "LV": 14,
+        "totalExp": 1058700,
+        "battleRewardsEvery": ""
+      },
+      "15": {
+        "buildingModelID": 34004000,
+        "LV": 15,
+        "totalExp": 1324300,
+        "battleRewardsEvery": ""
+      },
+      "16": {
+        "buildingModelID": 34004000,
+        "LV": 16,
+        "totalExp": 1642800,
+        "battleRewardsEvery": ""
+      },
+      "17": {
+        "buildingModelID": 34004000,
+        "LV": 17,
+        "totalExp": 2019000,
+        "battleRewardsEvery": ""
+      },
+      "18": {
+        "buildingModelID": 34004000,
+        "LV": 18,
+        "totalExp": 2461800,
+        "battleRewardsEvery": ""
+      },
+      "19": {
+        "buildingModelID": 34004000,
+        "LV": 19,
+        "totalExp": 2964900,
+        "battleRewardsEvery": ""
+      },
+      "20": {
+        "buildingModelID": 34004000,
+        "LV": 20,
+        "totalExp": 3523700,
+        "battleRewardsEvery": ""
+      },
+      "21": {
+        "buildingModelID": 34004000,
+        "LV": 21,
+        "totalExp": 4126500,
+        "battleRewardsEvery": ""
+      },
+      "22": {
+        "buildingModelID": 34004000,
+        "LV": 22,
+        "totalExp": 4788000,
+        "battleRewardsEvery": ""
+      },
+      "23": {
+        "buildingModelID": 34004000,
+        "LV": 23,
+        "totalExp": 5535600,
+        "battleRewardsEvery": ""
+      },
+      "24": {
+        "buildingModelID": 34004000,
+        "LV": 24,
+        "totalExp": 6375600,
+        "battleRewardsEvery": ""
+      },
+      "25": {
+        "buildingModelID": 34004000,
+        "LV": 25,
+        "totalExp": 7380100,
+        "battleRewardsEvery": ""
+      },
+      "26": {
+        "buildingModelID": 34004000,
+        "LV": 26,
+        "totalExp": 8703100,
+        "battleRewardsEvery": ""
+      },
+      "27": {
+        "buildingModelID": 34004000,
+        "LV": 27,
+        "totalExp": 10101100,
+        "battleRewardsEvery": ""
+      },
+      "28": {
+        "buildingModelID": 34004000,
+        "LV": 28,
+        "totalExp": 11577100,
+        "battleRewardsEvery": ""
+      },
+      "29": {
+        "buildingModelID": 34004000,
+        "LV": 29,
+        "totalExp": 13131100,
+        "battleRewardsEvery": ""
+      },
+      "30": {
+        "buildingModelID": 34004000,
+        "LV": 30,
+        "totalExp": 14766100,
+        "battleRewardsEvery": ""
+      }
+    },
+    "34005000": {
+      "1": {
+        "buildingModelID": 34005000,
+        "LV": 1,
+        "totalExp": 0,
+        "battleRewardsEvery": ""
+      },
+      "2": {
+        "buildingModelID": 34005000,
+        "LV": 2,
+        "totalExp": 5000,
+        "battleRewardsEvery": ""
+      },
+      "3": {
+        "buildingModelID": 34005000,
+        "LV": 3,
+        "totalExp": 13000,
+        "battleRewardsEvery": ""
+      },
+      "4": {
+        "buildingModelID": 34005000,
+        "LV": 4,
+        "totalExp": 24000,
+        "battleRewardsEvery": ""
+      },
+      "5": {
+        "buildingModelID": 34005000,
+        "LV": 5,
+        "totalExp": 38000,
+        "battleRewardsEvery": ""
+      },
+      "6": {
+        "buildingModelID": 34005000,
+        "LV": 6,
+        "totalExp": 56000,
+        "battleRewardsEvery": ""
+      },
+      "7": {
+        "buildingModelID": 34005000,
+        "LV": 7,
+        "totalExp": 78000,
+        "battleRewardsEvery": ""
+      },
+      "8": {
+        "buildingModelID": 34005000,
+        "LV": 8,
+        "totalExp": 104000,
+        "battleRewardsEvery": ""
+      },
+      "9": {
+        "buildingModelID": 34005000,
+        "LV": 9,
+        "totalExp": 134000,
+        "battleRewardsEvery": ""
+      },
+      "10": {
+        "buildingModelID": 34005000,
+        "LV": 10,
+        "totalExp": 169000,
+        "battleRewardsEvery": ""
+      },
+      "11": {
+        "buildingModelID": 34005000,
+        "LV": 11,
+        "totalExp": 209000,
+        "battleRewardsEvery": ""
+      },
+      "12": {
+        "buildingModelID": 34005000,
+        "LV": 12,
+        "totalExp": 254000,
+        "battleRewardsEvery": ""
+      },
+      "13": {
+        "buildingModelID": 34005000,
+        "LV": 13,
+        "totalExp": 304000,
+        "battleRewardsEvery": ""
+      },
+      "14": {
+        "buildingModelID": 34005000,
+        "LV": 14,
+        "totalExp": 360000,
+        "battleRewardsEvery": ""
+      },
+      "15": {
+        "buildingModelID": 34005000,
+        "LV": 15,
+        "totalExp": 422000,
+        "battleRewardsEvery": ""
+      },
+      "16": {
+        "buildingModelID": 34005000,
+        "LV": 16,
+        "totalExp": 490000,
+        "battleRewardsEvery": ""
+      },
+      "17": {
+        "buildingModelID": 34005000,
+        "LV": 17,
+        "totalExp": 565000,
+        "battleRewardsEvery": ""
+      },
+      "18": {
+        "buildingModelID": 34005000,
+        "LV": 18,
+        "totalExp": 646000,
+        "battleRewardsEvery": ""
+      },
+      "19": {
+        "buildingModelID": 34005000,
+        "LV": 19,
+        "totalExp": 734000,
+        "battleRewardsEvery": ""
+      },
+      "20": {
+        "buildingModelID": 34005000,
+        "LV": 20,
+        "totalExp": 829000,
+        "battleRewardsEvery": ""
+      },
+      "21": {
+        "buildingModelID": 34005000,
+        "LV": 21,
+        "totalExp": 932000,
+        "battleRewardsEvery": ""
+      },
+      "22": {
+        "buildingModelID": 34005000,
+        "LV": 22,
+        "totalExp": 1042000,
+        "battleRewardsEvery": ""
+      },
+      "23": {
+        "buildingModelID": 34005000,
+        "LV": 23,
+        "totalExp": 1175000,
+        "battleRewardsEvery": ""
+      },
+      "24": {
+        "buildingModelID": 34005000,
+        "LV": 24,
+        "totalExp": 1333000,
+        "battleRewardsEvery": ""
+      },
+      "25": {
+        "buildingModelID": 34005000,
+        "LV": 25,
+        "totalExp": 1548000,
+        "battleRewardsEvery": ""
+      },
+      "26": {
+        "buildingModelID": 34005000,
+        "LV": 26,
+        "totalExp": 1879000,
+        "battleRewardsEvery": ""
+      },
+      "27": {
+        "buildingModelID": 34005000,
+        "LV": 27,
+        "totalExp": 2228000,
+        "battleRewardsEvery": ""
+      },
+      "28": {
+        "buildingModelID": 34005000,
+        "LV": 28,
+        "totalExp": 2597000,
+        "battleRewardsEvery": ""
+      },
+      "29": {
+        "buildingModelID": 34005000,
+        "LV": 29,
+        "totalExp": 2985000,
+        "battleRewardsEvery": ""
+      },
+      "30": {
+        "buildingModelID": 34005000,
+        "LV": 30,
+        "totalExp": 3394000,
+        "battleRewardsEvery": ""
+      }
+    },
+    "34006000": {
+      "1": {
+        "buildingModelID": 34006000,
+        "LV": 1,
+        "totalExp": 0,
+        "battleRewardsEvery": ""
+      },
+      "2": {
+        "buildingModelID": 34006000,
+        "LV": 2,
+        "totalExp": 3000,
+        "battleRewardsEvery": ""
+      },
+      "3": {
+        "buildingModelID": 34006000,
+        "LV": 3,
+        "totalExp": 7000,
+        "battleRewardsEvery": ""
+      },
+      "4": {
+        "buildingModelID": 34006000,
+        "LV": 4,
+        "totalExp": 13000,
+        "battleRewardsEvery": ""
+      },
+      "5": {
+        "buildingModelID": 34006000,
+        "LV": 5,
+        "totalExp": 20000,
+        "battleRewardsEvery": ""
+      },
+      "6": {
+        "buildingModelID": 34006000,
+        "LV": 6,
+        "totalExp": 29000,
+        "battleRewardsEvery": ""
+      },
+      "7": {
+        "buildingModelID": 34006000,
+        "LV": 7,
+        "totalExp": 40000,
+        "battleRewardsEvery": ""
+      },
+      "8": {
+        "buildingModelID": 34006000,
+        "LV": 8,
+        "totalExp": 53000,
+        "battleRewardsEvery": ""
+      },
+      "9": {
+        "buildingModelID": 34006000,
+        "LV": 9,
+        "totalExp": 68000,
+        "battleRewardsEvery": ""
+      },
+      "10": {
+        "buildingModelID": 34006000,
+        "LV": 10,
+        "totalExp": 86000,
+        "battleRewardsEvery": ""
+      },
+      "11": {
+        "buildingModelID": 34006000,
+        "LV": 11,
+        "totalExp": 106000,
+        "battleRewardsEvery": ""
+      },
+      "12": {
+        "buildingModelID": 34006000,
+        "LV": 12,
+        "totalExp": 129000,
+        "battleRewardsEvery": ""
+      },
+      "13": {
+        "buildingModelID": 34006000,
+        "LV": 13,
+        "totalExp": 154000,
+        "battleRewardsEvery": ""
+      },
+      "14": {
+        "buildingModelID": 34006000,
+        "LV": 14,
+        "totalExp": 182000,
+        "battleRewardsEvery": ""
+      },
+      "15": {
+        "buildingModelID": 34006000,
+        "LV": 15,
+        "totalExp": 213000,
+        "battleRewardsEvery": ""
+      },
+      "16": {
+        "buildingModelID": 34006000,
+        "LV": 16,
+        "totalExp": 247000,
+        "battleRewardsEvery": ""
+      },
+      "17": {
+        "buildingModelID": 34006000,
+        "LV": 17,
+        "totalExp": 284000,
+        "battleRewardsEvery": ""
+      },
+      "18": {
+        "buildingModelID": 34006000,
+        "LV": 18,
+        "totalExp": 325000,
+        "battleRewardsEvery": ""
+      },
+      "19": {
+        "buildingModelID": 34006000,
+        "LV": 19,
+        "totalExp": 369000,
+        "battleRewardsEvery": ""
+      },
+      "20": {
+        "buildingModelID": 34006000,
+        "LV": 20,
+        "totalExp": 417000,
+        "battleRewardsEvery": ""
+      },
+      "21": {
+        "buildingModelID": 34006000,
+        "LV": 21,
+        "totalExp": 468000,
+        "battleRewardsEvery": ""
+      },
+      "22": {
+        "buildingModelID": 34006000,
+        "LV": 22,
+        "totalExp": 523000,
+        "battleRewardsEvery": ""
+      },
+      "23": {
+        "buildingModelID": 34006000,
+        "LV": 23,
+        "totalExp": 590000,
+        "battleRewardsEvery": ""
+      },
+      "24": {
+        "buildingModelID": 34006000,
+        "LV": 24,
+        "totalExp": 669000,
+        "battleRewardsEvery": ""
+      },
+      "25": {
+        "buildingModelID": 34006000,
+        "LV": 25,
+        "totalExp": 777000,
+        "battleRewardsEvery": ""
+      },
+      "26": {
+        "buildingModelID": 34006000,
+        "LV": 26,
+        "totalExp": 942000,
+        "battleRewardsEvery": ""
+      },
+      "27": {
+        "buildingModelID": 34006000,
+        "LV": 27,
+        "totalExp": 1117000,
+        "battleRewardsEvery": ""
+      },
+      "28": {
+        "buildingModelID": 34006000,
+        "LV": 28,
+        "totalExp": 1301000,
+        "battleRewardsEvery": ""
+      },
+      "29": {
+        "buildingModelID": 34006000,
+        "LV": 29,
+        "totalExp": 1495000,
+        "battleRewardsEvery": ""
+      },
+      "30": {
+        "buildingModelID": 34006000,
+        "LV": 30,
+        "totalExp": 1699000,
+        "battleRewardsEvery": ""
+      }
+    },
+    "34007000": {
+      "1": {
+        "buildingModelID": 34007000,
+        "LV": 1,
+        "totalExp": 0,
+        "battleRewardsEvery": ""
+      },
+      "2": {
+        "buildingModelID": 34007000,
+        "LV": 2,
+        "totalExp": 3000,
+        "battleRewardsEvery": ""
+      },
+      "3": {
+        "buildingModelID": 34007000,
+        "LV": 3,
+        "totalExp": 7000,
+        "battleRewardsEvery": ""
+      },
+      "4": {
+        "buildingModelID": 34007000,
+        "LV": 4,
+        "totalExp": 13000,
+        "battleRewardsEvery": ""
+      },
+      "5": {
+        "buildingModelID": 34007000,
+        "LV": 5,
+        "totalExp": 20000,
+        "battleRewardsEvery": ""
+      },
+      "6": {
+        "buildingModelID": 34007000,
+        "LV": 6,
+        "totalExp": 29000,
+        "battleRewardsEvery": ""
+      },
+      "7": {
+        "buildingModelID": 34007000,
+        "LV": 7,
+        "totalExp": 40000,
+        "battleRewardsEvery": ""
+      },
+      "8": {
+        "buildingModelID": 34007000,
+        "LV": 8,
+        "totalExp": 53000,
+        "battleRewardsEvery": ""
+      },
+      "9": {
+        "buildingModelID": 34007000,
+        "LV": 9,
+        "totalExp": 68000,
+        "battleRewardsEvery": ""
+      },
+      "10": {
+        "buildingModelID": 34007000,
+        "LV": 10,
+        "totalExp": 86000,
+        "battleRewardsEvery": ""
+      },
+      "11": {
+        "buildingModelID": 34007000,
+        "LV": 11,
+        "totalExp": 106000,
+        "battleRewardsEvery": ""
+      },
+      "12": {
+        "buildingModelID": 34007000,
+        "LV": 12,
+        "totalExp": 129000,
+        "battleRewardsEvery": ""
+      },
+      "13": {
+        "buildingModelID": 34007000,
+        "LV": 13,
+        "totalExp": 154000,
+        "battleRewardsEvery": ""
+      },
+      "14": {
+        "buildingModelID": 34007000,
+        "LV": 14,
+        "totalExp": 182000,
+        "battleRewardsEvery": ""
+      },
+      "15": {
+        "buildingModelID": 34007000,
+        "LV": 15,
+        "totalExp": 213000,
+        "battleRewardsEvery": ""
+      },
+      "16": {
+        "buildingModelID": 34007000,
+        "LV": 16,
+        "totalExp": 247000,
+        "battleRewardsEvery": ""
+      },
+      "17": {
+        "buildingModelID": 34007000,
+        "LV": 17,
+        "totalExp": 284000,
+        "battleRewardsEvery": ""
+      },
+      "18": {
+        "buildingModelID": 34007000,
+        "LV": 18,
+        "totalExp": 325000,
+        "battleRewardsEvery": ""
+      },
+      "19": {
+        "buildingModelID": 34007000,
+        "LV": 19,
+        "totalExp": 369000,
+        "battleRewardsEvery": ""
+      },
+      "20": {
+        "buildingModelID": 34007000,
+        "LV": 20,
+        "totalExp": 417000,
+        "battleRewardsEvery": ""
+      },
+      "21": {
+        "buildingModelID": 34007000,
+        "LV": 21,
+        "totalExp": 468000,
+        "battleRewardsEvery": ""
+      },
+      "22": {
+        "buildingModelID": 34007000,
+        "LV": 22,
+        "totalExp": 523000,
+        "battleRewardsEvery": ""
+      },
+      "23": {
+        "buildingModelID": 34007000,
+        "LV": 23,
+        "totalExp": 590000,
+        "battleRewardsEvery": ""
+      },
+      "24": {
+        "buildingModelID": 34007000,
+        "LV": 24,
+        "totalExp": 669000,
+        "battleRewardsEvery": ""
+      },
+      "25": {
+        "buildingModelID": 34007000,
+        "LV": 25,
+        "totalExp": 777000,
+        "battleRewardsEvery": ""
+      },
+      "26": {
+        "buildingModelID": 34007000,
+        "LV": 26,
+        "totalExp": 942000,
+        "battleRewardsEvery": ""
+      },
+      "27": {
+        "buildingModelID": 34007000,
+        "LV": 27,
+        "totalExp": 1117000,
+        "battleRewardsEvery": ""
+      },
+      "28": {
+        "buildingModelID": 34007000,
+        "LV": 28,
+        "totalExp": 1301000,
+        "battleRewardsEvery": ""
+      },
+      "29": {
+        "buildingModelID": 34007000,
+        "LV": 29,
+        "totalExp": 1495000,
+        "battleRewardsEvery": ""
+      },
+      "30": {
+        "buildingModelID": 34007000,
+        "LV": 30,
+        "totalExp": 1699000,
+        "battleRewardsEvery": ""
+      }
+    },
+    "34008000": {
+      "1": {
+        "buildingModelID": 34008000,
+        "LV": 1,
+        "totalExp": 0,
+        "battleRewardsEvery": "1111,0,100||1113,0,100"
+      },
+      "2": {
+        "buildingModelID": 34008000,
+        "LV": 2,
+        "totalExp": 5000,
+        "battleRewardsEvery": "1111,0,105||1113,0,150"
+      },
+      "3": {
+        "buildingModelID": 34008000,
+        "LV": 3,
+        "totalExp": 13000,
+        "battleRewardsEvery": "1111,0,110||1113,0,200"
+      },
+      "4": {
+        "buildingModelID": 34008000,
+        "LV": 4,
+        "totalExp": 24000,
+        "battleRewardsEvery": "1111,0,115||1113,0,250"
+      },
+      "5": {
+        "buildingModelID": 34008000,
+        "LV": 5,
+        "totalExp": 38000,
+        "battleRewardsEvery": "1111,0,120||1113,0,300"
+      },
+      "6": {
+        "buildingModelID": 34008000,
+        "LV": 6,
+        "totalExp": 56000,
+        "battleRewardsEvery": "1111,0,125||1113,0,350"
+      },
+      "7": {
+        "buildingModelID": 34008000,
+        "LV": 7,
+        "totalExp": 78000,
+        "battleRewardsEvery": "1111,0,130||1113,0,400"
+      },
+      "8": {
+        "buildingModelID": 34008000,
+        "LV": 8,
+        "totalExp": 104000,
+        "battleRewardsEvery": "1111,0,135||1113,0,450"
+      },
+      "9": {
+        "buildingModelID": 34008000,
+        "LV": 9,
+        "totalExp": 134000,
+        "battleRewardsEvery": "1111,0,140||1113,0,500"
+      },
+      "10": {
+        "buildingModelID": 34008000,
+        "LV": 10,
+        "totalExp": 169000,
+        "battleRewardsEvery": "1111,0,145||1113,0,550"
+      },
+      "11": {
+        "buildingModelID": 34008000,
+        "LV": 11,
+        "totalExp": 209000,
+        "battleRewardsEvery": "1111,0,150||1113,0,600"
+      },
+      "12": {
+        "buildingModelID": 34008000,
+        "LV": 12,
+        "totalExp": 254000,
+        "battleRewardsEvery": "1111,0,155||1113,0,650"
+      },
+      "13": {
+        "buildingModelID": 34008000,
+        "LV": 13,
+        "totalExp": 304000,
+        "battleRewardsEvery": "1111,0,160||1113,0,700"
+      },
+      "14": {
+        "buildingModelID": 34008000,
+        "LV": 14,
+        "totalExp": 360000,
+        "battleRewardsEvery": "1111,0,165||1113,0,750"
+      },
+      "15": {
+        "buildingModelID": 34008000,
+        "LV": 15,
+        "totalExp": 422000,
+        "battleRewardsEvery": "1111,0,170||1113,0,800"
+      },
+      "16": {
+        "buildingModelID": 34008000,
+        "LV": 16,
+        "totalExp": 490000,
+        "battleRewardsEvery": "1111,0,175||1113,0,850"
+      },
+      "17": {
+        "buildingModelID": 34008000,
+        "LV": 17,
+        "totalExp": 565000,
+        "battleRewardsEvery": "1111,0,180||1113,0,900"
+      },
+      "18": {
+        "buildingModelID": 34008000,
+        "LV": 18,
+        "totalExp": 646000,
+        "battleRewardsEvery": "1111,0,185||1113,0,950"
+      },
+      "19": {
+        "buildingModelID": 34008000,
+        "LV": 19,
+        "totalExp": 734000,
+        "battleRewardsEvery": "1111,0,190||1113,0,1000"
+      },
+      "20": {
+        "buildingModelID": 34008000,
+        "LV": 20,
+        "totalExp": 829000,
+        "battleRewardsEvery": "1111,0,195||1113,0,1050"
+      },
+      "21": {
+        "buildingModelID": 34008000,
+        "LV": 21,
+        "totalExp": 932000,
+        "battleRewardsEvery": "1111,0,200||1113,0,1100"
+      },
+      "22": {
+        "buildingModelID": 34008000,
+        "LV": 22,
+        "totalExp": 1042000,
+        "battleRewardsEvery": "1111,0,205||1113,0,1150"
+      },
+      "23": {
+        "buildingModelID": 34008000,
+        "LV": 23,
+        "totalExp": 1175000,
+        "battleRewardsEvery": "1111,0,210||1113,0,1200"
+      },
+      "24": {
+        "buildingModelID": 34008000,
+        "LV": 24,
+        "totalExp": 1333000,
+        "battleRewardsEvery": "1111,0,215||1113,0,1250"
+      },
+      "25": {
+        "buildingModelID": 34008000,
+        "LV": 25,
+        "totalExp": 1548000,
+        "battleRewardsEvery": "1111,0,220||1113,0,1300"
+      },
+      "26": {
+        "buildingModelID": 34008000,
+        "LV": 26,
+        "totalExp": 1879000,
+        "battleRewardsEvery": "1111,0,225||1113,0,1350"
+      },
+      "27": {
+        "buildingModelID": 34008000,
+        "LV": 27,
+        "totalExp": 1879000,
+        "battleRewardsEvery": "1111,0,230||1113,0,1400"
+      },
+      "28": {
+        "buildingModelID": 34008000,
+        "LV": 28,
+        "totalExp": 1879000,
+        "battleRewardsEvery": "1111,0,235||1113,0,1450"
+      },
+      "29": {
+        "buildingModelID": 34008000,
+        "LV": 29,
+        "totalExp": 1879000,
+        "battleRewardsEvery": "1111,0,240||1113,0,1500"
+      },
+      "30": {
+        "buildingModelID": 34008000,
+        "LV": 30,
+        "totalExp": 1879000,
+        "battleRewardsEvery": "1111,0,245||1113,0,1550"
+      }
+    }
+  },
+  "guild_shop": {
+    "1": {
+      "ID": 1,
+      "typeID": 1605,
+      "modelID": 16050001,
+      "num": 10,
+      "needCoin": 200,
+      "perMaxNum": 20,
+      "totalMaxNum": 0,
+      "needBuildingLV": 1,
+      "order": 1
+    },
+    "2": {
+      "ID": 2,
+      "typeID": 1605,
+      "modelID": 16050016,
+      "num": 1,
+      "needCoin": 300,
+      "perMaxNum": 1,
+      "totalMaxNum": 0,
+      "needBuildingLV": 2,
+      "order": 2
+    },
+    "3": {
+      "ID": 3,
+      "typeID": 1501,
+      "modelID": 15010005,
+      "num": 1,
+      "needCoin": 600,
+      "perMaxNum": 20,
+      "totalMaxNum": 0,
+      "needBuildingLV": 4,
+      "order": 5
+    },
+    "4": {
+      "ID": 4,
+      "typeID": 1501,
+      "modelID": 15010013,
+      "num": 1,
+      "needCoin": 600,
+      "perMaxNum": 20,
+      "totalMaxNum": 0,
+      "needBuildingLV": 4,
+      "order": 6
+    },
+    "5": {
+      "ID": 5,
+      "typeID": 1501,
+      "modelID": 15010021,
+      "num": 1,
+      "needCoin": 600,
+      "perMaxNum": 20,
+      "totalMaxNum": 0,
+      "needBuildingLV": 4,
+      "order": 7
+    },
+    "6": {
+      "ID": 6,
+      "typeID": 1501,
+      "modelID": 15010036,
+      "num": 1,
+      "needCoin": 600,
+      "perMaxNum": 20,
+      "totalMaxNum": 0,
+      "needBuildingLV": 5,
+      "order": 8
+    },
+    "7": {
+      "ID": 7,
+      "typeID": 1501,
+      "modelID": 15010020,
+      "num": 1,
+      "needCoin": 600,
+      "perMaxNum": 20,
+      "totalMaxNum": 0,
+      "needBuildingLV": 5,
+      "order": 9
+    },
+    "8": {
+      "ID": 8,
+      "typeID": 1501,
+      "modelID": 15010015,
+      "num": 1,
+      "needCoin": 600,
+      "perMaxNum": 20,
+      "totalMaxNum": 0,
+      "needBuildingLV": 5,
+      "order": 10
+    },
+    "9": {
+      "ID": 9,
+      "typeID": 1302,
+      "modelID": 13020507,
+      "num": 1,
+      "needCoin": 6000,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "needBuildingLV": 6,
+      "order": 11
+    },
+    "10": {
+      "ID": 10,
+      "typeID": 1602,
+      "modelID": 16020011,
+      "num": 1,
+      "needCoin": 6000,
+      "perMaxNum": 1,
+      "totalMaxNum": 0,
+      "needBuildingLV": 7,
+      "order": 12
+    },
+    "11": {
+      "ID": 11,
+      "typeID": 1602,
+      "modelID": 16020012,
+      "num": 1,
+      "needCoin": 6000,
+      "perMaxNum": 1,
+      "totalMaxNum": 0,
+      "needBuildingLV": 7,
+      "order": 13
+    },
+    "12": {
+      "ID": 12,
+      "typeID": 1605,
+      "modelID": 16050066,
+      "num": 1,
+      "needCoin": 10000,
+      "perMaxNum": 0,
+      "totalMaxNum": 3,
+      "needBuildingLV": 9,
+      "order": 14
+    },
+    "13": {
+      "ID": 13,
+      "typeID": 1501,
+      "modelID": 15010001,
+      "num": 1,
+      "needCoin": 3000,
+      "perMaxNum": 10,
+      "totalMaxNum": 0,
+      "needBuildingLV": 10,
+      "order": 15
+    },
+    "14": {
+      "ID": 14,
+      "typeID": 1501,
+      "modelID": 15010010,
+      "num": 1,
+      "needCoin": 3000,
+      "perMaxNum": 10,
+      "totalMaxNum": 0,
+      "needBuildingLV": 10,
+      "order": 16
+    },
+    "15": {
+      "ID": 15,
+      "typeID": 1501,
+      "modelID": 15010017,
+      "num": 1,
+      "needCoin": 3000,
+      "perMaxNum": 10,
+      "totalMaxNum": 0,
+      "needBuildingLV": 10,
+      "order": 17
+    },
+    "16": {
+      "ID": 16,
+      "typeID": 1605,
+      "modelID": 16050020,
+      "num": 1,
+      "needCoin": 10000,
+      "perMaxNum": 0,
+      "totalMaxNum": 3,
+      "needBuildingLV": 12,
+      "order": 18
+    },
+    "17": {
+      "ID": 17,
+      "typeID": 1606,
+      "modelID": 16060003,
+      "num": 1,
+      "needCoin": 30000,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "needBuildingLV": 16,
+      "order": 19
+    },
+    "18": {
+      "ID": 18,
+      "typeID": 1606,
+      "modelID": 16060004,
+      "num": 1,
+      "needCoin": 30000,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "needBuildingLV": 18,
+      "order": 20
+    },
+    "19": {
+      "ID": 19,
+      "typeID": 1301,
+      "modelID": 13010608,
+      "num": 1,
+      "needCoin": 50000,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "needBuildingLV": 20,
+      "order": 21
+    },
+    "20": {
+      "ID": 20,
+      "typeID": 1605,
+      "modelID": 16050067,
+      "num": 1,
+      "needCoin": 50000,
+      "perMaxNum": 0,
+      "totalMaxNum": 3,
+      "needBuildingLV": 22,
+      "order": 22
+    },
+    "21": {
+      "ID": 21,
+      "typeID": 1605,
+      "modelID": 16050068,
+      "num": 1,
+      "needCoin": 100000,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "needBuildingLV": 28,
+      "order": 23
+    },
+    "22": {
+      "ID": 22,
+      "typeID": 1301,
+      "modelID": 13010705,
+      "num": 1,
+      "needCoin": 200000,
+      "perMaxNum": 0,
+      "totalMaxNum": 1,
+      "needBuildingLV": 30,
+      "order": 24
+    }
+  },
+  "guild_bosses": {
+    "12015019": {
+      "Id": 12015019,
+      "name": "妖·龙骨精",
+      "quality": 13,
+      "bodyTypeR": 14000,
+      "step": 5,
+      "HP": 1000000000,
+      "AP": 5000,
+      "DEF": 0,
+      "RP": 0,
+      "HIT": 50000,
+      "DOD": 500,
+      "CRI": 300,
+      "TEN": 10000,
+      "BLO": 300,
+      "BOG": 10000,
+      "CRID": 0,
+      "TEND": 0,
+      "APR": 0,
+      "HPR": 0,
+      "DEFR": 0,
+      "CP": 0,
+      "BCP": 0,
+      "CPR": 0,
+      "BCPR": 0,
+      "DAMADD": 0,
+      "DAMCUT": 0,
+      "DAMADDR": 0,
+      "DAMCUTR": 0,
+      "formation": 2,
+      "des": "Bạo Kích nên phối hợp với thuộc tính Bền để tăng hiệu quả."
+    },
+    "12015020": {
+      "Id": 12015020,
+      "name": "妖·桔梗",
+      "quality": 13,
+      "bodyTypeR": 10000,
+      "step": 5,
+      "HP": 1000000000,
+      "AP": 5000,
+      "DEF": 0,
+      "RP": 0,
+      "HIT": 50000,
+      "DOD": 500,
+      "CRI": 300,
+      "TEN": 10000,
+      "BLO": 300,
+      "BOG": 10000,
+      "CRID": 0,
+      "TEND": 0,
+      "APR": 0,
+      "HPR": 0,
+      "DEFR": 0,
+      "CP": 0,
+      "BCP": 0,
+      "CPR": 0,
+      "BCPR": 0,
+      "DAMADD": 0,
+      "DAMCUT": 0,
+      "DAMADDR": 0,
+      "DAMCUTR": 0,
+      "formation": 2,
+      "des": "Đỡ và Phản ST cao, có thể vừa công vừa thủ. Tăng thêm thuộc tính Phá Kích thì tốt."
+    },
+    "12015021": {
+      "Id": 12015021,
+      "name": "妖·杀生丸",
+      "quality": 13,
+      "bodyTypeR": 10000,
+      "step": 5,
+      "HP": 1000000000,
+      "AP": 5000,
+      "DEF": 0,
+      "RP": 0,
+      "HIT": 50000,
+      "DOD": 500,
+      "CRI": 300,
+      "TEN": 10000,
+      "BLO": 300,
+      "BOG": 10000,
+      "CRID": 0,
+      "TEND": 0,
+      "APR": 0,
+      "HPR": 0,
+      "DEFR": 0,
+      "CP": 0,
+      "BCP": 0,
+      "CPR": 0,
+      "BCPR": 0,
+      "DAMADD": 0,
+      "DAMCUT": 0,
+      "DAMADDR": 0,
+      "DAMCUTR": 0,
+      "formation": 2,
+      "des": "Khi đánh Yêu Vương, tăng thuộc tính Chính Xác sẽ có hiệu quả cực lớn."
+    }
+  },
+  "guild_share": {
+    "1": {
+      "ID": 1,
+      "FAPMin": 1000,
+      "FAPMax": 1000000,
+      "validIncomeTotalTime": 86400,
+      "validIncomeInterval": 60,
+      "validIncomeOnceGold": 25
+    }
+  },
+  "guild_donate": {
+    "16050017": {
+      "useGoodsModelID": 16050017,
+      "outputContribution": 200
+    },
+    "16050018": {
+      "useGoodsModelID": 16050018,
+      "outputContribution": 1000
+    }
+  },
+  "lv_plan_config": {
+    "needVIPLV": 2
+  },
+  "lv_plan_rewards": {
+    "10": {
+      "LV": 10,
+      "diamond": 200,
+      "needDiamond": 100
+    },
+    "15": {
+      "LV": 15,
+      "diamond": 300,
+      "needDiamond": 100
+    },
+    "20": {
+      "LV": 20,
+      "diamond": 350,
+      "needDiamond": 100
+    },
+    "25": {
+      "LV": 25,
+      "diamond": 400,
+      "needDiamond": 100
+    },
+    "30": {
+      "LV": 30,
+      "diamond": 450,
+      "needDiamond": 100
+    },
+    "35": {
+      "LV": 35,
+      "diamond": 500,
+      "needDiamond": 100
+    },
+    "40": {
+      "LV": 40,
+      "diamond": 550,
+      "needDiamond": 100
+    },
+    "45": {
+      "LV": 45,
+      "diamond": 600,
+      "needDiamond": 100
+    },
+    "50": {
+      "LV": 50,
+      "diamond": 650,
+      "needDiamond": 100
+    },
+    "55": {
+      "LV": 55,
+      "diamond": 888,
+      "needDiamond": 100
+    }
+  },
+  "vip_welfare": {
+    "0": {
+      "LV": 0,
+      "resourceList": "1112,0,10000||1605,16050011,5"
+    },
+    "1": {
+      "LV": 1,
+      "resourceList": "1112,0,30000||1605,16050011,10||1605,16050013,1"
+    },
+    "2": {
+      "LV": 2,
+      "resourceList": "1112,0,50000||1605,16050011,15||1605,16050013,1||1117,0,1000"
+    },
+    "3": {
+      "LV": 3,
+      "resourceList": "1112,0,80000||1605,16050011,20||1605,16050013,1||1117,0,1500||1605,16050012,1"
+    },
+    "4": {
+      "LV": 4,
+      "resourceList": "1112,0,100000||1605,16050011,25||1605,16050013,1||1117,0,2000||1605,16050012,1||1605,16050010,1"
+    },
+    "5": {
+      "LV": 5,
+      "resourceList": "1112,0,110000||1605,16050011,25||1605,16050013,1||1117,0,2200||1605,16050012,1||1605,16050010,1"
+    },
+    "6": {
+      "LV": 6,
+      "resourceList": "1112,0,120000||1605,16050011,30||1605,16050013,2||1117,0,2500||1605,16050012,1||1605,16050010,1"
+    },
+    "7": {
+      "LV": 7,
+      "resourceList": "1112,0,140000||1605,16050011,30||1605,16050013,2||1117,0,2800||1605,16050012,1||1605,16050010,1"
+    },
+    "8": {
+      "LV": 8,
+      "resourceList": "1112,0,150000||1605,16050011,35||1605,16050013,2||1117,0,3000||1605,16050012,2||1605,16050010,2"
+    },
+    "9": {
+      "LV": 9,
+      "resourceList": "1112,0,160000||1605,16050011,35||1605,16050013,2||1117,0,3000||1605,16050012,2||1605,16050010,2"
+    },
+    "10": {
+      "LV": 10,
+      "resourceList": "1112,0,180000||1605,16050011,40||1605,16050013,2||1117,0,3500||1605,16050012,2||1605,16050010,3"
+    },
+    "11": {
+      "LV": 11,
+      "resourceList": "1112,0,230000||1605,16050011,45||1605,16050013,2||1117,0,4000||1605,16050012,3||1605,16050010,4"
+    },
+    "12": {
+      "LV": 12,
+      "resourceList": "1112,0,260000||1605,16050011,50||1605,16050013,2||1117,0,4000||1605,16050012,3||1605,16050010,5"
+    },
+    "13": {
+      "LV": 13,
+      "resourceList": "1112,0,300000||1605,16050011,55||1605,16050013,2||1117,0,5000||1605,16050012,3||1605,16050010,6"
+    },
+    "14": {
+      "LV": 14,
+      "resourceList": "1112,0,320000||1605,16050011,55||1605,16050013,2||1117,0,5500||1605,16050012,3||1605,16050010,7"
+    },
+    "15": {
+      "LV": 15,
+      "resourceList": "1112,0,350000||1605,16050011,60||1605,16050013,3||1117,0,6000||1605,16050012,3||1605,16050010,8"
+    },
+    "16": {
+      "LV": 16,
+      "resourceList": "1112,0,360000||1605,16050011,60||1605,16050013,3||1117,0,6000||1605,16050012,3||1605,16050010,9"
+    },
+    "17": {
+      "LV": 17,
+      "resourceList": "1112,0,380000||1605,16050011,60||1605,16050013,3||1117,0,6000||1605,16050012,3||1605,16050010,10"
+    },
+    "18": {
+      "LV": 18,
+      "resourceList": "1112,0,400000||1605,16050011,65||1605,16050013,3||1117,0,7000||1605,16050012,4||1605,16050010,10"
+    },
+    "19": {
+      "LV": 19,
+      "resourceList": "1112,0,450000||1605,16050011,70||1605,16050013,3||1117,0,8000||1605,16050012,4||1605,16050010,10"
+    },
+    "20": {
+      "LV": 20,
+      "resourceList": "1112,0,500000||1605,16050011,75||1605,16050013,3||1117,0,9000||1605,16050012,5||1605,16050010,10"
+    }
+  },
+  "bag_model": {
+    "1": {
+      "ID": 1,
+      "name": "VP",
+      "initSize": 40,
+      "perExpandSize": 5
+    },
+    "2": {
+      "ID": 2,
+      "name": "Mảnh Tướng",
+      "initSize": 200,
+      "perExpandSize": 5
+    },
+    "3": {
+      "ID": 3,
+      "name": "Mảnh Tr.Bị",
+      "initSize": 200,
+      "perExpandSize": 5
+    },
+    "4": {
+      "ID": 4,
+      "name": "Trang Bị",
+      "initSize": 100,
+      "perExpandSize": 5
+    },
+    "5": {
+      "ID": 5,
+      "name": "Tướng",
+      "initSize": 100,
+      "perExpandSize": 5
+    },
+    "6": {
+      "ID": 6,
+      "name": "Đá",
+      "initSize": 100,
+      "perExpandSize": 5
+    },
+    "7": {
+      "ID": 7,
+      "name": "Yêu Hồn",
+      "initSize": 20,
+      "perExpandSize": 5
+    },
+    "8": {
+      "ID": 8,
+      "name": "Mảnh Yêu Hồn",
+      "initSize": 30,
+      "perExpandSize": 5
+    },
+    "0": {
+      "ID": 0,
+      "name": "",
+      "initSize": 0,
+      "perExpandSize": 0
+    }
+  },
+  "bag_expand_use": {
+    "1": {
+      "expandNum": 1,
+      "useDiamondNum": 10
+    },
+    "2": {
+      "expandNum": 2,
+      "useDiamondNum": 20
+    },
+    "3": {
+      "expandNum": 3,
+      "useDiamondNum": 30
+    },
+    "4": {
+      "expandNum": 4,
+      "useDiamondNum": 40
+    },
+    "5": {
+      "expandNum": 5,
+      "useDiamondNum": 50
+    },
+    "6": {
+      "expandNum": 6,
+      "useDiamondNum": 60
+    },
+    "7": {
+      "expandNum": 7,
+      "useDiamondNum": 70
+    },
+    "8": {
+      "expandNum": 8,
+      "useDiamondNum": 80
+    },
+    "9": {
+      "expandNum": 9,
+      "useDiamondNum": 90
+    },
+    "10": {
+      "expandNum": 10,
+      "useDiamondNum": 100
+    },
+    "11": {
+      "expandNum": 11,
+      "useDiamondNum": 110
+    },
+    "12": {
+      "expandNum": 12,
+      "useDiamondNum": 120
+    },
+    "13": {
+      "expandNum": 13,
+      "useDiamondNum": 130
+    },
+    "14": {
+      "expandNum": 14,
+      "useDiamondNum": 140
+    },
+    "15": {
+      "expandNum": 15,
+      "useDiamondNum": 150
+    },
+    "16": {
+      "expandNum": 16,
+      "useDiamondNum": 160
+    },
+    "17": {
+      "expandNum": 17,
+      "useDiamondNum": 170
+    },
+    "18": {
+      "expandNum": 18,
+      "useDiamondNum": 180
+    },
+    "19": {
+      "expandNum": 19,
+      "useDiamondNum": 190
+    },
+    "20": {
+      "expandNum": 20,
+      "useDiamondNum": 200
+    }
   }
 }

@@ -73,7 +73,10 @@ class R79EventHandlersMixin:
 
         timed_sub_modules = [
             4401, 4402, 4403, 4405, 4406, 4407, 4409, 4410, 4412,
-            4416, 4417, 4421, 4422, 4426, 4427, 4428, 4429, 4430, 4432,
+            4413, 4414, 4415, 4416, 4417, 4418, 4419, 4420,
+            4421, 4422, 4426, 4427, 4428, 4429, 4430, 4432,
+            6301, 6302, 6303, 6304, 6306, 6308, 6309, 6311, 6313, 6314,
+            6401, 6402, 6403, 6404, 6406, 6408, 6409, 6411, 6413, 6414,
         ]
         for order_idx, mod_sub in enumerate(timed_sub_modules, start=1):
             active_list = self.event_runtime.get_active_timed_events(mod_sub, p)
@@ -94,6 +97,83 @@ class R79EventHandlersMixin:
                 )
             out[str(mod_sub)] = mod_items
         return out
+
+    ACTIVITY_ID_TO_EVENT_ID: dict[int, str] = {
+        4401: "timed_charge_single",
+        4402: "timed_charge_total",
+        4403: "timed_use_total",
+        4406: "timed_exchange",
+        4412: "timed_slot",
+        4426: "timed_smash_egg",
+        4427: "timed_day_login",
+        4428: "timed_points_mall",
+        4429: "timed_charge_gift",
+        4430: "timed_active_rank",
+        6301: "festival_charge_total",
+        6302: "festival_charge_single",
+        6303: "festival_exchange",
+        6304: "festival_slot",
+        6306: "festival_smash_egg",
+        6308: "festival_day_login",
+        6309: "festival_use_total",
+        6311: "festival_points_mall",
+        6313: "festival_active_rank",
+        6314: "festival_charge_gift",
+        6401: "holiday_charge_total",
+        6402: "holiday_charge_single",
+        6403: "holiday_exchange",
+        6404: "holiday_slot",
+        6406: "holiday_smash_egg",
+        6408: "holiday_day_login",
+        6409: "holiday_use_total",
+        6411: "holiday_points_mall",
+        6413: "holiday_active_rank",
+        6414: "holiday_charge_gift",
+    }
+    _CHARGE_SINGLE_FAMILY = ("timed_charge_single", "festival_charge_single", "holiday_charge_single")
+    _CHARGE_TOTAL_FAMILY = ("timed_charge_total", "festival_charge_total", "holiday_charge_total")
+    _USE_TOTAL_FAMILY = ("timed_use_total", "festival_use_total", "holiday_use_total")
+    _EXCHANGE_FAMILY = ("timed_exchange", "festival_exchange", "holiday_exchange")
+    _SLOT_FAMILY = ("timed_slot", "festival_slot", "holiday_slot")
+    _SMASH_EGG_FAMILY = ("timed_smash_egg", "festival_smash_egg", "holiday_smash_egg")
+    _DAY_LOGIN_FAMILY = ("timed_day_login", "festival_day_login", "holiday_day_login")
+    _POINTS_MALL_FAMILY = ("timed_points_mall", "festival_points_mall", "holiday_points_mall")
+    _CHARGE_GIFT_FAMILY = ("timed_charge_gift", "festival_charge_gift", "holiday_charge_gift")
+    _ACTIVE_RANK_FAMILY = ("timed_active_rank", "festival_active_rank", "holiday_active_rank")
+
+    def _resolve_timed_event_id(self, default_event_id: str, data: Any = None, *, family: tuple[str, ...]) -> str:
+        selected = self.state.setdefault("selected_timed_activity", {})
+        if isinstance(data, list) and data and data[0] is not None:
+            try:
+                mapped = self.ACTIVITY_ID_TO_EVENT_ID.get(int(data[0]))
+            except (TypeError, ValueError):
+                mapped = None
+            if mapped and mapped in family:
+                selected[default_event_id] = mapped
+                return mapped
+        saved = selected.get(default_event_id)
+        if saved in family and self.event_runtime.evaluate(saved, self.state["player"]).eligible:
+            return str(saved)
+        if self.event_runtime.evaluate(default_event_id, self.state["player"]).eligible:
+            return default_event_id
+        for cand in family:
+            if self.event_runtime.evaluate(cand, self.state["player"]).eligible:
+                return cand
+        return default_event_id
+
+    def _extract_act_and_arg(self, data: Any, default_event_id: str, family: tuple[str, ...]) -> tuple[str, int]:
+        has_act = False
+        if isinstance(data, list) and len(data) >= 2 and data[0] is not None:
+            try:
+                has_act = self.ACTIVITY_ID_TO_EVENT_ID.get(int(data[0])) in family
+            except (TypeError, ValueError):
+                has_act = False
+        if has_act:
+            ev_id = self._resolve_timed_event_id(default_event_id, data, family=family)
+            return ev_id, int(data[1])
+        ev_id = self._resolve_timed_event_id(default_event_id, None, family=family)
+        arg = int(data[0]) if isinstance(data, list) and data else 0
+        return ev_id, arg
 
     # -------------------- Shared Economy / Goods / S1 Multi-Account Helpers --------------------
 
@@ -139,12 +219,11 @@ class R79EventHandlersMixin:
         stats = st.get("stats", {})
         return int(stats.get("spent_diamonds", 0))
 
-    def _player_active_score(self, prof: Any | None = None) -> int:
+    def _player_activity_stat_score(self, prof: Any | None = None) -> int:
         target = prof if prof is not None else self
-        st = target.state
-        stats = st.get("stats", {})
+        stats = target.state.get("stats", {})
         # Weighted per ActiverankingModel.lua (normal=1, elite=2, boss=1, nightmare=3, grab=1, arena=1, ggzj=2, bdd=1, xxbz=3)
-        score = (
+        return (
             int(stats.get("normal_Win", 0)) * 1
             + int(stats.get("elite_Win", 0)) * 2
             + int(stats.get("boss_count", 0)) * 1
@@ -155,8 +234,12 @@ class R79EventHandlersMixin:
             + int(stats.get("gddh_fights", 0)) * 1
             + int(stats.get("bdd_Win", 0)) * 1
             + int(stats.get("mystery_treasure_count", 0)) * 3
-            + int(st.get("player", {}).get("Lv", 1)) * 5
         )
+
+    def _player_active_score(self, prof: Any | None = None) -> int:
+        target = prof if prof is not None else self
+        st = target.state
+        score = self._player_activity_stat_score(target) + int(st.get("player", {}).get("Lv", 1)) * 5
         return max(10, score)
 
     def _s1_account_profiles(self) -> list[Any]:
@@ -470,9 +553,9 @@ class R79EventHandlersMixin:
         ("1606,16060019,1", 300),
     ]
 
-    def _ensure_smash_egg_prog(self) -> tuple[Any, dict[str, Any]]:
+    def _ensure_smash_egg_prog(self, event_id: str = "timed_smash_egg") -> tuple[Any, dict[str, Any]]:
         self._sync_events()
-        ev = self.event_runtime.evaluate("timed_smash_egg", self.state["player"])
+        ev = self.event_runtime.evaluate(event_id, self.state["player"])
         inst = self.event_runtime.get_instance(ev.instance_id) if ev.instance_id else None
         if not ev.eligible or inst is None:
             return ev, {}
@@ -503,7 +586,8 @@ class R79EventHandlersMixin:
         return 1 if self._get_goods_qty(self.GOLDEN_HAMMER_MODEL_ID) > 0 else 0
 
     def _rpc_timed_smash_egg_get_reward_list(self, _data: Any) -> dict[str, Any]:
-        ev, _prog = self._ensure_smash_egg_prog()
+        ev_id = self._resolve_timed_event_id("timed_smash_egg", None, family=self._SMASH_EGG_FAMILY)
+        ev, _prog = self._ensure_smash_egg_prog(ev_id)
         if not ev.eligible:
             self._last_rpc_context["status"] = -1
             return {}
@@ -515,7 +599,8 @@ class R79EventHandlersMixin:
         return out
 
     def _rpc_timed_smash_egg_get_record(self, _data: Any) -> dict[str, Any]:
-        ev, prog = self._ensure_smash_egg_prog()
+        ev_id = self._resolve_timed_event_id("timed_smash_egg", None, family=self._SMASH_EGG_FAMILY)
+        ev, prog = self._ensure_smash_egg_prog(ev_id)
         if not ev.eligible:
             self._last_rpc_context["status"] = -1
             return {}
@@ -542,7 +627,8 @@ class R79EventHandlersMixin:
     def _rpc_timed_smash_egg_smash(self, data: Any) -> dict[str, Any]:
         req_count = int(data[0]) if isinstance(data, list) and data else 1
         req_count = max(1, min(100, req_count))
-        ev, prog = self._ensure_smash_egg_prog()
+        ev_id = self._resolve_timed_event_id("timed_smash_egg", None, family=self._SMASH_EGG_FAMILY)
+        ev, prog = self._ensure_smash_egg_prog(ev_id)
         if not ev.eligible:
             self._last_rpc_context["status"] = -1
             return {}
@@ -625,9 +711,9 @@ class R79EventHandlersMixin:
         {"Rank": 5, "Ratio": 8, "ReturnResource": "1111,0,180"},
     ]
 
-    def _ensure_slot_prog(self) -> tuple[Any, dict[str, Any]]:
+    def _ensure_slot_prog(self, event_id: str = "timed_slot") -> tuple[Any, dict[str, Any]]:
         self._sync_events()
-        ev = self.event_runtime.evaluate("timed_slot", self.state["player"])
+        ev = self.event_runtime.evaluate(event_id, self.state["player"])
         inst = self.event_runtime.get_instance(ev.instance_id) if ev.instance_id else None
         if inst is None:
             return ev, {}
@@ -652,7 +738,8 @@ class R79EventHandlersMixin:
         self.save()
 
     def _record_slot_recharge(self, amount: int) -> None:
-        ev, prog = self._ensure_slot_prog()
+        ev_id = self._resolve_timed_event_id("timed_slot", None, family=self._SLOT_FAMILY)
+        ev, prog = self._ensure_slot_prog(ev_id)
         if not ev.eligible:
             return
         self._seed_slot_tickets(ev, prog)
@@ -718,7 +805,8 @@ class R79EventHandlersMixin:
         }
 
     def _rpc_timed_luckdraw_get_info(self, _data: Any) -> dict[str, Any]:
-        ev, prog = self._ensure_slot_prog()
+        ev_id = self._resolve_timed_event_id("timed_slot", None, family=self._SLOT_FAMILY)
+        ev, prog = self._ensure_slot_prog(ev_id)
         if not ev.eligible:
             self._last_rpc_context["status"] = -1
             return {}
@@ -733,7 +821,8 @@ class R79EventHandlersMixin:
         if slot_type not in (1, 2) or count not in (1, 10):
             self._last_rpc_context["status"] = -1
             return {}
-        ev, prog = self._ensure_slot_prog()
+        ev_id = self._resolve_timed_event_id("timed_slot", None, family=self._SLOT_FAMILY)
+        ev, prog = self._ensure_slot_prog(ev_id)
         if not ev.eligible:
             self._last_rpc_context["status"] = -1
             return {}
@@ -820,24 +909,32 @@ class R79EventHandlersMixin:
         claimed = set(int(x) for x in prog.get("reward_ids", []))
         return 1 if any(integral >= int(r["Credit"]) and int(r["Credit"]) not in claimed for r in self.XSSB_CREDIT_REWARDS) else 0
 
-    def _build_xssb_rank_list(self, instance_id: str, my_integral: int) -> tuple[int, list[dict[str, Any]]]:
+    def _build_xssb_rank_list(
+        self,
+        instance_id: str,
+        my_integral: int,
+        *,
+        include_archived_peers: bool = False,
+    ) -> tuple[int, list[dict[str, Any]]]:
         entries: list[dict[str, Any]] = []
         for prof in self._s1_account_profiles():
-            pname = str(prof.state.get("player", {}).get("PlayerName", "Hero"))
-            if prof.profile_name == self.profile_name:
+            pp = prof.state.get("player", {})
+            pid = str(pp.get("PlayerId", prof.profile_name))
+            pname = str(pp.get("PlayerName", "Hero"))
+            if prof is self:
                 score = int(my_integral)
                 is_me = True
             else:
-                p_inst = prof.event_runtime.get_instance(instance_id)
-                if not p_inst or p_inst.get("archived"):
+                p_inst = prof.event_runtime.get_instance(instance_id) if instance_id else None
+                if not p_inst or (not include_archived_peers and p_inst.get("archived")):
                     continue
                 score = int(p_inst.get("progress", {}).get("integral", 0))
                 is_me = False
             if score > 0:
-                entries.append({"Name": pname, "Integral": score, "is_me": is_me})
+                entries.append({"pid": pid, "Name": pname, "Integral": score, "is_me": is_me, "is_bot": False})
         for bname, bscore in [("ThiếtToáiNha", 220), ("ThiênSinhNha", 160), ("TùngVânNha", 110), ("BạoToáiNha", 70)]:
-            entries.append({"Name": bname, "Integral": bscore, "is_me": False})
-        entries.sort(key=lambda r: (-int(r["Integral"]), 0 if r["is_me"] else 1, r["Name"]))
+            entries.append({"pid": f"npc:{bname}", "Name": bname, "Integral": bscore, "is_me": False, "is_bot": True})
+        entries.sort(key=lambda r: (-int(r["Integral"]), 1 if r["is_bot"] else 0, str(r["pid"])))
         my_rank = 0
         out: list[dict[str, Any]] = []
         for idx, row in enumerate(entries[:10], start=1):
@@ -845,6 +942,57 @@ class R79EventHandlersMixin:
                 my_rank = idx
             out.append({"Rank": idx, "Name": row["Name"], "Integral": int(row["Integral"])})
         return my_rank, out
+
+    def _settle_xssb_rank(self, inst: dict[str, Any]) -> None:
+        prog = inst.get("progress", {})
+        iid = str(inst["instance_id"])
+        my_integral = int(prog.get("integral", 0))
+        if my_integral <= 0:
+            inst.setdefault("settlement", {})["rank"] = 0
+            return
+        my_rank, _ = self._build_xssb_rank_list(iid, my_integral, include_archived_peers=True)
+        settlement = inst.setdefault("settlement", {})
+        settlement["rank"] = my_rank
+        settlement["integral"] = my_integral
+        matched = next(
+            (r for r in self.XSSB_RANK_REWARDS if int(r["RankMin"]) <= my_rank <= int(r["RankMax"])),
+            None,
+        )
+        if not matched:
+            return
+        tuples = _parse_res_tuples(str(matched["RankReward"]))
+        if not tuples:
+            return
+        self._push_reward_center_entry(
+            source_key=f"xssb_rank:{iid}",
+            title=f"Thần Binh Giới Hạn — Hạng {my_rank}",
+            content=f"Chúc mừng đạt hạng {my_rank} ({my_integral} điểm) kỳ {iid}.",
+            res_tuples=tuples,
+        )
+
+    def _settle_xssb_unclaimed_credits(self, inst: dict[str, Any]) -> None:
+        if not bool(self.event_runtime.archive_cfg.get("settle_unclaimed_credit", True)):
+            return
+        prog = inst.get("progress", {})
+        iid = str(inst["instance_id"])
+        my_integral = int(prog.get("integral", 0))
+        drawn = {int(x) for x in prog.get("reward_ids", [])}
+        tuples: list[tuple[int, int, int]] = []
+        settled_credits: list[int] = []
+        for row in self.XSSB_CREDIT_REWARDS:
+            req_c = int(row["Credit"])
+            if my_integral >= req_c and req_c not in drawn and not self.event_runtime.is_claimed(iid, f"credit:{req_c}"):
+                tuples.extend(_parse_res_tuples(str(row["CreditReward"])))
+                settled_credits.append(req_c)
+        if not tuples:
+            return
+        inst.setdefault("settlement", {})["unclaimed_credits"] = settled_credits
+        self._push_reward_center_entry(
+            source_key=f"xssb_unclaimed_credit:{iid}",
+            title="Quà Mốc Tích Lũy Thần Binh Giới Hạn",
+            content=f"Kết toán rương tích lũy chưa nhận kỳ {iid}.",
+            res_tuples=tuples,
+        )
 
     def _build_xssb_payload(self, ev: Any, prog: dict[str, Any], *, include_static: bool = True) -> dict[str, Any]:
         my_int = int(prog.get("integral", 0))
@@ -1312,8 +1460,13 @@ class R79EventHandlersMixin:
         "timed_charge_single", "timed_charge_total", "timed_accum_days",
         "timed_double_diamond", "timed_recharge_rank", "timed_charge_gift",
         "timed_points_mall", "timed_critical_tasks",
+        "festival_charge_single", "festival_charge_total", "festival_charge_gift", "festival_points_mall",
+        "holiday_charge_single", "holiday_charge_total", "holiday_charge_gift", "holiday_points_mall",
     )
-    SPEND_PERIODS = ("timed_use_total", "timed_consume_rank", "timed_critical_tasks")
+    SPEND_PERIODS = (
+        "timed_use_total", "timed_consume_rank", "timed_critical_tasks",
+        "festival_use_total", "holiday_use_total",
+    )
 
     def _add_period_charge(self, amounts: dict[str, Any], when: int, amount: int) -> None:
         amounts["charged"] += amount
@@ -1360,8 +1513,9 @@ class R79EventHandlersMixin:
             previous = ordinal
         return longest, int(by_day.get(self.clock.today_str(), 0))
 
-    def _rpc_timed_info_get_charge_single(self, _data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_charge_single")
+    def _rpc_timed_info_get_charge_single(self, data: Any = None) -> dict[str, Any]:
+        ev_id = self._resolve_timed_event_id("timed_charge_single", data, family=self._CHARGE_SINGLE_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         max_single = self._period_economy(ev, prog)["max_charge"]
         rows: list[dict[str, Any]] = []
         for tid, res_str in self.CHARGE_SINGLE_TIERS:
@@ -1375,15 +1529,15 @@ class R79EventHandlersMixin:
         }
 
     def _rpc_timed_info_draw_charge_single(self, data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_charge_single")
-        tid = int(data[1]) if isinstance(data, list) and len(data) >= 2 else (int(data[0]) if isinstance(data, list) and data else 0)
+        ev_id, tid = self._extract_act_and_arg(data, "timed_charge_single", self._CHARGE_SINGLE_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         max_single = self._period_economy(ev, prog)["max_charge"]
         res_str = next((rs for t, rs in self.CHARGE_SINGLE_TIERS if t == tid), None)
         if not res_str or max_single < tid:
             self._last_rpc_context["status"] = -1
             return {}
         ok, base_res, _ = self.event_runtime.claim_milestone(
-            "timed_charge_single",
+            ev_id,
             f"tier:{tid}",
             lambda idem: self._grant_resources_from_tuples(_parse_res_tuples(res_str), source=f"charge_single:{tid}", tx_prefix=idem),
             player=self.state["player"],
@@ -1394,8 +1548,9 @@ class R79EventHandlersMixin:
         self.save()
         return {"BaseGetGameResourceList": base_res}
 
-    def _rpc_timed_info_get_charge_total(self, _data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_charge_total")
+    def _rpc_timed_info_get_charge_total(self, data: Any = None) -> dict[str, Any]:
+        ev_id = self._resolve_timed_event_id("timed_charge_total", data, family=self._CHARGE_TOTAL_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         total_c = self._period_economy(ev, prog)["charged"]
         rows: list[dict[str, Any]] = []
         for tid, res_str in self.CHARGE_TOTAL_TIERS:
@@ -1409,15 +1564,15 @@ class R79EventHandlersMixin:
         }
 
     def _rpc_timed_info_draw_charge_total(self, data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_charge_total")
-        tid = int(data[1]) if isinstance(data, list) and len(data) >= 2 else (int(data[0]) if isinstance(data, list) and data else 0)
+        ev_id, tid = self._extract_act_and_arg(data, "timed_charge_total", self._CHARGE_TOTAL_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         total_c = self._period_economy(ev, prog)["charged"]
         res_str = next((rs for t, rs in self.CHARGE_TOTAL_TIERS if t == tid), None)
         if not res_str or total_c < tid:
             self._last_rpc_context["status"] = -1
             return {}
         ok, base_res, _ = self.event_runtime.claim_milestone(
-            "timed_charge_total",
+            ev_id,
             f"tier:{tid}",
             lambda idem: self._grant_resources_from_tuples(_parse_res_tuples(res_str), source=f"charge_total:{tid}", tx_prefix=idem),
             player=self.state["player"],
@@ -1428,8 +1583,9 @@ class R79EventHandlersMixin:
         self.save()
         return {"BaseGetGameResourceList": base_res}
 
-    def _rpc_timed_info_get_use_total(self, _data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_use_total")
+    def _rpc_timed_info_get_use_total(self, data: Any = None) -> dict[str, Any]:
+        ev_id = self._resolve_timed_event_id("timed_use_total", data, family=self._USE_TOTAL_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         total_u = self._period_economy(ev, prog)["spent"]
         rows: list[dict[str, Any]] = []
         for tid, res_str in self.USE_TOTAL_TIERS:
@@ -1443,15 +1599,15 @@ class R79EventHandlersMixin:
         }
 
     def _rpc_timed_info_draw_use_total(self, data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_use_total")
-        tid = int(data[0]) if isinstance(data, list) and data else 0
+        ev_id, tid = self._extract_act_and_arg(data, "timed_use_total", self._USE_TOTAL_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         total_u = self._period_economy(ev, prog)["spent"]
         res_str = next((rs for t, rs in self.USE_TOTAL_TIERS if t == tid), None)
         if not res_str or total_u < tid:
             self._last_rpc_context["status"] = -1
             return {}
         ok, base_res, _ = self.event_runtime.claim_milestone(
-            "timed_use_total",
+            ev_id,
             f"tier:{tid}",
             lambda idem: self._grant_resources_from_tuples(_parse_res_tuples(res_str), source=f"use_total:{tid}", tx_prefix=idem),
             player=self.state["player"],
@@ -1537,7 +1693,8 @@ class R79EventHandlersMixin:
 
     def _rpc_timed_info_get_accumulate_login(self, data: Any) -> list[dict[str, Any]]:
         act_id = int(data[0]) if isinstance(data, list) and data else 4427
-        ev, _prog = self._eval_timed_sub("timed_day_login")
+        ev_id = self._resolve_timed_event_id("timed_day_login", data, family=self._DAY_LOGIN_FAMILY)
+        ev, _prog = self._eval_timed_sub(ev_id)
         login_days = max(1, int(self.state.get("gift_login", {}).get("sign_days", 1)))
         rows: list[dict[str, Any]] = []
         for day_num, res_str in self.DAY_LOGIN_TIERS:
@@ -1554,14 +1711,14 @@ class R79EventHandlersMixin:
         ]
 
     def _rpc_timed_info_draw_accumulate_login(self, data: Any) -> dict[str, Any]:
-        day_num = int(data[0]) if isinstance(data, list) and data else 0
+        ev_id, day_num = self._extract_act_and_arg(data, "timed_day_login", self._DAY_LOGIN_FAMILY)
         login_days = max(1, int(self.state.get("gift_login", {}).get("sign_days", 1)))
         res_str = next((rs for d, rs in self.DAY_LOGIN_TIERS if d == day_num), None)
         if not res_str or login_days < day_num:
             self._last_rpc_context["status"] = -1
             return {}
         ok, base_res, _ = self.event_runtime.claim_milestone(
-            "timed_day_login",
+            ev_id,
             f"day:{day_num}",
             lambda idem: self._grant_resources_from_tuples(_parse_res_tuples(res_str), source=f"timed_day_login:{day_num}", tx_prefix=idem),
             player=self.state["player"],
@@ -1581,24 +1738,30 @@ class R79EventHandlersMixin:
         (5, 60, "1605,16050055,2||1111,0,100"),
     ]
 
-    def _build_charge_or_use_rank(self, *, is_charge: bool) -> dict[str, Any]:
-        event_id = "timed_recharge_rank" if is_charge else "timed_consume_rank"
-        ev, progress = self._eval_timed_sub(event_id)
+    def _compute_charge_or_use_rank(
+        self,
+        instance_id: str,
+        my_val: int,
+        *,
+        is_charge: bool,
+        include_archived_peers: bool = False,
+    ) -> tuple[int, list[dict[str, Any]]]:
         key = "charged" if is_charge else "spent"
-        my_val = self._period_economy(ev, progress)[key]
         entries: list[dict[str, Any]] = []
         for prof in self._s1_account_profiles():
-            pname = str(prof.state.get("player", {}).get("PlayerName", "Hero"))
+            pp = prof.state.get("player", {})
+            pid = str(pp.get("PlayerId", prof.profile_name))
+            pname = str(pp.get("PlayerName", "Hero"))
             is_me = prof is self
-            inst = prof.event_runtime.get_instance(ev.instance_id) if ev.eligible and ev.instance_id else None
-            if not is_me and (not inst or inst.get("archived")):
+            inst = prof.event_runtime.get_instance(instance_id) if instance_id else None
+            if not is_me and (not inst or (not include_archived_peers and inst.get("archived"))):
                 continue
-            value = my_val if is_me else inst.get("progress", {}).get("economy", {}).get(key, 0)
-            entries.append({"Name": pname, "Val": value, "is_me": is_me})
+            value = int(my_val) if is_me else int(inst.get("progress", {}).get("economy", {}).get(key, 0))
+            entries.append({"pid": pid, "Name": pname, "Val": value, "is_me": is_me, "is_bot": False})
         peers = [("BạchSát", 1200), ("KhuyểnDạXoa", 800), ("TửVu", 450), ("NgọcTứHồn", 200), ("PhongKhuyển", 80)]
         for bname, bval in peers:
-            entries.append({"Name": bname, "Val": bval, "is_me": False})
-        entries.sort(key=lambda r: (-int(r["Val"]), 0 if r["is_me"] else 1, r["Name"]))
+            entries.append({"pid": f"npc:{bname}", "Name": bname, "Val": bval, "is_me": False, "is_bot": True})
+        entries.sort(key=lambda r: (-int(r["Val"]), 1 if r["is_bot"] else 0, str(r["pid"])))
 
         my_rank = -1
         rewards_out: list[dict[str, Any]] = []
@@ -1615,12 +1778,64 @@ class R79EventHandlersMixin:
                     "ResourceList": res_str,
                 }
             )
+        return my_rank, rewards_out
+
+    def _build_charge_or_use_rank(self, *, is_charge: bool) -> dict[str, Any]:
+        event_id = "timed_recharge_rank" if is_charge else "timed_consume_rank"
+        ev, progress = self._eval_timed_sub(event_id)
+        key = "charged" if is_charge else "spent"
+        my_val = int(self._period_economy(ev, progress)[key])
+        my_rank, rewards_out = self._compute_charge_or_use_rank(
+            str(ev.instance_id or ""),
+            my_val,
+            is_charge=is_charge,
+            include_archived_peers=False,
+        )
         return {
             "SelfIndex": my_rank,
             "SelfRank": my_rank,
             "Num": my_val,
             "Rewards": rewards_out,
         }
+
+    def _settle_charge_or_use_rank(self, inst: dict[str, Any], *, is_charge: bool) -> None:
+        key = "charged" if is_charge else "spent"
+        iid = str(inst["instance_id"])
+        my_val = int(inst.get("progress", {}).get("economy", {}).get(key, 0))
+        settlement = inst.setdefault("settlement", {})
+        if my_val <= 0:
+            settlement["rank"] = 0
+            return
+        my_rank, _ = self._compute_charge_or_use_rank(
+            iid,
+            my_val,
+            is_charge=is_charge,
+            include_archived_peers=True,
+        )
+        settlement["rank"] = my_rank if my_rank > 0 else 0
+        settlement["value"] = my_val
+        if my_rank <= 0:
+            return
+        matched = next((row for row in self.RANK_REWARD_TEMPLATE if int(row[0]) == my_rank), None)
+        if not matched:
+            return
+        tuples = _parse_res_tuples(matched[2])
+        if not tuples:
+            return
+        if is_charge:
+            self._push_reward_center_entry(
+                source_key=f"recharge_rank:{iid}",
+                title=f"BXH Nạp Kim Cương — Hạng {my_rank}",
+                content=f"Chúc mừng đạt hạng {my_rank} (đã nạp {my_val} KC) kỳ {iid}.",
+                res_tuples=tuples,
+            )
+        else:
+            self._push_reward_center_entry(
+                source_key=f"consume_rank:{iid}",
+                title=f"BXH Tiêu Kim Cương — Hạng {my_rank}",
+                content=f"Chúc mừng đạt hạng {my_rank} (đã tiêu {my_val} KC) kỳ {iid}.",
+                res_tuples=tuples,
+            )
 
     def _rpc_timed_info_get_charge_rank(self, _data: Any) -> dict[str, Any]:
         return self._build_charge_or_use_rank(is_charge=True)
@@ -1648,8 +1863,9 @@ class R79EventHandlersMixin:
         ),
     ]
 
-    def _rpc_timed_charge_gift_get_info(self, _data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_charge_gift")
+    def _rpc_timed_charge_gift_get_info(self, data: Any = None) -> dict[str, Any]:
+        ev_id = self._resolve_timed_event_id("timed_charge_gift", data, family=self._CHARGE_GIFT_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         claimed = set(int(x) for x in prog.setdefault("claimed_ids", []))
         recharged = self._period_economy(ev, prog)["charged"]
         info_list: list[dict[str, Any]] = []
@@ -1681,8 +1897,8 @@ class R79EventHandlersMixin:
         }
 
     def _rpc_timed_charge_gift_receive(self, data: Any) -> dict[str, Any]:
-        oid = int(data[0]) if isinstance(data, list) and data else 0
-        ev, prog = self._eval_timed_sub("timed_charge_gift")
+        ev_id, oid = self._extract_act_and_arg(data, "timed_charge_gift", self._CHARGE_GIFT_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         tier = next(((money, opts, rs) for money, opts in self.CHARGE_GIFT_TIERS
                      for option_id, rs in opts if option_id == oid), None)
         if not ev.eligible or not tier:
@@ -1696,7 +1912,7 @@ class R79EventHandlersMixin:
             self._last_rpc_context["status"] = -1
             return {}
         ok, base_res, _ = self.event_runtime.claim_milestone(
-            "timed_charge_gift",
+            ev_id,
             f"opt:{oid}",
             lambda idem: self._grant_resources_from_tuples(_parse_res_tuples(res_str), source=f"charge_gift:{oid}", tx_prefix=idem),
             player=self.state["player"],
@@ -1718,6 +1934,20 @@ class R79EventHandlersMixin:
         {"id": 5, "Reward": "1606,16060019,1", "NeedScore": 250, "Num": 2, "Discount": 0.7},
         {"id": 6, "Reward": "1602,16020023,1", "NeedScore": 300, "Num": 2, "Discount": 0.7},
     ]
+
+    def _extract_act_and_buy_args(
+        self, data: Any, default_event_id: str, family: tuple[str, ...]
+    ) -> tuple[str, int, int]:
+        has_act = False
+        if isinstance(data, list) and len(data) >= 2 and data[0] is not None:
+            try:
+                has_act = self.ACTIVITY_ID_TO_EVENT_ID.get(int(data[0])) in family
+            except (TypeError, ValueError):
+                has_act = False
+        ev_id = self._resolve_timed_event_id(default_event_id, data if has_act else None, family=family)
+        item_id = int(data[1]) if isinstance(data, list) and len(data) >= 2 else (int(data[0]) if isinstance(data, list) and data else 0)
+        count = int(data[2]) if isinstance(data, list) and len(data) >= 3 else 1
+        return ev_id, item_id, max(1, count)
 
     def _build_points_mall_payload(self, ev: Any, prog: dict[str, Any]) -> dict[str, Any]:
         spent_score = int(prog.get("spent_score", 0))
@@ -1743,17 +1973,16 @@ class R79EventHandlersMixin:
             "GoodsInfo": goods_info,
         }
 
-    def _rpc_timed_charge_score_get_list(self, _data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_points_mall")
+    def _rpc_timed_charge_score_get_list(self, data: Any = None) -> dict[str, Any]:
+        ev_id = self._resolve_timed_event_id("timed_points_mall", data, family=self._POINTS_MALL_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         out = self._build_points_mall_payload(ev, prog)
         self.save()
         return out
 
     def _rpc_timed_charge_score_buy(self, data: Any) -> dict[str, Any]:
-        item_id = int(data[1]) if isinstance(data, list) and len(data) >= 2 else (int(data[0]) if isinstance(data, list) and data else 0)
-        count = int(data[2]) if isinstance(data, list) and len(data) >= 3 else 1
-        count = max(1, count)
-        ev, prog = self._eval_timed_sub("timed_points_mall")
+        ev_id, item_id, count = self._extract_act_and_buy_args(data, "timed_points_mall", self._POINTS_MALL_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         item = next((x for x in self.POINTS_MALL_ITEMS if int(x["id"]) == item_id), None)
         if not ev.eligible or not item:
             self._last_rpc_context["status"] = -1
@@ -1817,6 +2046,123 @@ class R79EventHandlersMixin:
             "Need": [(1111, 0, 280)],
             "Give": [(1606, 16060002, 1)],
         },
+        {
+            "Serial": 5,
+            "GlobalNum": 99,
+            "PersonalNum": 10,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 800)],
+            "Give": [(1606, 16060003, 1)],
+        },
+        {
+            "Serial": 6,
+            "GlobalNum": 99,
+            "PersonalNum": 10,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 800)],
+            "Give": [(1606, 16060004, 1)],
+        },
+        {
+            "Serial": 7,
+            "GlobalNum": 99,
+            "PersonalNum": 6,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 800)],
+            "Give": [(1606, 16060036, 1)],
+        },
+        {
+            "Serial": 8,
+            "GlobalNum": 99,
+            "PersonalNum": 6,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 1500)],
+            "Give": [(1402, 14022001, 1)],
+        },
+        {
+            "Serial": 9,
+            "GlobalNum": 99,
+            "PersonalNum": 6,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 1500)],
+            "Give": [(1402, 14022002, 1)],
+        },
+        {
+            "Serial": 10,
+            "GlobalNum": 99,
+            "PersonalNum": 6,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 1500)],
+            "Give": [(1401, 14012001, 1)],
+        },
+        {
+            "Serial": 11,
+            "GlobalNum": 99,
+            "PersonalNum": 6,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 1500)],
+            "Give": [(1401, 14012002, 1)],
+        },
+        {
+            "Serial": 12,
+            "GlobalNum": 999,
+            "PersonalNum": 99,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 300)],
+            "Give": [(1602, 16020039, 1)],
+        },
+        {
+            "Serial": 13,
+            "GlobalNum": 999,
+            "PersonalNum": 99,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 500)],
+            "Give": [(1602, 16020045, 1)],
+        },
+        {
+            "Serial": 14,
+            "GlobalNum": 999,
+            "PersonalNum": 99,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 1500)],
+            "Give": [(1602, 16020047, 1)],
+        },
+        {
+            "Serial": 15,
+            "GlobalNum": 999,
+            "PersonalNum": 99,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 4000)],
+            "Give": [(1602, 16020049, 1)],
+        },
+        {
+            "Serial": 16,
+            "GlobalNum": 999,
+            "PersonalNum": 99,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 10000)],
+            "Give": [(1602, 16020051, 1)],
+        },
+        {
+            "Serial": 17,
+            "GlobalNum": 999,
+            "PersonalNum": 99,
+            "NeedLv": 1,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 30000)],
+            "Give": [(1602, 16020057, 1)],
+        },
     ]
 
     def _build_timed_exchange_payload(self, ev: Any, prog: dict[str, Any]) -> dict[str, Any]:
@@ -1841,17 +2187,16 @@ class R79EventHandlersMixin:
             "ActivityList": act_list,
         }
 
-    def _rpc_timed_limit_exchange_get_info(self, _data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_exchange")
+    def _rpc_timed_limit_exchange_get_info(self, data: Any = None) -> dict[str, Any]:
+        ev_id = self._resolve_timed_event_id("timed_exchange", data, family=self._EXCHANGE_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         out = self._build_timed_exchange_payload(ev, prog)
         self.save()
         return out
 
     def _rpc_timed_limit_exchange_exchange(self, data: Any) -> dict[str, Any]:
-        serial = int(data[1]) if isinstance(data, list) and len(data) >= 2 else (int(data[0]) if isinstance(data, list) and data else 0)
-        count = int(data[2]) if isinstance(data, list) and len(data) >= 3 else 1
-        count = max(1, count)
-        ev, prog = self._eval_timed_sub("timed_exchange")
+        ev_id, serial, count = self._extract_act_and_buy_args(data, "timed_exchange", self._EXCHANGE_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         rec = next((r for r in self.TIMED_EXCHANGE_RECIPES if int(r["Serial"]) == serial), None)
         if not ev.eligible or not rec:
             self._last_rpc_context["status"] = -1
@@ -1898,6 +2243,7 @@ class R79EventHandlersMixin:
         return out
 
     # TimedActivityRankLayer (4430, BXH Năng Động — backed by VN ActiverankingModel.lua)
+    ACTIVE_RANK_LESS_SCORE = 20
     ACTIVE_RANK_REWARDS: list[str] = [
         "1606,16060019,1||1111,0,500",
         "1606,16060002,1||1111,0,300",
@@ -1906,20 +2252,37 @@ class R79EventHandlersMixin:
         "1605,16050055,2||1112,0,150000",
     ]
 
-    def _rpc_timed_score_rank_get_info(self, _data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_active_rank")
-        reward_step = 20
-        my_score = self._player_active_score()
-        claimed_cnt = int(prog.get("claimed_tickets", 0))
-        can_cnt = max(0, (my_score // reward_step) - claimed_cnt)
-
+    def _compute_active_rank_list(
+        self,
+        instance_id: str,
+        my_score: int,
+        *,
+        include_archived_peers: bool = False,
+    ) -> tuple[int, list[dict[str, Any]]]:
         entries: list[dict[str, Any]] = []
         for prof in self._s1_account_profiles():
-            pname = str(prof.state.get("player", {}).get("PlayerName", "Hero"))
-            entries.append({"Name": pname, "Score": self._player_active_score(prof), "is_me": prof.profile_name == self.profile_name})
+            pp = prof.state.get("player", {})
+            pid = str(pp.get("PlayerId", prof.profile_name))
+            pname = str(pp.get("PlayerName", "Hero"))
+            is_me = prof is self
+            if is_me:
+                sc = int(my_score)
+            else:
+                p_inst = prof.event_runtime.get_instance(instance_id) if instance_id else None
+                if p_inst and p_inst.get("archived"):
+                    if not include_archived_peers:
+                        continue
+                    p_prog = p_inst.get("progress", {})
+                    if "score" not in p_prog and self._player_activity_stat_score(prof) <= 0:
+                        continue
+                    sc = int(p_prog.get("score", 0)) or self._player_active_score(prof)
+                else:
+                    sc = self._player_active_score(prof)
+            if sc >= self.ACTIVE_RANK_LESS_SCORE:
+                entries.append({"pid": pid, "Name": pname, "Score": sc, "is_me": is_me, "is_bot": False})
         for bname, bscore in [("KhuyểnDạXoa", 120), ("BạchSát", 95), ("TửVu", 70), ("NgọcTứHồn", 45), ("PhongKhuyển", 30)]:
-            entries.append({"Name": bname, "Score": bscore, "is_me": False})
-        entries.sort(key=lambda r: (-int(r["Score"]), 0 if r["is_me"] else 1, r["Name"]))
+            entries.append({"pid": f"npc:{bname}", "Name": bname, "Score": bscore, "is_me": False, "is_bot": True})
+        entries.sort(key=lambda r: (-int(r["Score"]), 1 if r["is_bot"] else 0, str(r["pid"])))
 
         my_rank = 0
         rank_list: list[dict[str, Any]] = []
@@ -1934,21 +2297,65 @@ class R79EventHandlersMixin:
                     "RewardList": r_str,
                 }
             )
+        return my_rank, rank_list
+
+    def _settle_active_rank(self, inst: dict[str, Any]) -> None:
+        prog = inst.setdefault("progress", {})
+        iid = str(inst["instance_id"])
+        settlement = inst.setdefault("settlement", {})
+        if "score" not in prog and self._player_activity_stat_score() <= 0:
+            settlement["score"] = 0
+            settlement["rank"] = 0
+            return
+        my_score = max(int(prog.get("score", 0)), self._player_active_score())
+        prog["score"] = my_score
+        settlement["score"] = my_score
+        if my_score < self.ACTIVE_RANK_LESS_SCORE:
+            settlement["rank"] = 0
+            return
+        my_rank, _ = self._compute_active_rank_list(iid, my_score, include_archived_peers=True)
+        settlement["rank"] = my_rank
+        if 1 <= my_rank <= len(self.ACTIVE_RANK_REWARDS):
+            res_str = self.ACTIVE_RANK_REWARDS[my_rank - 1]
+            tuples = _parse_res_tuples(res_str)
+            if tuples:
+                self._push_reward_center_entry(
+                    source_key=f"active_rank:{iid}",
+                    title=f"BXH Năng Động — Hạng {my_rank}",
+                    content=f"Chúc mừng đạt hạng {my_rank} ({my_score} điểm năng động) kỳ {iid}.",
+                    res_tuples=tuples,
+                )
+
+    def _rpc_timed_score_rank_get_info(self, data: Any = None) -> dict[str, Any]:
+        ev_id = self._resolve_timed_event_id("timed_active_rank", data, family=self._ACTIVE_RANK_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
+        reward_step = 20
+        my_score = self._player_active_score()
+        prog["score"] = my_score
+        claimed_cnt = int(prog.get("claimed_tickets", 0))
+        can_cnt = max(0, (my_score // reward_step) - claimed_cnt)
+        my_rank, rank_list = self._compute_active_rank_list(
+            str(ev.instance_id or ""),
+            my_score,
+            include_archived_peers=False,
+        )
         self.save()
         return {
             "EndDate": int(ev.end_ts or self.clock.next_midnight_ts()),
             "RewardScore": reward_step,
             "CanRewardCount": can_cnt,
-            "LessScore": 20,
+            "LessScore": self.ACTIVE_RANK_LESS_SCORE,
             "Rank": my_rank,
             "Score": my_score,
             "RankList": rank_list,
         }
 
-    def _rpc_timed_score_rank_get_reward(self, _data: Any) -> dict[str, Any]:
-        ev, prog = self._eval_timed_sub("timed_active_rank")
+    def _rpc_timed_score_rank_get_reward(self, data: Any = None) -> dict[str, Any]:
+        ev_id = self._resolve_timed_event_id("timed_active_rank", data, family=self._ACTIVE_RANK_FAMILY)
+        ev, prog = self._eval_timed_sub(ev_id)
         reward_step = 20
         my_score = self._player_active_score()
+        prog["score"] = my_score
         claimed_cnt = int(prog.get("claimed_tickets", 0))
         can_cnt = max(0, (my_score // reward_step) - claimed_cnt)
         if not ev.eligible or can_cnt <= 0:

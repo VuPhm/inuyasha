@@ -147,3 +147,26 @@
 
 ### 5.5. Bạn Bè (`Friend`/`STA`) & Hộp Thư (`PlayerEmail`) (`R7.30`)
 - **Giới hạn & Hoạt Lực (`social_handlers.py`):** Tuân thủ chuẩn `PlayerLvRelation.friendMax` (`10` ở Lv 1 → `50` ở Lv 41+), mỗi lượt nhận quà tặng `+2 STA` qua `ResourceLedger` với trần `20 lượt/ngày` (`STADrawLeftCount`) và chặn cứng `-3010` khi `STA >= STAMaxNum`. Đồng bộ 2 chiều giữa các tài khoản S1 thật cùng 24 NPC bạn bè deterministic phục vụ chơi đơn (`DailyTask #11`, `Teambattle`).
+
+### 5.6. Bang Hội (`Guild` / `GuildBossInfo` / `GuildReward`) (`R7.31`)
+- **Quỹ Bang, Cống Hiến (`1113`) & Nâng Cấp Kiến Trúc (`guild_handlers.py`):** Tuân thủ `GuildConfig.buildNeedGuildLv = 3` (bang mới Lv 1 nâng lên qua quyên góp `GuildContribute` vật phẩm `16050017`/`16050018`, trong khi 3 bang NPC hạt giống khởi tạo ở Lv 3–4 để chơi đơn ngày đầu). Giới hạn cấp Shop/Boss không vượt quá Đại Điện (`34004000`), tiêu đúng `totalExp` hiệu số từ `GuildBuildingLvRelation`, Shop Bang 22 món tiêu `Contribution (1113)` theo đúng giới hạn ngày/tổng và cấp Shop (`34005000`).
+- **Lính Thuê & Boss Bang:** Chia sẻ 1 Lính Thuê không phải MC mỗi ngày (`GuildShare`, khóa `specialType == 255` `-3424`, mở `DailyTask #10`), thuê qua `GGZJ.Hire (hire_type=1)` trừ đúng `ggzj_config["hireUse"]` (`3`× `16050016`), giới hạn 5 lượt/ngày (`-3426`) và thưởng chủ tướng `+1 STA` (`perMercenaryBeUseReward`). Boss Bang cổ vũ tăng `+20%` AP (`200` KC / `1800s`), nghỉ chiến `23:30–24:00` (`-3447`), thưởng `battleRewardsEvery` + xếp hạng sát thương Bang/Cá nhân, và nhận thưởng Công Hội cuối mùa `Gddh` qua `GuildReward` (`ResourceList[].Count`).
+
+### 5.7. Kết Toán Hạng Sự Kiện (`4410` / `4421` / `4422` / `4430`) & Cấu Hình Kinh Tế Gốc (`R7.32`)
+- **Kết toán cuối kỳ về `RewardCenter (2400)` (`event_handlers.py`, `r79_event_handlers.py`):**
+  - `4410` (`timed_xssb`): phát thưởng BXH `XSSB_RANK_REWARDS` cho mọi kỳ có `integral > 0` đồng thời kết toán nốt các rương mốc `XSSB_CREDIT_REWARDS` đạt điều kiện nhưng chưa nhận.
+  - `4421` (`timed_recharge_rank`) & `4422` (`timed_consume_rank`): chỉ trao thưởng top `1..5` khi đạt đúng ngưỡng tối thiểu `NeedMinNum` (`1000/500/300/100/60`), idempotent qua `SourceKey` và hoạt động cho cả hết hạn tự nhiên lẫn `manual_reset`.
+  - `4430` (`timed_active_rank`): yêu cầu tối thiểu `LessScore = 20` điểm hoạt động theo `TimedActivityRankLayer.lua`; dùng chuẩn `include_archived_peers=True` cho cả 4 bảng xếp hạng để các tài khoản S1 luôn nhận đúng thứ hạng nhất quán bất kể thứ tự kết toán.
+- **Đọc trực tiếp 5 bảng kinh tế VN (`emulator.py`):** `LvPlanConfig`, `LvPlanRewardModel`, `VipWelfareModel` (dùng `self.clock.today_str()` thay vì đồng hồ hệ thống), `BagModel` & `BagExpandUseRelation` (1–20 lần, `10..200` KC) đều trích vào `game_data.json` (`182 / 276`).
+
+### 5.8. Phủ Đủ 8/8 `TimedWelfare` (`4413..4420`) & `RankScene` Tab 3 Liên SV (`R7.33`)
+- **8/8 Phúc Lợi (`event_runtime.py`, `event_handlers.py`, `r79_event_handlers.py`, `emulator.py`, `ggzj_handlers.py`, `bdd_handlers.py`):**
+  - Chuẩn hóa định dạng `RefNum` theo `WelfareData.lua` / `TimedWelfare.lua`: `4413`/`4414`/`4420` dùng `RefNum = 2`, `4415` (Kho Vàng) dùng `RefNum = 200` (`_ggzj_welfare_mult` xử lý cả `>= 100` lẫn `< 100`), `4416`/`4417` dùng `RefNum = 80`, và `4418`/`4419` dùng danh sách phẩm chất `"3,6,10,15"` (`_timed_welfare_qualities`).
+  - Nối bổ sung 3 phúc lợi chưa cài ở các bản trước: `4413` nhân đôi `PVPCoin (1115)` khi đánh Arena (`PVP.PVPFight`), `4418` tạo 2 trang bị mỗi lần ghép (`Equip.EquipCompose` / `EquipOneKeyCompose`) khi khớp phẩm chất, và `4420` nhân đôi `Merit (1124)` trong `nationalDrop` của Mộ Thần Binh (`BddInfo.Fight` & `OneKeyThreeStar`) mà không nhân đôi `firstPassDrop` Kim Cương (`1111`) hay `RewardBox`.
+- **`RankScene` Tab 3 (`PVPinter.GetPVPInterTopRank` & `PVPinter.GetSlotFormations`):** Phục vụ top 50 đa server (`S1 - Chiến Quốc` gồm các TK S1 + bot `S2..S5`) và xem đội hình ngay trên `RankScene.lua`, giữ nguyên `LeaderBoard.RankList [3]` trả lỗi theo kiểm thử `test_r725.py`.
+
+### 5.9. Lễ Hội `FestivalActivity` (`6300`) / `CommonHoliday` (`6400`) & `Player.GetPlayerInfo` (`R7.34`)
+- **Cô lập chuẩn không phá mặc định (`event_runtime.py`, `event_handlers.py`, `r79_event_handlers.py`):**
+  - Đăng ký `20` sự kiện Lễ Hội (`FestivalActivity 6300`: `6301,6302,6303,6304,6306,6308,6309,6311,6313,6314`; `CommonHoliday 6400`: `6401,6402,6403,6404,6406,6408,6409,6411,6413,6414`) nhưng **không** đưa vào `DEFAULT_CONCURRENT_EVENTS` (`67` định nghĩa tổng, `22` mặc định), giữ `ModuleSub[6300/6400] = 0` trừ khi được kích hoạt tường minh theo cấu hình kỳ sự kiện.
+  - Khi mở song song với `4400`, toàn bộ 10 phân hệ (`charge_single`, `charge_total`, `use_total`, `exchange`, `slot`, `smash_egg`, `day_login`, `points_mall`, `active_rank`, `charge_gift`) định tuyến và lưu trữ tiến độ/nhận thưởng/tiêu nạp cô lập theo từng `ActivityId`, kèm kết toán `RewardCenter` khi hết kỳ cho `6304/6404` (Slot) và `6313/6413` (BXH Năng Động).
+- **Hồ sơ & Chat (`emulator.py`):** Mặc định `PlayerInfo["ActivityPic"] = ""` / `ActivityName = ""` trong cả `_normalize_loaded_state` lẫn `Player.GetInitData`, và bổ sung `Player.GetPlayerInfo` (`ChatLayer.lua:143`) tra cứu TK S1 thật lẫn 24 NPC xã hội (trả `-3003` nếu không tồn tại), hoàn tất **100% tính năng backend sống (`ifOpen=1`) thuần VN** (`test_r734.py` `6/6 OK`, tổng `230/230` tests OK).

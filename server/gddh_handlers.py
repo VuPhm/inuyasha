@@ -174,9 +174,6 @@ class GddhHandlersMixin:
         max_atk = int(cfg.get("attckNumMax", 10))
         cur_cnt = int(gddh.get("rank_count", max_atk))
         if cur_cnt >= max_atk:
-            if int(gddh.get("last_recover_time", now)) != now:
-                gddh["last_recover_time"] = now
-                return True
             return False
         next_ts = int(gddh.get("last_recover_time", now))
         if now < next_ts:
@@ -238,6 +235,51 @@ class GddhHandlersMixin:
             return True
         return False
 
+    def _gddh_push_guild_season_settlement(
+        self, season_id: str, rewards_type: int, groups: dict[str, Any],
+    ) -> bool:
+        if not hasattr(self, "_push_guild_reward"):
+            return False
+        settled_guild = self.state["gddh"].setdefault("settled_guild_seasons", [])
+        if season_id in settled_guild:
+            return False
+        p = self.state["player"]
+        if str(p.get("GuildId", EMPTY_ENTITY_ID)) == EMPTY_ENTITY_ID:
+            return False
+        my_gname = str(p.get("GuildName", "") or "").strip()
+        if not my_gname:
+            return False
+        guild_infos = groups.get("GuildInfo", []) if isinstance(groups, dict) else []
+        g_entry = next(
+            (g for g in guild_infos if g.get("IsSelfGuild") or str(g.get("GuildName", "")).strip() == my_gname),
+            None,
+        )
+        if not g_entry:
+            return False
+        g_rank = int(g_entry.get("Rank", 0))
+        if g_rank <= 0:
+            return False
+        rows = self.game_data.get("gddh_guild_reward", {}).get(str(rewards_type), [])
+        row = next((r for r in rows if int(r.get("rankMin", 0)) <= g_rank <= int(r.get("rankMax", 0))), None)
+        if not row:
+            return False
+        lv = max(1, int(p.get("Lv", 35)))
+        tuples: list[tuple[int, int, int]] = []
+        for rt, rm, rn in _parse_res_tuples(str(row.get("guildRewards", ""))):
+            if rt == 2112:
+                tuples.append((1112, 0, rn * lv))
+            else:
+                tuples.append((rt, rm, rn))
+        settled_guild.append(season_id)
+        if tuples:
+            self._push_guild_reward(
+                f"Thưởng Công Hội Đấu Võ Đại Hội ({season_id} - Hạng {g_rank})",
+                tuples,
+                source_key=f"gddh_guild:{season_id}",
+            )
+            return True
+        return False
+
     def _sync_gddh_settlement(self) -> bool:
         """Settle Gddh daily (23:00 non-final) & season-end rewards to RewardCenter (2400)."""
         raw_gddh = self.state.get("gddh")
@@ -274,6 +316,8 @@ class GddhHandlersMixin:
                 elif now >= int(win["end_reward_date"]):
                     if self._gddh_push_season_settlement(old_season, old_rtype, rank):
                         changed = True
+                    if self._gddh_push_guild_season_settlement(old_season, old_rtype, groups):
+                        changed = True
             else:
                 # Season rolled over cleanly -> settle prev_day if non-final, then settle old season
                 old_end_str = str(gddh.get("season_end_date_str", ""))
@@ -281,6 +325,8 @@ class GddhHandlersMixin:
                     if self._gddh_push_daily_settlement(prev_day, old_rtype, rank):
                         changed = True
                 if self._gddh_push_season_settlement(old_season, old_rtype, rank):
+                    changed = True
+                if self._gddh_push_guild_season_settlement(old_season, old_rtype, groups):
                     changed = True
 
         # Rollover season state cleanly

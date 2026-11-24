@@ -114,7 +114,8 @@ class GgzjHandlersMixin:
         return ggzj
 
     def _ggzj_welfare_mult(self) -> int:
-        return self._timed_welfare_mult(4415)
+        val = self._timed_welfare_mult(4415, default=1)
+        return max(1, val // 100) if val >= 100 else max(1, val)
 
     def _ggzj_build_target(self, ggzj: dict[str, Any], node_id: int) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         p_lv = int(self.state["player"].get("Lv", 32))
@@ -234,6 +235,33 @@ class GgzjHandlersMixin:
                         override_stats=override,
                     )
                     share_fap = int(row.get("FAP", 0))
+            elif slot_idx == 7 and int(ggzj.get("share_type", 0)) == 1 and hasattr(self, "_guild_get_shared_hero"):
+                merc = ggzj.get("share_snapshot") or self._guild_get_shared_hero(
+                    str(ggzj.get("share_id", "")),
+                    int(ggzj.get("hero_model_id", 0)),
+                )
+                if isinstance(merc, dict):
+                    merc_hm = int(merc.get("HeroModelId", ggzj.get("hero_model_id", 0)))
+                    cfg = heroes_cfg.get(str(merc_hm))
+                    if cfg:
+                        override = merc.get("Property")
+                        if not isinstance(override, dict) or not override:
+                            override = {
+                                "HP": int(merc.get("HP", 8000)),
+                                "AP": int(merc.get("AP", 1200)),
+                                "DEF": int(merc.get("DEF", 600)),
+                                "FSP": int(merc.get("FSP", 100)),
+                            }
+                        allies[pos_idx] = self._hero_fight_obj(
+                            cfg,
+                            lv=int(merc.get("Lv", 32)),
+                            is_boss=False,
+                            step=int(merc.get("Step", 0)),
+                            reborn_step=int(merc.get("RebornStep", 0)),
+                            reborn_id=int(merc.get("RebornId", 0)),
+                            override_stats=override,
+                        )
+                        share_fap = int(merc.get("FAP", 0))
         return allies, share_fap
 
     def _ggzj_red_dot(self) -> int:
@@ -325,6 +353,55 @@ class GgzjHandlersMixin:
             self._last_rpc_context["status"] = -1
             return {}
 
+        if hire_type == 1:
+            if not hasattr(self, "_guild_get_shared_hero") or str(p.get("GuildId", EMPTY_ENTITY_ID)) == EMPTY_ENTITY_ID:
+                self._last_rpc_context["status"] = -3425
+                return {}
+            merc = self._guild_get_shared_hero(str(data[1]), hero_model_id)
+            if not merc:
+                self._last_rpc_context["status"] = -1
+                return {}
+            if int(merc.get("HireCount", 0)) >= 5:
+                self._last_rpc_context["status"] = -3426
+                return {}
+            cfg = self.game_data.get("ggzj_config", {})
+            lv_diff_max = int(cfg.get("hireLVDiffMax", 5))
+            if int(merc.get("Lv", 1)) > int(p.get("Lv", 1)) + lv_diff_max:
+                self._last_rpc_context["status"] = -1
+                return {}
+            reqs = _parse_res_tuples(str(cfg.get("hireUse", "1605,16050016,2")))
+            for rt, rm, rn in reqs:
+                if rt == 1112:
+                    if int(p.get("Gold", 0)) < rn:
+                        self._last_rpc_context["status"] = -1
+                        return {}
+                else:
+                    have = sum(int(g.get("Num", 0)) for g in self.state.get("goods", []) if int(g.get("GoodsModelId", 0)) == rm)
+                    if have < rn:
+                        self._last_rpc_context["status"] = -1
+                        return {}
+            ok, err = self._guild_record_merc_hired(str(merc["PlayerId"]), hero_model_id)
+            if not ok:
+                self._last_rpc_context["status"] = err
+                return {}
+            for rt, rm, rn in reqs:
+                if rt == 1112:
+                    self.ledger.apply_player_delta(p, self.profile_name, "Gold", -rn, source="ggzj_hire_guild")
+                else:
+                    self._consume_goods(rm, rn)
+            ggzj["share_type"] = 1
+            ggzj["share_id"] = str(merc["ShareId"])
+            ggzj["hero_model_id"] = hero_model_id
+            ggzj["hero_lv"] = int(merc.get("Lv", 32))
+            ggzj["share_snapshot"] = copy.deepcopy(merc)
+            self.save()
+            return {
+                "ShareType": 1,
+                "ShareId": str(merc["ShareId"]),
+                "HeroModelId": hero_model_id,
+                "HeroLv": int(ggzj["hero_lv"]),
+            }
+
         if hire_type != 2:
             self._last_rpc_context["status"] = -1
             return {}
@@ -347,6 +424,7 @@ class GgzjHandlersMixin:
         ggzj["share_id"] = EMPTY_ENTITY_ID
         ggzj["hero_model_id"] = hero_model_id
         ggzj["hero_lv"] = int(lv_key)
+        ggzj.pop("share_snapshot", None)
         self.save()
         return {
             "ShareType": 2,

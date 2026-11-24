@@ -32,10 +32,20 @@ def _parse_lua_scalar(raw_v: str) -> Any:
 
 
 def _parse_fields(block: str, indent: int = 12) -> dict[str, Any]:
-    field_re = re.compile(rf"^\s{{{indent}}}([A-Za-z0-9_]+)\s*=\s*(.+?)(?:,\s*)?$", re.M)
     obj: dict[str, Any] = {}
+    multiline_re = re.compile(
+        rf"^\s{{{indent}}}([A-Za-z0-9_]+)\s*=\s*\{{\s*\n(.*?)^\s{{{indent}}}\}}(?:,\s*)?$",
+        re.M | re.S,
+    )
+    for mm in multiline_re.finditer(block):
+        obj[mm.group(1)] = [int(x) for x in re.findall(r"\d+", mm.group(2))]
+
+    field_re = re.compile(rf"^\s{{{indent}}}([A-Za-z0-9_]+)\s*=\s*(.+?)(?:,\s*)?$", re.M)
     for fm in field_re.finditer(block):
-        obj[fm.group(1)] = _parse_lua_scalar(fm.group(2))
+        key = fm.group(1)
+        if key in obj:
+            continue
+        obj[key] = _parse_lua_scalar(fm.group(2))
     return obj
 
 
@@ -389,6 +399,101 @@ def main() -> None:
     for rows in gddh_guild_reward.values():
         rows.sort(key=lambda r: int(r.get("rankMin", 0)))
 
+    guild_config = parse_singleton_lua_item(os.path.join(cfg_dir, "GuildConfig.lua"))
+    guild_lv = parse_simple_lua_items(os.path.join(cfg_dir, "GuildLvRelation.lua"))
+    guild_posts = parse_simple_lua_items(os.path.join(cfg_dir, "GuildPostModel.lua"))
+    guild_build_types = parse_simple_lua_items(os.path.join(cfg_dir, "GuildBuildtypeModel.lua"))
+    guild_buildings = parse_simple_lua_items(os.path.join(cfg_dir, "GuildBuildingModel.lua"))
+    guild_building_lv = parse_nested_lua_items(os.path.join(cfg_dir, "GuildBuildingLvRelation.lua"))
+    guild_shop = parse_simple_lua_items(os.path.join(cfg_dir, "GuildShopModel.lua"))
+    guild_bosses = parse_simple_lua_items(os.path.join(cfg_dir, "GuildBossModel.lua"))
+    guild_share = parse_simple_lua_items(os.path.join(cfg_dir, "GuildShareRelation.lua"))
+    guild_donate = parse_simple_lua_items(os.path.join(cfg_dir, "GuildDonateRelation.lua"))
+
+    lv_plan_config = parse_singleton_lua_item(os.path.join(cfg_dir, "LvPlanConfig.lua"))
+    lv_plan_rewards = parse_simple_lua_items(os.path.join(cfg_dir, "LvPlanRewardModel.lua"))
+    vip_welfare = parse_simple_lua_items(os.path.join(cfg_dir, "VipWelfareModel.lua"))
+    bag_model = parse_simple_lua_items(os.path.join(cfg_dir, "BagModel.lua"))
+    bag_expand_use = parse_simple_lua_items(os.path.join(cfg_dir, "BagExpandUseRelation.lua"))
+
+    hero_bonds = {
+        hero: [relations[order]["PRModelId"] for order in sorted(relations, key=int)]
+        for hero, relations in parse_nested_lua_items(os.path.join(cfg_dir, "HeroPrRelation.lua")).items()
+    }
+    bonds = parse_simple_lua_items(os.path.join(cfg_dir, "PrModel.lua"))
+
+    # R7.37: Canonical Red Book (14012001/02) & Red Mount (14022001/02) PrModel + Banner 84-86 UI assets
+    if cfg_dir == VN_CONFIG_DIR:
+        r737_red_bonds: list[tuple[int, int, int, int, str, int, int]] = [
+            # (bond_id, hero_id, type_id, treasure_id, name, apr, hpr)
+            (573, 12011002, 1401, 14012001, "Quyển Kami", 0, 2000),
+            (574, 12011003, 1401, 14012002, "Quyển Tứ Hồn", 0, 2000),
+            (575, 12011004, 1401, 14012001, "Quyển Kami", 0, 2000),
+            (576, 12012003, 1401, 14012002, "Quyển Tứ Hồn", 0, 2000),
+            (577, 12012004, 1401, 14012001, "Quyển Kami", 0, 2000),
+            (578, 12012005, 1401, 14012002, "Quyển Tứ Hồn", 0, 2000),
+            (579, 12013003, 1401, 14012001, "Quyển Kami", 0, 2000),
+            (580, 12013004, 1401, 14012002, "Quyển Tứ Hồn", 0, 2000),
+            (581, 12013005, 1401, 14012001, "Quyển Kami", 0, 2000),
+            (582, 12015022, 1401, 14012002, "Quyển Tứ Hồn", 0, 2000),
+            (583, 12015023, 1401, 14012001, "Quyển Kami", 0, 2000),
+            (584, 12011002, 1402, 14022001, "Rồng Kami", 2000, 0),
+            (585, 12011003, 1402, 14022002, "Phượng Hoàng Kami", 2000, 0),
+            (586, 12011004, 1402, 14022001, "Rồng Kami", 2000, 0),
+            (587, 12012003, 1402, 14022002, "Phượng Hoàng Kami", 2000, 0),
+            (588, 12012004, 1402, 14022001, "Rồng Kami", 2000, 0),
+            (589, 12012005, 1402, 14022002, "Phượng Hoàng Kami", 2000, 0),
+            (590, 12013003, 1402, 14022001, "Rồng Kami", 2000, 0),
+            (591, 12013004, 1402, 14022002, "Phượng Hoàng Kami", 2000, 0),
+            (592, 12013005, 1402, 14022001, "Rồng Kami", 2000, 0),
+            (593, 12015022, 1402, 14022001, "Rồng Kami", 2000, 0),
+            (594, 12015023, 1402, 14022002, "Phượng Hoàng Kami", 2000, 0),
+        ]
+        for bond_id, hero_id, type_id, tr_id, tr_name, apr, hpr in r737_red_bonds:
+            intro = f"Cùng {tr_name} ra trận,Công+20%" if apr else f"Cùng {tr_name} ra trận,HP+20%"
+            bonds[str(bond_id)] = {
+                "ID": bond_id,
+                "name": tr_name,
+                "intro": intro,
+                "member": str(tr_id),
+                "typeID": type_id,
+                "APR": apr,
+                "HPR": hpr,
+                "DEFR": 0,
+            }
+            h_list = hero_bonds.setdefault(str(hero_id), [])
+            if bond_id not in h_list:
+                h_list.append(bond_id)
+
+        red_pr_heroes = {
+            "14012001": [12011002, 12011004, 12012004, 12013003, 12013005, 12015023],
+            "14012002": [12011003, 12012003, 12012005, 12013004, 12015022],
+            "14022001": [12011002, 12011004, 12012004, 12013003, 12013005, 12015022],
+            "14022002": [12011003, 12012003, 12012005, 12013004, 12015023],
+        }
+        for tr_key, hero_list in red_pr_heroes.items():
+            if tr_key in treasures:
+                treasures[tr_key]["prHeroModelIds"] = hero_list
+
+        for act_key, pic_name in (("84", "sy_157"), ("85", "sy_158"), ("86", "sy_159")):
+            if act_key in timed_recruit_model:
+                timed_recruit_model[act_key]["btnPic"] = pic_name
+
+        b84_86_pics = {
+            ("16060037", "1"): "xshd_101",
+            ("16060037", "2"): "xshd_117",
+            ("16060037", "3"): "xshd_100",
+            ("16060038", "1"): "xshd_118",
+            ("16060038", "2"): "xshd_103",
+            ("16060038", "3"): "xshd_98",
+            ("16060039", "1"): "xshd_102",
+            ("16060039", "2"): "xshd_119",
+            ("16060039", "3"): "xshd_99",
+        }
+        for (box_id, row_id), pic_name in b84_86_pics.items():
+            if box_id in goods_output and row_id in goods_output[box_id]:
+                goods_output[box_id][row_id]["pic"] = pic_name
+
     data = {
         "source": source_label,
         "counts": {
@@ -505,6 +610,19 @@ def main() -> None:
             "gddh_shop": len(gddh_shop),
             "gddh_rank_reward": sum(len(v) for v in gddh_rank_reward.values()),
             "gddh_guild_reward": sum(len(v) for v in gddh_guild_reward.values()),
+            "guild_lv": len(guild_lv),
+            "guild_posts": len(guild_posts),
+            "guild_build_types": len(guild_build_types),
+            "guild_buildings": len(guild_buildings),
+            "guild_building_lv": sum(len(v) for v in guild_building_lv.values()),
+            "guild_shop": len(guild_shop),
+            "guild_bosses": len(guild_bosses),
+            "guild_share": len(guild_share),
+            "guild_donate": len(guild_donate),
+            "lv_plan_rewards": len(lv_plan_rewards),
+            "vip_welfare": len(vip_welfare),
+            "bag_model": len(bag_model),
+            "bag_expand_use": len(bag_expand_use),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -525,11 +643,8 @@ def main() -> None:
         "talent_models": talent_models,
         "combat_buffs": combat_buffs,
         "heroes": heroes,
-        "hero_bonds": {
-            hero: [relations[order]["PRModelId"] for order in sorted(relations, key=int)]
-            for hero, relations in parse_nested_lua_items(os.path.join(cfg_dir, "HeroPrRelation.lua")).items()
-        },
-        "bonds": parse_simple_lua_items(os.path.join(cfg_dir, "PrModel.lua")),
+        "hero_bonds": hero_bonds,
+        "bonds": bonds,
         "attacks": attacks,
         "chapters": chapters,
         "nodes": nodes,
@@ -665,6 +780,21 @@ def main() -> None:
         "gddh_shop": gddh_shop,
         "gddh_rank_reward": gddh_rank_reward,
         "gddh_guild_reward": gddh_guild_reward,
+        "guild_config": guild_config,
+        "guild_lv": guild_lv,
+        "guild_posts": guild_posts,
+        "guild_build_types": guild_build_types,
+        "guild_buildings": guild_buildings,
+        "guild_building_lv": guild_building_lv,
+        "guild_shop": guild_shop,
+        "guild_bosses": guild_bosses,
+        "guild_share": guild_share,
+        "guild_donate": guild_donate,
+        "lv_plan_config": lv_plan_config,
+        "lv_plan_rewards": lv_plan_rewards,
+        "vip_welfare": vip_welfare,
+        "bag_model": bag_model,
+        "bag_expand_use": bag_expand_use,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

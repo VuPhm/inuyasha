@@ -94,6 +94,7 @@ class R722BProgressionAndEconomyTest(unittest.TestCase):
     def test_main_hero_legacy_migration_on_load_and_non_mc_safety(self):
         self.rpc("Player", "NewPlayer", "LegacyMC", 0)
         mc = self.p.state["heroes"][0]
+        self.p.state["player"]["Lv"] = 42
         mc["Lv"] = 42
         mc["Step"] = 5
         hero_id = mc["Id"]

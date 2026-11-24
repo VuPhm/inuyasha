@@ -36,10 +36,10 @@ class R7181Banner83Test(unittest.TestCase):
         return item["Id"]
 
     def test_banner_83_enabled_by_default_and_upgrade_from_832_preserves_81_82(self):
-        # 1. Fresh save exposes 81, 82, 83 concurrently
+        # 1. Fresh save exposes 81..86 concurrently
         res = self.call("TimedRecruitInfo", "GetTimedRecruitInfo")
         self.assertEqual(res["Status"], 0)
-        self.assertEqual(sorted(res["Value"]["AvailableBanners"]), [81, 82, 83])
+        self.assertEqual(sorted(res["Value"]["AvailableBanners"]), [81, 82, 83, 84, 85, 86])
 
         # 2. Simulate upgrading an 832 save (r79_migrated=True, only 81 & 82 in concurrent_events)
         ac = self.profile.state["event_runtime"]["archive_config"]
@@ -58,7 +58,7 @@ class R7181Banner83Test(unittest.TestCase):
         b81 = self.call("TimedRecruitInfo", "GetTimedRecruitInfo", 81)["Value"]
         b82 = self.call("TimedRecruitInfo", "GetTimedRecruitInfo", 82)["Value"]
         b83 = self.call("TimedRecruitInfo", "SelectBanner", 83)["Value"]
-        self.assertEqual(sorted(b83["AvailableBanners"]), [81, 82, 83])
+        self.assertEqual(sorted(b83["AvailableBanners"]), [81, 82, 83, 84, 85, 86])
         self.assertEqual(b81["MyCredit"], 10)
         self.assertEqual(b82["MyCredit"], 10)
         self.assertEqual(b83["MyCredit"], 0)

@@ -201,13 +201,13 @@ function AccountSwitchLayer:refreshAccountView()
 
         local btnNewAcc = ui.newButton({
             normalImage = "c_7.png",
-            text = "+ Tạo TK Mới",
-            fontSize = 19,
-            scale = 0.85,
+            text = "+ Tạo TK",
+            fontSize = 18,
+            scale = 0.78,
             color = ColorList.ccWhite,
             outlineColor = ColorList.ccOutline,
             outlineSize = 2,
-            position = cc.p(w * 0.21, h * 0.20),
+            position = cc.p(w * 0.16, h * 0.20),
             clickAction = function()
                 requestLocalAccountApi("POST", {action = "create"}, function(crRes)
                     if crRes and crRes.ok then
@@ -219,15 +219,52 @@ function AccountSwitchLayer:refreshAccountView()
         })
         self.mContentNode:addChild(btnNewAcc)
 
-        local btnExport = ui.newButton({
+        local btnResetAcc = ui.newButton({
             normalImage = "c_7.png",
-            text = "Sao Lưu Save",
-            fontSize = 19,
-            scale = 0.85,
+            text = "Reset TK",
+            fontSize = 18,
+            scale = 0.78,
             color = ColorList.ccWhite,
             outlineColor = ColorList.ccOutline,
             outlineSize = 2,
-            position = cc.p(w * 0.50, h * 0.20),
+            position = cc.p(w * 0.39, h * 0.20),
+            clickAction = function()
+                local box = require("Common.MessageBoxLayer").new({
+                    bgImage = "c_43.png",
+                    closeBtnImage = "c_15.png",
+                    title = TR("提示"),
+                    content = string.format("Xác nhận đặt lại tài khoản đang chọn (%s) về Lv.1 tạo nhân vật mới? (Hệ thống tự tạo bản lưu an toàn trước khi reset)", tostring(res.ActiveDisplay or res.ActiveAccountId)),
+                    leftBtnTitle = TR("确定"),
+                    rightBtnTitle = TR("取消"),
+                    leftBtnCallback = function(dlg)
+                        dlg:removeFromParent()
+                        requestLocalAccountApi("POST", {action = "reset", account_id = res.ActiveAccountId}, function(rsRes)
+                            if rsRes and rsRes.ok then
+                                ui.showFlashView({text = "Đã đặt lại tài khoản về trạng thái mới!"})
+                                self:enterAccount(rsRes.ActiveUserId or "100001")
+                            else
+                                ui.showFlashView({text = "Đặt lại tài khoản thất bại"})
+                            end
+                        end)
+                    end,
+                    rightBtnCallback = function(dlg)
+                        dlg:removeFromParent()
+                    end,
+                })
+                display.getRunningScene():addChild(box, 1024)
+            end,
+        })
+        self.mContentNode:addChild(btnResetAcc)
+
+        local btnExport = ui.newButton({
+            normalImage = "c_7.png",
+            text = "Sao Lưu",
+            fontSize = 18,
+            scale = 0.78,
+            color = ColorList.ccWhite,
+            outlineColor = ColorList.ccOutline,
+            outlineSize = 2,
+            position = cc.p(w * 0.62, h * 0.20),
             clickAction = function()
                 requestLocalAccountApi("POST", {action = "export"}, function(exRes)
                     if exRes and exRes.ok then
@@ -258,12 +295,12 @@ function AccountSwitchLayer:refreshAccountView()
         local btnImport = ui.newButton({
             normalImage = "c_7.png",
             text = "Khôi Phục",
-            fontSize = 19,
-            scale = 0.85,
+            fontSize = 18,
+            scale = 0.78,
             color = ColorList.ccWhite,
             outlineColor = ColorList.ccOutline,
             outlineSize = 2,
-            position = cc.p(w * 0.79, h * 0.20),
+            position = cc.p(w * 0.84, h * 0.20),
             clickAction = function()
                 local box = require("Common.MessageBoxLayer").new({
                     bgImage = "c_43.png",
@@ -321,6 +358,7 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
         "ggzj_handlers.py",
         "gddh_handlers.py",
         "social_handlers.py",
+        "guild_handlers.py",
     ]
     dest_zip.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(dest_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
@@ -665,6 +703,48 @@ def patch_standalone_workspace(
                 '                -- Offline local revival: confirm diamond package directly via GenerateOrderID',
             ),
             (
+                '        local iconSprite = cc.Sprite:create(data.icon)\n'
+                '        iconSprite:setPosition(cc.p(67, 68))\n'
+                '        cellBkg:addChild(iconSprite)\n'
+                '        -- dump(info,"infooooooo")\n'
+                '        --local _,str2 = self:isFormatPrice(info.ChargePoint)\n'
+                '        -- print("jkjkjkkkkkkkkk===  ",str2)\n'
+                '        local priceLabel = ui.newLabel({\n'
+                '            text = string.format(TR("仅售:%s"), tostring(info.ChargePoint)),',
+                '        local isInstant = info.Instant or info.ProductId == "com.cmn.inuyasha.gem1000000"\n'
+                '        local iconSprite = cc.Sprite:create(isInstant and "sc_9.png" or data.icon)\n'
+                '        iconSprite:setPosition(cc.p(67, 68))\n'
+                '        cellBkg:addChild(iconSprite)\n'
+                '        local priceLabel = ui.newLabel({\n'
+                '            text = isInstant and "Nạp 1 chạm (Miễn phí)" or string.format(TR("仅售:%s"), tostring(info.ChargePoint)),',
+            ),
+            (
+                '        local rechargeButton = ui.newButton({\n'
+                '            normalImage = btnImage,\n'
+                '            position = cc.p(382, 53),\n'
+                '            text = TR("购买"),',
+                '        local rechargeButton = ui.newButton({\n'
+                '            normalImage = btnImage,\n'
+                '            position = cc.p(382, 53),\n'
+                '            text = isInstant and "Nạp 1M" or TR("购买"),',
+            ),
+            (
+                '        else\n'
+                '            lableValue:setString(string.format(TR("%d"), info.GamePoint))\n'
+                '            lableValue:setPosition(cc.p(261,105))\n'
+                '            cellBkg:addChild(lableValue)\n'
+                '        end',
+                '        elseif isInstant then\n'
+                '            lableValue:setString("1.000.000 KC")\n'
+                '            lableValue:setPosition(cc.p(245,105))\n'
+                '            cellBkg:addChild(lableValue)\n'
+                '        else\n'
+                '            lableValue:setString(string.format(TR("%d"), info.GamePoint))\n'
+                '            lableValue:setPosition(cc.p(261,105))\n'
+                '            cellBkg:addChild(lableValue)\n'
+                '        end',
+            ),
+            (
                 'function RechargeScene:requestGenerateOrderID(moduleName, methodName, productInfo)\n'
                 '    LoadingWait:begin(self)\n'
                 '    local product = {\n'
@@ -722,6 +802,24 @@ def patch_standalone_workspace(
                 '        if response.Status == 0 then\n'
                 '            local isMothCard = productInfo.ProductId == nil\n'
                 '            local orderId = isMothCard and response.Value.OrderId or response.Value\n'
+                '            if not isMothCard and (productInfo.Instant or productInfo.ProductId == "com.cmn.inuyasha.gem1000000") then\n'
+                '                LoadingWait:begin(self)\n'
+                '                HttpRequest("PlayerCharge", "ConfirmOrder", {productInfo.ProductId, orderId}, function(res)\n'
+                '                    LoadingWait:ends()\n'
+                '                    if res.Status == 0 then\n'
+                '                        if self.mBkgLayer and self.mBkgLayer.refreshPlayerAttrs then\n'
+                '                            self.mBkgLayer:refreshPlayerAttrs()\n'
+                '                        end\n'
+                '                        self.mPlayerVipLv = NetworkResData:getPlayerInfo().Vip\n'
+                '                        ui.showFlashView({parent = self, text = "Đã nạp +1.000.000 KC!"})\n'
+                '                        self.mChargeTotalInfo = nil\n'
+                '                        self.mChargeSingleInfo = nil\n'
+                '                        self.mChargeDaysInfo = nil\n'
+                '                        self:requestGetChargeList(true)\n'
+                '                    end\n'
+                '                end)\n'
+                '                return\n'
+                '            end\n'
                 '            local desc = isMothCard and TR("Xác nhận kích hoạt Thẻ Tháng (Offline)?") or string.format(TR("Xác nhận nạp %d Kim Cương (Offline)?"), tonumber(productInfo.GamePoint) or 0)\n'
                 '            local box = require("Common.MessageBoxLayer").new({\n'
                 '                bgImage = "c_43.png",\n'
@@ -886,15 +984,27 @@ def patch_standalone_workspace(
                 '        end\n'
                 '    end\n'
                 '    if self.mBannerList and #self.mBannerList > 1 then\n'
+                '        local bCount = #self.mBannerList\n'
+                '        local tabScale = bCount > 3 and 0.65 or 0.85\n'
+                '        local stepX = bCount > 3 and 142 or 160\n'
+                '        local startX = bCount > 3 and 115 or 135\n'
+                '        local bannerNames = {\n'
+                '            [81] = "Sessho (81)",\n'
+                '            [82] = "Taishou (82)",\n'
+                '            [83] = "Tứ Đấu (83)",\n'
+                '            [84] = "Phe I (84)",\n'
+                '            [85] = "Phe S (85)",\n'
+                '            [86] = "Phe N (86)",\n'
+                '        }\n'
                 '        for bIdx, bItem in ipairs(self.mBannerList) do\n'
                 '            local bId = bItem.ActivityId\n'
                 '            local isCur = (bId == self.mActivityInfo.enumId)\n'
-                '            local shortName = bId == 81 and "Sessho (81)" or (bId == 82 and "InuTaishou (82)" or (bId == 83 and "Thần Tướng D (83)" or ("Banner " .. tostring(bId))))\n'
+                '            local shortName = bannerNames[bId] or ("Banner " .. tostring(bId))\n'
                 '            local tabBtn = ui.newButton({\n'
                 '                normalImage = isCur and "c_77.png" or "c_7.png",\n'
                 '                text = shortName,\n'
-                '                scale = 0.85,\n'
-                '                position = cc.p(135 + (bIdx - 1) * 160, self.mBgSize.height - 102),\n'
+                '                scale = tabScale,\n'
+                '                position = cc.p(startX + (bIdx - 1) * stepX, self.mBgSize.height - 102),\n'
                 '                clickAction = function()\n'
                 '                    if isCur then return end\n'
                 '                    self:newRequest({\n'
@@ -1109,6 +1219,9 @@ def patch_standalone_workspace(
     patch_r7151_lua(STANDALONE_WORK / "assets" / "src")
     patch_r716_explore_lua(STANDALONE_WORK / "assets" / "src")
     patch_r721_teambattle_lua(STANDALONE_WORK / "assets" / "src")
+    patch_r735_shop_lua(STANDALONE_WORK / "assets" / "src")
+    patch_r736_mate_gem_shop_lua(STANDALONE_WORK / "assets" / "src")
+    patch_r737_mount_and_p4_lua(STANDALONE_WORK / "assets" / "src")
     patch_luac_text(STANDALONE_WORK / "assets" / "src" / "Equipment" / "EquipmentComposeLayer.luac", [
         (
             '        if colorLV < 8 then    --排除最高等级的装备',
@@ -1162,6 +1275,19 @@ def patch_standalone_workspace(
                 shutil.copy2(src_file, dst_file)
                 b83_n += 1
         print(f"Bundled {b83_n} Banner 83 assets from {b83_dir}")
+
+    # 9b. Bundle Banner 84/85/86 (Faction UR Banners) assets missing from VN APK/OBB
+    b84_dir = ROOT_DIR / "android" / "assets_b84_86"
+    if b84_dir.exists():
+        b84_n = 0
+        for src_file in sorted(b84_dir.rglob("*")):
+            if src_file.is_file():
+                rel = src_file.relative_to(b84_dir)
+                dst_file = STANDALONE_WORK / "assets" / rel
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_file, dst_file)
+                b84_n += 1
+        print(f"Bundled {b84_n} Banner 84-86 assets from {b84_dir}")
 
 
 def patch_r712_lua(src: Path) -> None:
@@ -1296,7 +1422,15 @@ def patch_r712_lua(src: Path) -> None:
     }), "CCtransitionCrossFade", 0)
 end
 
-function HeroUpdateScene:createHeroBreakthrough(step)''',
+function HeroUpdateScene:createHeroBreakthrough(step)
+    local heroCfg = self.mHero and HeroModel.items[self.mHero.HeroModelId]
+    if heroCfg and heroCfg.specialType == 255 then
+        local pInfo = NetworkResData:getPlayerInfo()
+        if pInfo and pInfo.Lv and self.mHero.Lv ~= pInfo.Lv then
+            self.mHero.Lv = pInfo.Lv
+            NetworkResData:modifyMainHeroLv(pInfo.Lv)
+        end
+    end''',
         ),
         (
             '''                    local call = function()
@@ -2370,6 +2504,916 @@ function SuccessTargetLayer:canDrawReward( day )''',
         ),
         ('        if not curBt and k == serverInfo.Day then', '        if not curBt and k == math.min(serverInfo.Day, endDay) then'),
     ])
+
+
+def patch_r735_shop_lua(src: Path) -> None:
+    """R7.35 QoL: daily Shop Reset button + 1-tap Max & accurate DynamicPrice in GoodsPurchaseLayer."""
+    patch_luac_text(src / "Store" / "StoreScene.luac", [
+        (
+            "    self.mParentLayer:addChild(self.mButtonRecharge)",
+            "    self.mParentLayer:addChild(self.mButtonRecharge)\n\n"
+            "    self.mButtonResetShop = ui.newButton({\n"
+            '        normalImage = "c_7.png",\n'
+            '        text = "Reset Shop",\n'
+            "        fontSize = 24,\n"
+            "        position = cc.p(706, 680),\n"
+            "        textColor = ColorList.ccWhite,\n"
+            "        outlineColor = ColorList.ccOutline,\n"
+            "        clickAction = function()\n"
+            "            self:requestResetDailyShop()\n"
+            "        end,\n"
+            "    })\n"
+            "    self.mParentLayer:addChild(self.mButtonResetShop)",
+        ),
+        (
+            "    if  self.mCurrentPage == PageType.props then\n"
+            "        self:requestPropsList()",
+            "    if self.mButtonResetShop then\n"
+            "        self.mButtonResetShop:setVisible(self.mCurrentPage == PageType.props)\n"
+            "    end\n"
+            "    if  self.mCurrentPage == PageType.props then\n"
+            "        self:requestPropsList()",
+        ),
+        (
+            """function StoreScene:updatePropsList(props)
+    for _, v in pairs(self.mPropsList) do
+        if v.GoodsModelId == props.GoodsModelId then
+            v.Num = props.Num
+            v.CurrPrice = props.CurrPrice
+            break
+        end
+    end
+end""",
+            """function StoreScene:updatePropsList(props)
+    for _, v in pairs(self.mPropsList) do
+        if v.GoodsModelId == props.GoodsModelId then
+            v.Num = props.Num
+            v.MaxNum = props.MaxNum
+            v.CurrPrice = props.CurrPrice
+            v.DynamicPrice = props.DynamicPrice
+            break
+        end
+    end
+end""",
+        ),
+        (
+            """function StoreScene:responsePropsList(response)
+    LoadingWait:ends()
+     if response.Status == 0 then
+         self.mPropsList = clone(response.Value)
+         self:refreshListView()
+     end
+ end""",
+            """function StoreScene:responsePropsList(response)
+    LoadingWait:ends()
+     if response.Status == 0 then
+         self.mPropsList = clone(response.Value)
+         self:refreshListView()
+     end
+ end
+
+function StoreScene:requestResetDailyShop()
+    LoadingWait:begin(self)
+    HttpRequest("ShopGoods", "ResetDaily", {}, handler(self, self.responseResetDailyShop))
+end
+
+function StoreScene:responseResetDailyShop(response)
+    LoadingWait:ends()
+    if response and response.Status == 0 then
+        self.mPropsList = clone(response.Value or {})
+        self:refreshListView()
+        self.mBkgLayer:refreshPlayerAttrs()
+        ui.showFlashView({parent = self, image = nil, text = "Đã reset shop hằng ngày!"})
+    end
+end""",
+        ),
+        (
+            "     local res = self:isResourceEnough(self.mSelGoodsData.SellTypeId, self.mSelGoodsData.CurrPrice, count)",
+            "     local totalCost = self.mSelGoodsData.CurrPrice * count\n"
+            "     if self.mSelGoodsData.DynamicPrice and #self.mSelGoodsData.DynamicPrice > 0 then\n"
+            "         local dyn = self.mSelGoodsData.DynamicPrice\n"
+            "         local startIdx = 1\n"
+            "         for idx = 1, #dyn do\n"
+            "             if dyn[idx].NewPrice == self.mSelGoodsData.CurrPrice then\n"
+            "                 startIdx = idx\n"
+            "                 break\n"
+            "             end\n"
+            "         end\n"
+            "         local sumCost = 0\n"
+            "         local maxIdx = #dyn\n"
+            "         for k = 1, count do\n"
+            "             local item = dyn[(k - 1) + startIdx] or dyn[maxIdx]\n"
+            "             sumCost = sumCost + ((item and item.NewPrice) or self.mSelGoodsData.CurrPrice)\n"
+            "         end\n"
+            "         totalCost = sumCost\n"
+            "     end\n"
+            "     local res = self:isResourceEnough(self.mSelGoodsData.SellTypeId, totalCost, 1)",
+        ),
+    ])
+
+    patch_luac_text(src / "Store" / "GoodsPurchaseLayer.luac", [
+        (
+            "    self.mParentLayer:addChild(btnCancel)\nend",
+            "    self.mParentLayer:addChild(btnCancel)\n\n"
+            "    local btnMax = ui.newButton({\n"
+            '        normalImage = "c_8.png",\n'
+            '        text = "Max",\n'
+            "        fontSize = 20,\n"
+            "        fontName = _FONT_DEFAULT,\n"
+            "        position = cc.p(self.width * 0.812, self.height * 0.33),\n"
+            "        textColor = ColorList.ccWhite,\n"
+            "        size = cc.size(82, 40),\n"
+            "        clickAction = function()\n"
+            "            local maxByLimit = 99\n"
+            "            if self.mCurGoods.MaxNum < 0 then\n"
+            "                if self.mCurGoods.GoodsModelId == 16030003 then\n"
+            "                    maxByLimit = 200\n"
+            "                end\n"
+            "            else\n"
+            "                maxByLimit = math.max(1, self.mCurGoods.MaxNum - self.mCurGoods.Num)\n"
+            "            end\n"
+            "            local player = NetworkResData:getPlayerInfo()\n"
+            "            local balance = maxByLimit\n"
+            "            local hasCap = false\n"
+            "            if player then\n"
+            "                if self.mCurGoods.SellTypeId == ResourcetypeSub.eDiamond then\n"
+            "                    balance = tonumber(player.Diamond) or 0\n"
+            "                    hasCap = true\n"
+            "                elseif self.mCurGoods.SellTypeId == ResourcetypeSub.eGold then\n"
+            "                    balance = tonumber(player.Gold) or 0\n"
+            "                    hasCap = true\n"
+            "                end\n"
+            "            end\n"
+            "            local best = 1\n"
+            "            if not hasCap then\n"
+            "                best = maxByLimit\n"
+            "            else\n"
+            "                for n = maxByLimit, 1, -1 do\n"
+            "                    if self:computeTotalCost(n) <= balance then\n"
+            "                        best = n\n"
+            "                        break\n"
+            "                    end\n"
+            "                end\n"
+            "            end\n"
+            "            self.mPurchaseCount = best\n"
+            "            self:refreshPurchaseDisplay()\n"
+            "        end,\n"
+            "    })\n"
+            "    self.mParentLayer:addChild(btnMax)\n"
+            "end",
+        ),
+        (
+            """    local value = 0
+    if self.mCurGoods.DynamicPrice then
+        local function getPriceIndex()
+            for i = 1, table.maxn(self.mCurGoods.DynamicPrice) do 
+                if self.mCurGoods.DynamicPrice[i].NewPrice == self.mCurGoods.CurrPrice then 
+                    return i
+                end
+            end
+            return 1
+        end
+        local max = table.maxn(self.mCurGoods.DynamicPrice)
+        local index = getPriceIndex()
+        for k = 1, self.mPurchaseCount do
+            local curIndex = (k - 1) + index
+            local item = self.mCurGoods.DynamicPrice[curIndex] or self.mCurGoods.DynamicPrice[max]
+            if item then 
+                value = value + item.NewPrice
+            end
+        end
+    else
+        value = self.mPurchaseCount * self.mCurGoods.CurrPrice
+    end
+    self.mLableTotalValue:setString(string.format("%d", value))
+end""",
+            """    self:refreshPurchaseDisplay()
+end
+
+function GoodsPurchaseLayer:computeTotalCost(count)
+    local cnt = count or self.mPurchaseCount or 1
+    local value = 0
+    if self.mCurGoods.DynamicPrice and #self.mCurGoods.DynamicPrice > 0 then
+        local function getPriceIndex()
+            for i = 1, table.maxn(self.mCurGoods.DynamicPrice) do
+                if self.mCurGoods.DynamicPrice[i].NewPrice == self.mCurGoods.CurrPrice then
+                    return i
+                end
+            end
+            return 1
+        end
+        local max = table.maxn(self.mCurGoods.DynamicPrice)
+        local index = getPriceIndex()
+        for k = 1, cnt do
+            local curIndex = (k - 1) + index
+            local item = self.mCurGoods.DynamicPrice[curIndex] or self.mCurGoods.DynamicPrice[max]
+            if item then
+                value = value + item.NewPrice
+            end
+        end
+    else
+        value = cnt * self.mCurGoods.CurrPrice
+    end
+    return value
+end
+
+function GoodsPurchaseLayer:refreshPurchaseDisplay()
+    self.mLableViewGoodsNum:setString(string.format("%d", self.mPurchaseCount))
+    self.mLableTotalValue:setString(string.format("%d", self:computeTotalCost(self.mPurchaseCount)))
+end""",
+        ),
+    ])
+
+
+def patch_r736_mate_gem_shop_lua(src: Path) -> None:
+    """R7.36 QoL/Fixes: Gem Compose UI, Gem Unequip, LV15 guard, and proactive Reset buttons on daily shops."""
+    patch_luac_text(src / "Equipment" / "EquipmentComposeLayer.luac", [
+        (
+            "            modelId = cardInfor.EquipModelId or cardInfor.TreasureModelId,",
+            "            modelId = cardInfor.EquipModelId or cardInfor.TreasureModelId or cardInfor.ModelId,",
+        ),
+        (
+            """        local material = splitStrBySep(self.mTempTable[self.mCellList[index[1]].ModelId + 1].syntheticDoubleUse, ",")
+        local haveGood = NetworkResData:getGoodsCountByModelId(tonumber(material[2]))
+        if haveGood > 0 then
+            self.mBtnStone:setCardData({resourceTypeSub = tonumber(material[1]),modelId = tonumber(material[2]),num = haveGood,cardShowAttrs = {CardShowAttr.eBorder,CardShowAttr.eLevel},isTouch = true})
+        else
+            self.mBtnStone:setEmpty({CardShowAttr.eBorder}, "c_1.png", "c_99.png")
+        end""",
+            """        local nextModel = self.mTempTable[self.mCellList[index[1]].ModelId + 1]
+        local material = nextModel and nextModel.syntheticDoubleUse and splitStrBySep(nextModel.syntheticDoubleUse, ",") or {}
+        local dblType = tonumber(material[1])
+        local dblModel = tonumber(material[2])
+        local haveGood = dblModel and NetworkResData:getGoodsCountByModelId(dblModel) or 0
+        if dblType and dblModel and haveGood > 0 then
+            self.mBtnStone:setCardData({resourceTypeSub = dblType,modelId = dblModel,num = haveGood,cardShowAttrs = {CardShowAttr.eBorder,CardShowAttr.eLevel},isTouch = true})
+        else
+            self.mBtnStone:setEmpty({CardShowAttr.eBorder}, "c_1.png", "c_99.png")
+        end""",
+        ),
+    ])
+
+    patch_luac_text(src / "Formation" / "MyFormationLayer.luac", [
+        (
+            """        normalImage = "c_7.png",
+        text = TR("升级"),
+        operateBtnTag = OperateBtnTag.eGemUpdate,
+        position = cc.p(parentSize.width / 2 - 125,35),""",
+            """        normalImage = "c_7.png",
+        text = TR("升级"),
+        operateBtnTag = OperateBtnTag.eGemUpdate,
+        position = cc.p(parentSize.width / 2 - 145,35),""",
+        ),
+        (
+            """        normalImage = "c_7.png",
+        text = TR("更换"),
+        operateBtnTag = OperateBtnTag.eGemReplace,
+        position = cc.p(parentSize.width / 2 + 125,35),""",
+            """        normalImage = "c_7.png",
+        text = "Tháo",
+        position = cc.p(parentSize.width / 2,35),
+        clickAction = function()
+            self:removeModalLayer()
+            local tempSlot = self.mFormationInfo.SlotInfos[self.mSelectedIndex]
+            local tempGem = tempSlot and tempSlot.Gem and tempSlot.Gem[self.mSelGemIndex]
+            if not tempGem or not IdIsValid(tempGem.Id) then
+                ui.showFlashView({parent = self, text = "Ô linh thạch đang trống!"})
+                return
+            end
+            self:GemCombatRequest(EMPTY_ENTITY_ID)
+        end
+    })
+    table.insert(optBtnInfo, {
+        normalImage = "c_7.png",
+        text = TR("更换"),
+        operateBtnTag = OperateBtnTag.eGemReplace,
+        position = cc.p(parentSize.width / 2 + 145,35),""",
+        ),
+    ])
+
+    patch_luac_text(src / "Gem" / "GemLevelUpLayer.luac", [
+        (
+            """function GemLevelUpLayer:requestLevelUp()
+    if #self.mCellList < 3 then""",
+            """function GemLevelUpLayer:requestLevelUp()
+    if not self.mGemData or not GemModel.items[self.mGemData.ModelId + 1] then
+        ui.showFlashView({parent = self, text = "Linh thạch đã đạt cấp tối đa!"})
+        return
+    end
+    if #self.mCellList < 3 then""",
+        ),
+    ])
+
+    patch_luac_text(src / "Store" / "MysticalStoreScene.luac", [
+        (
+            "    self.mParentLayer:addChild(buttonRefersh)\n    self.mBtnRefresh = buttonRefersh",
+            "    self.mParentLayer:addChild(buttonRefersh)\n    self.mBtnRefresh = buttonRefersh\n\n"
+            "    local buttonResetDaily = ui.newButton({\n"
+            '        normalImage = "c_7.png",\n'
+            "        position = cc.p(810, 45),\n"
+            '        text = "Reset Ngày",\n'
+            "        fontSize = 22,\n"
+            "        textColor = ColorList.ccWhite,\n"
+            "        outlineColor = ColorList.ccOutline,\n"
+            "        clickAction = function()\n"
+            "            self:requestResetDailyMysteryShop()\n"
+            "        end,\n"
+            "    })\n"
+            "    self.mParentLayer:addChild(buttonResetDaily)\n"
+            "    self.mBtnResetDaily = buttonResetDaily",
+        ),
+        (
+            "function MysticalStoreScene:requestRefreshtGoodsList()",
+            """function MysticalStoreScene:requestResetDailyMysteryShop()
+    local isSenior = (self.mCurrStoreType == StoreType.eSenior) and 1 or 0
+    LoadingWait:begin(self)
+    HttpRequest("MysteryShop", "ResetDaily", {isSenior}, function(response)
+        LoadingWait:ends()
+        if response and response.Status == 0 then
+            if isSenior == 1 then
+                self.mStoreInfo.seniorStore = response.Value
+                self.mStoreInfo.normalStore = nil
+            else
+                self.mStoreInfo.normalStore = response.Value
+                self.mStoreInfo.seniorStore = nil
+            end
+            self:updateLayer()
+            self:refreshListView(true)
+            ui.showFlashView({parent = self, text = "Đã reset Shop Thần Bí!"})
+        end
+    end)
+end
+
+function MysticalStoreScene:requestRefreshtGoodsList()""",
+        ),
+    ])
+
+    patch_luac_text(src / "Challenge" / "ArenaExchangeLayer.luac", [
+        (
+            "    self.mBgSprite:addChild(self.mCurrPVPCoin)",
+            "    self.mBgSprite:addChild(self.mCurrPVPCoin)\n\n"
+            "    local btnResetPvpShop = ui.newButton({\n"
+            '        normalImage = "c_7.png",\n'
+            "        position = cc.p(self.mBgSize.width * 0.78, self.mBgSize.height - 100),\n"
+            '        text = "Reset Ngày",\n'
+            "        fontSize = 22,\n"
+            "        textColor = ColorList.ccWhite,\n"
+            "        outlineColor = ColorList.ccOutline,\n"
+            "        clickAction = function()\n"
+            "            self:PVPShopResetDailyRequest()\n"
+            "        end,\n"
+            "    })\n"
+            "    self.mBgSprite:addChild(btnResetPvpShop)",
+        ),
+        (
+            "function ArenaExchangeLayer:PVPShopBuyRequest(shopId, num)",
+            """function ArenaExchangeLayer:PVPShopResetDailyRequest()
+    LoadingWait:begin(self)
+    HttpRequest("PVPShop", "ResetDaily", {}, function(retVal)
+        LoadingWait:ends()
+        if retVal and retVal.Status == 0 then
+            for _, item in pairs(self.mNoneRankShopInfo or {}) do
+                item.BuyNum = 0
+            end
+            for _, item in pairs(self.mRankShopInfo or {}) do
+                item.BuyNum = 0
+            end
+            local activeList = self.mCurrPageType == ArenaExchangePageType.eNoneRank and self.mNoneRankShopInfo or self.mRankShopInfo
+            for idx = 1, #(activeList or {}) do
+                self:refreshListItem(idx)
+            end
+            ui.showFlashView({parent = self, text = "Đã reset Shop Đấu Trường!"})
+        end
+    end)
+end
+
+function ArenaExchangeLayer:PVPShopBuyRequest(shopId, num)""",
+        ),
+    ])
+
+    patch_luac_text(src / "Guild" / "GuildShopLayer.luac", [
+        (
+            "                    bgSprite:addChild(shopLvLabel)",
+            "                    bgSprite:addChild(shopLvLabel)\n"
+            "                    local btnResetGuildShop = ui.newButton({\n"
+            '                        normalImage = "c_7.png",\n'
+            "                        position = cc.p(bgSize.width * 0.80, bgSize.height * 0.95),\n"
+            '                        text = "Reset Ngày",\n'
+            "                        fontSize = 22,\n"
+            "                        textColor = ColorList.ccWhite,\n"
+            "                        outlineColor = ColorList.ccOutline,\n"
+            "                        clickAction = function()\n"
+            "                            LoadingWait:begin(self)\n"
+            '                            HttpRequest("Guild", "ResetGuildShopDaily", {}, function(res)\n'
+            "                                LoadingWait:ends()\n"
+            "                                if res and res.Status == 0 and not tolua.isnull(self) then\n"
+            "                                    local p = self:getParent()\n"
+            "                                    self:removeFromParent()\n"
+            "                                    if p and not tolua.isnull(p) then\n"
+            '                                        p:addChild(require("Guild.GuildShopLayer").new({}))\n'
+            '                                        ui.showFlashView({parent = p, text = "Đã reset Shop Công Hội!"})\n'
+            "                                    end\n"
+            "                                end\n"
+            "                            end)\n"
+            "                        end,\n"
+            "                    })\n"
+            "                    bgSprite:addChild(btnResetGuildShop)",
+        ),
+    ])
+
+
+def patch_r737_mount_and_p4_lua(src: Path) -> None:
+    """R7.37: Canonical Red Book/Mount PrModel bonds (573..594) + Banner 84/85/86 UI assets."""
+    r737_pr_entries = """        [572] = {
+            ID = 572,
+            name = "Thức Hồn",
+            intro = "Cùng  ra trận,HP+18%",
+            member = "14011618",
+            typeID = 1401,
+            APR = 0,
+            HPR = 1800,
+            DEFR = 0
+        },
+        [573] = {
+            ID = 573,
+            name = "Quyển Kami",
+            intro = "Cùng Quyển Kami ra trận,HP+20%",
+            member = "14012001",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [574] = {
+            ID = 574,
+            name = "Quyển Tứ Hồn",
+            intro = "Cùng Quyển Tứ Hồn ra trận,HP+20%",
+            member = "14012002",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [575] = {
+            ID = 575,
+            name = "Quyển Kami",
+            intro = "Cùng Quyển Kami ra trận,HP+20%",
+            member = "14012001",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [576] = {
+            ID = 576,
+            name = "Quyển Tứ Hồn",
+            intro = "Cùng Quyển Tứ Hồn ra trận,HP+20%",
+            member = "14012002",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [577] = {
+            ID = 577,
+            name = "Quyển Kami",
+            intro = "Cùng Quyển Kami ra trận,HP+20%",
+            member = "14012001",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [578] = {
+            ID = 578,
+            name = "Quyển Tứ Hồn",
+            intro = "Cùng Quyển Tứ Hồn ra trận,HP+20%",
+            member = "14012002",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [579] = {
+            ID = 579,
+            name = "Quyển Kami",
+            intro = "Cùng Quyển Kami ra trận,HP+20%",
+            member = "14012001",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [580] = {
+            ID = 580,
+            name = "Quyển Tứ Hồn",
+            intro = "Cùng Quyển Tứ Hồn ra trận,HP+20%",
+            member = "14012002",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [581] = {
+            ID = 581,
+            name = "Quyển Kami",
+            intro = "Cùng Quyển Kami ra trận,HP+20%",
+            member = "14012001",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [582] = {
+            ID = 582,
+            name = "Quyển Tứ Hồn",
+            intro = "Cùng Quyển Tứ Hồn ra trận,HP+20%",
+            member = "14012002",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [583] = {
+            ID = 583,
+            name = "Quyển Kami",
+            intro = "Cùng Quyển Kami ra trận,HP+20%",
+            member = "14012001",
+            typeID = 1401,
+            APR = 0,
+            HPR = 2000,
+            DEFR = 0
+        },
+        [584] = {
+            ID = 584,
+            name = "Rồng Kami",
+            intro = "Cùng Rồng Kami ra trận,Công+20%",
+            member = "14022001",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        },
+        [585] = {
+            ID = 585,
+            name = "Phượng Hoàng Kami",
+            intro = "Cùng Phượng Hoàng Kami ra trận,Công+20%",
+            member = "14022002",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        },
+        [586] = {
+            ID = 586,
+            name = "Rồng Kami",
+            intro = "Cùng Rồng Kami ra trận,Công+20%",
+            member = "14022001",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        },
+        [587] = {
+            ID = 587,
+            name = "Phượng Hoàng Kami",
+            intro = "Cùng Phượng Hoàng Kami ra trận,Công+20%",
+            member = "14022002",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        },
+        [588] = {
+            ID = 588,
+            name = "Rồng Kami",
+            intro = "Cùng Rồng Kami ra trận,Công+20%",
+            member = "14022001",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        },
+        [589] = {
+            ID = 589,
+            name = "Phượng Hoàng Kami",
+            intro = "Cùng Phượng Hoàng Kami ra trận,Công+20%",
+            member = "14022002",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        },
+        [590] = {
+            ID = 590,
+            name = "Rồng Kami",
+            intro = "Cùng Rồng Kami ra trận,Công+20%",
+            member = "14022001",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        },
+        [591] = {
+            ID = 591,
+            name = "Phượng Hoàng Kami",
+            intro = "Cùng Phượng Hoàng Kami ra trận,Công+20%",
+            member = "14022002",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        },
+        [592] = {
+            ID = 592,
+            name = "Rồng Kami",
+            intro = "Cùng Rồng Kami ra trận,Công+20%",
+            member = "14022001",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        },
+        [593] = {
+            ID = 593,
+            name = "Rồng Kami",
+            intro = "Cùng Rồng Kami ra trận,Công+20%",
+            member = "14022001",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        },
+        [594] = {
+            ID = 594,
+            name = "Phượng Hoàng Kami",
+            intro = "Cùng Phượng Hoàng Kami ra trận,Công+20%",
+            member = "14022002",
+            typeID = 1402,
+            APR = 2000,
+            HPR = 0,
+            DEFR = 0
+        }"""
+
+    patch_luac_text(src / "Config" / "PrModel.luac", [
+        ("items_count = 572,", "items_count = 594,"),
+        (
+            """        [572] = {
+            ID = 572,
+            name = "Thức Hồn",
+            intro = "Cùng  ra trận,HP+18%",
+            member = "14011618",
+            typeID = 1401,
+            APR = 0,
+            HPR = 1800,
+            DEFR = 0
+        }""",
+            r737_pr_entries,
+        ),
+    ])
+
+    hpr_map = [
+        (12011002, 4, 560, 573, 584),
+        (12011003, 4, 561, 574, 585),
+        (12011004, 4, 562, 575, 586),
+        (12012003, 4, 564, 576, 587),
+        (12012004, 4, 563, 577, 588),
+        (12012005, 4, 565, 578, 589),
+        (12013003, 4, 566, 579, 590),
+        (12013004, 4, 567, 580, 591),
+        (12013005, 4, 568, 581, 592),
+        (12015022, 6, 572, 582, 593),
+        (12015023, 6, 570, 583, 594),
+    ]
+    hpr_patches = []
+    for hid, last_order, last_pr, pr_book, pr_horse in hpr_map:
+        old_tail = (
+            f"            [{last_order}] = {{\n"
+            f"                heroModelID = {hid},\n"
+            f"                order = {last_order},\n"
+            f"                PRModelId = {last_pr}\n"
+            f"            }}\n"
+            f"        }}"
+        )
+        new_tail = (
+            f"            [{last_order}] = {{\n"
+            f"                heroModelID = {hid},\n"
+            f"                order = {last_order},\n"
+            f"                PRModelId = {last_pr}\n"
+            f"            }},\n"
+            f"            [7] = {{\n"
+            f"                heroModelID = {hid},\n"
+            f"                order = 7,\n"
+            f"                PRModelId = {pr_book}\n"
+            f"            }},\n"
+            f"            [8] = {{\n"
+            f"                heroModelID = {hid},\n"
+            f"                order = 8,\n"
+            f"                PRModelId = {pr_horse}\n"
+            f"            }}\n"
+            f"        }}"
+        )
+        hpr_patches.append((old_tail, new_tail))
+    patch_luac_text(src / "Config" / "HeroPrRelation.luac", hpr_patches)
+
+    patch_luac_text(src / "Config" / "TreasureModel.luac", [
+        (
+            """            debrisModelIds = {
+                15034501,
+                15034502,
+                15034503,
+                15034504,
+                15034505,
+                15034506
+            },
+            prHeroModelIds = {}""",
+            """            debrisModelIds = {
+                15034501,
+                15034502,
+                15034503,
+                15034504,
+                15034505,
+                15034506
+            },
+            prHeroModelIds = {
+                12011002,
+                12011004,
+                12012004,
+                12013003,
+                12013005,
+                12015023
+            }""",
+        ),
+        (
+            """            debrisModelIds = {
+                15034601,
+                15034602,
+                15034603,
+                15034604,
+                15034605,
+                15034606
+            },
+            prHeroModelIds = {}""",
+            """            debrisModelIds = {
+                15034601,
+                15034602,
+                15034603,
+                15034604,
+                15034605,
+                15034606
+            },
+            prHeroModelIds = {
+                12011003,
+                12012003,
+                12012005,
+                12013004,
+                12015022
+            }""",
+        ),
+        (
+            """            debrisModelIds = {
+                15044701,
+                15044702,
+                15044703,
+                15044704,
+                15044705,
+                15044706
+            },
+            prHeroModelIds = {}""",
+            """            debrisModelIds = {
+                15044701,
+                15044702,
+                15044703,
+                15044704,
+                15044705,
+                15044706
+            },
+            prHeroModelIds = {
+                12011002,
+                12011004,
+                12012004,
+                12013003,
+                12013005,
+                12015022
+            }""",
+        ),
+        (
+            """            debrisModelIds = {
+                15044801,
+                15044802,
+                15044803,
+                15044804,
+                15044805,
+                15044806
+            },
+            prHeroModelIds = {}""",
+            """            debrisModelIds = {
+                15044801,
+                15044802,
+                15044803,
+                15044804,
+                15044805,
+                15044806
+            },
+            prHeroModelIds = {
+                12011003,
+                12012003,
+                12012005,
+                12013004,
+                12015023
+            }""",
+        ),
+    ])
+
+    patch_luac_text(src / "Config" / "TimedRecruitModel.luac", [
+        (
+            "            goldHeroModelID = 16060037,\n"
+            "            receiveBlessNum = 500,\n"
+            "            blessNumMax = 500,\n"
+            "            startBlessLimit = 600,\n"
+            "            firstBless = 320,\n"
+            "            firstBlessR = 0.7,\n"
+            "            blessOddsR = 0.00014,\n"
+            "            limitNum = 500,\n"
+            '            btnPic = ""',
+            "            goldHeroModelID = 16060037,\n"
+            "            receiveBlessNum = 500,\n"
+            "            blessNumMax = 500,\n"
+            "            startBlessLimit = 600,\n"
+            "            firstBless = 320,\n"
+            "            firstBlessR = 0.7,\n"
+            "            blessOddsR = 0.00014,\n"
+            "            limitNum = 500,\n"
+            '            btnPic = "sy_157"',
+        ),
+        (
+            "            goldHeroModelID = 16060038,\n"
+            "            receiveBlessNum = 500,\n"
+            "            blessNumMax = 500,\n"
+            "            startBlessLimit = 600,\n"
+            "            firstBless = 320,\n"
+            "            firstBlessR = 0.7,\n"
+            "            blessOddsR = 0.00014,\n"
+            "            limitNum = 500,\n"
+            '            btnPic = ""',
+            "            goldHeroModelID = 16060038,\n"
+            "            receiveBlessNum = 500,\n"
+            "            blessNumMax = 500,\n"
+            "            startBlessLimit = 600,\n"
+            "            firstBless = 320,\n"
+            "            firstBlessR = 0.7,\n"
+            "            blessOddsR = 0.00014,\n"
+            "            limitNum = 500,\n"
+            '            btnPic = "sy_158"',
+        ),
+        (
+            "            goldHeroModelID = 16060039,\n"
+            "            receiveBlessNum = 500,\n"
+            "            blessNumMax = 500,\n"
+            "            startBlessLimit = 600,\n"
+            "            firstBless = 320,\n"
+            "            firstBlessR = 0.7,\n"
+            "            blessOddsR = 0.00014,\n"
+            "            limitNum = 500,\n"
+            '            btnPic = ""',
+            "            goldHeroModelID = 16060039,\n"
+            "            receiveBlessNum = 500,\n"
+            "            blessNumMax = 500,\n"
+            "            startBlessLimit = 600,\n"
+            "            firstBless = 320,\n"
+            "            firstBlessR = 0.7,\n"
+            "            blessOddsR = 0.00014,\n"
+            "            limitNum = 500,\n"
+            '            btnPic = "sy_159"',
+        ),
+    ])
+
+    gor_pics = [
+        (16060037, 1, 12011002, "xshd_101"),
+        (16060037, 2, 12011003, "xshd_117"),
+        (16060037, 3, 12011004, "xshd_100"),
+        (16060038, 1, 12012003, "xshd_118"),
+        (16060038, 2, 12012004, "xshd_103"),
+        (16060038, 3, 12012005, "xshd_98"),
+        (16060039, 1, 12013003, "xshd_102"),
+        (16060039, 2, 12013004, "xshd_119"),
+        (16060039, 3, 12013005, "xshd_99"),
+    ]
+    gor_patches = []
+    for box_id, row_id, hid, pic in gor_pics:
+        old_row = (
+            f"                goodsOutputOddsCode = {box_id},\n"
+            f"                ID = {row_id},\n"
+            f"                outputTypeID = 1201,\n"
+            f"                outputModelID = {hid},\n"
+            f"                outputNum = 1,\n"
+            f"                oddsMin = 0,\n"
+            f"                oddsMax = 0,\n"
+            f'                pic = "",'
+        )
+        new_row = old_row.replace('pic = "",', f'pic = "{pic}",')
+        gor_patches.append((old_row, new_row))
+    patch_luac_text(src / "Config" / "GoodsOutputRelation.luac", gor_patches)
 
 
 def build_and_sign_release(out_name: str) -> Path:

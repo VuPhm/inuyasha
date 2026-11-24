@@ -279,6 +279,24 @@ class TeambattleHandlersMixin:
         if kind == "social_npc" and hasattr(self, "_social_npc_fight_objs"):
             units = self._social_npc_fight_objs(str(member["PlayerId"]), fight_add_pct=fight_add_pct)
             return units if units is not None else [{} for _ in range(6)]
+        if kind == "guild_npc":
+            hm = int(member.get("HeadImageId", 12011004))
+            cfg = self.game_data.get("heroes", {}).get(str(hm)) or self.game_data.get("heroes", {}).get("12011004")
+            if not cfg:
+                return [{} for _ in range(6)]
+            mlv = max(1, int(member.get("Lv", 35)))
+            mfap = max(10000, int(member.get("FAP", 80000)))
+            stats = {
+                "HP": max(8000, int(mfap * 0.45)),
+                "AP": max(1200, int(mfap * 0.03)),
+                "DEF": max(600, int(mfap * 0.02)),
+                "RP": 50,
+                "FSP": 120,
+                "HIT": 10000,
+            }
+            allies: list[dict[str, Any]] = [{} for _ in range(6)]
+            allies[1] = self._hero_fight_obj(cfg, lv=mlv, is_boss=False, step=3, override_stats=stats)
+            return self._teambattle_scale_allies(allies, fight_add_pct)
         if kind == "peer":
             peer = self._find_peer_by_player_id(str(member["PlayerId"]))
             if peer is None:
@@ -610,7 +628,12 @@ class TeambattleHandlersMixin:
                     "HeadImageId": int(npc["headImageId"]),
                 }
             )
-        return {"GuildPlayer": [], "FriendPlayer": friend_list}
+        guild_list = (
+            [g for g in self._guild_teammate_candidates(in_team_ids) if str(g["PlayerId"]) not in in_team_ids]
+            if hasattr(self, "_guild_teammate_candidates")
+            else []
+        )
+        return {"GuildPlayer": guild_list, "FriendPlayer": friend_list}
 
     def _rpc_teambattle_invite_friends(self, data: Any) -> dict[str, Any]:
         if not self._teambattle_is_open():
@@ -646,6 +669,25 @@ class TeambattleHandlersMixin:
                     "FAP": int(card["FAP"]),
                     "HeadImageId": int(card["HeadImageId"]),
                     "FashionModelId": int(card.get("FashionModelId", 0)),
+                    "IsLeader": 0,
+                    "FightAdd": 0,
+                    "NodeModelId": node_id,
+                    "is_closer": True,
+                }
+            )
+        elif hasattr(self, "_guild_member_lookup") and self._guild_member_lookup(target_pid) is not None:
+            gm = self._guild_member_lookup(target_pid)
+            assert gm is not None
+            peer = self._find_peer_by_player_id(target_pid)
+            team["members"].append(
+                {
+                    "kind": "peer" if peer is not None else "guild_npc",
+                    "PlayerId": target_pid,
+                    "Name": str(gm.get("Name", "")),
+                    "Lv": int(gm.get("Lv", 1)),
+                    "FAP": int(gm.get("FAP", 0)),
+                    "HeadImageId": int(gm.get("HeadImageId", 12011004)),
+                    "FashionModelId": int(gm.get("FashionModelId", 0)),
                     "IsLeader": 0,
                     "FightAdd": 0,
                     "NodeModelId": node_id,

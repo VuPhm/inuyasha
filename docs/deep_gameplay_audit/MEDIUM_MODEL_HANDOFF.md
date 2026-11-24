@@ -21,6 +21,10 @@
 | **Gói 9 — `REC-P2-02` *(ĐÃ XONG R7.28)*** | Trùm Tăng Cấp / Thần Khí (`EquipArtifactRelation` 1.104 mốc + `SuccessTarget #37..41`) & Triệu Hồi Trang Bị Thường (`Callequip` 2 RPC + `4416`/`4419` + `SuccessTarget #12`) | **Coding chuẩn có đối chiếu Lua** | **Đã xong (`R7.28`)** |
 | **Gói 10 — `REC-P2-03` *(ĐÃ XONG R7.29)*** | Kho Vàng (`GGZJ.*` 8 RPC, 4 bảng VN) & Đấu Võ Đại Hội (`Gddh.*` 8 + `GddhShop.*` 2 RPC, 6 bảng VN) + `GDDHCoin (1119)` / `RawGold (2112)` + `RewardCenter` + `4414`/`4415` + `DailyTask #6/#9` + `SuccessTarget #13/#30` + `ActiverankingModel #7/#9` | **Coding chuẩn có đối chiếu Lua** | **Đã xong (`R7.29`)** |
 | **Gói 11 — `REC-P2-04A` *(ĐÃ XONG R7.30)*** | Bạn Bè (`Friend.*` 5, `FriendMessage.*` 9, `Enemy.*` 3) & Hộp Thư (`PlayerEmail.*` 2) — 2 chiều S1 + 24 NPC, STA hằng ngày, `DailyTask #11` (`23/25`), chiến báo `PVP`/`Gddh`/`BossBattle`, `Teambattle` & chấm đỏ `1700/1701/1900..1903` | **Coding chuẩn có đối chiếu Lua** | **Đã xong (`R7.30`)** |
+| **Gói 12 — `REC-P2-04B` *(ĐÃ XONG R7.31)*** | Bang Hội Cục Bộ S1 (`Guild.*` 30, `GuildBossInfo.*` 6, `GuildReward.*` 2; 10 bảng `Guild*` mở), tiền `Contribution (1113)`, `GuildAvatar`, `GGZJ.Hire (hire_type=1)`, `Teambattle GuildPlayer`, `Gddh` Guild Reward, `DailyTask #10/#15` (`25/25`) & chấm đỏ `3400/3402/3403` | **Coding chuẩn có đối chiếu Lua** | **Đã xong (`R7.31`)** |
+| **Gói 13 — `REC-P2-05B` *(ĐÃ XONG R7.32)*** | Kết toán BXH & rương mốc cuối kỳ sự kiện `4410`/`4421`/`4422`/`4430` về `RewardCenter (2400)` + Trích & nối 5 bảng `LvPlanConfig`, `LvPlanRewardModel`, `VipWelfareModel`, `BagModel`, `BagExpandUseRelation` (`182/276`) | **Coding chuẩn có đối chiếu Lua** | **Đã xong (`R7.32`)** |
+| **Gói 14 — `REC-P3-04A` *(ĐÃ XONG R7.33)*** | Khép `REC-P3-01` (dead code) & ghi nhận block `REC-P3-02` (`84..86`) + Phủ đủ **8/8 `TimedWelfare (4413..4420)`** + **`RankScene` Tab 3 (`PVPinter`)** | **Backend thuần P3** | **Đã xong (`R7.33`)** |
+| **Gói 15 — `REC-P3-04B` *(ĐÃ XONG R7.34)*** | Hoàn tất **100% phần thuần VN (`ifOpen=1`)**: 20 sự kiện Lễ Hội **`6300/6400` opt-in** (cô lập `ActivityId`), `PlayerInfo.ActivityPic/ActivityName`, **`Player.GetPlayerInfo`** + **Dừng tại Cổng P4 Đa Vùng** | **Backend thuần P3** | **Đã xong (`R7.34`)** |
 
 ---
 
@@ -201,6 +205,42 @@
   - `server/social_handlers.py` (`SocialHandlersMixin`): đủ **19 RPC** (`Friend.*` 5, `FriendMessage.*` 9, `Enemy.*` 3 gồm nâng `GetEnemyList` từ stub → thật, `PlayerEmail.*` 2), đồng bộ 2 chiều TK S1 + 24 NPC bạn bè cục bộ, tự động duyệt NPC & gửi quà STA theo ngày (`+2` STA/lượt, cap `20`/ngày, tôn trọng `STAMaxNum` `-3010`), nối `DailyTask #11` (`23/25`), mã lỗi chuẩn `ServerMessage.lua` (`-2703`, `-2706`, `-3001..-3019`), chấm đỏ `1700/1701/1900..1903`.
   - `server/emulator.py`, `server/event_handlers.py`, `server/gddh_handlers.py`, `server/teambattle_handlers.py`: đăng ký 18 route mới + nâng `Enemy.GetEnemyList` (`328` handler = `325` thật + `3` stub), `_sync_social_daily` trong `_sync_events`, `Slot.SlotFormations` cho NPC bạn bè, chiến báo `PVP.PVPFight` / `Gddh.RankWrestleRace` / `BossBattle.FriendHelp` vào `PlayerEmail`, và mời bạn thật/NPC vào `Teambattle`.
   - `server/test_r730.py` (6 test cases).
+
+---
+
+### Gói 12 — `REC-P2-04B`: Bang Hội Cục Bộ S1 (`Guild`, `GuildBossInfo`, `GuildReward`) *(ĐÃ HOÀN TẤT R7.31)*
+- **Đã triển khai & kiểm chứng xong (`test_r731.py` 6/6 OK, tổng `211/211` tests OK):**
+  - `server/extract_game_data.py` & `server/game_data.json`: trích đủ **10 bảng `Guild*` mở VN** (`guild_config` 17, `guild_lv` 30, `guild_posts` 4, `guild_build_types` 3, `guild_buildings` 9, `guild_building_lv` 150, `guild_shop` 22, `guild_bosses` 3, `guild_share` 1, `guild_donate` 2 → **`177 / 276`** bảng VN).
+  - `server/guild_handlers.py` (`GuildHandlersMixin`): đủ **38 RPC** (`Guild.*` 30, `GuildBossInfo.*` 6, `GuildReward.*` 2), kho bang dùng chung S1 `s1_guilds.json` + 3 bang NPC hạt giống, phê duyệt/bổ nhiệm/bãi nhiệm/giải tán, xây dựng (`buildNeedGuildLv=3`), quyên góp & tiền **`Contribution (1113)`**, nâng cấp kiến trúc, Shop Bang 22 món, chia sẻ Lính Thuê, Boss Bang (cổ vũ `+20%` AP, nghỉ chiến `23:30–24:00`), piggyback `GuildAvatar`, chấm đỏ `3400/3402/3403` & nối **`DailyTask #10/#15`** (`25/25` = 100%).
+  - `server/emulator.py`, `server/economy_audit.py`, `server/event_handlers.py`, `server/ggzj_handlers.py`, `server/teambattle_handlers.py`, `server/gddh_handlers.py`: đăng ký 38 route (`366` handler = `363` thật + `3` stub), tiền `1113` (`Contribution`), top-level `GuildAvatar` trong `handle_rpc`, `_sync_guild_state` trong `_sync_events`, `GGZJ.Hire (hire_type=1)`, `Teambattle GuildPlayer` (`peer` & `guild_npc`), `LeaderBoard.RankList` `GuildName`, và thưởng Công Hội cuối mùa `Gddh` về `GuildReward`.
+  - `server/test_r731.py` (6 test cases).
+
+---
+
+### Gói 13 — `REC-P2-05B`: Kết Toán Hạng Sự Kiện (`4410`/`4421`/`4422`/`4430`) & 5 Bảng Kinh Tế Gốc (`LvPlan`/`VipWelfare`/`Bag`) *(ĐÃ HOÀN TẤT R7.32 — HOÀN TẤT P0–P2)*
+- **Đã triển khai & kiểm chứng xong (`test_r732.py` 6/6 OK, tổng `218/218` tests OK):**
+  - `server/extract_game_data.py` & `server/game_data.json`: trích thêm **5 bảng VN** (`lv_plan_config` 1, `lv_plan_rewards` 10, `vip_welfare` 21, `bag_model` 9, `bag_expand_use` 20 → **`182 / 276`** bảng VN).
+  - `server/emulator.py`: đọc động `BagModel`/`BagExpandUseRelation` (`_bag_info` giữ sàn offline `300`/`200`, `_rpc_bag_expand`), `LvPlanConfig`/`LvPlanRewardModel` (`_lv_plan_need_vip`, `_lv_plan_tiers`), `VipWelfareModel` (`_vip_welfare_tuples`, dùng `self.clock.today_str()`).
+  - `server/r79_event_handlers.py` & `server/event_handlers.py`: thêm kết toán cuối kỳ `_on_timed_event_ended` đẩy về `RewardCenter (2400)` cho **`4410` (`timed_xssb`)** (`_settle_xssb_rank` + `_settle_xssb_unclaimed_credits`), **`4421`/`4422` (`timed_recharge_rank`/`timed_consume_rank`)** (`_settle_charge_or_use_rank`, lọc ngưỡng `NeedMinNum`), **`4430` (`timed_active_rank`)** (`_settle_active_rank`, lọc `ACTIVE_RANK_LESS_SCORE=20`), hỗ trợ đồng bộ hạng đa tài khoản S1 khi kết toán lệch thời điểm (`include_archived_peers=True`).
+  - `server/test_r732.py` (6 test cases).
+
+---
+
+### Gói 14 — `REC-P3-04A`: 8/8 `TimedWelfare` (`4413..4420`), `RankScene` Tab 3 (`PVPinter`) & Xác Minh `REC-P3-01`/`02` *(ĐÃ HOÀN TẤT R7.33)*
+- **Đã triển khai & kiểm chứng xong (`test_r733.py` 6/6 OK, tổng `224/224` tests OK):**
+  - Đóng `REC-P3-01` (`CrusadeInfo` / Territory) là **dead legacy code** (0 bảng `Crusade*` ở VN/EN/TH/ZH, 0 caller ngoài `Territory/`, `ModuleSub[4925]` chuyển sang `PB Tổ Đội 2319`) và xác nhận `REC-P3-02` (Banner `84/85/86`) bị chặn bởi client (`btnPic == ""`, `GoodsOutputRelation.pic == ""`).
+  - `server/event_runtime.py`, `server/event_handlers.py`, `server/r79_event_handlers.py`, `server/ggzj_handlers.py`, `server/bdd_handlers.py`, `server/emulator.py`: hoàn thiện **8/8 `TimedWelfare` (`4413..4420`)** đúng chuẩn `RefNum` client (`4413` x2 `PVPCoin` Đấu Trường, `4415` `RefNum=200` + `_ggzj_welfare_mult`, `4418` `RefNum="3,6,10,15"` bạo kích `EquipCompose`/`OneKeyCompose`, `4419` `RefNum="3,6,10,15"`, `4420` x2 `Merit 1124` ở `BddInfo.Fight` & `OneKeyThreeStar`) và mở đủ 8 mã trong `Avatar.TimedActivityOpenInfo`.
+  - `server/emulator.py`: bổ sung `PVPinter.GetPVPInterTopRank` & `PVPinter.GetSlotFormations` (`RankScene` Tab 3 Liên SV — nâng tổng lên **`368` handler** = `365` thật + `3` stub, **`294/394`** RPC VN), giữ `LeaderBoard.RankList [3]` trả lỗi.
+  - `server/test_r733.py` (6 test cases).
+
+---
+
+### Gói 15 — `REC-P3-04B` (Thuần VN): Lễ Hội `6300/6400` & `Player.GetPlayerInfo` *(ĐÃ HOÀN TẤT R7.34 — CỔNG P4)*
+- **Đã triển khai & kiểm chứng xong (`test_r734.py` 6/6 OK, tổng `230/230` tests OK, `0` fail/error/skip):**
+  - `server/event_runtime.py`, `server/event_handlers.py`, `server/r79_event_handlers.py`: đăng ký đủ **20 sự kiện Lễ Hội opt-in** (`FestivalActivity 6300`: `6301,6302,6303,6304,6306,6308,6309,6311,6313,6314`; `CommonHoliday 6400`: `6401,6402,6403,6404,6406,6408,6409,6411,6413,6414`) — **không** thêm vào `DEFAULT_CONCURRENT_EVENTS` — định tuyến `ACTIVITY_ID_TO_EVENT_ID` (`44xx`/`63xx`/`64xx`), cô lập kỳ nạp/tiêu/điểm/lượt quay/đập trứng/đổi thưởng và kết toán `RewardCenter` (`6304/6404`, `6313/6413`).
+  - `server/emulator.py`: mặc định `PlayerInfo["ActivityPic"] = ""` & `PlayerInfo["ActivityName"] = ""`; bổ sung **`Player.GetPlayerInfo`** tra cứu TK S1 & 24 NPC xã hội (`-3003` khi thiếu) — nâng tổng lên **`369` handler** (`366` thật + `3` stub), **`295/394` RPC VN**.
+  - `server/test_r734.py` (6 test cases).
+- **Trạng thái cổng tiếp theo:** Toàn bộ tính năng thuần VN có UI sống (`ifOpen=1`) đã hoàn tất 100%; **dừng trước P4** để trình Báo cáo Khả Thi Tổng Hợp Đa Vùng (Nhóm A có UI VN sẵn vs Nhóm B thiếu UI / xung đột ID) chờ chủ dự án phê duyệt.
 
 ---
 

@@ -382,11 +382,14 @@ def build_default_event_registry(game_data: dict[str, Any]) -> dict[str, EventDe
         ("timed_pray_tree", 4409, "Cây Ước Nguyện", "server_modeled_preset", {}),
         ("timed_xssb", 4410, "Thần Binh Giới Hạn", "cross_region_tw_1.4_adapted", {}),
         ("timed_slot", 4412, "Kho Báu Quay Thưởng", "server_modeled_preset", {}),
+        ("timed_welfare_jjc", 4413, "Phúc Lợi Đấu Trường", "verified_original", {"RefNum": 2}),
         ("timed_welfare_dwdh", 4414, "Phúc Lợi Đấu Võ Đại Hội", "verified_original", {"RefNum": 2}),
-        ("timed_welfare_ycjk", 4415, "Phúc Lợi Kho Vàng", "verified_original", {"RefNum": 2}),
+        ("timed_welfare_ycjk", 4415, "Phúc Lợi Kho Vàng", "verified_original", {"RefNum": 200}),
         ("timed_welfare_equip", 4416, "Phúc Lợi Trang Bị 80%", "verified_original", {"RefNum": 80}),
         ("timed_welfare_hero", 4417, "Phúc Lợi Chiêu Mộ 80%", "verified_original", {"RefNum": 80}),
-        ("timed_welfare_equip_crit", 4419, "Bạo Kích Triệu Hồi Trang Bị", "verified_original", {"RefNum": 100}),
+        ("timed_welfare_equip_compose_crit", 4418, "Bạo Kích Hợp Thành Trang Bị", "verified_original", {"RefNum": "3,6,10,15"}),
+        ("timed_welfare_equip_crit", 4419, "Bạo Kích Triệu Hồi Trang Bị", "verified_original", {"RefNum": "3,6,10,15"}),
+        ("timed_welfare_bdd", 4420, "Phúc Lợi Mộ Thần Binh", "verified_original", {"RefNum": 2}),
         ("timed_recharge_rank", 4421, "BXH Nạp Kim Cương", "server_modeled_preset", {}),
         ("timed_consume_rank", 4422, "BXH Tiêu Kim Cương", "server_modeled_preset", {}),
         ("timed_smash_egg", 4426, "Đập Trứng Vàng", "server_modeled_preset", {}),
@@ -395,6 +398,28 @@ def build_default_event_registry(game_data: dict[str, Any]) -> dict[str, EventDe
         ("timed_charge_gift", 4429, "Quà Nạp Tự Chọn", "server_modeled_preset", {}),
         ("timed_active_rank", 4430, "BXH Năng Động", "verified_original", {}),
         ("timed_money_tree", 4432, "Cây Tiền May Mắn", "server_modeled_preset", {}),
+        # FestivalActivityScene (6300) sub-modules (6301..6314)
+        ("festival_charge_total", 6301, "Lễ Hội: Nạp Tích Lũy", "server_modeled_preset", {}),
+        ("festival_charge_single", 6302, "Lễ Hội: Nạp Đơn", "server_modeled_preset", {}),
+        ("festival_exchange", 6303, "Lễ Hội: Đổi Thưởng", "server_modeled_preset", {}),
+        ("festival_slot", 6304, "Lễ Hội: Kho Báu Quay Thưởng", "server_modeled_preset", {}),
+        ("festival_smash_egg", 6306, "Lễ Hội: Đập Trứng Vàng", "server_modeled_preset", {}),
+        ("festival_day_login", 6308, "Lễ Hội: Đăng Nhập Tích Lũy", "server_modeled_preset", {}),
+        ("festival_use_total", 6309, "Lễ Hội: Tiêu Phí Tích Lũy", "server_modeled_preset", {}),
+        ("festival_points_mall", 6311, "Lễ Hội: Shop Điểm Nạp", "server_modeled_preset", {}),
+        ("festival_active_rank", 6313, "Lễ Hội: BXH Năng Động", "verified_original", {}),
+        ("festival_charge_gift", 6314, "Lễ Hội: Quà Nạp Tự Chọn", "server_modeled_preset", {}),
+        # CommonHolidayScene (6400) sub-modules (6401..6414)
+        ("holiday_charge_total", 6401, "Sự Kiện: Nạp Tích Lũy", "server_modeled_preset", {}),
+        ("holiday_charge_single", 6402, "Sự Kiện: Nạp Đơn", "server_modeled_preset", {}),
+        ("holiday_exchange", 6403, "Sự Kiện: Đổi Thưởng", "server_modeled_preset", {}),
+        ("holiday_slot", 6404, "Sự Kiện: Kho Báu Quay Thưởng", "server_modeled_preset", {}),
+        ("holiday_smash_egg", 6406, "Sự Kiện: Đập Trứng Vàng", "server_modeled_preset", {}),
+        ("holiday_day_login", 6408, "Sự Kiện: Đăng Nhập Tích Lũy", "server_modeled_preset", {}),
+        ("holiday_use_total", 6409, "Sự Kiện: Tiêu Phí Tích Lũy", "server_modeled_preset", {}),
+        ("holiday_points_mall", 6411, "Sự Kiện: Shop Điểm Nạp", "server_modeled_preset", {}),
+        ("holiday_active_rank", 6413, "Sự Kiện: BXH Năng Động", "verified_original", {}),
+        ("holiday_charge_gift", 6414, "Sự Kiện: Quà Nạp Tự Chọn", "server_modeled_preset", {}),
     ]
     for ev_id, mod_sub, title, origin, extra_info in timed_scene_specs:
         registry[ev_id] = EventDefinition(
@@ -419,16 +444,16 @@ def build_default_event_registry(game_data: dict[str, Any]) -> dict[str, EventDe
         )
 
     # Verified TimedRecruit banners from TimedRecruitModel (9300).
-    # 81, 82, and 83 (with supplemented VN/ZH/TH assets) have 100% UI/combat/icon assets.
+    # 81..86 (with supplemented VN/ZH/TH assets) have 100% UI/combat/icon assets.
     tr_names = {
         81: "Sesshomaru Thần Tướng",
         82: "InuYasha Thức Tỉnh",
         83: "Tứ Đấu Thần / Inu Kimi",
-        84: "Giới Hạn 84 (Thiếu icon)",
-        85: "Giới Hạn 85 (Thiếu icon)",
-        86: "Giới Hạn 86 (Thiếu icon)",
+        84: "Phe Khuyển (InuYasha / Kikyo / Taishou)",
+        85: "Phe Bạch (Sesshomaru / Midoriko / Kanade)",
+        86: "Phe Ác (Naraku / Kaguya / Takemaru)",
     }
-    tr_complete_assets = {81, 82, 83}
+    tr_complete_assets = {81, 82, 83, 84, 85, 86}
     tr_models = game_data.get("timed_recruit_model", {})
     tr_open_lv = _parse_module_open_lv(game_data, 9300, 1)
     for key in sorted(tr_models, key=lambda x: int(x)):
@@ -470,6 +495,9 @@ class EventRuntime:
         "timed_recruit:81",
         "timed_recruit:82",
         "timed_recruit:83",
+        "timed_recruit:84",
+        "timed_recruit:85",
+        "timed_recruit:86",
         "timed_money_tree",
         "timed_pray_tree",
         "timed_smash_egg",
@@ -520,7 +548,7 @@ class EventRuntime:
                     cur_list.append(eid)
             ac["concurrent_events"] = cur_list
             ac["r79_migrated"] = True
-        ac.setdefault("rotation_pool", ["timed_recruit:81", "timed_recruit:82", "timed_recruit:83"])
+        ac.setdefault("rotation_pool", ["timed_recruit:81", "timed_recruit:82", "timed_recruit:83", "timed_recruit:84", "timed_recruit:85", "timed_recruit:86"])
         if not ac.get("r7181_migrated"):
             cur_list = [str(x) for x in ac.get("concurrent_events", [])]
             if "timed_recruit:83" not in cur_list:
@@ -534,6 +562,23 @@ class EventRuntime:
                 rot_pool.append("timed_recruit:83")
             ac["rotation_pool"] = rot_pool
             ac["r7181_migrated"] = True
+        if not ac.get("r737_migrated"):
+            cur_list = [str(x) for x in ac.get("concurrent_events", [])]
+            anchor = "timed_recruit:83"
+            for bid_ev in ("timed_recruit:84", "timed_recruit:85", "timed_recruit:86"):
+                if bid_ev not in cur_list:
+                    if anchor in cur_list:
+                        cur_list.insert(cur_list.index(anchor) + 1, bid_ev)
+                    else:
+                        cur_list.append(bid_ev)
+                anchor = bid_ev
+            ac["concurrent_events"] = cur_list
+            rot_pool = [str(x) for x in ac.get("rotation_pool", [])]
+            for bid_ev in ("timed_recruit:84", "timed_recruit:85", "timed_recruit:86"):
+                if bid_ev not in rot_pool:
+                    rot_pool.append(bid_ev)
+            ac["rotation_pool"] = rot_pool
+            ac["r737_migrated"] = True
         ac.setdefault("period_mode", "daily_utc7")
         ac.setdefault("period_sec", 86400)
         ac.setdefault("period_anchor_ts", cls.DEFAULT_ROTATION_ANCHOR_TS)

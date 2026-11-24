@@ -32,6 +32,7 @@ ALLOWED_PLAYER_RESOURCES = {
     "EXP": "EXP",
     "PVPCoin": "PVPCoin",
     "BossCoin": "BossCoin",
+    "Contribution": "Contribution",
     "Merit": "Merit",
     "GDDHCoin": "GDDHCoin",
     "RebornCoin": "RebornCoin",

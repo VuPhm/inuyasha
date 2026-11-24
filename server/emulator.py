@@ -34,6 +34,7 @@ import re
 import secrets
 import signal
 import socketserver
+import sys
 import threading
 import time
 import urllib.parse
@@ -51,6 +52,7 @@ from event_handlers import EventHandlersMixin
 from event_runtime import EventClock, EventRuntime, build_default_event_registry
 from gddh_handlers import GddhHandlersMixin
 from ggzj_handlers import GgzjHandlersMixin
+from guild_handlers import GuildHandlersMixin
 from nightmare_handlers import (
     _CAMPAIGN_FAP_ANCHORS,
     NightmareHandlersMixin,
@@ -118,6 +120,9 @@ ENV_PRESETS: dict[str, dict[str, Any]] = {
     },
 }
 
+SOUL_BOX_GOODS_ID = 16030003  # Quà Đá Hồn 3 (+3000 HeroEXP / hộp)
+SOUL_BOX_SHOP_MAX_NUM = 200
+
 # Exact VN client Config/LvPlanRewardModel.lua & LvPlanConfig.lua
 LV_PLAN_NEED_VIP = 2
 LV_PLAN_NEED_DIAMOND = 100
@@ -166,6 +171,7 @@ CHARGE_BOX_REWARDS: dict[int, str] = {
     900: "1606,16060019,1||1605,16050010,30||1603,16030008,10||1605,16050001,1000||1112,0,500000",
 }
 CHARGE_TIERS: list[dict[str, Any]] = [
+    {"ProductId": "com.cmn.inuyasha.gem1000000", "ChargePoint": 1000000, "GamePoint": 1000000, "GiveGamePoint": 0, "Ratio": 1, "Instant": True},
     {"ProductId": "com.cmn.inuyasha.gem60", "ChargePoint": 60, "GamePoint": 60, "GiveGamePoint": 60, "Ratio": 2},
     {"ProductId": "com.cmn.inuyasha.gem180", "ChargePoint": 180, "GamePoint": 180, "GiveGamePoint": 180, "Ratio": 2},
     {"ProductId": "com.cmn.inuyasha.gem300", "ChargePoint": 300, "GamePoint": 300, "GiveGamePoint": 300, "Ratio": 2},
@@ -224,6 +230,9 @@ DEFAULT_PLAYER_STATS: dict[str, int] = {
     "gddh_fights": 0,
     "gddh_wins": 0,
     "friend_sta_sent": 0,
+    "guild_build_count": 0,
+    "guild_share_count": 0,
+    "guild_boss_fights": 0,
     "recharged_diamonds": 0,
     "spent_diamonds": 0,
 }
@@ -382,6 +391,7 @@ class ProfileStore(
     GgzjHandlersMixin,
     GddhHandlersMixin,
     SocialHandlersMixin,
+    GuildHandlersMixin,
 ):
     """Single-profile game state & RPC engine backed by extracted VN/EN config."""
 
@@ -429,6 +439,16 @@ class ProfileStore(
             self.state,
         )
         self._recalc_all_slots_and_fap()
+        if self.persist and self.state_path:
+            self._write_json_atomic(self.state_path, self.state)
+
+    @property
+    def is_debug_profile(self) -> bool:
+        return self.profile_name == "debug"
+
+    @property
+    def is_normal_gameplay(self) -> bool:
+        return self.profile_name != "debug"
 
     def now_ts(self) -> int:
         return self.clock.now()
@@ -502,6 +522,8 @@ class ProfileStore(
         data.setdefault("recruit_state", {"MidAlreadyUseResource": False, "HigAlreadyUseResource": False, "OutZiCount": 5})
         data.setdefault("explore", self._default_explore_state())
         data.setdefault("shop_bought", {})
+        data.setdefault("shop_bought_date", self.clock.today_str())
+        data.setdefault("shop_daily_reset_count", 0)
         data.setdefault("lv_plan", {"open": False, "rewarded": []})
         data.setdefault("vip_welfare_drawn_date", "")
         data.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}})
@@ -605,10 +627,13 @@ class ProfileStore(
         p.setdefault("GDDHCoin", 0)
         p.setdefault("BossCoin", int(boss_state.get("jifen", 0)))
         p.setdefault("RebornCoin", 0)
+        p.setdefault("Contribution", 0)
         p.setdefault("FashionModelId", 0)
         p.setdefault("GuildId", EMPTY_ENTITY_ID)
         p.setdefault("GuildName", "")
         p.setdefault("PVPInterLv", 0)
+        p.setdefault("ActivityPic", "")
+        p.setdefault("ActivityName", "")
         data.setdefault("rewards_center", [])
         data.setdefault("xxbz_lifetime", {})
         data.setdefault("reborn_goods", [])
@@ -617,6 +642,7 @@ class ProfileStore(
         data.setdefault("ggzj", {})
         data.setdefault("gddh", {})
         self._ensure_social_container(data)
+        self._ensure_player_guild_container(data)
         if not isinstance(data.get("callequip"), dict):
             data["callequip"] = {}
         if not isinstance(data.get("nightmare"), dict):
@@ -689,7 +715,7 @@ class ProfileStore(
     LEGACY_RESOURCE_REMAPPING: dict[tuple[int, int], tuple[int, int]] = {
         (1503, 15030101): (1503, 15032101),
     }
-    _ATTR_RESOURCE_TYPES: frozenset[int] = frozenset({1101, 1102, 1103, 1111, 1112, 1115, 1116, 1117, 1119, 1120, 1124, 1128, 2112})
+    _ATTR_RESOURCE_TYPES: frozenset[int] = frozenset({1101, 1102, 1103, 1111, 1112, 1113, 1115, 1116, 1117, 1119, 1120, 1124, 1128, 2112})
 
     def _is_valid_resource(self, rtype: int, rmodel: int) -> bool:
         """Check whether (TypeId, ModelId) exists in game_data and can be rendered by client."""
@@ -1427,8 +1453,15 @@ class ProfileStore(
         return result
 
     def _mate_slot_unlocked(self, slot_id: int) -> bool:
-        row = self.game_data["attrtree_slots"].get(str(20 + slot_id))
-        return slot_id > 0 and bool(row and self.state["player"].get("StarId", 0) >= row["needAttrTreeID"])
+        if slot_id <= 0:
+            return False
+        star_row = self.game_data.get("attrtree_slots", {}).get(str(20 + slot_id))
+        if star_row is not None:
+            return int(self.state["player"].get("StarId", 0)) >= int(star_row.get("needAttrTreeID", 0))
+        vip_row = self.game_data.get("vip_slot_relation", {}).get(str(slot_id))
+        if vip_row is not None:
+            return int(self.state["player"].get("Vip", 0)) >= int(vip_row.get("LV", 0))
+        return False
 
     def _mate_slot_info(self) -> list[dict[str, Any]]:
         heroes = {hero["Id"]: hero["HeroModelId"] for hero in self.state["heroes"]}
@@ -1498,7 +1531,7 @@ class ProfileStore(
         return out
 
     def _sync_main_hero_model(self, state: dict[str, Any] | None = None) -> bool:
-        """Keep the main hero HeroModelId synchronized with StarId/Step/Gender per AttrtreeHeromodelRelation."""
+        """Keep the main hero HeroModelId and Lv synchronized with StarId/Step/Gender/PlayerLv."""
         st = state if state is not None else getattr(self, "state", None)
         tbl = self.game_data.get("attrtree_heromodel", {})
         if not isinstance(st, dict) or not tbl or not st.get("slots"):
@@ -1514,10 +1547,21 @@ class ProfileStore(
         girl_models = {int(r["girlHeroModelID"]) for r in tbl.values()}
         mc_models = boy_models | girl_models
         cur_model = int(hero.get("HeroModelId", 0))
-        if cur_model not in mc_models:
+        hero_cfg = self.game_data.get("heroes", {}).get(str(cur_model), {})
+        if cur_model not in mc_models and int(hero_cfg.get("specialType", 0)) != 255:
             return False
 
         player = st.get("player", {})
+        changed = False
+        if self.is_normal_gameplay:
+            player_lv = max(1, int(player.get("Lv", 1)))
+            if int(hero.get("Lv", 1)) != player_lv:
+                hero["Lv"] = player_lv
+                changed = True
+
+        if cur_model not in mc_models:
+            return changed
+
         star_id = int(player.get("StarId", 0))
         step = int(hero.get("Step", 0))
         tier_ids = sorted(int(k) for k in tbl if str(k).isdigit())
@@ -1532,7 +1576,7 @@ class ProfileStore(
         target_model = int(row["boyHeroModelID"] if gender == 0 else row["girlHeroModelID"])
 
         if cur_model == target_model and int(slot1.get("HeroModelId", 0)) == target_model:
-            return False
+            return changed
         hero["HeroModelId"] = target_model
         slot1["HeroModelId"] = target_model
         if int(player.get("HeadImageId", 0)) in mc_models:
@@ -1687,6 +1731,8 @@ class ProfileStore(
             },
             "explore": self._default_explore_state(),
             "shop_bought": {},
+            "shop_bought_date": self.clock.today_str(),
+            "shop_daily_reset_count": 0,
             "vip_gift_bought": [],
             "lv_plan": {"open": False, "rewarded": []},
             "vip_welfare_drawn_date": "",
@@ -1875,6 +1921,7 @@ class ProfileStore(
             1103: "STA",
             1111: "Diamond",
             1112: "Gold",
+            1113: "Contribution",
             1115: "PVPCoin",
             1116: "HeroCoin",
             1117: "HeroEXP",
@@ -2130,12 +2177,11 @@ class ProfileStore(
                         tx_prefix=f"lvup:{self.profile_name}:{self.state['player']['PlayerId']}:{lv_step}",
                     )
             # MainHero (specialType=255 or Slot 1 hero) tracks player Lv
-            if self.profile_name == "normal" and self.state["slots"]:
+            if self.is_normal_gameplay and self.state["slots"]:
                 main_hid = self.state["slots"][0].get("HeroId")
                 for h in self.state["heroes"]:
-                    if h["Id"] == main_hid:
+                    if h["Id"] == main_hid or int(self.game_data["heroes"].get(str(h.get("HeroModelId", 0)), {}).get("specialType", 0)) == 255:
                         h["Lv"] = new_lv
-                        break
                 self._recalc_all_slots_and_fap()
             self._unlock_eligible_next_chapters()
             self._sync_limitthebounty_trigger_lv()
@@ -2275,7 +2321,7 @@ class ProfileStore(
             "BuffList": ",".join(bid for bid in buff_ids if bid in buff_cfg and supports_talent_buff(buff_cfg[bid], buff_cfg)),
             "IsBoss": is_boss,
             "BodyTypeR": 12500 if is_boss else 10000,
-            "Step": step if self.profile_name == "normal" else max(1, step),
+            "Step": step if self.is_normal_gameplay else max(1, step),
             "RebornStep": reborn_step,
             "LargePic": cfg["largePic"],
             "SmallPic": cfg["smallPic"],
@@ -2341,6 +2387,7 @@ class ProfileStore(
             "Player.GetStepCountReward": self._rpc_get_step_count_reward,
             "Player.AlterPlayerHeadId": self._rpc_alter_player_head_id,
             "Player.AlterPlayerName": self._rpc_alter_player_name,
+            "Player.GetPlayerInfo": self._rpc_player_get_player_info,
             "Bag.BagExpand": self._rpc_bag_expand,
             "HeroRecruit.RecruitInfo": self._rpc_recruit_info,
             "HeroRecruit.Recruit": self._rpc_recruit,
@@ -2426,6 +2473,7 @@ class ProfileStore(
             "ShopGoods.ShopGoodsList": self._rpc_shop_goods_list,
             "ShopGoods.GetShopGoodsInfo": self._rpc_get_shop_goods_info,
             "ShopGoods.BuyGoods": self._rpc_shop_buy_goods,
+            "ShopGoods.ResetDaily": self._rpc_shop_reset_daily,
             "ShopGift.ShopGiftList": self._rpc_shop_gift_list,
             "ShopGift.BuyGift": self._rpc_shop_buy_gift,
             "Goods.GoodsUse": self._rpc_goods_use,
@@ -2477,7 +2525,10 @@ class ProfileStore(
             "LeaderBoard.RankList": self._rpc_leaderboard_rank_list,
             "LeaderBoard.Praise": self._rpc_leaderboard_praise,
             "LeaderBoard.Formation": self._rpc_leaderboard_formation,
+            "PVPinter.GetPVPInterTopRank": self._rpc_pvpinter_top_rank,
+            "PVPinter.GetSlotFormations": self._rpc_pvpinter_slot_formations,
             "PVPShop.PVPShopBuy": self._rpc_pvp_shop_buy,
+            "PVPShop.ResetDaily": self._rpc_pvp_shop_reset_daily,
             "Daydayfund.GetInfo": self._rpc_daydayfund_get_info,
             "Daydayfund.Invest": self._rpc_daydayfund_invest,
             "Daydayfund.Harvest": self._rpc_daydayfund_harvest,
@@ -2551,6 +2602,7 @@ class ProfileStore(
             "MysteryShop.SeniorGetInfo": self._rpc_mystery_shop_senior_get_info,
             "MysteryShop.SeniorRefreshtGoodsList": self._rpc_mystery_shop_senior_refresh,
             "MysteryShop.SeniorMysteryShopBuyGoods": self._rpc_mystery_shop_senior_buy,
+            "MysteryShop.ResetDaily": self._rpc_mystery_shop_reset_daily,
             "SuccessTargetInfo.GetInfo": self._rpc_success_target_get_info,
             "SuccessTargetInfo.DrawReward": self._rpc_success_target_draw_reward,
             "SuccessTargetInfo.DrawTotalReward": self._rpc_success_target_draw_total_reward,
@@ -2654,6 +2706,45 @@ class ProfileStore(
             "Gddh.GetWrestleRaceReviveList": self._rpc_gddh_get_revive_list,
             "GddhShop.GetWrestleRaceShopInfo": self._rpc_gddh_shop_info,
             "GddhShop.WrestleRaceShopBuy": self._rpc_gddh_shop_buy,
+            "Guild.CreateGuild": self._rpc_guild_create,
+            "Guild.GetGuildInfo": self._rpc_guild_get_info,
+            "Guild.GetApplyGuildInfo": self._rpc_guild_get_apply_info,
+            "Guild.GetApplyGuildInfoForNotFull": self._rpc_guild_get_apply_not_full,
+            "Guild.GuildQuery": self._rpc_guild_query,
+            "Guild.GetGuildRankListForWeek": self._rpc_guild_get_rank_week,
+            "Guild.GuildApply": self._rpc_guild_apply,
+            "Guild.GuildCancelApply": self._rpc_guild_cancel_apply,
+            "Guild.GetApplyList": self._rpc_guild_get_apply_list,
+            "Guild.ManageApply": self._rpc_guild_manage_apply,
+            "Guild.AlterAutoApply": self._rpc_guild_alter_auto_apply,
+            "Guild.AlterFapLimit": self._rpc_guild_alter_fap_limit,
+            "Guild.UpdateNotice": self._rpc_guild_update_notice,
+            "Guild.UpdateDeclaration": self._rpc_guild_update_declaration,
+            "Guild.GetGuildMembers": self._rpc_guild_get_members,
+            "Guild.PostChange": self._rpc_guild_post_change,
+            "Guild.PostAlter": self._rpc_guild_post_alter,
+            "Guild.PostAssignment": self._rpc_guild_post_assignment,
+            "Guild.KickOutGuild": self._rpc_guild_kick_out,
+            "Guild.ExitGuild": self._rpc_guild_exit,
+            "Guild.DismissGuild": self._rpc_guild_dismiss,
+            "Guild.GuildImpeach": self._rpc_guild_impeach,
+            "Guild.GuildBuild": self._rpc_guild_build,
+            "Guild.GetGuildBuildLog": self._rpc_guild_get_build_log,
+            "Guild.GuildContribute": self._rpc_guild_contribute,
+            "Guild.GuildBuildingLvUp": self._rpc_guild_building_lv_up,
+            "Guild.GetGuildShopBuyList": self._rpc_guild_shop_buy_list,
+            "Guild.GuildShopBuy": self._rpc_guild_shop_buy,
+            "Guild.ResetGuildShopDaily": self._rpc_guild_shop_reset_daily,
+            "Guild.GetGuildShare": self._rpc_guild_get_share,
+            "Guild.GuildShare": self._rpc_guild_share,
+            "GuildBossInfo.GetGuildBoss": self._rpc_guild_boss_get,
+            "GuildBossInfo.GetRankList": self._rpc_guild_boss_rank_list,
+            "GuildBossInfo.Inspire": self._rpc_guild_boss_inspire,
+            "GuildBossInfo.GetFightInfo": self._rpc_guild_boss_get_fight_info,
+            "GuildBossInfo.Fight": self._rpc_guild_boss_fight,
+            "GuildBossInfo.ResetFightCount": self._rpc_guild_boss_reset_count,
+            "GuildReward.Rewars": self._rpc_guild_reward_list,
+            "GuildReward.DrawGiftBags": self._rpc_guild_reward_draw,
             "Account.List": self._rpc_account_list,
             "Account.Switch": self._rpc_account_switch,
             "Account.Create": self._rpc_account_create,
@@ -2726,12 +2817,15 @@ class ProfileStore(
             avatar["TimedActivityOpenInfo"] = timed_open
             avatar["RedDotInfo"] = self._compute_red_dot_info()
 
-        return {
+        resp: dict[str, Any] = {
             "Status": status,
             "TimeTick": self.now_ts(),
             "Avatar": avatar,
             "Value": value,
         }
+        if self._last_rpc_context.get("guild_avatar"):
+            resp["GuildAvatar"] = self._last_rpc_context["guild_avatar"]
+        return resp
 
     def _rpc_login(self, _data: Any) -> dict[str, Any]:
         self._sync_events()
@@ -2763,7 +2857,7 @@ class ProfileStore(
         self.state["player"]["HeadImageId"] = main_model_id
         self.state["player"]["IsNewPlayer"] = 0
 
-        if self.profile_name == "normal":
+        if self.is_normal_gameplay:
             main_hero = self._build_hero_instance(main_model_id, lv=1, step=0)
             self.state["heroes"] = [main_hero]
             self.state["slots"][0]["HeroId"] = main_hero["Id"]
@@ -2783,10 +2877,15 @@ class ProfileStore(
         return {"PlayerId": self.state["player"]["PlayerId"]}
 
     def _rpc_get_init_data(self, _data: Any) -> dict[str, Any]:
+        if self._sync_main_hero_model():
+            self._recalc_all_slots_and_fap()
+            self.save()
         self._sync_events()
         self._sync_player_recover_times()
         self._sync_limitthebounty_trigger_lv()
         self.state["player"]["OpencontestState"] = 1
+        self.state["player"].setdefault("ActivityPic", "")
+        self.state["player"].setdefault("ActivityName", "")
         timed_open = self._build_timed_activity_open_info()
         has_44xx = any(4400 <= int(k) < 4500 for k in timed_open if str(k).isdigit())
         has_63xx = any(6300 <= int(k) < 6400 for k in timed_open if str(k).isdigit())
@@ -2978,6 +3077,80 @@ class ProfileStore(
         self.save()
         return {"PlayerName": new_name}
 
+    def _rpc_player_get_player_info(self, data: Any) -> dict[str, Any]:
+        """Lookup active S1 player or social NPC summary by exact name or PlayerId (ChatLayer private chat)."""
+        query = str(data[0]).strip() if isinstance(data, list) and data and data[0] is not None else ""
+        if not query:
+            self._last_rpc_context["status"] = -3003
+            return {}
+
+        def _format_summary(
+            *,
+            pid: str,
+            pname: str,
+            fap: int,
+            lv: int,
+            head_id: int,
+            fashion_id: int,
+            vip: int,
+            guild_name: str,
+        ) -> dict[str, Any]:
+            quality = int(self.game_data.get("heroes", {}).get(str(head_id), {}).get("quality", 13))
+            return {
+                "PlayerId": pid,
+                "PlayerName": pname,
+                "FAP": int(fap),
+                "LV": int(lv),
+                "Lv": int(lv),
+                "HeadImageId": int(head_id),
+                "FashionModelId": int(fashion_id),
+                "Vip": int(vip),
+                "Quality": quality,
+                "PVPInterLv": 0,
+                "GuildName": guild_name,
+            }
+
+        q_lower = query.lower()
+        for prof in [self] + self._get_peer_s1_profiles():
+            pp = prof.state.get("player", {})
+            if prof is not self and int(pp.get("IsNewPlayer", 0)) != 0:
+                continue
+            pid = str(pp.get("PlayerId", ""))
+            pname = str(pp.get("PlayerName", "") or "")
+            if pid == query or pname.lower() == q_lower:
+                head_id = self._valid_hero_head_id(int(pp.get("HeadImageId", 0)), prof.state.get("slots", []))
+                return _format_summary(
+                    pid=pid,
+                    pname=pname,
+                    fap=int(pp.get("FAP", 0)),
+                    lv=int(pp.get("Lv", 1)),
+                    head_id=head_id,
+                    fashion_id=int(pp.get("FashionModelId", 0)),
+                    vip=int(pp.get("Vip", 0)),
+                    guild_name=str(pp.get("GuildName", "") or ""),
+                )
+
+        from social_handlers import FRIEND_NPC_COUNT, _FRIEND_NPC_NAMES
+
+        for idx in range(1, FRIEND_NPC_COUNT + 1):
+            npc_pid = _det_uuid(f"friend_npc:{idx}")
+            npc_name = _FRIEND_NPC_NAMES[(idx - 1) % len(_FRIEND_NPC_NAMES)]
+            if npc_pid == query or npc_name.lower() == q_lower:
+                npc = self._social_npc_profile(idx)
+                return _format_summary(
+                    pid=str(npc["PlayerId"]),
+                    pname=str(npc["Name"]),
+                    fap=int(npc["FAP"]),
+                    lv=int(npc["Lv"]),
+                    head_id=int(npc["HeadImageId"]),
+                    fashion_id=int(npc.get("FashionModelId", 0)),
+                    vip=2,
+                    guild_name="",
+                )
+
+        self._last_rpc_context["status"] = -3003
+        return {}
+
     def _inc_stat(self, key: str, delta: int = 1) -> int:
         stats = self.state.setdefault("stats", dict(DEFAULT_PLAYER_STATS))
         stats[key] = int(stats.get(key, 0)) + int(delta)
@@ -3035,9 +3208,11 @@ class ProfileStore(
 
     def _bag_info(self, bag_id: int) -> dict[str, int]:
         # Saves store purchases only. Derive Size for old and new accounts alike.
-        base = 300 if bag_id == 5 else 200
+        bm = self.game_data.get("bag_model", {}).get(str(bag_id), {})
+        base = max(300 if bag_id == 5 else 200, int(bm.get("initSize", 0)))
+        per_expand = max(1, int(bm.get("perExpandSize", 5)))
         expanded = int(self.state.get("bag_expansions", {}).get(str(bag_id), 0))
-        return {"BagModelId": bag_id, "Size": base + 5 * expanded, "ExpandNum": expanded}
+        return {"BagModelId": bag_id, "Size": base + per_expand * expanded, "ExpandNum": expanded}
 
     def _rpc_bag_expand(self, data: Any) -> dict[str, Any]:
         bag_id = int(data[0]) if isinstance(data, list) and data else 0
@@ -3045,10 +3220,12 @@ class ProfileStore(
             self._last_rpc_context["status"] = -1
             return {}
         expansion = self._bag_info(bag_id)["ExpandNum"] + 1
-        if expansion > 20:
+        expand_tbl = self.game_data.get("bag_expand_use", {})
+        max_expand = max((int(k) for k in expand_tbl), default=20)
+        if expansion > max_expand:
             self._last_rpc_context["status"] = -1
             return {}
-        cost = 10 * expansion  # BagExpandUseRelation, rows 1–20
+        cost = int(expand_tbl.get(str(expansion), {}).get("useDiamondNum", 10 * expansion))
         if int(self.state["player"].get("Diamond", 0)) < cost:
             self._last_rpc_context["status"] = -1105
             return {}
@@ -3342,6 +3519,8 @@ class ProfileStore(
         pity_interval = int(cfg.get("sureOutLvFourInterval", 9))
         drops: list[tuple[int, int, int]] = []
         crit_active = bool(self.event_runtime.get_active_timed_events(4419, self.state["player"]))
+        crit_qualities = self._timed_welfare_qualities(4419)
+        equips_cfg = self.game_data.get("equips", {})
         for _ in range(types):
             if consume == 3 and int(ce.get("is_first", 0)) > 0:
                 drop = self._roll_callequip_drop(min_color=5)
@@ -3356,7 +3535,9 @@ class ProfileStore(
                 ce["call_count"] = max(0, int(ce["call_count"]) - 1)
             drops.append(drop)
             if crit_active:
-                drops.append(drop)
+                eq_quality = int(equips_cfg.get(str(drop[1]), {}).get("quality", 0))
+                if crit_qualities and eq_quality in crit_qualities:
+                    drops.append(drop)
 
         ce["total_calls"] = int(ce.get("total_calls", 0)) + types
         self._inc_stat("callequip_count", types)
@@ -3738,10 +3919,13 @@ class ProfileStore(
         if gold < cost:
             return reject(-1118)
 
-        result = self._build_equip_instance(output)
+        out_quality = int(models.get(str(output), {}).get("quality", 0))
+        crit_qualities = self._timed_welfare_qualities(4418)
+        copies = 2 if (crit_qualities and out_quality in crit_qualities) else 1
+        created = [self._build_equip_instance(output) for _ in range(copies)]
         count_before = self.state["stats"]["equip_compose_count"]
         player["Gold"] = gold - cost
-        self.state["equips"] = [item for item in equips if item["Id"] not in ids] + [result]
+        self.state["equips"] = [item for item in equips if item["Id"] not in ids] + created
         self._inc_stat("equip_compose_count")
         try:
             self.save()
@@ -3760,11 +3944,11 @@ class ProfileStore(
             )
             self.ledger.record_grant_event(
                 account_id=str(player["PlayerId"]), profile=self.profile_name, resource_type=f"Equip:{output}",
-                amount=1, balance_after=len(self.state["equips"]), source=f"equip_compose:{output}",
+                amount=len(created), balance_after=len(self.state["equips"]), source=f"equip_compose:{output}",
             )
         except OSError:
             logging.exception("Could not audit committed equipment composition")
-        return equip_ids, [{"Equip": [result]}]
+        return equip_ids, [{"Equip": created}]
 
     def _rpc_equip_compose(self, data: Any) -> dict[str, Any]:
         equip_ids = data[0] if isinstance(data, list) and len(data) == 1 and isinstance(data[0], list) else []
@@ -4078,9 +4262,10 @@ class ProfileStore(
         return res if res is not None else {}
 
     def _rpc_gem_one_key_compose(self, _data: Any) -> dict[str, Any]:
-        """Batch-compose all unbattle sets of 4 identical gems without burning double stones (EquipmentScene.lua:1257)."""
+        """Batch-compose all unbattle sets of 4 identical gems across cascading tiers without burning double stones."""
         gem_models = self.game_data.get("gem_model", {})
-        gems_by_id = {g["Id"]: g for g in self.state.get("gems", [])}
+        gems_by_id = {g["Id"]: g for g in self.state.get("gems", []) if g.get("Id")}
+        initial_ids = set(gems_by_id)
         battle_gem_ids: set[str] = set()
         for slot in self.state["slots"]:
             for cur in self._normalize_slot_gems(slot, gems_by_id=gems_by_id):
@@ -4099,27 +4284,46 @@ class ProfileStore(
 
         consumed_all: list[str] = []
         created_all: list[dict[str, Any]] = []
-        ordered_mids = sorted(
-            buckets,
-            key=lambda mid: (int(gem_models.get(str(mid), {}).get("LV", 0)), mid),
-        )
-        for mid in ordered_mids:
+        while True:
+            ready_mids = [
+                mid
+                for mid, ids in buckets.items()
+                if len(ids) >= 4 and 1 <= int(gem_models.get(str(mid), {}).get("LV", 0)) < 15
+            ]
+            if not ready_mids:
+                break
+            mid = min(ready_mids, key=lambda m: (int(gem_models.get(str(m), {}).get("LV", 0)), m))
             ids = buckets[mid]
+            stopped = False
             while len(ids) >= 4:
                 batch = ids[:4]
-                ids = ids[4:]
                 res = self._compose_gems(batch, allow_double=False)
                 if res is None:
+                    stopped = True
                     break
+                del ids[:4]
                 consumed_all.extend(res.get("ConsumeList", []))
                 for bundle in res.get("BaseGetGameResourceList", []):
-                    created_all.extend(bundle.get("Gem", []))
-            if self._last_rpc_context["status"] in (-7, -1118):
+                    for new_gem in bundle.get("Gem", []):
+                        created_all.append(new_gem)
+                        new_mid = int(new_gem.get("ModelId", 0))
+                        new_lv = int(gem_models.get(str(new_mid), {}).get("LV", 0))
+                        new_id = str(new_gem.get("Id") or "")
+                        if new_id and 1 <= new_lv < 15:
+                            buckets.setdefault(new_mid, []).append(new_id)
+                if self._last_rpc_context["status"] in (-7, -1118):
+                    stopped = True
+                    break
+            if stopped:
                 break
-        if consumed_all:
+
+        remaining_ids = {g.get("Id") for g in self.state.get("gems", []) if g.get("Id")}
+        net_consumed = [gid for gid in consumed_all if gid in initial_ids and gid not in remaining_ids]
+        net_created = [g for g in created_all if g.get("Id") in remaining_ids]
+        if net_consumed:
             self._last_rpc_context["status"] = 0
-        base_res = [{"Gem": created_all}] if created_all else []
-        return {"ConsumeList": consumed_all, "BaseGetGameResourceList": base_res}
+        base_res = [{"Gem": net_created}] if net_created else []
+        return {"ConsumeList": net_consumed, "BaseGetGameResourceList": base_res}
 
     def _level_up_equip(self, eq: dict[str, Any], target_max_lv: int) -> bool:
         equips_cfg = self.game_data.get("equips", {})
@@ -4562,7 +4766,7 @@ class ProfileStore(
         gold_gain = int(node_cfg.get("dropGold", 50)) if won else 0
         hero_exp_gain = int(node_cfg.get("dropHeroExp", 25)) if won else 0
 
-        if self.profile_name == "normal" and won:
+        if self.is_normal_gameplay and won:
             old_lv = int(self.state["player"]["Lv"])
             exp_gain = int(vit_cost * old_lv * (per_exp_pct / 10000.0))
             if deduct_vit and int(self.state["player"]["VIT"]) >= vit_cost:
@@ -4616,7 +4820,7 @@ class ProfileStore(
             reward_tuples.append((1101, 0, exp_gain))
             reward_tuples.append((1112, 0, gold_gain))
             reward_tuples.append((1117, 0, hero_exp_gain))
-            if self.profile_name == "normal":
+            if self.is_normal_gameplay:
                 for d in self.game_data.get("node_drops", {}).get(str(node_id), []):
                     odds = int(d.get("dropOdds", 0))
                     if odds == 0 and was_first_clear:
@@ -4687,7 +4891,7 @@ class ProfileStore(
 
         vit_cost = int(self.game_data.get("vit_config", {}).get("perUseNum", 5))
         available_vit = int(self.state["player"]["VIT"])
-        max_by_vit = available_vit // max(1, vit_cost) if self.profile_name == "normal" else count
+        max_by_vit = available_vit // max(1, vit_cost) if self.is_normal_gameplay else count
         rem_count = max(0, int(node_cfg.get("fightNumMax", 10)) - int(node_st.get("FightCount", 0)))
         actual_count = min(count, max_by_vit, rem_count)
         if actual_count <= 0:
@@ -4697,7 +4901,7 @@ class ProfileStore(
         token_gid = 16050011
         token_item = next((g for g in self.state.get("goods", []) if int(g.get("GoodsModelId", 0)) == token_gid), None)
         owned_tokens = int(token_item.get("Num", 0)) if token_item else 0
-        if consume_type == 3 and owned_tokens < actual_count and self.profile_name == "normal":
+        if consume_type == 3 and owned_tokens < actual_count and self.is_normal_gameplay:
             per_diamond = int(self.game_data.get("battle_config", {}).get("conFightUseDiamond", 5))
             diamond_need = per_diamond * (actual_count - owned_tokens)
             if int(self.state["player"].get("Diamond", 0)) < diamond_need:
@@ -4990,6 +5194,11 @@ class ProfileStore(
             return reject(-1212)
         if str(row_id + 1) not in steps:
             return reject(-1214)
+        if self.is_normal_gameplay and (
+            int(cfg.get("specialType", 0)) == 255
+            or (self.state.get("slots") and self.state["slots"][0].get("HeroId") == hero_id)
+        ):
+            hero["Lv"] = max(1, int(self.state["player"].get("Lv", 1)))
         if int(hero["Lv"]) < int(row["needLv"]):
             return reject(-1217)
 
@@ -5360,6 +5569,15 @@ class ProfileStore(
     def _rpc_lighten_star_one_key(self, _data: Any) -> dict[str, Any]:
         return self._advance_lighten_stars(50)
 
+    def _ensure_shop_bought_daily(self) -> dict[str, int]:
+        today = self.clock.today_str()
+        if not self.state.get("shop_bought_date"):
+            self.state["shop_bought_date"] = today
+        elif self.state.get("shop_bought_date") != today:
+            self.state["shop_bought"] = {}
+            self.state["shop_bought_date"] = today
+        return self.state.setdefault("shop_bought", {})
+
     def _shop_goods_price_for_step(self, goods_model_id: int, step_num: int, fallback: int) -> int:
         price_tbl = self.game_data.get("shop_goods_price", {}).get(str(goods_model_id), {})
         if not price_tbl:
@@ -5377,7 +5595,7 @@ class ProfileStore(
         if_vip_limit = bool(row.get("ifVipLimitBuy", True)) if row else True
         if_dyn = bool(row.get("ifDynamicPrice", False)) if row else False
 
-        bought = int(self.state.setdefault("shop_bought", {}).get(str(goods_model_id), 0))
+        bought = int(self._ensure_shop_bought_daily().get(str(goods_model_id), 0))
         curr_price = self._shop_goods_price_for_step(goods_model_id, bought + 1, init_price) if if_dyn else init_price
 
         if not if_vip_limit:
@@ -5386,14 +5604,26 @@ class ProfileStore(
             vip_lv = str(int(self.state["player"].get("Vip", 0)))
             vip_tbl = self.game_data.get("vip_buy_limit", {}).get(vip_lv, {})
             max_num = int(vip_tbl.get(str(goods_model_id), {}).get("buyMaxNum", 6))
+            if goods_model_id == SOUL_BOX_GOODS_ID and max_num >= 0:
+                max_num = max(max_num, SOUL_BOX_SHOP_MAX_NUM)
 
-        return {
+        entry: dict[str, Any] = {
             "GoodsModelId": goods_model_id,
             "SellTypeId": sell_type_id,
             "CurrPrice": curr_price,
             "Num": bought,
             "MaxNum": max_num,
         }
+        if if_dyn:
+            price_tbl = self.game_data.get("shop_goods_price", {}).get(str(goods_model_id), {})
+            max_step = max((int(k) for k in price_tbl if str(k).isdigit()), default=0)
+            start_step = bought + 1
+            end_step = max(start_step, max_step)
+            entry["DynamicPrice"] = [
+                {"NewPrice": self._shop_goods_price_for_step(goods_model_id, step_i, init_price)}
+                for step_i in range(start_step, end_step + 1)
+            ]
+        return entry
 
     def _rpc_shop_goods_list(self, _data: Any) -> list[dict[str, Any]]:
         shop_tbl = self.game_data.get("shop_goods", {})
@@ -5406,6 +5636,14 @@ class ProfileStore(
     def _rpc_get_shop_goods_info(self, data: Any) -> list[dict[str, Any]]:
         gid = int(data[0]) if isinstance(data, list) and data else 16030006
         return [self._build_shop_goods_entry(gid)]
+
+    def _rpc_shop_reset_daily(self, _data: Any = None) -> list[dict[str, Any]]:
+        """Reset daily props shop purchase counts & dynamic pricing without touching VIP gift bags."""
+        self.state["shop_bought"] = {}
+        self.state["shop_bought_date"] = self.clock.today_str()
+        self.state["shop_daily_reset_count"] = int(self.state.get("shop_daily_reset_count", 0)) + 1
+        self.save()
+        return self._rpc_shop_goods_list(None)
 
     def _rpc_shop_buy_goods(self, data: Any) -> dict[str, Any]:
         gid = int(data[0]) if isinstance(data, list) and len(data) >= 1 else 16030006
@@ -5439,7 +5677,7 @@ class ProfileStore(
                 -total_cost,
                 source=f"shop_buy:{gid}x{count}",
             )
-        self.state.setdefault("shop_bought", {})[str(gid)] = info["Num"] + count
+        self._ensure_shop_bought_daily()[str(gid)] = info["Num"] + count
         self._grant_resources_from_tuples(
             [(gid // 10000, gid, count)],
             source=f"shop_buy:{gid}",
@@ -6220,14 +6458,28 @@ class ProfileStore(
     # ------------------------------------------------------------------
     # ExtraActivity, Charge, CardInfo, and Authenticated Admin Helpers
     # ------------------------------------------------------------------
+    def _lv_plan_need_vip(self) -> int:
+        return int(self.game_data.get("lv_plan_config", {}).get("needVIPLV", LV_PLAN_NEED_VIP))
+
+    def _lv_plan_tiers(self) -> dict[int, tuple[int, int]]:
+        tbl = self.game_data.get("lv_plan_rewards", {})
+        if isinstance(tbl, dict) and tbl:
+            return {
+                int(r["LV"]): (int(r["diamond"]), int(r.get("needDiamond", LV_PLAN_NEED_DIAMOND)))
+                for r in tbl.values()
+                if "LV" in r and "diamond" in r
+            }
+        return {lv: (dia, LV_PLAN_NEED_DIAMOND) for lv, dia in LV_PLAN_REWARDS.items()}
+
     def _rpc_lv_plan_info(self, _data: Any) -> dict[str, Any]:
         lp = self.state.setdefault("lv_plan", {"open": False, "rewarded": []})
         rewarded = [int(x) for x in lp.get("rewarded", [])]
         player_lv = int(self.state["player"].get("Lv", 1))
         player_vip = int(self.state["player"].get("Vip", 0))
+        tiers = self._lv_plan_tiers()
         can_list: list[int] = []
-        if player_vip >= LV_PLAN_NEED_VIP:
-            for tier_lv in sorted(LV_PLAN_REWARDS):
+        if player_vip >= self._lv_plan_need_vip():
+            for tier_lv in sorted(tiers):
                 if player_lv >= tier_lv and tier_lv not in rewarded:
                     can_list.append(tier_lv)
         return {
@@ -6243,24 +6495,25 @@ class ProfileStore(
 
     def _rpc_lv_plan_receive(self, data: Any) -> dict[str, Any]:
         tier_lv = int(data[0]) if isinstance(data, list) and data else 0
-        reward_diamond = LV_PLAN_REWARDS.get(tier_lv)
+        tier = self._lv_plan_tiers().get(tier_lv)
         p = self.state["player"]
         lp = self.state.setdefault("lv_plan", {"open": False, "rewarded": []})
         rewarded = [int(x) for x in lp.get("rewarded", [])]
         if (
-            reward_diamond is None
-            or int(p.get("Vip", 0)) < LV_PLAN_NEED_VIP
+            tier is None
+            or int(p.get("Vip", 0)) < self._lv_plan_need_vip()
             or int(p.get("Lv", 1)) < tier_lv
             or tier_lv in rewarded
-            or int(p.get("Diamond", 0)) < LV_PLAN_NEED_DIAMOND
+            or int(p.get("Diamond", 0)) < tier[1]
         ):
             self._last_rpc_context["status"] = -1
             return {}
+        reward_diamond, need_diamond = tier
         self.ledger.apply_player_delta(
             p,
             self.profile_name,
             "Diamond",
-            -LV_PLAN_NEED_DIAMOND,
+            -need_diamond,
             source=f"lv_plan_cost:{tier_lv}",
             idempotency_key=f"lvplan:cost:{self.profile_name}:{p['PlayerId']}:{tier_lv}",
         )
@@ -6276,11 +6529,12 @@ class ProfileStore(
 
     def _vip_welfare_tuples(self) -> list[tuple[int, int, int]]:
         vip = max(0, min(20, int(self.state["player"].get("Vip", 0))))
-        raw = VIP_WELFARE_REWARDS.get(vip, VIP_WELFARE_REWARDS[0])
+        row = self.game_data.get("vip_welfare", {}).get(str(vip))
+        raw = str(row["resourceList"]) if isinstance(row, dict) and row.get("resourceList") else VIP_WELFARE_REWARDS.get(vip, VIP_WELFARE_REWARDS[0])
         return _parse_resource_str(raw)
 
     def _rpc_vip_welfare_info(self, _data: Any) -> dict[str, Any]:
-        today = time.strftime("%Y-%m-%d")
+        today = self.clock.today_str()
         can_draw = self.state.get("vip_welfare_drawn_date", "") != today
         res_list = [
             {"ResourceTypeSub": rtype, "ModelId": rmodel, "Count": rnum}
@@ -6289,7 +6543,7 @@ class ProfileStore(
         return {"CanDraw": can_draw, "ResourceList": res_list}
 
     def _rpc_vip_welfare_draw(self, _data: Any) -> dict[str, Any]:
-        today = time.strftime("%Y-%m-%d")
+        today = self.clock.today_str()
         if self.state.get("vip_welfare_drawn_date", "") == today:
             self._last_rpc_context["status"] = -1
             return {}
@@ -6317,6 +6571,7 @@ class ProfileStore(
                     "GiveGamePoint": tier["GiveGamePoint"] if is_first else 0,
                     "IsFirst": is_first,
                     "Ratio": tier["Ratio"] if is_first else 1,
+                    "Instant": bool(tier.get("Instant", False)),
                 }
             )
         return out
@@ -6358,7 +6613,7 @@ class ProfileStore(
         )
 
     def _rpc_player_charge_generate_order(self, data: Any) -> str:
-        arg = data[0] if isinstance(data, list) and data else CHARGE_TIERS[0]["ProductId"]
+        arg = data[0] if isinstance(data, list) and data else "com.cmn.inuyasha.gem60"
         tier = self._resolve_charge_tier(arg)
         if not tier:
             self._last_rpc_context["status"] = -1
@@ -6714,6 +6969,9 @@ class ProfileStore(
             "2712": self._month_sign_red_dot(),
             "2718": 1 if can_startwork else 0,
             "3000": self._daily_task_red_dot(),
+            "3400": self._guild_red_dot(),
+            "3402": self._guild_reward_red_dot(),
+            "3403": self._guild_boss_red_dot(),
             "3700": 1 if self._build_online_reward_info() is not None else 0,
             "4300": 1,
             "4409": self._pray_tree_red_dot(),
@@ -7818,7 +8076,7 @@ class ProfileStore(
 
     def _pvp_shop_list_payload(self) -> list[dict[str, Any]]:
         pvp = self.state["pvp"]
-        today = time.strftime("%Y-%m-%d")
+        today = self.clock.today_str()
         daily_map = pvp.setdefault("shop_bought_daily", {})
         if daily_map.get("_date") != today:
             daily_map.clear()
@@ -7994,7 +8252,8 @@ class ProfileStore(
 
         per_exp_pct = int(self.game_data.get("sta_config", {}).get("perGetEXPR", 20000))
         exp_gain = int(sta_cost * lv * (per_exp_pct / 10000.0))
-        pvp_coin_gain = (40 + max(0, (1600 - target_rank) // 100)) if is_win else 15
+        arena_mult = self._timed_welfare_mult(4413, default=1)
+        pvp_coin_gain = ((40 + max(0, (1600 - target_rank) // 100)) if is_win else 15) * arena_mult
         gold_gain = (1500 + lv * 50) if is_win else 500
         tuples: list[tuple[int, int, int]] = [
             (1101, 0, exp_gain),
@@ -8144,7 +8403,7 @@ class ProfileStore(
             self._last_rpc_context["status"] = -1
             return {}
 
-        today = time.strftime("%Y-%m-%d")
+        today = self.clock.today_str()
         daily_map = pvp.setdefault("shop_bought_daily", {})
         if daily_map.get("_date") != today:
             daily_map.clear()
@@ -8177,6 +8436,13 @@ class ProfileStore(
         )
         self.save()
         return {"BaseGetGameResourceList": base_res}
+
+    def _rpc_pvp_shop_reset_daily(self, _data: Any = None) -> dict[str, Any]:
+        """Reset daily Arena shop limits (perMaxNum) while preserving one-time totalMaxNum purchases."""
+        pvp = self.state.setdefault("pvp", {})
+        pvp["shop_bought_daily"] = {"_date": self.clock.today_str()}
+        self.save()
+        return {"PVPShopList": self._pvp_shop_list_payload()}
 
     # ------------------------- Phase D: Daydayfund, StartWorkReward, Fashion -------------------------
 
@@ -9120,6 +9386,35 @@ class ProfileStore(
         gid = str(data[0]) if isinstance(data, list) and data else ""
         return self._do_mystery_shop_buy(gid, senior=True)
 
+    def _rpc_mystery_shop_reset_daily(self, data: Any = None) -> dict[str, Any]:
+        """Reset daily Mystery Shop counters/free refreshes and reroll both normal and senior stock."""
+        senior = bool(isinstance(data, list) and data and int(data[0]) == 1)
+        vip_lv = int(self.state["player"].get("VIPLv", self.state["player"].get("Vip", 0)))
+        vip_cfg = self.game_data.get("vip_model", {}).get(str(vip_lv), {})
+        free_max = max(1, int(vip_cfg.get("freeRefreshMysteryShopMaxNum", 2)))
+        now = self.now_ts()
+        today = self.clock.today_str(now)
+        config = self.game_data["mystery_shop_config"]
+        interval = int(config["freeRefreshCD"])
+        midnight = self.clock.midnight_ts(now)
+        normal_period = midnight + (now - midnight) // interval * interval
+        normal_deadline = normal_period + interval
+        senior_hours = [int(config[field] * 86400) for field in ("seniorRefreshTimeFirst", "seniorRefreshTimeSecond")]
+        senior_deadline = next(
+            (midnight + seconds for seconds in sorted(senior_hours) if midnight + seconds > now),
+            midnight + 86400 + min(senior_hours),
+        )
+        ms = self.state.setdefault("mystery_shop", {})
+        ms["free_count"] = free_max
+        ms["gold_count"] = 0
+        ms["free_date"] = today
+        ms["free_period"] = normal_period
+        ms["normal"] = self._build_mystery_shop_items(0)
+        ms["senior"] = self._build_mystery_shop_items(1)
+        ms["deadlines"] = {"normal": normal_deadline, "senior": senior_deadline}
+        self.save()
+        return self._mystery_shop_state(senior=senior)
+
     def _glory_payload(self, active_type_id: int | None = None) -> dict[str, Any]:
         glory = self.state.setdefault(
             "glory",
@@ -9707,7 +10002,7 @@ class ProfileStore(
                     "FAP": fap,
                     "HeadImageId": head_id,
                     "FashionModelId": int(p.get("FashionModelId", 0)),
-                    "GuildName": str(prof.state.get("guild", {}).get("Name", "") or ""),
+                    "GuildName": str(p.get("GuildName", "") or ""),
                     "ServerName": "S1 - Chiến Quốc",
                     "PraiseNum": praise_num,
                     "_source": ("self",) if is_self else ("peer", pid),
@@ -9864,6 +10159,99 @@ class ProfileStore(
         else:
             formation = self._build_bot_formation_view(self._arena_bot_profile(src[2], src[1]))
         return {"Formation": formation}
+
+    _LEADERBOARD_BOT_STEPS = (5, 4, 3, 2, 1)
+    _LEADERBOARD_BOT_RANKS = (1, 3, 5, 8, 12, 16, 20, 25, 30, 50)
+    _CROSS_SERVER_NAMES = ("S2 - Tây Quốc", "S3 - Bạch Linh Sơn", "S4 - Minh Đạo", "S5 - Tứ Hồn")
+
+    def _build_cross_server_rank_entries(self) -> list[dict[str, Any]]:
+        lb_cfg = self.game_data.get("leaderboard_config", {})
+        rank_num = max(1, int(lb_cfg.get("rankNum", 50)))
+        candidates: list[dict[str, Any]] = []
+
+        profiles: list[tuple[bool, ProfileStore]] = [(True, self)] + [
+            (False, peer) for peer in self._get_peer_s1_profiles()
+        ]
+        seen_pids: set[str] = set()
+        for is_self, prof in profiles:
+            p = prof.state.get("player", {})
+            pid = str(p.get("PlayerId", ""))
+            if not pid or pid in seen_pids:
+                continue
+            if not is_self and int(p.get("IsNewPlayer", 0)) != 0:
+                continue
+            seen_pids.add(pid)
+            slots = prof.state.get("slots", [])
+            candidates.append(
+                {
+                    "Id": pid,
+                    "Name": str(p.get("PlayerName", "Adventurer") or "Adventurer"),
+                    "Lv": int(p.get("Lv", 1)),
+                    "FAP": int(p.get("FAP", 0)),
+                    "HeadImageId": self._valid_hero_head_id(int(p.get("HeadImageId", 0)), slots),
+                    "FashionModelId": int(p.get("FashionModelId", 0)),
+                    "GuildName": str(p.get("GuildName", "") or ""),
+                    "ServerName": "S1 - Chiến Quốc",
+                    "Zone": "S1 - Chiến Quốc",
+                    "PraiseNum": 0,
+                }
+            )
+
+        for st in self._LEADERBOARD_BOT_STEPS:
+            for r in self._LEADERBOARD_BOT_RANKS:
+                bot = self._arena_bot_profile(r, st)
+                bot_id = f"cs-bot:{st}:{r}"
+                srv_name = self._CROSS_SERVER_NAMES[(st + r) % len(self._CROSS_SERVER_NAMES)]
+                candidates.append(
+                    {
+                        "Id": bot_id,
+                        "Name": str(bot["Name"]),
+                        "Lv": int(bot["Lv"]),
+                        "FAP": int(bot["FAP"]),
+                        "HeadImageId": self._valid_hero_head_id(0, bot["Slots"]),
+                        "FashionModelId": int(bot.get("FashionModelId", 0)),
+                        "GuildName": str(bot.get("Guild", "") or ""),
+                        "ServerName": srv_name,
+                        "Zone": srv_name,
+                        "PraiseNum": 0,
+                    }
+                )
+
+        candidates.sort(key=lambda e: (-int(e["FAP"]), -int(e["Lv"]), str(e["Id"])))
+        ranked = candidates[:rank_num]
+        for idx, entry in enumerate(ranked, start=1):
+            entry["Rank"] = idx
+        return ranked
+
+    def _rpc_pvpinter_top_rank(self, _data: Any) -> dict[str, Any]:
+        """Return cross-server Top-50 ranking for RankScene Tab 3 (eCrossServerRank)."""
+        return {"PVPinterTopRank": self._build_cross_server_rank_entries()}
+
+    def _rpc_pvpinter_slot_formations(self, data: Any) -> dict[str, Any]:
+        """Return full Formation snapshot for RankScene cross-server tab inspection."""
+        target_id = str(data[0]) if isinstance(data, list) and data and data[0] is not None else ""
+        if not target_id:
+            self._last_rpc_context["status"] = -1
+            return {}
+        if target_id == str(self.state.get("player", {}).get("PlayerId", "")):
+            return {"Formation": self._own_slot_formations_view()}
+        for peer in self._get_peer_s1_profiles():
+            pp = peer.state.get("player", {})
+            if str(pp.get("PlayerId", "")) == target_id and int(pp.get("IsNewPlayer", 0)) == 0:
+                return {"Formation": peer._own_slot_formations_view()}
+        if target_id.startswith("cs-bot:"):
+            parts = target_id.split(":")
+            if len(parts) == 3:
+                try:
+                    st, r = int(parts[1]), int(parts[2])
+                except ValueError:
+                    st, r = 0, 0
+                if st in self._LEADERBOARD_BOT_STEPS and r in self._LEADERBOARD_BOT_RANKS:
+                    bot = self._arena_bot_profile(r, st)
+                    bot["PlayerId"] = target_id
+                    return {"Formation": self._build_bot_formation_view(bot)}
+        self._last_rpc_context["status"] = -1
+        return {}
 
 
 class GameEmulatorState:
@@ -10181,7 +10569,7 @@ class GameEmulatorState:
                     "file": f"s1_acct_{next_slot}.json",
                     "label": label or f"TK {next_slot}",
                     "default_player_id": str(200010 + next_slot),
-                    "default_arena_rank": max(100, 1500 - (next_slot - 1) * 12),
+                    "default_arena_rank": max(100, 1500 - (slot - 1) * 12 if (slot := next_slot) else 1500),
                 },
                 reset=True,
             )
@@ -10189,6 +10577,31 @@ class GameEmulatorState:
             self._save_accounts_index()
             info = self.list_s1_accounts(ensure_slots=next_slot)
             info["CreatedAccount"] = self._summarize_s1_account(aid)
+            return info
+
+    def reset_s1_account(self, account_id: str | None = None) -> dict[str, Any]:
+        """Reset an S1 account (or the active S1 account) cleanly to a fresh new-player state."""
+        with self._acct_lock:
+            aid = str(account_id or self.active_account_id).strip()
+            if aid not in self.s1_accounts:
+                for cand_id, meta in self.s1_meta.items():
+                    if str(meta.get("user_id")) == aid or f"acct_{aid}" == cand_id:
+                        aid = cand_id
+                        break
+            if aid not in self.s1_accounts:
+                raise ValueError(f"Unknown S1 account: {account_id}")
+            backups_dir = self.data_dir / "backups"
+            backups_dir.mkdir(parents=True, exist_ok=True)
+            safety_path = backups_dir / f"pre_reset_{aid}_backup.json"
+            self.export_save_bundle(dest_path=safety_path)
+            store = self.s1_accounts[aid]
+            store.reset_state()
+            store.state.setdefault("pvp", {})["rank"] = int(store.default_arena_rank)
+            store.state["pvp"]["history_max_rank"] = int(store.default_arena_rank)
+            store.save()
+            info = self.list_s1_accounts(ensure_slots=max(3, len(self.s1_accounts)))
+            info["ResetAccount"] = self._summarize_s1_account(aid)
+            info["SafetyBackupPath"] = str(safety_path)
             return info
 
     def export_save_bundle(self, dest_path: str | Path | None = None) -> dict[str, Any]:
@@ -10708,6 +11121,9 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                 if action == "create":
                     self._send_json(200, self.server.emu.create_s1_account(label=payload.get("label")))
                     return
+                if action == "reset":
+                    self._send_json(200, self.server.emu.reset_s1_account(account_id=payload.get("account_id")))
+                    return
                 if action == "export":
                     self._send_json(200, self.server.emu.export_save_bundle(dest_path=payload.get("dest_path")))
                     return
@@ -10849,6 +11265,21 @@ class ThreadingEmulatorServer(socketserver.ThreadingMixIn, http.server.HTTPServe
 
 
 def main() -> None:
+    if __name__ == "__main__" and not os.environ.get("INUYASHA_HOTPATCH_ACTIVE"):
+        try:
+            idx = sys.argv.index("--data-dir")
+            if idx + 1 < len(sys.argv):
+                hotpatch_dir = Path(sys.argv[idx + 1]).resolve() / "hotpatch"
+                hotpatch_emu = hotpatch_dir / "emulator.py"
+                if hotpatch_emu.is_file() and hotpatch_emu.resolve() != Path(__file__).resolve():
+                    os.environ["INUYASHA_HOTPATCH_ACTIVE"] = "1"
+                    cur_pypath = os.environ.get("PYTHONPATH", "")
+                    os.environ["PYTHONPATH"] = f"{hotpatch_dir}:{cur_pypath}" if cur_pypath else str(hotpatch_dir)
+                    print(f"[HOTPATCH] Delegating backend startup to {hotpatch_emu}", flush=True)
+                    os.execv(sys.executable, [sys.executable, str(hotpatch_emu), *sys.argv[1:]])
+        except ValueError:
+            pass
+
     parser = argparse.ArgumentParser(description="InuYasha: Seek Jade Local Server Emulator")
     parser.add_argument("--env", choices=["stable", "dev"], default="stable", help="Server environment preset")
     parser.add_argument("--host", default="127.0.0.1", help="Bind host (use 0.0.0.0 for LAN/Pixel 3 XL)")
@@ -10882,6 +11313,7 @@ def main() -> None:
         f"normal_pid={srv.emu.profiles['normal'].state['player']['PlayerId']}, "
         f"debug_pid={srv.emu.profiles['debug'].state['player']['PlayerId']})"
     )
+
     def _handle_sigterm(_signum: int, _frame: Any) -> None:
         threading.Thread(target=srv.shutdown, daemon=True).start()
 

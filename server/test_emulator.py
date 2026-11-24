@@ -2334,17 +2334,12 @@ class EmulatorProtocolTest(unittest.TestCase):
             self.assertIn(iid1, hist_iids)
             self.assertEqual(hist_iids[iid1]["progress"]["my_credit"], 10)
 
-            # Rotating mode alternates 81 -> 82 -> 81
+            # Rotating mode cycles 81 -> 82 -> 83 -> 84 -> 85 -> 86 -> 81
             anchor = int(_dt.datetime(2026, 1, 1, 0, 0, 0, tzinfo=vn_tz).timestamp())
             prof.event_runtime.configure_archive_mode("rotating", rotation_anchor_ts=anchor, rotation_duration_sec=259200)
-            emu.clock.set_fixed(anchor + 100)
-            self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 81)
-            emu.clock.set_fixed(anchor + 259200 + 100)
-            self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 82)
-            emu.clock.set_fixed(anchor + 2 * 259200 + 100)
-            self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 83)
-            emu.clock.set_fixed(anchor + 3 * 259200 + 100)
-            self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], 81)
+            for idx, exp_act in enumerate((81, 82, 83, 84, 85, 86, 81)):
+                emu.clock.set_fixed(anchor + idx * 259200 + 100)
+                self.assertEqual(prof._build_timed_activity_open_info()["9300"][0]["ActivityId"], exp_act)
 
     def test_39_r7_5_daily_dinner_vit_windows(self) -> None:
         """R7.5: PlayerVIT.ReceiveVIT enforces VN time windows (12-14, 18-20, 21-22), anti-duplicate & daily reset."""
@@ -2966,12 +2961,12 @@ class EmulatorProtocolTest(unittest.TestCase):
 
             init_r = emu.handle_rpc({"ModuleName": "Player", "MethodName": "GetInitData", "Data": [], "ServerId": 1})
             banners_9300 = [x["ActivityId"] for x in init_r["Avatar"]["TimedActivityOpenInfo"]["9300"]]
-            self.assertEqual(banners_9300, [81, 82, 83])
+            self.assertEqual(banners_9300, [81, 82, 83, 84, 85, 86])
 
             # Pull & claim credit chest on Banner 81
             info81 = emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "SelectBanner", "Data": [81], "ServerId": 1})
             self.assertEqual(info81["Value"]["ActivityEnumId"], 81)
-            self.assertEqual(info81["Value"]["AvailableBanners"], [81, 82, 83])
+            self.assertEqual(info81["Value"]["AvailableBanners"], [81, 82, 83, 84, 85, 86])
             self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "Recruit", "Data": [30], "ServerId": 1})["Status"], 0)
             self.assertEqual(emu.handle_rpc({"ModuleName": "TimedRecruitInfo", "MethodName": "DrawCreditReward", "Data": [60], "ServerId": 1})["Status"], 0)
 
@@ -4249,6 +4244,46 @@ class HeroBreakthroughDeltaTest(unittest.TestCase):
         self.assert_rejected(-1602, early, [hero["Id"]], 0)
         self.assert_rejected(-48, early, {"extra": hero["Id"]}, 0)
         self.assert_rejected(-48, early, [], False)
+
+    def test_secondary_s1_account_main_hero_tracks_player_lv_and_breaks_through_above_lv30(self):
+        emu = R712DeltaTest.emulator(self.root)
+        emu.ensure_s1_account_slots(3)
+        acct2 = emu.get_profile_by_name("acct_2")
+        self.assertTrue(acct2.is_normal_gameplay)
+        R712DeltaTest.rpc(acct2, "Player", "NewPlayer", "OlinaS1", 1)
+        slot1_hid = acct2.state["slots"][0]["HeroId"]
+        main_hero = next(h for h in acct2.state["heroes"] if h["Id"] == slot1_hid)
+        self.assertEqual(main_hero["Lv"], 1)
+
+        # Level up via EXP grant / battle progression on acct_2 (previously skipped because profile_name != "normal")
+        target_exp = int(acct2.game_data["player_lv"]["32"]["EXPTotal"])
+        acct2._grant_resources_from_tuples([(1101, 0, target_exp)], source="test_exp", tx_prefix="test_acct2_lv32")
+        old_lv, new_lv = acct2._sync_level_from_exp()
+        self.assertEqual((old_lv, new_lv), (1, 32))
+        self.assertEqual(acct2.state["player"]["Lv"], 32)
+        self.assertEqual(main_hero["Lv"], 32)
+
+        # Also verify self-healing if a legacy save had stale main_hero Lv=20 while player Lv=32 at Step=3
+        main_hero["Lv"] = 20
+        main_hero["Step"] = 3
+        acct2.state["player"]["StarId"] = 52
+        acct2._sync_main_hero_model()
+        self.assertEqual(main_hero["Lv"], 32)
+        self.assertEqual(main_hero["HeroModelId"], 12010008)
+
+        # Breakthrough Step 3 -> 4 (needLv=30) succeeds on acct_2
+        acct2.state["player"]["Gold"] = 1_000_000
+        tr_book = {"Id": "tr-book-502", "TreasureModelId": 14010502, "Lv": 0, "Step": 0, "EXP": 0}
+        tr_horse = {"Id": "tr-horse-502", "TreasureModelId": 14020502, "Lv": 0, "Step": 0, "EXP": 0}
+        acct2.state["treasures"].extend([tr_book, tr_horse])
+        acct2.state["goods"].extend([
+            {"Id": "g-stone", "GoodsModelId": 16050001, "Num": 2000, "Crdate": 0, "LastTime": 0, "BeginTime": 0, "EndTime": 0},
+            {"Id": "g-naohi", "GoodsModelId": 16050090, "Num": 300, "Crdate": 0, "LastTime": 0, "BeginTime": 0, "EndTime": 0},
+        ])
+        res = R712DeltaTest.rpc(acct2, "Hero", "HeroStepUp", main_hero["Id"], [tr_book["Id"], tr_horse["Id"]], 3)
+        self.assertEqual(res["Status"], 0)
+        self.assertEqual(res["Value"]["Step"], 4)
+        self.assertEqual(res["Value"]["Lv"], 32)
 
 
 if __name__ == "__main__":

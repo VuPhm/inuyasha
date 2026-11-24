@@ -38,18 +38,42 @@ class EventHandlersMixin(R79EventHandlersMixin):
             changed = True
         if hasattr(self, "_sync_social_daily") and self._sync_social_daily():
             changed = True
+        if hasattr(self, "_sync_guild_state") and self._sync_guild_state():
+            changed = True
         if changed:
             self.save()
 
     def _timed_welfare_mult(self, module_sub: int, default: int = 1) -> int:
-        """Return max active RefNum multiplier for a TimedWelfare module_sub."""
+        """Return max active numeric RefNum multiplier for a TimedWelfare module_sub."""
         entries = self.event_runtime.get_active_timed_events(module_sub, self.state["player"])
         mult = default
         for ev_def, _ev_eval in entries:
             extra = ev_def.metadata.get("extra_info") or {}
             if isinstance(extra, dict):
-                mult = max(mult, int(extra.get("RefNum", default) or default))
+                try:
+                    raw = int(extra.get("RefNum", default) or default)
+                except (TypeError, ValueError):
+                    continue
+                mult = max(mult, raw)
         return mult
+
+    def _timed_welfare_qualities(self, module_sub: int) -> set[int]:
+        """Return active equip quality IDs enabled for crit TimedWelfare events (4418/4419)."""
+        entries = self.event_runtime.get_active_timed_events(module_sub, self.state["player"])
+        qualities: set[int] = set()
+        for ev_def, _ev_eval in entries:
+            extra = ev_def.metadata.get("extra_info") or {}
+            if not isinstance(extra, dict):
+                continue
+            raw = extra.get("RefNum", "")
+            if isinstance(raw, str):
+                for tok in raw.split(","):
+                    tok = tok.strip()
+                    if tok.isdigit() and int(tok) > 0:
+                        qualities.add(int(tok))
+            elif isinstance(raw, int) and raw > 0:
+                qualities.update({3, 6, 10, 15})
+        return qualities
 
     def _on_timed_event_ended(self, inst: dict[str, Any]) -> None:
         event_id = str(inst.get("event_id", ""))
@@ -69,10 +93,19 @@ class EventHandlersMixin(R79EventHandlersMixin):
                     res_tuples=[(1606, box_id, 1)],
                     expire_sec=0,
                 )
-        elif event_id == "timed_slot":
+        elif event_id in ("timed_slot", "festival_slot", "holiday_slot"):
             self._settle_slot_rank(inst)
         elif event_id == "timed_money_tree":
             self._settle_money_tree_milestones(inst)
+        elif event_id == "timed_xssb":
+            self._settle_xssb_rank(inst)
+            self._settle_xssb_unclaimed_credits(inst)
+        elif event_id == "timed_recharge_rank":
+            self._settle_charge_or_use_rank(inst, is_charge=True)
+        elif event_id == "timed_consume_rank":
+            self._settle_charge_or_use_rank(inst, is_charge=False)
+        elif event_id in ("timed_active_rank", "festival_active_rank", "holiday_active_rank"):
+            self._settle_active_rank(inst)
 
     def _active_reward_center_entries(self) -> list[dict[str, Any]]:
         now = self.now_ts()

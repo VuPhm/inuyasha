@@ -215,7 +215,11 @@ class BddHandlersMixin:
             if all(current[str(row["ID"])] == 3 for row in rows):
                 state["three_star_floors"] = sorted(set(state.get("three_star_floors", [])) | {floor})
         point = self.game_data["bdd"]["points"][str(node * 100 + 10 + difficulty)]
-        drops = _parse_res_tuples(point["nationalDrop"])
+        bdd_mult = self._timed_welfare_mult(4420, default=1)
+        drops = [
+            (rt, rm, rn * bdd_mult if rt == 1124 else rn)
+            for rt, rm, rn in _parse_res_tuples(point["nationalDrop"])
+        ]
         first = state.setdefault("first_rewards", [])
         fid = f"{node}:{difficulty}"
         if fid not in first:

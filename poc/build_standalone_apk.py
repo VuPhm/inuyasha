@@ -37,10 +37,12 @@ from patch_vn_apk import (
     VN_LOCAL_MQLOGIN_SMALI,
     VN_LOCAL_ONCREATE_SMALI,
     VN_LOCAL_ONDESTROY_SMALI,
+    XXTEA_KEY,
     XXTEA_SIGN,
     ZIPALIGN,
     patch_luac_text,
     replace_cstr_padded,
+    xxtea_decrypt,
     xxtea_encrypt,
 )
 
@@ -845,6 +847,8 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
         "social_handlers.py",
         "guild_handlers.py",
         "pvpinter_handlers.py",
+        "pet_handlers.py",
+        "pet_data.json",
         "private_auth.py",
         "hybrid_sync.py",
         "sync_ca_bundle.pem",
@@ -1801,6 +1805,7 @@ def apply_shared_gameplay_patches(work_dir: Path) -> None:
     patch_r737_mount_and_p4_lua(work_dir / "assets" / "src")
     patch_r739_lianti_lua(work_dir / "assets" / "src")
     patch_r740_pvpinter_lua(work_dir / "assets" / "src")
+    patch_r85_pet_lua(work_dir / "assets" / "src")
     patch_luac_text(work_dir / "assets" / "src" / "Equipment" / "EquipmentComposeLayer.luac", [
         (
             '        if colorLV < 8 then    --排除最高等级的装备',
@@ -5512,6 +5517,88 @@ end
         position    = cc.p(58, 27),""",
         ),
     ])
+
+
+def patch_r85_pet_lua(src: Path) -> None:
+    """R8.5: Enable Pet/PetOut/PetCompare (1414, 7400..7406, 7500, 7600) and localize 27 Pet names to VN."""
+    module_specs = [
+        (1414, "PetCompare", 14, "Equip", "宠物合成"),
+        (7400, "Pet", 74, "Pet", "宠物系统"),
+        (7401, "PetInherit", 74, "Pet", "宠物-传承"),
+        (7402, "PetStudySkill", 74, "Pet", "宠物-学习兽决"),
+        (7403, "PetLvUp", 74, "Pet", "宠物-升级"),
+        (7404, "PetRebirth", 74, "Pet", "宠物-重生"),
+        (7405, "PetRefine", 74, "Pet", "宠物-分解"),
+        (7406, "PetActiveTal", 74, "Pet", "宠物-激活天赋"),
+        (7500, "PetOut", 75, "PetOut", "宠物之源"),
+        (7600, "PetColorLv", 76, "PetColorLv", "宠物目录"),
+    ]
+    module_replacements: list[tuple[str, str]] = []
+    for mid, alias, mod_id, mod_alias, zh_name in module_specs:
+        old_blk = (
+            f"        [{mid}] = {{\n"
+            f"            Id = {mid},\n"
+            f'            alias = "{alias}",\n'
+            f"            moduleId = {mod_id},\n"
+            f'            moduleAlias = "{mod_alias}",\n'
+            f'            name = "{zh_name}",\n'
+            f"            isClient = 1,\n"
+            f"            ifOpen = 0,"
+        )
+        new_blk = (
+            f"        [{mid}] = {{\n"
+            f"            Id = {mid},\n"
+            f'            alias = "{alias}",\n'
+            f"            moduleId = {mod_id},\n"
+            f'            moduleAlias = "{mod_alias}",\n'
+            f'            name = "{zh_name}",\n'
+            f"            isClient = 1,\n"
+            f"            ifOpen = 1,"
+        )
+        module_replacements.append((old_blk, new_blk))
+    patch_luac_text(src / "Config" / "ModuleSubModel.luac", module_replacements)
+
+    pet_name_map = [
+        ("萌萌小紅龍", "Tiểu Long Đỏ"),
+        ("調皮狸貓", "Lửng Hachi Tinh Nghịch"),
+        ("可愛小烏龜", "Rùa Con Dễ Thương"),
+        ("飛艇八衛門", "Hachi Phi Thuyền"),
+        ("勤懇死魂蟲", "Tử Hồn Trùng Chăm Chỉ"),
+        ("呆萌三眼牛", "Ngưu Ba Mắt Ngây Ngô"),
+        ("忠誠阿牟", "A-Un Trung Thành"),
+        ("豬九戒", "Trư Cửu Giới"),
+        ("龍骨精", "Long Cốt Tinh"),
+        ("俏皮狐妖", "Hồ Yêu Shippo Tinh Quái"),
+        ("逃跑冥加", "Myoga Đào Tẩu"),
+        ("可愛生薑", "Shoga Đáng Yêu"),
+        ("呆萌雲母", "Kirara Đáng Yêu"),
+        ("狂暴死魂蟲", "Tử Hồn Trùng Cuồng Bạo"),
+        ("狸貓石球", "Hachi Cầu Đá"),
+        ("玄武神龜", "Huyền Vũ Thần Quy"),
+        ("鎧甲八位門", "Hachi Giáp Sắt"),
+        ("吐火神龍", "Thần Long Phun Lửa"),
+        ("飛天神豬", "Thần Trư Phi Thiên"),
+        ("戰鬥阿牟", "A-Un Chiến Đấu"),
+        ("憤怒冥加", "Myoga Phẫn Nộ"),
+        ("暴走生薑", "Shoga Bạo Tẩu"),
+        ("生氣狐妖", "Hồ Yêu Shippo Nổi Giận"),
+        ("金剛牛魔王", "Kim Cang Ngưu Ma Vương"),
+        ("神翼龍骨精", "Thần Dực Long Cốt Tinh"),
+        ("妖化雲母", "Kirara Yêu Hóa"),
+        ("經驗寶寶", "Bé Kinh Nghiệm"),
+    ]
+    pet_model_path = src / "Config" / "PetModel.luac"
+    raw_pm = pet_model_path.read_bytes()
+    pm_payload = raw_pm[len(XXTEA_SIGN) :] if raw_pm.startswith(XXTEA_SIGN) else raw_pm
+    pm_text = xxtea_decrypt(pm_payload, XXTEA_KEY).decode("utf-8")
+    for zh, vn in pet_name_map:
+        old_token = f'            name = "{zh}",'
+        new_token = f'            name = "{vn}",'
+        if old_token not in pm_text:
+            raise AssertionError(f"Expected pet name token not found in PetModel.luac: {old_token}")
+        pm_text = pm_text.replace(old_token, new_token)
+    write_luac_text(pet_model_path, pm_text)
+
 
 def build_and_sign_work(work_dir: Path, out_name: str) -> Path:
     if not RELEASE_KEYSTORE.exists():

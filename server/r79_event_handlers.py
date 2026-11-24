@@ -2239,8 +2239,47 @@ class R79EventHandlersMixin:
         (16070006, 16070007),
     )
 
+    PET_EGG_ROTATION: tuple[tuple[int, int, int, int], ...] = (
+        # (ResourceTypeSub, ModelId, Count, DiamondCost) — covers all 1..7★ eggs & lineages 240126/240127
+        (1602, 16021007, 1, 120),
+        (1602, 16021008, 1, 180),
+        (1602, 16021009, 1, 260),
+        (1602, 16021010, 1, 420),
+        (1602, 16021028, 1, 480),
+        (1602, 16021011, 1, 680),
+        (1602, 16021029, 1, 750),
+        (1602, 16021012, 1, 1080),
+        (1602, 16021030, 1, 1180),
+        (1602, 16021013, 1, 1500),
+        (1602, 16021031, 1, 1680),
+        (1602, 16021001, 1, 150),
+        (1602, 16021002, 1, 220),
+        (1602, 16021003, 1, 320),
+        (1602, 16021004, 1, 520),
+        (1602, 16021005, 1, 820),
+        (1602, 16021006, 1, 1280),
+        (2401, 24012601, 1, 580),
+        (2401, 24012701, 1, 200),
+    )
+    PET_SKILL_CHEST_ROTATION: tuple[tuple[int, int], ...] = (
+        (16021014, 100),
+        (16021015, 180),
+        (16021016, 280),
+        (16021020, 320),
+        (16021021, 320),
+        (16021017, 450),
+        (16021022, 500),
+        (16021023, 500),
+        (16021018, 720),
+        (16021024, 800),
+        (16021025, 800),
+        (16021019, 1050),
+        (16021026, 1200),
+        (16021027, 1200),
+    )
+
     def _get_timed_exchange_recipes(self) -> list[dict[str, Any]]:
-        """Return base exchange recipes plus 2 daily-rotating Main Hero fashion shard slots."""
+        """Return base exchange recipes plus daily-rotating fashion & pet slots."""
         day_ordinal = date.fromisoformat(self.clock.today_str()).toordinal()
         pair = self.FASHION_SHARD_ROTATION_PAIRS[day_ordinal % len(self.FASHION_SHARD_ROTATION_PAIRS)]
         recipes = list(self.TIMED_EXCHANGE_RECIPES)
@@ -2256,6 +2295,41 @@ class R79EventHandlersMixin:
                     "Give": [(1607, int(shard_id), 100)],
                 }
             )
+        pet_rt, pet_rm, pet_rn, pet_dia = self.PET_EGG_ROTATION[day_ordinal % len(self.PET_EGG_ROTATION)]
+        recipes.append(
+            {
+                "Serial": 26,
+                "GlobalNum": 99,
+                "PersonalNum": 5,
+                "NeedLv": 45,
+                "NeedVIPLv": 0,
+                "Need": [(1111, 0, pet_dia)],
+                "Give": [(pet_rt, pet_rm, pet_rn)],
+            }
+        )
+        book_gid, book_dia = self.PET_SKILL_CHEST_ROTATION[day_ordinal % len(self.PET_SKILL_CHEST_ROTATION)]
+        recipes.append(
+            {
+                "Serial": 27,
+                "GlobalNum": 99,
+                "PersonalNum": 5,
+                "NeedLv": 45,
+                "NeedVIPLv": 0,
+                "Need": [(1111, 0, book_dia)],
+                "Give": [(1602, book_gid, 1)],
+            }
+        )
+        recipes.append(
+            {
+                "Serial": 28,
+                "GlobalNum": 99,
+                "PersonalNum": 10,
+                "NeedLv": 45,
+                "NeedVIPLv": 0,
+                "Need": [(1111, 0, 300)],
+                "Give": [(2403, 0, 10000), (2404, 0, 200)],
+            }
+        )
         return recipes
 
     def _build_timed_exchange_payload(self, ev: Any, prog: dict[str, Any]) -> dict[str, Any]:

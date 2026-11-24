@@ -156,6 +156,60 @@ def extract_bdd_data(cfg_dir: str) -> dict[str, Any]:
     }
 
 
+def extract_pet_data(cfg_dir: str) -> dict[str, Any]:
+    """Extract PetoutTargetAttribute NPC teams grouped by targetId into a compact list."""
+    raw_rows = parse_array_lua_list(os.path.join(cfg_dir, "PetoutTargetAttribute.lua"))
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in raw_rows:
+        tid = str(row.get("targetId", "")).strip()
+        if tid:
+            grouped.setdefault(tid, []).append(row)
+
+    teams: list[dict[str, Any]] = []
+    for tid, slots in grouped.items():
+        slots_sorted = sorted(slots, key=lambda r: int(r.get("formation", 0)))
+        total_fap = sum(int(s.get("FAP", 0)) for s in slots_sorted)
+        leader = slots_sorted[0]
+        compact_slots = [
+            {
+                "formation": int(s.get("formation", idx + 1)),
+                "heroModelId": int(s.get("heroModelId", 12011001)),
+                "step": int(s.get("step", 0)),
+                "Lv": int(s.get("Lv", 1)),
+                "HP": int(s.get("HP", 1000)),
+                "AP": int(s.get("AP", 100)),
+                "DEF": int(s.get("DEF", 50)),
+                "FAP": int(s.get("FAP", 1000)),
+                "FSP": int(s.get("FSP", 500)),
+                "RP": int(s.get("RP", 50)),
+                "HIT": int(s.get("HIT", 10000)),
+                "DOD": int(s.get("DOD", 0)),
+                "CRI": int(s.get("CRI", 0)),
+                "TEN": int(s.get("TEN", 0)),
+                "BLO": int(s.get("BLO", 0)),
+                "BOG": int(s.get("BOG", 0)),
+                "CRId": int(s.get("CRId", 0)),
+                "TEND": int(s.get("TEND", 0)),
+                "DAMADD": int(s.get("DAMADD", 0)),
+                "DAMCUT": int(s.get("DAMCUT", 0)),
+                "DAMADDR": int(s.get("DAMADDR", 0)),
+                "DAMCUTR": int(s.get("DAMCUTR", 0)),
+            }
+            for idx, s in enumerate(slots_sorted)
+        ]
+        teams.append(
+            {
+                "targetId": tid,
+                "total_fap": total_fap,
+                "leader_hero_id": int(leader.get("heroModelId", 12011001)),
+                "lv": max(int(s.get("Lv", 1)) for s in slots_sorted),
+                "slots": compact_slots,
+            }
+        )
+    teams.sort(key=lambda t: (t["total_fap"], t["targetId"]))
+    return {"petout_targets": teams}
+
+
 def parse_3level_lua_items(path: str, group_key: str) -> dict[str, list[dict[str, Any]]]:
     """Parse 3-level `[k1][k2][k3] = { ... }` tables grouped by `group_key`."""
     if not os.path.exists(path):
@@ -428,6 +482,21 @@ def main() -> None:
     pvpinter_top_reward = parse_array_lua_list(os.path.join(cfg_dir, "PvpinterTopRewardRelation.lua"))
     pvpinter_top_worship = parse_simple_lua_items(os.path.join(cfg_dir, "PvpinterTopWorship.lua"))
 
+    pet_config = parse_singleton_lua_item(os.path.join(cfg_dir, "PetConfig.lua"))
+    pet_model = parse_simple_lua_items(os.path.join(cfg_dir, "PetModel.lua"))
+    pet_lv = parse_nested_lua_items(os.path.join(cfg_dir, "PetLvRelation.lua"))
+    pet_skill = parse_simple_lua_items(os.path.join(cfg_dir, "PetSkillModel.lua"))
+    pet_new_skillrange = parse_simple_lua_items(os.path.join(cfg_dir, "PetNewSkillrangeModel.lua"))
+    pet_rebirth = parse_nested_lua_items(os.path.join(cfg_dir, "PetRebirthRelation.lua"))
+    petout_config = parse_singleton_lua_item(os.path.join(cfg_dir, "PetoutConfig.lua"))
+    petout_nodes = parse_simple_lua_items(os.path.join(cfg_dir, "PetoutNodeModel.lua"))
+    petout_boxes = parse_simple_lua_items(os.path.join(cfg_dir, "PetoutBoxModel.lua"))
+    petout_buybox = parse_nested_lua_items(os.path.join(cfg_dir, "PetoutBuyboxRelation.lua"))
+    petout_buystep = parse_simple_lua_items(os.path.join(cfg_dir, "PetoutBuystepUseRelation.lua"))
+    petout_rank_per = parse_nested_lua_items(os.path.join(cfg_dir, "PetoutRankperRewardRelation.lua"))
+    petout_rank_guild = parse_nested_lua_items(os.path.join(cfg_dir, "PetoutRankguildRewardRelation.lua"))
+    petout_shop = parse_simple_lua_items(os.path.join(cfg_dir, "PetoutShopRelation.lua"))
+
     hero_bonds = {
         hero: [relations[order]["PRModelId"] for order in sorted(relations, key=int)]
         for hero, relations in parse_nested_lua_items(os.path.join(cfg_dir, "HeroPrRelation.lua")).items()
@@ -509,6 +578,10 @@ def main() -> None:
         # R7.39: Enable Lianti (ModuleSub 5700) & expose canonical VN Lianti stones (16050035..16050038) in ShopGoods
         if "5700" in module_subs:
             module_subs["5700"]["ifOpen"] = 1
+        # R8.5: Enable Pet & PetOut modules (1414, 7400..7406, 7500, 7600)
+        for pet_mod in ("1414", "7400", "7401", "7402", "7403", "7404", "7405", "7406", "7500", "7600"):
+            if pet_mod in module_subs:
+                module_subs[pet_mod]["ifOpen"] = 1
         r739_lianti_shop = [
             (7, 16050035, 10),
             (8, 16050036, 25),
@@ -675,6 +748,18 @@ def main() -> None:
             "pvpinter_top_gamble": sum(len(v) for v in pvpinter_top_gamble.values()),
             "pvpinter_top_reward": len(pvpinter_top_reward),
             "pvpinter_top_worship": len(pvpinter_top_worship),
+            "pet_model": len(pet_model),
+            "pet_lv": len(pet_lv),
+            "pet_skill": len(pet_skill),
+            "pet_new_skillrange": len(pet_new_skillrange),
+            "pet_rebirth": sum(len(v) for v in pet_rebirth.values()),
+            "petout_nodes": len(petout_nodes),
+            "petout_boxes": len(petout_boxes),
+            "petout_buybox": sum(len(v) for v in petout_buybox.values()),
+            "petout_buystep": len(petout_buystep),
+            "petout_rank_per": len(petout_rank_per),
+            "petout_rank_guild": len(petout_rank_guild),
+            "petout_shop": len(petout_shop),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -859,12 +944,29 @@ def main() -> None:
         "pvpinter_top_gamble": pvpinter_top_gamble,
         "pvpinter_top_reward": pvpinter_top_reward,
         "pvpinter_top_worship": pvpinter_top_worship,
+        "pet_config": pet_config,
+        "pet_model": pet_model,
+        "pet_lv": pet_lv,
+        "pet_skill": pet_skill,
+        "pet_new_skillrange": pet_new_skillrange,
+        "pet_rebirth": pet_rebirth,
+        "petout_config": petout_config,
+        "petout_nodes": petout_nodes,
+        "petout_boxes": petout_boxes,
+        "petout_buybox": petout_buybox,
+        "petout_buystep": petout_buystep,
+        "petout_rank_per": petout_rank_per,
+        "petout_rank_guild": petout_rank_guild,
+        "petout_shop": petout_shop,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     print(f"Wrote {OUT_PATH}: {data['counts']}")
     with open(os.path.join(os.path.dirname(OUT_PATH), "bdd_data.json"), "w", encoding="utf-8") as f:
         json.dump(extract_bdd_data(cfg_dir), f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    with open(os.path.join(os.path.dirname(OUT_PATH), "pet_data.json"), "w", encoding="utf-8") as f:
+        json.dump(extract_pet_data(cfg_dir), f, ensure_ascii=False, indent=2)
         f.write("\n")
 
 

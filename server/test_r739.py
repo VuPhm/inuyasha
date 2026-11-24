@@ -79,7 +79,7 @@ class R739LiantiTest(unittest.TestCase):
 
             ex_info = self._call(p, "TimedLimitExchange", "GetInfo")
             self.assertEqual(ex_info["Status"], 0)
-            self.assertEqual([int(r["Serial"]) for r in ex_info["Value"]["ActivityList"]], list(range(1, 26)))
+            self.assertEqual([int(r["Serial"]) for r in ex_info["Value"]["ActivityList"]], list(range(1, 29)))
 
             ex = self._call(p, "TimedLimitExchange", "Exchange", 4406, 18, 1)
             self.assertEqual(ex["Status"], 0)

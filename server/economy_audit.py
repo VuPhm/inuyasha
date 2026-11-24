@@ -36,6 +36,8 @@ ALLOWED_PLAYER_RESOURCES = {
     "Merit": "Merit",
     "GDDHCoin": "GDDHCoin",
     "RebornCoin": "RebornCoin",
+    "PetSoul": "PetSoul",
+    "PetCoin": "PetCoin",
 }
 
 DISALLOWED_BALANCE_KEYS = {"HP", "AP", "DEF", "DAM", "DAMADD", "DAMADDR", "DAMCUT", "DAMCUTR"}

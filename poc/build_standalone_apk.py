@@ -5935,7 +5935,7 @@ def patch_modern_android_sdk(work_dir: Path, min_sdk: int = 21, target_sdk: int 
         return f"<{tag} android:exported=\"false\"{attrs}>{body}</{tag}>"
 
     manifest = re.sub(
-        r"<(activity|service|receiver|provider)\b([^>]*)>(.*?)</\1>",
+        r"<(activity|service|receiver|provider)\b([^>]*?)(?<!/)>(.*?)</\1>",
         _add_exported_default,
         manifest,
         flags=re.S,

@@ -42,9 +42,13 @@ class R87ModernSdkTest(unittest.TestCase):
             perms = re.findall(r'<uses-permission\b[^>]*android:name="([^"]+)"', mf_txt)
             self.assertEqual(len(perms), len(set(perms)), "Duplicate <uses-permission> entries remain")
 
-            for m in re.finditer(r"<(activity|service|receiver|provider)\b([^>]*)>(.*?)</\1>", mf_txt, re.S):
+            for m in re.finditer(r"<(activity|service|receiver|provider)\b([^>]*?)(?<!/)>(.*?)</\1>", mf_txt, re.S):
                 if "<intent-filter" in m.group(3):
                     self.assertIn("android:exported=", m.group(2), f"Missing android:exported on <{m.group(1)} {m.group(2)}>")
+            self.assertRegex(
+                mf_txt,
+                r'<receiver\b[^>]*android:exported="false"[^>]*android:name="com\.google\.android\.gms\.analytics\.AnalyticsReceiver"',
+            )
 
             mq_txt = mq_dst.read_text(encoding="utf-8")
             self.assertNotIn("TelephonyManager;->getDeviceId", mq_txt)

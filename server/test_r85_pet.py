@@ -407,7 +407,7 @@ class R85PetTest(unittest.TestCase):
                 emu.clock.set_fixed(_ts_vn(2026, 11, 1 + day_offset, 12, 0))
                 info = self._call(prof, "TimedLimitExchange", "GetInfo")["Value"]
                 by_ser = {int(r["Serial"]): r for r in info["ActivityList"]}
-                self.assertEqual(sorted(by_ser.keys()), list(range(1, 29)))
+                self.assertEqual(sorted(by_ser.keys()), list(range(1, 31)))
                 g26 = by_ser[26]["ExchaneGameResourceList"][0]
                 g27 = by_ser[27]["ExchaneGameResourceList"][0]
                 seen_s26.add((int(g26["ResourceTypeSub"]), int(g26["ModelId"])))

@@ -282,6 +282,14 @@ class NightmareHandlersMixin:
                 odds = int(d.get("dropOdds", 0))
                 if odds <= 0 or random.randint(1, 10000) <= odds:
                     reward_tuples.append((int(d["typeID"]), int(d["modelID"]), int(d["num"])))
+            gm_tbl = self.game_data.get("goods_model", {})
+            for dp in self.game_data.get("warfare_droppreview", {}).values():
+                node_ids = {x.strip() for x in str(dp.get("nightmareId", "")).split(",") if x.strip()}
+                if str(node_id) in node_ids:
+                    chest_id = int(dp.get("warfarecrestId", 0))
+                    if chest_id > 0:
+                        t_id = int(gm_tbl.get(str(chest_id), {}).get("typeID", chest_id // 10000))
+                        reward_tuples.append((t_id, chest_id, 1))
 
         base_res = self._grant_resources_from_tuples(
             reward_tuples,

@@ -66,6 +66,7 @@ from pvpinter_handlers import PVPinterHandlersMixin
 from reborn_handlers import RebornHandlersMixin, _default_reborn_step_info
 from social_handlers import SocialHandlersMixin
 from teambattle_handlers import TeambattleHandlersMixin
+from warfare_handlers import WarfareHandlersMixin
 
 SERVER_DIR = Path(__file__).resolve().parent
 _default_root = SERVER_DIR.parent
@@ -405,6 +406,7 @@ class ProfileStore(
     GuildHandlersMixin,
     PVPinterHandlersMixin,
     PetHandlersMixin,
+    WarfareHandlersMixin,
 ):
     """Single-profile game state & RPC engine backed by extracted VN/EN config."""
 
@@ -711,6 +713,7 @@ class ProfileStore(
                 if isinstance(s_eq, dict) and s_eq.get("Id"):
                     s_eq.setdefault("Step", 0)
             self._normalize_slot_gems(slot, gems_by_id=gems_by_id, seen_ids=seen_socketed_gems)
+        self._ensure_warfare_state(data)
         for ch_st in data.get("chapters", {}).values():
             for suffix in ("A", "B", "C"):
                 val = ch_st.get(f"IfDrawBox{suffix}", False)
@@ -768,6 +771,8 @@ class ProfileStore(
             return mkey in self.game_data.get("gem_model", {})
         if rtype == 2401:
             return mkey in self.game_data.get("pet_model", {})
+        if rtype == 2502:
+            return mkey in self.game_data.get("warfarespirit_model", {})
         if rtype == 2701:
             return mkey in self.game_data.get("reborn_goods", {})
         gm = self.game_data.get("goods_model", {}).get(mkey) or self.game_data.get("goods_djq_model", {}).get(mkey)
@@ -825,6 +830,10 @@ class ProfileStore(
                 mid = int(item.get("ModelId", 0))
                 if not self._is_valid_resource(2401, mid):
                     raise ValueError(f"Invalid Pet resource ModelId={mid} in {context}")
+            for item in bundle.get("WarfarespiritInfo", []):
+                mid = int(item.get("ModelId", 0))
+                if not self._is_valid_resource(2502, mid):
+                    raise ValueError(f"Invalid Warfarespirit resource ModelId={mid} in {context}")
             for item in bundle.get("RebornGoods", []):
                 mid = int(item.get("ModelId", 0))
                 if not self._is_valid_resource(2701, mid):
@@ -1287,9 +1296,19 @@ class ProfileStore(
             if (include_player_star and hasattr(self, "state") and hasattr(self, "_combat_pet_bonuses"))
             else Counter()
         )
-        ap_rate = 10000 + talent[401] + sum(bond["APR"] for bond in bonds) + rb_apr + dashi_apr + pet_bonus[401]
-        hp_rate = 10000 + talent[402] + sum(bond["HPR"] for bond in bonds) + rb_hpr + dashi_hpr + pet_bonus[402]
-        def_rate = 10000 + talent[403] + sum(bond["DEFR"] for bond in bonds) + rb_defr + dashi_defr + pet_bonus[403]
+        warfare_rates = (
+            self._hero_warfare_rates(hero)
+            if hasattr(self, "_hero_warfare_rates")
+            else {901: 0, 902: 0, 903: 0}
+        )
+        spirit_bonus = (
+            self._slot_warfarespirit_bonuses(slot, hero)
+            if (include_player_star and hasattr(self, "state") and hasattr(self, "_slot_warfarespirit_bonuses"))
+            else Counter()
+        )
+        ap_rate = 10000 + talent[401] + sum(bond["APR"] for bond in bonds) + rb_apr + dashi_apr + pet_bonus[401] + warfare_rates[901] // 10
+        hp_rate = 10000 + talent[402] + sum(bond["HPR"] for bond in bonds) + rb_hpr + dashi_hpr + pet_bonus[402] + warfare_rates[902] // 10
+        def_rate = 10000 + talent[403] + sum(bond["DEFR"] for bond in bonds) + rb_defr + dashi_defr + pet_bonus[403] + warfare_rates[903] // 10
 
         eq_hp, eq_ap, eq_def, eq_fsp = 0, 0, 0, 0
         group_counts: dict[int, int] = {}
@@ -1458,6 +1477,10 @@ class ProfileStore(
             hp1 += pet_bonus[201] + pet_bonus[432]
             ap1 += pet_bonus[202] + pet_bonus[431]
             def1 += pet_bonus[203] + pet_bonus[433]
+        if spirit_bonus:
+            hp1 += spirit_bonus[432]
+            ap1 += spirit_bonus[431]
+            def1 += spirit_bonus[433]
         # The VN Property calculation has separate terms for the hero's rate and other flat stats.
         ap_extra = ap1 - hero_ap + talent[202]
         hp_extra = hp1 - hero_hp + talent[201]
@@ -1481,37 +1504,37 @@ class ProfileStore(
             "APR2": 0,
             "APAdd": 0,
             "APHero": 0,
-            "APHeroR": 0,
+            "APHeroR": warfare_rates[901],
             "DEF1": hero_def,
             "DEFR1": def_rate,
             "DEF2": def_extra,
             "DEFR2": 0,
             "DEFAdd": 0,
             "DEFHero": 0,
-            "DEFHeroR": 0,
+            "DEFHeroR": warfare_rates[903],
             "HP1": hero_hp,
             "HPR1": hp_rate,
             "HP2": hp_extra,
             "HPR2": 0,
             "HPAdd": 0,
             "HPHero": 0,
-            "HPHeroR": 0,
+            "HPHeroR": warfare_rates[902],
             "APToHPHeroR": 0,
             "RP": min(MAX_RAGE, int(cfg.get("RP", 50)) + talent[205] + set_rp + pet_bonus[205]),
-            "HIT": int(cfg.get("HIT", 10000)) + talent[301] + set_hit + gem_bonus[301] + worn_fashion[301] + pet_bonus[301],
-            "DOD": int(cfg.get("DOD", 0)) + talent[302] + set_dod + gem_bonus[302] + worn_fashion[302] + pet_bonus[302],
-            "CRI": int(cfg.get("CRI", 0)) + talent[303] + set_cri + gem_bonus[303] + worn_fashion[303] + pet_bonus[303],
-            "TEN": int(cfg.get("TEN", 0)) + talent[304] + set_ten + gem_bonus[304] + worn_fashion[304] + pet_bonus[304],
-            "BLO": int(cfg.get("BLO", 0)) + talent[305] + set_blo + gem_bonus[305] + worn_fashion[305] + pet_bonus[305],
-            "BOG": int(cfg.get("BOG", 0)) + talent[306] + set_bog + gem_bonus[306] + worn_fashion[306] + pet_bonus[306],
-            "CRId": int(cfg.get("CRID", 0)) + talent[307] + set_crid + worn_fashion[307] + pet_bonus[307],
-            "TEND": int(cfg.get("TEND", 0)) + talent[308] + set_tend + worn_fashion[308] + pet_bonus[308],
-            "CP": talent[404],
-            "BCP": talent[405] + pet_bonus[405],
+            "HIT": int(cfg.get("HIT", 10000)) + talent[301] + set_hit + gem_bonus[301] + worn_fashion[301] + pet_bonus[301] + spirit_bonus[301],
+            "DOD": int(cfg.get("DOD", 0)) + talent[302] + set_dod + gem_bonus[302] + worn_fashion[302] + pet_bonus[302] + spirit_bonus[302],
+            "CRI": int(cfg.get("CRI", 0)) + talent[303] + set_cri + gem_bonus[303] + worn_fashion[303] + pet_bonus[303] + spirit_bonus[303],
+            "TEN": int(cfg.get("TEN", 0)) + talent[304] + set_ten + gem_bonus[304] + worn_fashion[304] + pet_bonus[304] + spirit_bonus[304],
+            "BLO": int(cfg.get("BLO", 0)) + talent[305] + set_blo + gem_bonus[305] + worn_fashion[305] + pet_bonus[305] + spirit_bonus[305],
+            "BOG": int(cfg.get("BOG", 0)) + talent[306] + set_bog + gem_bonus[306] + worn_fashion[306] + pet_bonus[306] + spirit_bonus[306],
+            "CRId": int(cfg.get("CRID", 0)) + talent[307] + set_crid + worn_fashion[307] + pet_bonus[307] + spirit_bonus[307],
+            "TEND": int(cfg.get("TEND", 0)) + talent[308] + set_tend + worn_fashion[308] + pet_bonus[308] + spirit_bonus[308],
+            "CP": talent[404] + spirit_bonus[404],
+            "BCP": talent[405] + pet_bonus[405] + spirit_bonus[405],
             "CPR": talent[406] + pet_bonus[406],
             "BCPR": talent[407] + pet_bonus[407],
-            "DAMADD": talent[408] + set_damadd + gem_bonus[408] + hero_lianti["DAMADD"] + worn_fashion[408] + pet_bonus[408],
-            "DAMCUT": talent[409] + set_damcut + gem_bonus[409] + hero_lianti["DAMCUT"] + worn_fashion[409] + pet_bonus[409],
+            "DAMADD": talent[408] + set_damadd + gem_bonus[408] + hero_lianti["DAMADD"] + worn_fashion[408] + pet_bonus[408] + spirit_bonus[408],
+            "DAMCUT": talent[409] + set_damcut + gem_bonus[409] + hero_lianti["DAMCUT"] + worn_fashion[409] + pet_bonus[409] + spirit_bonus[409],
             "DAMADDR": talent[410] + tr_damaddr + lianti_damaddr + worn_fashion[410],
             "DAMCUTR": talent[411] + tr_damcutr + lianti_damcutr + worn_fashion[411],
             "RADAMADDR": talent[412] + pet_bonus[412], "RADAMCUTR": talent[413] + pet_bonus[413],
@@ -1733,6 +1756,7 @@ class ProfileStore(
                     "HeroId": main_hero["Id"],
                     "HeroModelId": main_model_id,
                     "Gem": [{} for _ in range(6)],
+                    "Warfarespirit": [{} for _ in range(6)],
                 }
             else:
                 s = {
@@ -1740,6 +1764,7 @@ class ProfileStore(
                     "HeroId": EMPTY_ENTITY_ID,
                     "HeroModelId": 0,
                     "Gem": [{} for _ in range(6)],
+                    "Warfarespirit": [{} for _ in range(6)],
                 }
             s["Property"] = self._compute_slot_property(s, heroes_by_id)
             s["FAP"] = int(s["Property"]["FAP"])
@@ -1858,7 +1883,13 @@ class ProfileStore(
             inst = self._build_hero_instance(int(hid), lv=lv, step=1, inst_id=inst_id)
             hero_instances.append(inst)
             heroes_map = {h["Id"]: h for h in hero_instances}
-            slot = {"SlotId": idx, "HeroId": inst_id, "HeroModelId": int(hid), "Gem": [{} for _ in range(6)]}
+            slot = {
+                "SlotId": idx,
+                "HeroId": inst_id,
+                "HeroModelId": int(hid),
+                "Gem": [{} for _ in range(6)],
+                "Warfarespirit": [{} for _ in range(6)],
+            }
             slot["Property"] = self._compute_slot_property(slot, heroes_map)
             slot_infos.append(slot)
 
@@ -2001,6 +2032,7 @@ class ProfileStore(
         new_fashions: list[dict[str, Any]] = []
         new_gems: list[dict[str, Any]] = []
         new_pets: list[dict[str, Any]] = []
+        new_spirits: list[dict[str, Any]] = []
 
         attr_map = {
             1101: "EXP",
@@ -2168,6 +2200,21 @@ class ProfileStore(
                         source=source,
                         idempotency_key=f"{tx_prefix}:{idx}:pet:{copy_i}:{pet_inst['Id']}",
                     )
+            elif rtype == 2502:
+                spirits_list = self.state.setdefault("warfarespirit", [])
+                for copy_i in range(rnum):
+                    sp_inst = self._build_warfarespirit_instance(rmodel)
+                    spirits_list.append(sp_inst)
+                    new_spirits.append(sp_inst)
+                    self.ledger.record_grant_event(
+                        account_id=str(self.state["player"]["PlayerId"]),
+                        profile=self.profile_name,
+                        resource_type=f"Warfarespirit:{rmodel}",
+                        amount=1,
+                        balance_after=len(spirits_list),
+                        source=source,
+                        idempotency_key=f"{tx_prefix}:{idx}:wf_spirit:{copy_i}:{sp_inst['Id']}",
+                    )
             elif rtype == 2701:
                 rb_list = self.state.setdefault("reborn_goods", [])
                 existing_rb = next((rg for rg in rb_list if int(rg.get("ModelId", 0)) == rmodel), None)
@@ -2244,6 +2291,8 @@ class ProfileStore(
             bundle["Gem"] = new_gems
         if new_pets:
             bundle["Pet"] = new_pets
+        if new_spirits:
+            bundle["WarfarespiritInfo"] = new_spirits
         if "boss_battle" in self.state:
             self.state["boss_battle"]["jifen"] = int(self.state["player"].get("BossCoin", self.state["boss_battle"].get("jifen", 0)))
         return [bundle] if bundle else []
@@ -2549,6 +2598,15 @@ class ProfileStore(
             "PetOutInfo.GetPetShopList": self._rpc_petout_shop_list,
             "PetOutInfo.PetOutBuyGoods": self._rpc_petout_buy_goods,
             "PetOutInfo.PetShopRefresh": self._rpc_petout_shop_refresh,
+            "Warfare.OpenWarfare": self._rpc_warfare_open,
+            "Warfare.LvUp": self._rpc_warfare_lv_up,
+            "Warfare.ColorLvUp": self._rpc_warfare_color_lv_up,
+            "WarfarespiritSlot.SpiritSlotCombat": self._rpc_warfarespirit_slot_combat,
+            "WarfarespiritSlot.SpiritSlotUnCombat": self._rpc_warfarespirit_slot_uncombat,
+            "Warfarespirit.SpiritLvUp": self._rpc_warfarespirit_lv_up,
+            "Warfarespirit.SpiritSell": self._rpc_warfarespirit_sell,
+            "Warfarespirit.DecomposeWarfarcerest": self._rpc_warfarespirit_decompose,
+            "Warfarespirit.AddSpiritTest": self._rpc_warfarespirit_add_test,
             "SlotFormation.GetFormation": self._rpc_get_formation,
             "SlotFormation.Change": self._rpc_change_formation,
             "Equip.EquipCompose": self._rpc_equip_compose,
@@ -3105,7 +3163,7 @@ class ProfileStore(
             "FashionInfo": self.state.get("fashions", []),
             "GemInfo": self.state.get("gems", []),
             "PetInfo": self.state.get("pets", []),
-            "WarfarespiritInfo": [],
+            "WarfarespiritInfo": self.state.get("warfarespirit", []),
             "RebornGoodsList": self.state.get("reborn_goods", []),
             "RebornnComposeStatus": self._compute_reborn_compose_status(),
             "OpencontestState": 1,
@@ -10859,6 +10917,12 @@ class GameEmulatorState:
             json.loads(pet_path.read_text(encoding="utf-8"))
             if pet_path.exists()
             else {"petout_targets": []}
+        )
+        warfare_path = SERVER_DIR / "warfare_data.json"
+        self.game_data["warfare"] = (
+            json.loads(warfare_path.read_text(encoding="utf-8"))
+            if warfare_path.exists()
+            else {"warfare_lv": {}, "warfare_ref": {}}
         )
         self.clock_path = resolved_dir / "clock_state.json"
         if persist and self.clock_path.exists():

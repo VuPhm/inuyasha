@@ -25,9 +25,11 @@ COPY \
     server/guild_handlers.py \
     server/pvpinter_handlers.py \
     server/pet_handlers.py \
+    server/warfare_handlers.py \
     server/game_data.json \
     server/bdd_data.json \
     server/pet_data.json \
+    server/warfare_data.json \
     /app/server/
 
 RUN mkdir -p /data

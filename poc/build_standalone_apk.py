@@ -849,6 +849,8 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
         "pvpinter_handlers.py",
         "pet_handlers.py",
         "pet_data.json",
+        "warfare_handlers.py",
+        "warfare_data.json",
         "private_auth.py",
         "hybrid_sync.py",
         "sync_ca_bundle.pem",
@@ -1806,6 +1808,7 @@ def apply_shared_gameplay_patches(work_dir: Path) -> None:
     patch_r739_lianti_lua(work_dir / "assets" / "src")
     patch_r740_pvpinter_lua(work_dir / "assets" / "src")
     patch_r85_pet_lua(work_dir / "assets" / "src")
+    patch_r86_warfare_lua(work_dir / "assets" / "src")
     patch_luac_text(work_dir / "assets" / "src" / "Equipment" / "EquipmentComposeLayer.luac", [
         (
             '        if colorLV < 8 then    --排除最高等级的装备',
@@ -5598,6 +5601,253 @@ def patch_r85_pet_lua(src: Path) -> None:
             raise AssertionError(f"Expected pet name token not found in PetModel.luac: {old_token}")
         pm_text = pm_text.replace(old_token, new_token)
     write_luac_text(pet_model_path, pm_text)
+
+
+def patch_r86_warfare_lua(src: Path) -> None:
+    """R8.6: Enable Warfare/Warfarespirit modules (8101..8108), localize names to VN, and unlock UI tabs."""
+    module_specs = [
+        (8101, "Warfare", "战阵"),
+        (8102, "WarfareColorUp", "战阵进阶"),
+        (8103, "WarfareSpirit", "战灵"),
+        (8104, "WarfarespiritLvUp", "战灵升级"),
+        (8105, "WarfarespiritCombat", "战灵上下阵"),
+        (8106, "WarfareLvUp", "战阵升级"),
+        (8107, "WarfareOpen", "战阵开启"),
+        (8108, "WarfarespiritSell", "战灵售卖"),
+    ]
+    module_replacements: list[tuple[str, str]] = []
+    for mid, alias, zh_name in module_specs:
+        old_blk = (
+            f"        [{mid}] = {{\n"
+            f"            Id = {mid},\n"
+            f'            alias = "{alias}",\n'
+            f"            moduleId = 81,\n"
+            f'            moduleAlias = "Warfare",\n'
+            f'            name = "{zh_name}",\n'
+            f"            isClient = 1,\n"
+            f"            ifOpen = 0,"
+        )
+        new_blk = old_blk.replace("ifOpen = 0,", "ifOpen = 1,")
+        module_replacements.append((old_blk, new_blk))
+    patch_luac_text(src / "Config" / "ModuleSubModel.luac", module_replacements)
+
+    warfare_name_map = [
+        ("萬靈結界", "Kết Giới Vạn Linh"),
+        ("雷霆結界", "Kết Giới Lôi Đình"),
+        ("降妖結界", "Kết Giới Hàng Yêu"),
+        ("風靈結界", "Kết Giới Phong Linh"),
+        ("獸靈結界", "Kết Giới Thú Linh"),
+        ("妖刀結界", "Kết Giới Yêu Đao"),
+        ("暗影結界", "Kết Giới Ám Ảnh"),
+        ("水靈結界", "Kết Giới Thủy Linh"),
+        ("土靈結界", "Kết Giới Thổ Linh"),
+        ("妖神結界", "Kết Giới Yêu Thần"),
+        ("冰封結界", "Kết Giới Băng Phong"),
+        ("妖魂結界", "Kết Giới Yêu Hồn"),
+        ("妖火結界", "Kết Giới Yêu Hỏa"),
+        ("巫女結界", "Kết Giới Vu Nữ"),
+        ("魔神結界", "Kết Giới Ma Thần"),
+    ]
+    wf_model_path = src / "Config" / "WarfareModel.luac"
+    raw_wm = wf_model_path.read_bytes()
+    wm_text = xxtea_decrypt(raw_wm[len(XXTEA_SIGN) :] if raw_wm.startswith(XXTEA_SIGN) else raw_wm, XXTEA_KEY).decode("utf-8")
+    for zh, vn in warfare_name_map:
+        old_tok = f'            name = "{zh}",'
+        new_tok = f'            name = "{vn}",'
+        if old_tok not in wm_text:
+            raise AssertionError(f"Expected warfare name token not found in WarfareModel.luac: {old_tok}")
+        wm_text = wm_text.replace(old_tok, new_tok)
+    old_des = '            des = "啟動結界獲得結界技，並獲得結界之力",'
+    new_des = '            des = "Kích hoạt Kết Giới để nhận kỹ năng Kết Giới và sức mạnh Kết Giới",'
+    if old_des not in wm_text:
+        raise AssertionError("Expected warfare description token not found in WarfareModel.luac")
+    wm_text = wm_text.replace(old_des, new_des)
+    write_luac_text(wf_model_path, wm_text)
+
+    exp_spirit_map = [
+        ("低級經驗靈珠", "Linh Châu Kinh Nghiệm Sơ"),
+        ("中級經驗靈珠", "Linh Châu Kinh Nghiệm Trung"),
+        ("高級經驗靈珠", "Linh Châu Kinh Nghiệm Cao"),
+    ]
+    spirit_prefix_map = [
+        ("命中靈珠", "Linh Châu Chính Xác "),
+        ("閃避靈珠", "Linh Châu Né Tránh "),
+        ("暴擊靈珠", "Linh Châu Bạo Kích "),
+        ("抗暴靈珠", "Linh Châu Kháng Bạo "),
+        ("格擋靈珠", "Linh Châu Đỡ Đòn "),
+        ("破擊靈珠", "Linh Châu Phá Kích "),
+        ("必殺靈珠", "Linh Châu Tất Sát "),
+        ("守護靈珠", "Linh Châu Thủ Hộ "),
+        ("傷害靈珠", "Linh Châu Sát Thương "),
+        ("免傷靈珠", "Linh Châu Miễn Thương "),
+        ("攻擊靈珠", "Linh Châu Công "),
+        ("血量靈珠", "Linh Châu HP "),
+        ("防禦靈珠", "Linh Châu Thủ "),
+        ("治療靈珠", "Linh Châu Trị Liệu "),
+        ("癒合靈珠", "Linh Châu Hồi Phục "),
+    ]
+    wsm_path = src / "Config" / "WarfarespiritModel.luac"
+    raw_wsm = wsm_path.read_bytes()
+    wsm_text = xxtea_decrypt(raw_wsm[len(XXTEA_SIGN) :] if raw_wsm.startswith(XXTEA_SIGN) else raw_wsm, XXTEA_KEY).decode("utf-8")
+    for zh, vn in exp_spirit_map:
+        old_tok = f'            name = "{zh}",'
+        new_tok = f'            name = "{vn}",'
+        if old_tok not in wsm_text:
+            raise AssertionError(f"Expected spirit EXP token not found: {old_tok}")
+        wsm_text = wsm_text.replace(old_tok, new_tok)
+    for zh_pref, vn_pref in spirit_prefix_map:
+        old_tok = f'            name = "{zh_pref}'
+        new_tok = f'            name = "{vn_pref}'
+        if old_tok not in wsm_text:
+            raise AssertionError(f"Expected spirit prefix token not found: {old_tok}")
+        wsm_text = wsm_text.replace(old_tok, new_tok)
+    write_luac_text(wsm_path, wsm_text)
+
+    patch_luac_text(src / "Hero" / "HeroUpdateScene.luac", [
+        (
+            """        tabList = {
+            { x = 50, y = 0, text = TR("升级")},
+            { x = 200, y = 0, text = TR("突破")},
+            --{ x = 350, y = 0, text = TR("转生")},
+            --{ x = 500, y = 0, text = TR("结界")},
+        },""",
+            """        tabList = {
+            { x = 50, y = 0, text = TR("升级")},
+            { x = 200, y = 0, text = TR("突破")},
+            --{ x = 350, y = 0, text = TR("转生")},
+            { x = 350, y = 0, tag = HeroEnhance.eWarfare, text = TR("结界")},
+        },""",
+        ),
+        (
+            """    -- 小伙伴不能转生
+    local mateInfor = NetworkResData:getFormationInfo(false).MateInfos or {}
+    for i, v in pairs(mateInfor) do
+        if v.HeroId == self.mHero.Id then
+            self.mTabLayer:setTabVisibled(HeroEnhance.eRebirth, false)
+            break
+        end
+    end
+    
+    --[[
+    local isOpen = NetworkResData:moduleIsOpenInServer(ModuleSub.eWarfare)
+    if not isOpen then
+        self.mTabLayer:setTabVisibled(HeroEnhance.eWarfare,false)
+    end
+    -- 战阵是否开启
+    local isOpen, retInfo = NetworkResData:modulePlayerIsOpen(ModuleSub.eWarfare)
+    if not isOpen then
+        self.mTabLayer:setTabVisibled(HeroEnhance.eWarfare,false)
+    end
+
+    -- 是否主角,是否品质>15
+    local mainHeroInfo = NetworkResData:getMainSlotInfo()
+    if mainHeroInfo.HeroId ~= self.mHero.Id and self.mHeroTable.quality < 15 then
+        self.mTabLayer:setTabVisibled(HeroEnhance.eWarfare,false)
+    end
+
+    -- 未上阵不显示
+    if not self.mCurSlotId then
+        self.mTabLayer:setTabVisibled(HeroEnhance.eWarfare,false)
+    end
+    --]]""",
+            """    -- 小伙伴不能转生
+    local mateInfor = NetworkResData:getFormationInfo(false).MateInfos or {}
+    for i, v in pairs(mateInfor) do
+        if v.HeroId == self.mHero.Id then
+            self.mTabLayer:setTabVisibled(HeroEnhance.eRebirth, false)
+            break
+        end
+    end
+    --]]
+    local isOpen = NetworkResData:moduleIsOpenInServer(ModuleSub.eWarfare)
+    if not isOpen then
+        self.mTabLayer:setTabVisibled(HeroEnhance.eWarfare, false)
+    end
+    -- 战阵是否开启
+    local isOpenPlayer, retInfo = NetworkResData:modulePlayerIsOpen(ModuleSub.eWarfare)
+    if not isOpenPlayer then
+        self.mTabLayer:setTabVisibled(HeroEnhance.eWarfare, false)
+    end
+
+    -- 是否主角,是否品质>=15且配置了结界ID
+    local mainHeroInfo = NetworkResData:getMainSlotInfo()
+    if (mainHeroInfo.HeroId ~= self.mHero.Id and self.mHeroTable.quality < 15) or not self.mHeroTable.warfareID or self.mHeroTable.warfareID == 0 then
+        self.mTabLayer:setTabVisibled(HeroEnhance.eWarfare, false)
+    end
+
+    -- 未上阵不显示
+    if not self.mCurSlotId then
+        self.mTabLayer:setTabVisibled(HeroEnhance.eWarfare, false)
+    end""",
+        ),
+    ])
+
+    patch_luac_text(src / "Disassemble" / "DisassembleNewScene.luac", [
+        (
+            """                self.mTypeTabLayer:setTabVisibled(3,false)
+                self.mTypeTabLayer:setTabVisibled(4,false)
+                self.mTypeTabLayer:setTabVisibled(5,true)""",
+            """                self.mTypeTabLayer:setTabVisibled(3,false)
+                self.mTypeTabLayer:setTabVisibled(4,false)
+                self.mTypeTabLayer:setTabVisibled(5, NetworkResData:modulePlayerIsOpen(ModuleSub.eWarfare) and true or false)""",
+        ),
+        (
+            """        tabList = {
+            { x = 0, y = 370, text = TR("人\\n物")},
+            { x = 0, y = 240, text = TR("宝\\n物")},
+            { x = 0, y = 110, text = TR("装\\n备")},
+            --{ x = 0, y = 10, text = TR("宠\\n物")},
+            --{ x = 0, y = 10, text = TR("结\\n界")},
+        },""",
+            """        tabList = {
+            { x = 0, y = 370, text = TR("人\\n物")},
+            { x = 0, y = 240, text = TR("宝\\n物")},
+            { x = 0, y = 110, text = TR("装\\n备")},
+            { x = 0, y = 10, text = TR("宠\\n物")},
+            { x = 0, y = 110, text = TR("结\\n界")},
+        },""",
+        ),
+        (
+            """        if  pargrams and pargrams.funcTionType == 2 then
+            self.mTypeTabLayer:setTabVisibled(5, false)
+        end""",
+            """        if (pargrams and pargrams.funcTionType == 2) or not NetworkResData:modulePlayerIsOpen(ModuleSub.eWarfare) then
+            self.mTypeTabLayer:setTabVisibled(5, false)
+        end""",
+        ),
+    ])
+
+    patch_luac_text(src / "Bag" / "BagExWarfareArms.luac", [
+        (
+            "    name           = BagModel.items[BagType.eWarfareArms].name,\n    bagType        = BagType.eWarfareArms,",
+            '    name           = "Kết Giới",\n    bagType        = nil,',
+        ),
+    ])
+    patch_luac_text(src / "Bag" / "BagExWarfareSpirit.luac", [
+        (
+            "    name           = BagModel.items[BagType.eWarfareSpirit].name,\n    bagType        = BagType.eWarfareSpirit,",
+            '    name           = "Linh Châu",\n    bagType        = nil,',
+        ),
+    ])
+    patch_luac_text(src / "Bag" / "BagScene.luac", [
+        (
+            """    -- 判断宝石功能是否开启
+    if NetworkResData:modulePlayerIsOpen(ModuleSub.eGem) then
+        BagTabInfo[BagSceneTab.eGem] = BagTabInfo[BagSceneTab.eGem] or require("Bag.BagExGem")
+        BagSceneTab.eGem = 5
+    end""",
+            """    -- 判断宝石功能是否开启
+    if NetworkResData:modulePlayerIsOpen(ModuleSub.eGem) then
+        BagTabInfo[BagSceneTab.eGem] = BagTabInfo[BagSceneTab.eGem] or require("Bag.BagExGem")
+        BagSceneTab.eGem = 5
+    end
+    if NetworkResData:modulePlayerIsOpen(ModuleSub.eWarfare) then
+        BagTabInfo[BagSceneTab.eGem] = BagTabInfo[BagSceneTab.eGem] or require("Bag.BagExGem")
+        BagTabInfo[BagSceneTab.eWarfareSpirit] = BagTabInfo[BagSceneTab.eWarfareSpirit] or require("Bag.BagExWarfareSpirit")
+        BagTabInfo[BagSceneTab.eWarfareArms] = BagTabInfo[BagSceneTab.eWarfareArms] or require("Bag.BagExWarfareArms")
+    end""",
+        ),
+    ])
 
 
 def build_and_sign_work(work_dir: Path, out_name: str) -> Path:

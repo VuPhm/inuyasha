@@ -94,7 +94,7 @@ class R738OneTapRechargeAndGemBagsTest(unittest.TestCase):
             info = self._call(p, "TimedLimitExchange", "GetInfo")
             self.assertEqual(info["Status"], 0)
             serials = [int(row["Serial"]) for row in info["Value"]["ActivityList"]]
-            self.assertEqual(serials, list(range(1, 29)))
+            self.assertEqual(serials, list(range(1, 31)))
 
             cases = [
                 (13, 500, 16020045, 6),

@@ -2277,9 +2277,19 @@ class R79EventHandlersMixin:
         (16021026, 1200),
         (16021027, 1200),
     )
+    WARFARE_CHEST_ROTATION: tuple[tuple[int, int, int, int], ...] = (
+        # (ResourceTypeSub, ModelId, Count, DiamondCost) — cycles across all 7 Warfare grades (eBoxChoice 1606)
+        (1606, 16061111, 1, 150),
+        (1606, 16061112, 1, 350),
+        (1606, 16061106, 1, 600),
+        (1606, 16061107, 1, 1000),
+        (1606, 16061108, 1, 1600),
+        (1606, 16061109, 1, 2400),
+        (1606, 16061110, 1, 3500),
+    )
 
     def _get_timed_exchange_recipes(self) -> list[dict[str, Any]]:
-        """Return base exchange recipes plus daily-rotating fashion & pet slots."""
+        """Return base exchange recipes plus daily-rotating fashion, pet & warfare slots."""
         day_ordinal = date.fromisoformat(self.clock.today_str()).toordinal()
         pair = self.FASHION_SHARD_ROTATION_PAIRS[day_ordinal % len(self.FASHION_SHARD_ROTATION_PAIRS)]
         recipes = list(self.TIMED_EXCHANGE_RECIPES)
@@ -2328,6 +2338,29 @@ class R79EventHandlersMixin:
                 "NeedVIPLv": 0,
                 "Need": [(1111, 0, 300)],
                 "Give": [(2403, 0, 10000), (2404, 0, 200)],
+            }
+        )
+        wf_rt, wf_rm, wf_rn, wf_dia = self.WARFARE_CHEST_ROTATION[day_ordinal % len(self.WARFARE_CHEST_ROTATION)]
+        recipes.append(
+            {
+                "Serial": 29,
+                "GlobalNum": 99,
+                "PersonalNum": 5,
+                "NeedLv": 55,
+                "NeedVIPLv": 0,
+                "Need": [(1111, 0, wf_dia)],
+                "Give": [(wf_rt, wf_rm, wf_rn)],
+            }
+        )
+        recipes.append(
+            {
+                "Serial": 30,
+                "GlobalNum": 99,
+                "PersonalNum": 10,
+                "NeedLv": 55,
+                "NeedVIPLv": 0,
+                "Need": [(1111, 0, 250)],
+                "Give": [(1605, 16050086, 5), (2502, 25020003, 1)],
             }
         )
         return recipes

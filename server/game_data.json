@@ -149,7 +149,12 @@
     "petout_buystep": 14,
     "petout_rank_per": 7,
     "petout_rank_guild": 9,
-    "petout_shop": 1656
+    "petout_shop": 1656,
+    "warfare_model": 15,
+    "warfarespirit_model": 108,
+    "warfarespirit_lv": 77,
+    "warfare_collocation": 120,
+    "warfare_droppreview": 4
   },
   "player_config": {
     "initLv": 1,
@@ -145705,7 +145710,7 @@
       "moduleAlias": "Warfare",
       "name": "战阵",
       "isClient": 1,
-      "ifOpen": 0,
+      "ifOpen": 1,
       "openLv": 55,
       "advancedOpenVIPLv": 0,
       "VIPNeedLv": 55,
@@ -145718,7 +145723,7 @@
       "moduleAlias": "Warfare",
       "name": "战阵进阶",
       "isClient": 1,
-      "ifOpen": 0,
+      "ifOpen": 1,
       "openLv": 55,
       "advancedOpenVIPLv": 0,
       "VIPNeedLv": 55,
@@ -145731,7 +145736,7 @@
       "moduleAlias": "Warfare",
       "name": "战灵",
       "isClient": 1,
-      "ifOpen": 0,
+      "ifOpen": 1,
       "openLv": 55,
       "advancedOpenVIPLv": 0,
       "VIPNeedLv": 55,
@@ -145744,7 +145749,7 @@
       "moduleAlias": "Warfare",
       "name": "战灵升级",
       "isClient": 1,
-      "ifOpen": 0,
+      "ifOpen": 1,
       "openLv": 55,
       "advancedOpenVIPLv": 0,
       "VIPNeedLv": 55,
@@ -145757,7 +145762,7 @@
       "moduleAlias": "Warfare",
       "name": "战灵上下阵",
       "isClient": 1,
-      "ifOpen": 0,
+      "ifOpen": 1,
       "openLv": 55,
       "advancedOpenVIPLv": 0,
       "VIPNeedLv": 55,
@@ -145770,7 +145775,7 @@
       "moduleAlias": "Warfare",
       "name": "战阵升级",
       "isClient": 1,
-      "ifOpen": 0,
+      "ifOpen": 1,
       "openLv": 55,
       "advancedOpenVIPLv": 0,
       "VIPNeedLv": 55,
@@ -145783,7 +145788,7 @@
       "moduleAlias": "Warfare",
       "name": "战阵开启",
       "isClient": 1,
-      "ifOpen": 0,
+      "ifOpen": 1,
       "openLv": 55,
       "advancedOpenVIPLv": 0,
       "VIPNeedLv": 55,
@@ -145796,7 +145801,7 @@
       "moduleAlias": "Warfare",
       "name": "战灵售卖",
       "isClient": 1,
-      "ifOpen": 0,
+      "ifOpen": 1,
       "openLv": 55,
       "advancedOpenVIPLv": 0,
       "VIPNeedLv": 55,
@@ -453978,6 +453983,2554 @@
       "useResource": "1111,0,1250",
       "oddsMin": 9982,
       "oddsMax": 10000
+    }
+  },
+  "warfare_model": {
+    "25010001": {
+      "ID": 25010001,
+      "name": "萬靈結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10001",
+      "typeID": 2
+    },
+    "25010002": {
+      "ID": 25010002,
+      "name": "雷霆結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10002",
+      "typeID": 1
+    },
+    "25010003": {
+      "ID": 25010003,
+      "name": "降妖結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10003",
+      "typeID": 3
+    },
+    "25010004": {
+      "ID": 25010004,
+      "name": "妖火結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10004",
+      "typeID": 1
+    },
+    "25010005": {
+      "ID": 25010005,
+      "name": "風靈結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10005",
+      "typeID": 3
+    },
+    "25010006": {
+      "ID": 25010006,
+      "name": "冰封結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10006",
+      "typeID": 1
+    },
+    "25010007": {
+      "ID": 25010007,
+      "name": "妖魂結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10007",
+      "typeID": 1
+    },
+    "25010008": {
+      "ID": 25010008,
+      "name": "妖神結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10008",
+      "typeID": 3
+    },
+    "25010009": {
+      "ID": 25010009,
+      "name": "魔神結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10009",
+      "typeID": 1
+    },
+    "25010010": {
+      "ID": 25010010,
+      "name": "妖刀結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10010",
+      "typeID": 1
+    },
+    "25010011": {
+      "ID": 25010011,
+      "name": "水靈結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10011",
+      "typeID": 2
+    },
+    "25010012": {
+      "ID": 25010012,
+      "name": "獸靈結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10012",
+      "typeID": 2
+    },
+    "25010013": {
+      "ID": 25010013,
+      "name": "土靈結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10013",
+      "typeID": 3
+    },
+    "25010014": {
+      "ID": 25010014,
+      "name": "暗影結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10014",
+      "typeID": 1
+    },
+    "25010015": {
+      "ID": 25010015,
+      "name": "巫女結界",
+      "des": "啟動結界獲得結界技，並獲得結界之力",
+      "colorLV": 1,
+      "pic": "zz_10015",
+      "typeID": 3
+    }
+  },
+  "warfarespirit_model": {
+    "25020101": {
+      "ID": 25020101,
+      "name": "命中靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 1,
+      "initialAttr": "301|40",
+      "addAttr": "301|10",
+      "EXP": 200,
+      "pic": "type_1",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25020201": {
+      "ID": 25020201,
+      "name": "閃避靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 2,
+      "initialAttr": "302|30",
+      "addAttr": "302|10",
+      "EXP": 200,
+      "pic": "type_2",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25020301": {
+      "ID": 25020301,
+      "name": "暴擊靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 3,
+      "initialAttr": "303|40",
+      "addAttr": "303|10",
+      "EXP": 200,
+      "pic": "type_3",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25020401": {
+      "ID": 25020401,
+      "name": "抗暴靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 4,
+      "initialAttr": "304|40",
+      "addAttr": "304|10",
+      "EXP": 200,
+      "pic": "type_4",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25020501": {
+      "ID": 25020501,
+      "name": "格擋靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 5,
+      "initialAttr": "305|40",
+      "addAttr": "305|10",
+      "EXP": 200,
+      "pic": "type_5",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25020601": {
+      "ID": 25020601,
+      "name": "破擊靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 6,
+      "initialAttr": "306|40",
+      "addAttr": "306|10",
+      "EXP": 200,
+      "pic": "type_6",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25020701": {
+      "ID": 25020701,
+      "name": "必殺靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 7,
+      "initialAttr": "307|90",
+      "addAttr": "307|30",
+      "EXP": 200,
+      "pic": "type_7",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25020801": {
+      "ID": 25020801,
+      "name": "守護靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 8,
+      "initialAttr": "308|90",
+      "addAttr": "308|30",
+      "EXP": 200,
+      "pic": "type_8",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25020901": {
+      "ID": 25020901,
+      "name": "攻擊靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 9,
+      "initialAttr": "431|210",
+      "addAttr": "431|80",
+      "EXP": 200,
+      "pic": "type_9",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25021001": {
+      "ID": 25021001,
+      "name": "防禦靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 10,
+      "initialAttr": "433|70",
+      "addAttr": "433|30",
+      "EXP": 200,
+      "pic": "type_10",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25021101": {
+      "ID": 25021101,
+      "name": "血量靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 11,
+      "initialAttr": "432|1450",
+      "addAttr": "432|580",
+      "EXP": 200,
+      "pic": "type_11",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25021201": {
+      "ID": 25021201,
+      "name": "治療靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 12,
+      "initialAttr": "404|140",
+      "addAttr": "404|50",
+      "EXP": 200,
+      "pic": "type_12",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25021301": {
+      "ID": 25021301,
+      "name": "癒合靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 13,
+      "initialAttr": "405|140",
+      "addAttr": "405|50",
+      "EXP": 200,
+      "pic": "type_13",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25021401": {
+      "ID": 25021401,
+      "name": "傷害靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 14,
+      "initialAttr": "408|140",
+      "addAttr": "408|50",
+      "EXP": 200,
+      "pic": "type_14",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25021501": {
+      "ID": 25021501,
+      "name": "免傷靈珠Ⅰ",
+      "colorLV": 1,
+      "typeID": 15,
+      "initialAttr": "409|140",
+      "addAttr": "409|50",
+      "EXP": 200,
+      "pic": "type_15",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25020102": {
+      "ID": 25020102,
+      "name": "命中靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 1,
+      "initialAttr": "301|110",
+      "addAttr": "301|40",
+      "EXP": 599,
+      "pic": "type_1",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25020202": {
+      "ID": 25020202,
+      "name": "閃避靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 2,
+      "initialAttr": "302|90",
+      "addAttr": "302|30",
+      "EXP": 599,
+      "pic": "type_2",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25020302": {
+      "ID": 25020302,
+      "name": "暴擊靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 3,
+      "initialAttr": "303|110",
+      "addAttr": "303|40",
+      "EXP": 599,
+      "pic": "type_3",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25020402": {
+      "ID": 25020402,
+      "name": "抗暴靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 4,
+      "initialAttr": "304|110",
+      "addAttr": "304|40",
+      "EXP": 599,
+      "pic": "type_4",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25020502": {
+      "ID": 25020502,
+      "name": "格擋靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 5,
+      "initialAttr": "305|110",
+      "addAttr": "305|40",
+      "EXP": 599,
+      "pic": "type_5",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25020602": {
+      "ID": 25020602,
+      "name": "破擊靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 6,
+      "initialAttr": "306|110",
+      "addAttr": "306|40",
+      "EXP": 599,
+      "pic": "type_6",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25020702": {
+      "ID": 25020702,
+      "name": "必殺靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 7,
+      "initialAttr": "307|260",
+      "addAttr": "307|100",
+      "EXP": 599,
+      "pic": "type_7",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25020802": {
+      "ID": 25020802,
+      "name": "守護靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 8,
+      "initialAttr": "308|260",
+      "addAttr": "308|100",
+      "EXP": 599,
+      "pic": "type_8",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25020902": {
+      "ID": 25020902,
+      "name": "攻擊靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 9,
+      "initialAttr": "431|620",
+      "addAttr": "431|250",
+      "EXP": 599,
+      "pic": "type_9",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25021002": {
+      "ID": 25021002,
+      "name": "防禦靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 10,
+      "initialAttr": "433|210",
+      "addAttr": "433|90",
+      "EXP": 599,
+      "pic": "type_10",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25021102": {
+      "ID": 25021102,
+      "name": "血量靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 11,
+      "initialAttr": "432|4350",
+      "addAttr": "432|1740",
+      "EXP": 599,
+      "pic": "type_11",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25021202": {
+      "ID": 25021202,
+      "name": "治療靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 12,
+      "initialAttr": "404|410",
+      "addAttr": "404|160",
+      "EXP": 599,
+      "pic": "type_12",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25021302": {
+      "ID": 25021302,
+      "name": "癒合靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 13,
+      "initialAttr": "405|410",
+      "addAttr": "405|160",
+      "EXP": 599,
+      "pic": "type_13",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25021402": {
+      "ID": 25021402,
+      "name": "傷害靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 14,
+      "initialAttr": "408|410",
+      "addAttr": "408|160",
+      "EXP": 599,
+      "pic": "type_14",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25021502": {
+      "ID": 25021502,
+      "name": "免傷靈珠Ⅱ",
+      "colorLV": 2,
+      "typeID": 15,
+      "initialAttr": "409|410",
+      "addAttr": "409|160",
+      "EXP": 599,
+      "pic": "type_15",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25020103": {
+      "ID": 25020103,
+      "name": "命中靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 1,
+      "initialAttr": "301|210",
+      "addAttr": "301|90",
+      "EXP": 1000,
+      "pic": "type_1",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25020203": {
+      "ID": 25020203,
+      "name": "閃避靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 2,
+      "initialAttr": "302|170",
+      "addAttr": "302|70",
+      "EXP": 1000,
+      "pic": "type_2",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25020303": {
+      "ID": 25020303,
+      "name": "暴擊靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 3,
+      "initialAttr": "303|210",
+      "addAttr": "303|90",
+      "EXP": 1000,
+      "pic": "type_3",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25020403": {
+      "ID": 25020403,
+      "name": "抗暴靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 4,
+      "initialAttr": "304|210",
+      "addAttr": "304|90",
+      "EXP": 1000,
+      "pic": "type_4",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25020503": {
+      "ID": 25020503,
+      "name": "格擋靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 5,
+      "initialAttr": "305|210",
+      "addAttr": "305|90",
+      "EXP": 1000,
+      "pic": "type_5",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25020603": {
+      "ID": 25020603,
+      "name": "破擊靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 6,
+      "initialAttr": "306|210",
+      "addAttr": "306|90",
+      "EXP": 1000,
+      "pic": "type_6",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25020703": {
+      "ID": 25020703,
+      "name": "必殺靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 7,
+      "initialAttr": "307|510",
+      "addAttr": "307|210",
+      "EXP": 1000,
+      "pic": "type_7",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25020803": {
+      "ID": 25020803,
+      "name": "守護靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 8,
+      "initialAttr": "308|510",
+      "addAttr": "308|210",
+      "EXP": 1000,
+      "pic": "type_8",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25020903": {
+      "ID": 25020903,
+      "name": "攻擊靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 9,
+      "initialAttr": "431|1240",
+      "addAttr": "431|500",
+      "EXP": 1000,
+      "pic": "type_9",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25021003": {
+      "ID": 25021003,
+      "name": "防禦靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 10,
+      "initialAttr": "433|430",
+      "addAttr": "433|170",
+      "EXP": 1000,
+      "pic": "type_10",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25021103": {
+      "ID": 25021103,
+      "name": "血量靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 11,
+      "initialAttr": "432|8700",
+      "addAttr": "432|3480",
+      "EXP": 1000,
+      "pic": "type_11",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25021203": {
+      "ID": 25021203,
+      "name": "治療靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 12,
+      "initialAttr": "404|810",
+      "addAttr": "404|330",
+      "EXP": 1000,
+      "pic": "type_12",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25021303": {
+      "ID": 25021303,
+      "name": "癒合靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 13,
+      "initialAttr": "405|810",
+      "addAttr": "405|330",
+      "EXP": 1000,
+      "pic": "type_13",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25021403": {
+      "ID": 25021403,
+      "name": "傷害靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 14,
+      "initialAttr": "408|810",
+      "addAttr": "408|330",
+      "EXP": 1000,
+      "pic": "type_14",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25021503": {
+      "ID": 25021503,
+      "name": "免傷靈珠Ⅲ",
+      "colorLV": 3,
+      "typeID": 15,
+      "initialAttr": "409|810",
+      "addAttr": "409|330",
+      "EXP": 1000,
+      "pic": "type_15",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    },
+    "25020104": {
+      "ID": 25020104,
+      "name": "命中靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 1,
+      "initialAttr": "301|360",
+      "addAttr": "301|140",
+      "EXP": 2000,
+      "pic": "type_1",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25020204": {
+      "ID": 25020204,
+      "name": "閃避靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 2,
+      "initialAttr": "302|290",
+      "addAttr": "302|110",
+      "EXP": 2000,
+      "pic": "type_2",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25020304": {
+      "ID": 25020304,
+      "name": "暴擊靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 3,
+      "initialAttr": "303|360",
+      "addAttr": "303|140",
+      "EXP": 2000,
+      "pic": "type_3",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25020404": {
+      "ID": 25020404,
+      "name": "抗暴靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 4,
+      "initialAttr": "304|360",
+      "addAttr": "304|140",
+      "EXP": 2000,
+      "pic": "type_4",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25020504": {
+      "ID": 25020504,
+      "name": "格擋靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 5,
+      "initialAttr": "305|360",
+      "addAttr": "305|140",
+      "EXP": 2000,
+      "pic": "type_5",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25020604": {
+      "ID": 25020604,
+      "name": "破擊靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 6,
+      "initialAttr": "306|360",
+      "addAttr": "306|140",
+      "EXP": 2000,
+      "pic": "type_6",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25020704": {
+      "ID": 25020704,
+      "name": "必殺靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 7,
+      "initialAttr": "307|860",
+      "addAttr": "307|340",
+      "EXP": 2000,
+      "pic": "type_7",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25020804": {
+      "ID": 25020804,
+      "name": "守護靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 8,
+      "initialAttr": "308|860",
+      "addAttr": "308|340",
+      "EXP": 2000,
+      "pic": "type_8",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25020904": {
+      "ID": 25020904,
+      "name": "攻擊靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 9,
+      "initialAttr": "431|2070",
+      "addAttr": "431|830",
+      "EXP": 2000,
+      "pic": "type_9",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25021004": {
+      "ID": 25021004,
+      "name": "防禦靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 10,
+      "initialAttr": "433|710",
+      "addAttr": "433|290",
+      "EXP": 2000,
+      "pic": "type_10",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25021104": {
+      "ID": 25021104,
+      "name": "血量靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 11,
+      "initialAttr": "432|14500",
+      "addAttr": "432|5800",
+      "EXP": 2000,
+      "pic": "type_11",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25021204": {
+      "ID": 25021204,
+      "name": "治療靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 12,
+      "initialAttr": "404|1360",
+      "addAttr": "404|540",
+      "EXP": 2000,
+      "pic": "type_12",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25021304": {
+      "ID": 25021304,
+      "name": "癒合靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 13,
+      "initialAttr": "405|1360",
+      "addAttr": "405|540",
+      "EXP": 2000,
+      "pic": "type_13",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25021404": {
+      "ID": 25021404,
+      "name": "傷害靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 14,
+      "initialAttr": "408|1360",
+      "addAttr": "408|540",
+      "EXP": 2000,
+      "pic": "type_14",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25021504": {
+      "ID": 25021504,
+      "name": "免傷靈珠Ⅳ",
+      "colorLV": 4,
+      "typeID": 15,
+      "initialAttr": "409|1360",
+      "addAttr": "409|540",
+      "EXP": 2000,
+      "pic": "type_15",
+      "bgPic": "colorLV_3",
+      "price": "1112,0,4000"
+    },
+    "25020105": {
+      "ID": 25020105,
+      "name": "命中靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 1,
+      "initialAttr": "301|540",
+      "addAttr": "301|210",
+      "EXP": 3000,
+      "pic": "type_1",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25020205": {
+      "ID": 25020205,
+      "name": "閃避靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 2,
+      "initialAttr": "302|430",
+      "addAttr": "302|170",
+      "EXP": 3000,
+      "pic": "type_2",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25020305": {
+      "ID": 25020305,
+      "name": "暴擊靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 3,
+      "initialAttr": "303|540",
+      "addAttr": "303|210",
+      "EXP": 3000,
+      "pic": "type_3",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25020405": {
+      "ID": 25020405,
+      "name": "抗暴靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 4,
+      "initialAttr": "304|540",
+      "addAttr": "304|210",
+      "EXP": 3000,
+      "pic": "type_4",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25020505": {
+      "ID": 25020505,
+      "name": "格擋靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 5,
+      "initialAttr": "305|540",
+      "addAttr": "305|210",
+      "EXP": 3000,
+      "pic": "type_5",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25020605": {
+      "ID": 25020605,
+      "name": "破擊靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 6,
+      "initialAttr": "306|540",
+      "addAttr": "306|210",
+      "EXP": 3000,
+      "pic": "type_6",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25020705": {
+      "ID": 25020705,
+      "name": "必殺靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 7,
+      "initialAttr": "307|1290",
+      "addAttr": "307|510",
+      "EXP": 3000,
+      "pic": "type_7",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25020805": {
+      "ID": 25020805,
+      "name": "守護靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 8,
+      "initialAttr": "308|1290",
+      "addAttr": "308|510",
+      "EXP": 3000,
+      "pic": "type_8",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25020905": {
+      "ID": 25020905,
+      "name": "攻擊靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 9,
+      "initialAttr": "431|3110",
+      "addAttr": "431|1240",
+      "EXP": 3000,
+      "pic": "type_9",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25021005": {
+      "ID": 25021005,
+      "name": "防禦靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 10,
+      "initialAttr": "433|1070",
+      "addAttr": "433|430",
+      "EXP": 3000,
+      "pic": "type_10",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25021105": {
+      "ID": 25021105,
+      "name": "血量靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 11,
+      "initialAttr": "432|21750",
+      "addAttr": "432|8700",
+      "EXP": 3000,
+      "pic": "type_11",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25021205": {
+      "ID": 25021205,
+      "name": "治療靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 12,
+      "initialAttr": "404|2040",
+      "addAttr": "404|810",
+      "EXP": 3000,
+      "pic": "type_12",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25021305": {
+      "ID": 25021305,
+      "name": "癒合靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 13,
+      "initialAttr": "405|2040",
+      "addAttr": "405|810",
+      "EXP": 3000,
+      "pic": "type_13",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25021405": {
+      "ID": 25021405,
+      "name": "傷害靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 14,
+      "initialAttr": "408|2040",
+      "addAttr": "408|810",
+      "EXP": 3000,
+      "pic": "type_14",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25021505": {
+      "ID": 25021505,
+      "name": "免傷靈珠Ⅴ",
+      "colorLV": 5,
+      "typeID": 15,
+      "initialAttr": "409|2040",
+      "addAttr": "409|810",
+      "EXP": 3000,
+      "pic": "type_15",
+      "bgPic": "colorLV_4",
+      "price": "1112,0,5000"
+    },
+    "25020106": {
+      "ID": 25020106,
+      "name": "命中靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 1,
+      "initialAttr": "301|750",
+      "addAttr": "301|300",
+      "EXP": 4000,
+      "pic": "type_1",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25020206": {
+      "ID": 25020206,
+      "name": "閃避靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 2,
+      "initialAttr": "302|600",
+      "addAttr": "302|240",
+      "EXP": 4000,
+      "pic": "type_2",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25020306": {
+      "ID": 25020306,
+      "name": "暴擊靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 3,
+      "initialAttr": "303|750",
+      "addAttr": "303|300",
+      "EXP": 4000,
+      "pic": "type_3",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25020406": {
+      "ID": 25020406,
+      "name": "抗暴靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 4,
+      "initialAttr": "304|750",
+      "addAttr": "304|300",
+      "EXP": 4000,
+      "pic": "type_4",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25020506": {
+      "ID": 25020506,
+      "name": "格擋靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 5,
+      "initialAttr": "305|750",
+      "addAttr": "305|300",
+      "EXP": 4000,
+      "pic": "type_5",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25020606": {
+      "ID": 25020606,
+      "name": "破擊靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 6,
+      "initialAttr": "306|750",
+      "addAttr": "306|300",
+      "EXP": 4000,
+      "pic": "type_6",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25020706": {
+      "ID": 25020706,
+      "name": "必殺靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 7,
+      "initialAttr": "307|1800",
+      "addAttr": "307|720",
+      "EXP": 4000,
+      "pic": "type_7",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25020806": {
+      "ID": 25020806,
+      "name": "守護靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 8,
+      "initialAttr": "308|1800",
+      "addAttr": "308|720",
+      "EXP": 4000,
+      "pic": "type_8",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25020906": {
+      "ID": 25020906,
+      "name": "攻擊靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 9,
+      "initialAttr": "431|4350",
+      "addAttr": "431|1740",
+      "EXP": 4000,
+      "pic": "type_9",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25021006": {
+      "ID": 25021006,
+      "name": "防禦靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 10,
+      "initialAttr": "433|1500",
+      "addAttr": "433|600",
+      "EXP": 4000,
+      "pic": "type_10",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25021106": {
+      "ID": 25021106,
+      "name": "血量靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 11,
+      "initialAttr": "432|30450",
+      "addAttr": "432|12180",
+      "EXP": 4000,
+      "pic": "type_11",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25021206": {
+      "ID": 25021206,
+      "name": "治療靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 12,
+      "initialAttr": "404|2850",
+      "addAttr": "404|1140",
+      "EXP": 4000,
+      "pic": "type_12",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25021306": {
+      "ID": 25021306,
+      "name": "癒合靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 13,
+      "initialAttr": "405|2850",
+      "addAttr": "405|1140",
+      "EXP": 4000,
+      "pic": "type_13",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25021406": {
+      "ID": 25021406,
+      "name": "傷害靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 14,
+      "initialAttr": "408|2850",
+      "addAttr": "408|1140",
+      "EXP": 4000,
+      "pic": "type_14",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25021506": {
+      "ID": 25021506,
+      "name": "免傷靈珠Ⅵ",
+      "colorLV": 6,
+      "typeID": 15,
+      "initialAttr": "409|2850",
+      "addAttr": "409|1140",
+      "EXP": 4000,
+      "pic": "type_15",
+      "bgPic": "colorLV_5",
+      "price": "1112,0,6000"
+    },
+    "25020107": {
+      "ID": 25020107,
+      "name": "命中靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 1,
+      "initialAttr": "301|1000",
+      "addAttr": "301|400",
+      "EXP": 6000,
+      "pic": "type_1",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25020207": {
+      "ID": 25020207,
+      "name": "閃避靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 2,
+      "initialAttr": "302|800",
+      "addAttr": "302|320",
+      "EXP": 6000,
+      "pic": "type_2",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25020307": {
+      "ID": 25020307,
+      "name": "暴擊靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 3,
+      "initialAttr": "303|1000",
+      "addAttr": "303|400",
+      "EXP": 6000,
+      "pic": "type_3",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25020407": {
+      "ID": 25020407,
+      "name": "抗暴靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 4,
+      "initialAttr": "304|1000",
+      "addAttr": "304|400",
+      "EXP": 6000,
+      "pic": "type_4",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25020507": {
+      "ID": 25020507,
+      "name": "格擋靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 5,
+      "initialAttr": "305|1000",
+      "addAttr": "305|400",
+      "EXP": 6000,
+      "pic": "type_5",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25020607": {
+      "ID": 25020607,
+      "name": "破擊靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 6,
+      "initialAttr": "306|1000",
+      "addAttr": "306|400",
+      "EXP": 6000,
+      "pic": "type_6",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25020707": {
+      "ID": 25020707,
+      "name": "必殺靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 7,
+      "initialAttr": "307|2400",
+      "addAttr": "307|960",
+      "EXP": 6000,
+      "pic": "type_7",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25020807": {
+      "ID": 25020807,
+      "name": "守護靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 8,
+      "initialAttr": "308|2400",
+      "addAttr": "308|960",
+      "EXP": 6000,
+      "pic": "type_8",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25020907": {
+      "ID": 25020907,
+      "name": "攻擊靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 9,
+      "initialAttr": "431|5800",
+      "addAttr": "431|2320",
+      "EXP": 6000,
+      "pic": "type_9",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25021007": {
+      "ID": 25021007,
+      "name": "防禦靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 10,
+      "initialAttr": "433|2000",
+      "addAttr": "433|800",
+      "EXP": 6000,
+      "pic": "type_10",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25021107": {
+      "ID": 25021107,
+      "name": "血量靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 11,
+      "initialAttr": "432|40600",
+      "addAttr": "432|16240",
+      "EXP": 6000,
+      "pic": "type_11",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25021207": {
+      "ID": 25021207,
+      "name": "治療靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 12,
+      "initialAttr": "404|3800",
+      "addAttr": "404|1520",
+      "EXP": 6000,
+      "pic": "type_12",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25021307": {
+      "ID": 25021307,
+      "name": "癒合靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 13,
+      "initialAttr": "405|3800",
+      "addAttr": "405|1520",
+      "EXP": 6000,
+      "pic": "type_13",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25021407": {
+      "ID": 25021407,
+      "name": "傷害靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 14,
+      "initialAttr": "408|3800",
+      "addAttr": "408|1520",
+      "EXP": 6000,
+      "pic": "type_14",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25021507": {
+      "ID": 25021507,
+      "name": "免傷靈珠Ⅶ",
+      "colorLV": 7,
+      "typeID": 15,
+      "initialAttr": "409|3800",
+      "addAttr": "409|1520",
+      "EXP": 6000,
+      "pic": "type_15",
+      "bgPic": "colorLV_6",
+      "price": "1112,0,7000"
+    },
+    "25020001": {
+      "ID": 25020001,
+      "name": "低級經驗靈珠",
+      "colorLV": 1,
+      "typeID": 16,
+      "initialAttr": "301|0",
+      "addAttr": "301|0",
+      "EXP": 500,
+      "pic": "type_16",
+      "bgPic": "colorLV_0",
+      "price": "1112,0,1000"
+    },
+    "25020002": {
+      "ID": 25020002,
+      "name": "中級經驗靈珠",
+      "colorLV": 2,
+      "typeID": 16,
+      "initialAttr": "301|0",
+      "addAttr": "301|0",
+      "EXP": 1500,
+      "pic": "type_17",
+      "bgPic": "colorLV_1",
+      "price": "1112,0,2000"
+    },
+    "25020003": {
+      "ID": 25020003,
+      "name": "高級經驗靈珠",
+      "colorLV": 3,
+      "typeID": 16,
+      "initialAttr": "301|0",
+      "addAttr": "301|0",
+      "EXP": 6000,
+      "pic": "type_18",
+      "bgPic": "colorLV_2",
+      "price": "1112,0,3000"
+    }
+  },
+  "warfarespirit_lv": {
+    "1": {
+      "0": {
+        "colorLV": 1,
+        "LV": 0,
+        "EXPTotal": 0,
+        "LVUpUse": "1112,0,0"
+      },
+      "1": {
+        "colorLV": 1,
+        "LV": 1,
+        "EXPTotal": 200,
+        "LVUpUse": "1112,0,10000"
+      },
+      "2": {
+        "colorLV": 1,
+        "LV": 2,
+        "EXPTotal": 500,
+        "LVUpUse": "1112,0,10000"
+      },
+      "3": {
+        "colorLV": 1,
+        "LV": 3,
+        "EXPTotal": 900,
+        "LVUpUse": "1112,0,20000"
+      },
+      "4": {
+        "colorLV": 1,
+        "LV": 4,
+        "EXPTotal": 1500,
+        "LVUpUse": "1112,0,30000"
+      },
+      "5": {
+        "colorLV": 1,
+        "LV": 5,
+        "EXPTotal": 2300,
+        "LVUpUse": "1112,0,40000"
+      },
+      "6": {
+        "colorLV": 1,
+        "LV": 6,
+        "EXPTotal": 3400,
+        "LVUpUse": "1112,0,50000"
+      },
+      "7": {
+        "colorLV": 1,
+        "LV": 7,
+        "EXPTotal": 5000,
+        "LVUpUse": "1112,0,80000"
+      },
+      "8": {
+        "colorLV": 1,
+        "LV": 8,
+        "EXPTotal": 7200,
+        "LVUpUse": "1112,0,110000"
+      },
+      "9": {
+        "colorLV": 1,
+        "LV": 9,
+        "EXPTotal": 10300,
+        "LVUpUse": "1112,0,150000"
+      },
+      "10": {
+        "colorLV": 1,
+        "LV": 10,
+        "EXPTotal": 14600,
+        "LVUpUse": "1112,0,210000"
+      }
+    },
+    "2": {
+      "0": {
+        "colorLV": 2,
+        "LV": 0,
+        "EXPTotal": 0,
+        "LVUpUse": "1112,0,0"
+      },
+      "1": {
+        "colorLV": 2,
+        "LV": 1,
+        "EXPTotal": 600,
+        "LVUpUse": "1112,0,20000"
+      },
+      "2": {
+        "colorLV": 2,
+        "LV": 2,
+        "EXPTotal": 1500,
+        "LVUpUse": "1112,0,30000"
+      },
+      "3": {
+        "colorLV": 2,
+        "LV": 3,
+        "EXPTotal": 2700,
+        "LVUpUse": "1112,0,40000"
+      },
+      "4": {
+        "colorLV": 2,
+        "LV": 4,
+        "EXPTotal": 4500,
+        "LVUpUse": "1112,0,60000"
+      },
+      "5": {
+        "colorLV": 2,
+        "LV": 5,
+        "EXPTotal": 6900,
+        "LVUpUse": "1112,0,80000"
+      },
+      "6": {
+        "colorLV": 2,
+        "LV": 6,
+        "EXPTotal": 10300,
+        "LVUpUse": "1112,0,110000"
+      },
+      "7": {
+        "colorLV": 2,
+        "LV": 7,
+        "EXPTotal": 15000,
+        "LVUpUse": "1112,0,150000"
+      },
+      "8": {
+        "colorLV": 2,
+        "LV": 8,
+        "EXPTotal": 21600,
+        "LVUpUse": "1112,0,210000"
+      },
+      "9": {
+        "colorLV": 2,
+        "LV": 9,
+        "EXPTotal": 30900,
+        "LVUpUse": "1112,0,300000"
+      },
+      "10": {
+        "colorLV": 2,
+        "LV": 10,
+        "EXPTotal": 43800,
+        "LVUpUse": "1112,0,420000"
+      }
+    },
+    "3": {
+      "0": {
+        "colorLV": 3,
+        "LV": 0,
+        "EXPTotal": 0,
+        "LVUpUse": "1112,0,0"
+      },
+      "1": {
+        "colorLV": 3,
+        "LV": 1,
+        "EXPTotal": 1300,
+        "LVUpUse": "1112,0,30000"
+      },
+      "2": {
+        "colorLV": 3,
+        "LV": 2,
+        "EXPTotal": 3000,
+        "LVUpUse": "1112,0,40000"
+      },
+      "3": {
+        "colorLV": 3,
+        "LV": 3,
+        "EXPTotal": 5500,
+        "LVUpUse": "1112,0,60000"
+      },
+      "4": {
+        "colorLV": 3,
+        "LV": 4,
+        "EXPTotal": 8900,
+        "LVUpUse": "1112,0,80000"
+      },
+      "5": {
+        "colorLV": 3,
+        "LV": 5,
+        "EXPTotal": 13700,
+        "LVUpUse": "1112,0,120000"
+      },
+      "6": {
+        "colorLV": 3,
+        "LV": 6,
+        "EXPTotal": 20500,
+        "LVUpUse": "1112,0,160000"
+      },
+      "7": {
+        "colorLV": 3,
+        "LV": 7,
+        "EXPTotal": 30000,
+        "LVUpUse": "1112,0,230000"
+      },
+      "8": {
+        "colorLV": 3,
+        "LV": 8,
+        "EXPTotal": 43200,
+        "LVUpUse": "1112,0,320000"
+      },
+      "9": {
+        "colorLV": 3,
+        "LV": 9,
+        "EXPTotal": 61700,
+        "LVUpUse": "1112,0,450000"
+      },
+      "10": {
+        "colorLV": 3,
+        "LV": 10,
+        "EXPTotal": 87700,
+        "LVUpUse": "1112,0,630000"
+      }
+    },
+    "4": {
+      "0": {
+        "colorLV": 4,
+        "LV": 0,
+        "EXPTotal": 0,
+        "LVUpUse": "1112,0,0"
+      },
+      "1": {
+        "colorLV": 4,
+        "LV": 1,
+        "EXPTotal": 2100,
+        "LVUpUse": "1112,0,40000"
+      },
+      "2": {
+        "colorLV": 4,
+        "LV": 2,
+        "EXPTotal": 5000,
+        "LVUpUse": "1112,0,60000"
+      },
+      "3": {
+        "colorLV": 4,
+        "LV": 3,
+        "EXPTotal": 9100,
+        "LVUpUse": "1112,0,80000"
+      },
+      "4": {
+        "colorLV": 4,
+        "LV": 4,
+        "EXPTotal": 14900,
+        "LVUpUse": "1112,0,110000"
+      },
+      "5": {
+        "colorLV": 4,
+        "LV": 5,
+        "EXPTotal": 22900,
+        "LVUpUse": "1112,0,160000"
+      },
+      "6": {
+        "colorLV": 4,
+        "LV": 6,
+        "EXPTotal": 34200,
+        "LVUpUse": "1112,0,220000"
+      },
+      "7": {
+        "colorLV": 4,
+        "LV": 7,
+        "EXPTotal": 49900,
+        "LVUpUse": "1112,0,310000"
+      },
+      "8": {
+        "colorLV": 4,
+        "LV": 8,
+        "EXPTotal": 72000,
+        "LVUpUse": "1112,0,430000"
+      },
+      "9": {
+        "colorLV": 4,
+        "LV": 9,
+        "EXPTotal": 102900,
+        "LVUpUse": "1112,0,600000"
+      },
+      "10": {
+        "colorLV": 4,
+        "LV": 10,
+        "EXPTotal": 146100,
+        "LVUpUse": "1112,0,840000"
+      }
+    },
+    "5": {
+      "0": {
+        "colorLV": 5,
+        "LV": 0,
+        "EXPTotal": 0,
+        "LVUpUse": "1112,0,0"
+      },
+      "1": {
+        "colorLV": 5,
+        "LV": 1,
+        "EXPTotal": 3100,
+        "LVUpUse": "1112,0,50000"
+      },
+      "2": {
+        "colorLV": 5,
+        "LV": 2,
+        "EXPTotal": 7500,
+        "LVUpUse": "1112,0,70000"
+      },
+      "3": {
+        "colorLV": 5,
+        "LV": 3,
+        "EXPTotal": 13700,
+        "LVUpUse": "1112,0,100000"
+      },
+      "4": {
+        "colorLV": 5,
+        "LV": 4,
+        "EXPTotal": 22300,
+        "LVUpUse": "1112,0,140000"
+      },
+      "5": {
+        "colorLV": 5,
+        "LV": 5,
+        "EXPTotal": 34400,
+        "LVUpUse": "1112,0,190000"
+      },
+      "6": {
+        "colorLV": 5,
+        "LV": 6,
+        "EXPTotal": 51300,
+        "LVUpUse": "1112,0,270000"
+      },
+      "7": {
+        "colorLV": 5,
+        "LV": 7,
+        "EXPTotal": 74900,
+        "LVUpUse": "1112,0,380000"
+      },
+      "8": {
+        "colorLV": 5,
+        "LV": 8,
+        "EXPTotal": 108000,
+        "LVUpUse": "1112,0,530000"
+      },
+      "9": {
+        "colorLV": 5,
+        "LV": 9,
+        "EXPTotal": 154300,
+        "LVUpUse": "1112,0,750000"
+      },
+      "10": {
+        "colorLV": 5,
+        "LV": 10,
+        "EXPTotal": 219200,
+        "LVUpUse": "1112,0,1050000"
+      }
+    },
+    "6": {
+      "0": {
+        "colorLV": 6,
+        "LV": 0,
+        "EXPTotal": 0,
+        "LVUpUse": "1112,0,0"
+      },
+      "1": {
+        "colorLV": 6,
+        "LV": 1,
+        "EXPTotal": 4400,
+        "LVUpUse": "1112,0,60000"
+      },
+      "2": {
+        "colorLV": 6,
+        "LV": 2,
+        "EXPTotal": 10500,
+        "LVUpUse": "1112,0,90000"
+      },
+      "3": {
+        "colorLV": 6,
+        "LV": 3,
+        "EXPTotal": 19200,
+        "LVUpUse": "1112,0,120000"
+      },
+      "4": {
+        "colorLV": 6,
+        "LV": 4,
+        "EXPTotal": 31200,
+        "LVUpUse": "1112,0,170000"
+      },
+      "5": {
+        "colorLV": 6,
+        "LV": 5,
+        "EXPTotal": 48100,
+        "LVUpUse": "1112,0,230000"
+      },
+      "6": {
+        "colorLV": 6,
+        "LV": 6,
+        "EXPTotal": 71800,
+        "LVUpUse": "1112,0,330000"
+      },
+      "7": {
+        "colorLV": 6,
+        "LV": 7,
+        "EXPTotal": 104900,
+        "LVUpUse": "1112,0,460000"
+      },
+      "8": {
+        "colorLV": 6,
+        "LV": 8,
+        "EXPTotal": 151200,
+        "LVUpUse": "1112,0,640000"
+      },
+      "9": {
+        "colorLV": 6,
+        "LV": 9,
+        "EXPTotal": 216100,
+        "LVUpUse": "1112,0,900000"
+      },
+      "10": {
+        "colorLV": 6,
+        "LV": 10,
+        "EXPTotal": 306900,
+        "LVUpUse": "1112,0,1260000"
+      }
+    },
+    "7": {
+      "0": {
+        "colorLV": 7,
+        "LV": 0,
+        "EXPTotal": 0,
+        "LVUpUse": "1112,0,0"
+      },
+      "1": {
+        "colorLV": 7,
+        "LV": 1,
+        "EXPTotal": 5900,
+        "LVUpUse": "1112,0,70000"
+      },
+      "2": {
+        "colorLV": 7,
+        "LV": 2,
+        "EXPTotal": 14100,
+        "LVUpUse": "1112,0,100000"
+      },
+      "3": {
+        "colorLV": 7,
+        "LV": 3,
+        "EXPTotal": 25600,
+        "LVUpUse": "1112,0,140000"
+      },
+      "4": {
+        "colorLV": 7,
+        "LV": 4,
+        "EXPTotal": 41600,
+        "LVUpUse": "1112,0,190000"
+      },
+      "5": {
+        "colorLV": 7,
+        "LV": 5,
+        "EXPTotal": 64200,
+        "LVUpUse": "1112,0,270000"
+      },
+      "6": {
+        "colorLV": 7,
+        "LV": 6,
+        "EXPTotal": 95700,
+        "LVUpUse": "1112,0,380000"
+      },
+      "7": {
+        "colorLV": 7,
+        "LV": 7,
+        "EXPTotal": 139800,
+        "LVUpUse": "1112,0,530000"
+      },
+      "8": {
+        "colorLV": 7,
+        "LV": 8,
+        "EXPTotal": 201600,
+        "LVUpUse": "1112,0,750000"
+      },
+      "9": {
+        "colorLV": 7,
+        "LV": 9,
+        "EXPTotal": 288100,
+        "LVUpUse": "1112,0,1050000"
+      },
+      "10": {
+        "colorLV": 7,
+        "LV": 10,
+        "EXPTotal": 409200,
+        "LVUpUse": "1112,0,1460000"
+      }
+    }
+  },
+  "warfare_collocation": {
+    "25010001": {
+      "0": {
+        "warfareId": 25010001,
+        "colorLv": 0,
+        "lvUpNeed": 16150001
+      },
+      "1": {
+        "warfareId": 25010001,
+        "colorLv": 1,
+        "lvUpNeed": 16150001
+      },
+      "2": {
+        "warfareId": 25010001,
+        "colorLv": 2,
+        "lvUpNeed": 16150016
+      },
+      "3": {
+        "warfareId": 25010001,
+        "colorLv": 3,
+        "lvUpNeed": 16150031
+      },
+      "4": {
+        "warfareId": 25010001,
+        "colorLv": 4,
+        "lvUpNeed": 16150046
+      },
+      "5": {
+        "warfareId": 25010001,
+        "colorLv": 5,
+        "lvUpNeed": 16150061
+      },
+      "6": {
+        "warfareId": 25010001,
+        "colorLv": 6,
+        "lvUpNeed": 16150076
+      },
+      "7": {
+        "warfareId": 25010001,
+        "colorLv": 7,
+        "lvUpNeed": 16150091
+      }
+    },
+    "25010002": {
+      "0": {
+        "warfareId": 25010002,
+        "colorLv": 0,
+        "lvUpNeed": 16150002
+      },
+      "1": {
+        "warfareId": 25010002,
+        "colorLv": 1,
+        "lvUpNeed": 16150002
+      },
+      "2": {
+        "warfareId": 25010002,
+        "colorLv": 2,
+        "lvUpNeed": 16150017
+      },
+      "3": {
+        "warfareId": 25010002,
+        "colorLv": 3,
+        "lvUpNeed": 16150032
+      },
+      "4": {
+        "warfareId": 25010002,
+        "colorLv": 4,
+        "lvUpNeed": 16150047
+      },
+      "5": {
+        "warfareId": 25010002,
+        "colorLv": 5,
+        "lvUpNeed": 16150062
+      },
+      "6": {
+        "warfareId": 25010002,
+        "colorLv": 6,
+        "lvUpNeed": 16150077
+      },
+      "7": {
+        "warfareId": 25010002,
+        "colorLv": 7,
+        "lvUpNeed": 16150092
+      }
+    },
+    "25010003": {
+      "0": {
+        "warfareId": 25010003,
+        "colorLv": 0,
+        "lvUpNeed": 16150003
+      },
+      "1": {
+        "warfareId": 25010003,
+        "colorLv": 1,
+        "lvUpNeed": 16150003
+      },
+      "2": {
+        "warfareId": 25010003,
+        "colorLv": 2,
+        "lvUpNeed": 16150018
+      },
+      "3": {
+        "warfareId": 25010003,
+        "colorLv": 3,
+        "lvUpNeed": 16150033
+      },
+      "4": {
+        "warfareId": 25010003,
+        "colorLv": 4,
+        "lvUpNeed": 16150048
+      },
+      "5": {
+        "warfareId": 25010003,
+        "colorLv": 5,
+        "lvUpNeed": 16150063
+      },
+      "6": {
+        "warfareId": 25010003,
+        "colorLv": 6,
+        "lvUpNeed": 16150078
+      },
+      "7": {
+        "warfareId": 25010003,
+        "colorLv": 7,
+        "lvUpNeed": 16150093
+      }
+    },
+    "25010004": {
+      "0": {
+        "warfareId": 25010004,
+        "colorLv": 0,
+        "lvUpNeed": 16150004
+      },
+      "1": {
+        "warfareId": 25010004,
+        "colorLv": 1,
+        "lvUpNeed": 16150004
+      },
+      "2": {
+        "warfareId": 25010004,
+        "colorLv": 2,
+        "lvUpNeed": 16150019
+      },
+      "3": {
+        "warfareId": 25010004,
+        "colorLv": 3,
+        "lvUpNeed": 16150034
+      },
+      "4": {
+        "warfareId": 25010004,
+        "colorLv": 4,
+        "lvUpNeed": 16150049
+      },
+      "5": {
+        "warfareId": 25010004,
+        "colorLv": 5,
+        "lvUpNeed": 16150064
+      },
+      "6": {
+        "warfareId": 25010004,
+        "colorLv": 6,
+        "lvUpNeed": 16150079
+      },
+      "7": {
+        "warfareId": 25010004,
+        "colorLv": 7,
+        "lvUpNeed": 16150094
+      }
+    },
+    "25010005": {
+      "0": {
+        "warfareId": 25010005,
+        "colorLv": 0,
+        "lvUpNeed": 16150005
+      },
+      "1": {
+        "warfareId": 25010005,
+        "colorLv": 1,
+        "lvUpNeed": 16150005
+      },
+      "2": {
+        "warfareId": 25010005,
+        "colorLv": 2,
+        "lvUpNeed": 16150020
+      },
+      "3": {
+        "warfareId": 25010005,
+        "colorLv": 3,
+        "lvUpNeed": 16150035
+      },
+      "4": {
+        "warfareId": 25010005,
+        "colorLv": 4,
+        "lvUpNeed": 16150050
+      },
+      "5": {
+        "warfareId": 25010005,
+        "colorLv": 5,
+        "lvUpNeed": 16150065
+      },
+      "6": {
+        "warfareId": 25010005,
+        "colorLv": 6,
+        "lvUpNeed": 16150080
+      },
+      "7": {
+        "warfareId": 25010005,
+        "colorLv": 7,
+        "lvUpNeed": 16150095
+      }
+    },
+    "25010006": {
+      "0": {
+        "warfareId": 25010006,
+        "colorLv": 0,
+        "lvUpNeed": 16150006
+      },
+      "1": {
+        "warfareId": 25010006,
+        "colorLv": 1,
+        "lvUpNeed": 16150006
+      },
+      "2": {
+        "warfareId": 25010006,
+        "colorLv": 2,
+        "lvUpNeed": 16150021
+      },
+      "3": {
+        "warfareId": 25010006,
+        "colorLv": 3,
+        "lvUpNeed": 16150036
+      },
+      "4": {
+        "warfareId": 25010006,
+        "colorLv": 4,
+        "lvUpNeed": 16150051
+      },
+      "5": {
+        "warfareId": 25010006,
+        "colorLv": 5,
+        "lvUpNeed": 16150066
+      },
+      "6": {
+        "warfareId": 25010006,
+        "colorLv": 6,
+        "lvUpNeed": 16150081
+      },
+      "7": {
+        "warfareId": 25010006,
+        "colorLv": 7,
+        "lvUpNeed": 16150096
+      }
+    },
+    "25010007": {
+      "0": {
+        "warfareId": 25010007,
+        "colorLv": 0,
+        "lvUpNeed": 16150007
+      },
+      "1": {
+        "warfareId": 25010007,
+        "colorLv": 1,
+        "lvUpNeed": 16150007
+      },
+      "2": {
+        "warfareId": 25010007,
+        "colorLv": 2,
+        "lvUpNeed": 16150022
+      },
+      "3": {
+        "warfareId": 25010007,
+        "colorLv": 3,
+        "lvUpNeed": 16150037
+      },
+      "4": {
+        "warfareId": 25010007,
+        "colorLv": 4,
+        "lvUpNeed": 16150052
+      },
+      "5": {
+        "warfareId": 25010007,
+        "colorLv": 5,
+        "lvUpNeed": 16150067
+      },
+      "6": {
+        "warfareId": 25010007,
+        "colorLv": 6,
+        "lvUpNeed": 16150082
+      },
+      "7": {
+        "warfareId": 25010007,
+        "colorLv": 7,
+        "lvUpNeed": 16150097
+      }
+    },
+    "25010008": {
+      "0": {
+        "warfareId": 25010008,
+        "colorLv": 0,
+        "lvUpNeed": 16150008
+      },
+      "1": {
+        "warfareId": 25010008,
+        "colorLv": 1,
+        "lvUpNeed": 16150008
+      },
+      "2": {
+        "warfareId": 25010008,
+        "colorLv": 2,
+        "lvUpNeed": 16150023
+      },
+      "3": {
+        "warfareId": 25010008,
+        "colorLv": 3,
+        "lvUpNeed": 16150038
+      },
+      "4": {
+        "warfareId": 25010008,
+        "colorLv": 4,
+        "lvUpNeed": 16150053
+      },
+      "5": {
+        "warfareId": 25010008,
+        "colorLv": 5,
+        "lvUpNeed": 16150068
+      },
+      "6": {
+        "warfareId": 25010008,
+        "colorLv": 6,
+        "lvUpNeed": 16150083
+      },
+      "7": {
+        "warfareId": 25010008,
+        "colorLv": 7,
+        "lvUpNeed": 16150098
+      }
+    },
+    "25010009": {
+      "0": {
+        "warfareId": 25010009,
+        "colorLv": 0,
+        "lvUpNeed": 16150009
+      },
+      "1": {
+        "warfareId": 25010009,
+        "colorLv": 1,
+        "lvUpNeed": 16150009
+      },
+      "2": {
+        "warfareId": 25010009,
+        "colorLv": 2,
+        "lvUpNeed": 16150024
+      },
+      "3": {
+        "warfareId": 25010009,
+        "colorLv": 3,
+        "lvUpNeed": 16150039
+      },
+      "4": {
+        "warfareId": 25010009,
+        "colorLv": 4,
+        "lvUpNeed": 16150054
+      },
+      "5": {
+        "warfareId": 25010009,
+        "colorLv": 5,
+        "lvUpNeed": 16150069
+      },
+      "6": {
+        "warfareId": 25010009,
+        "colorLv": 6,
+        "lvUpNeed": 16150084
+      },
+      "7": {
+        "warfareId": 25010009,
+        "colorLv": 7,
+        "lvUpNeed": 16150099
+      }
+    },
+    "25010010": {
+      "0": {
+        "warfareId": 25010010,
+        "colorLv": 0,
+        "lvUpNeed": 16150010
+      },
+      "1": {
+        "warfareId": 25010010,
+        "colorLv": 1,
+        "lvUpNeed": 16150010
+      },
+      "2": {
+        "warfareId": 25010010,
+        "colorLv": 2,
+        "lvUpNeed": 16150025
+      },
+      "3": {
+        "warfareId": 25010010,
+        "colorLv": 3,
+        "lvUpNeed": 16150040
+      },
+      "4": {
+        "warfareId": 25010010,
+        "colorLv": 4,
+        "lvUpNeed": 16150055
+      },
+      "5": {
+        "warfareId": 25010010,
+        "colorLv": 5,
+        "lvUpNeed": 16150070
+      },
+      "6": {
+        "warfareId": 25010010,
+        "colorLv": 6,
+        "lvUpNeed": 16150085
+      },
+      "7": {
+        "warfareId": 25010010,
+        "colorLv": 7,
+        "lvUpNeed": 16150100
+      }
+    },
+    "25010011": {
+      "0": {
+        "warfareId": 25010011,
+        "colorLv": 0,
+        "lvUpNeed": 16150011
+      },
+      "1": {
+        "warfareId": 25010011,
+        "colorLv": 1,
+        "lvUpNeed": 16150011
+      },
+      "2": {
+        "warfareId": 25010011,
+        "colorLv": 2,
+        "lvUpNeed": 16150026
+      },
+      "3": {
+        "warfareId": 25010011,
+        "colorLv": 3,
+        "lvUpNeed": 16150041
+      },
+      "4": {
+        "warfareId": 25010011,
+        "colorLv": 4,
+        "lvUpNeed": 16150056
+      },
+      "5": {
+        "warfareId": 25010011,
+        "colorLv": 5,
+        "lvUpNeed": 16150071
+      },
+      "6": {
+        "warfareId": 25010011,
+        "colorLv": 6,
+        "lvUpNeed": 16150086
+      },
+      "7": {
+        "warfareId": 25010011,
+        "colorLv": 7,
+        "lvUpNeed": 16150101
+      }
+    },
+    "25010012": {
+      "0": {
+        "warfareId": 25010012,
+        "colorLv": 0,
+        "lvUpNeed": 16150012
+      },
+      "1": {
+        "warfareId": 25010012,
+        "colorLv": 1,
+        "lvUpNeed": 16150012
+      },
+      "2": {
+        "warfareId": 25010012,
+        "colorLv": 2,
+        "lvUpNeed": 16150027
+      },
+      "3": {
+        "warfareId": 25010012,
+        "colorLv": 3,
+        "lvUpNeed": 16150042
+      },
+      "4": {
+        "warfareId": 25010012,
+        "colorLv": 4,
+        "lvUpNeed": 16150057
+      },
+      "5": {
+        "warfareId": 25010012,
+        "colorLv": 5,
+        "lvUpNeed": 16150072
+      },
+      "6": {
+        "warfareId": 25010012,
+        "colorLv": 6,
+        "lvUpNeed": 16150087
+      },
+      "7": {
+        "warfareId": 25010012,
+        "colorLv": 7,
+        "lvUpNeed": 16150102
+      }
+    },
+    "25010013": {
+      "0": {
+        "warfareId": 25010013,
+        "colorLv": 0,
+        "lvUpNeed": 16150013
+      },
+      "1": {
+        "warfareId": 25010013,
+        "colorLv": 1,
+        "lvUpNeed": 16150013
+      },
+      "2": {
+        "warfareId": 25010013,
+        "colorLv": 2,
+        "lvUpNeed": 16150028
+      },
+      "3": {
+        "warfareId": 25010013,
+        "colorLv": 3,
+        "lvUpNeed": 16150043
+      },
+      "4": {
+        "warfareId": 25010013,
+        "colorLv": 4,
+        "lvUpNeed": 16150058
+      },
+      "5": {
+        "warfareId": 25010013,
+        "colorLv": 5,
+        "lvUpNeed": 16150073
+      },
+      "6": {
+        "warfareId": 25010013,
+        "colorLv": 6,
+        "lvUpNeed": 16150088
+      },
+      "7": {
+        "warfareId": 25010013,
+        "colorLv": 7,
+        "lvUpNeed": 16150103
+      }
+    },
+    "25010014": {
+      "0": {
+        "warfareId": 25010014,
+        "colorLv": 0,
+        "lvUpNeed": 16150014
+      },
+      "1": {
+        "warfareId": 25010014,
+        "colorLv": 1,
+        "lvUpNeed": 16150014
+      },
+      "2": {
+        "warfareId": 25010014,
+        "colorLv": 2,
+        "lvUpNeed": 16150029
+      },
+      "3": {
+        "warfareId": 25010014,
+        "colorLv": 3,
+        "lvUpNeed": 16150044
+      },
+      "4": {
+        "warfareId": 25010014,
+        "colorLv": 4,
+        "lvUpNeed": 16150059
+      },
+      "5": {
+        "warfareId": 25010014,
+        "colorLv": 5,
+        "lvUpNeed": 16150074
+      },
+      "6": {
+        "warfareId": 25010014,
+        "colorLv": 6,
+        "lvUpNeed": 16150089
+      },
+      "7": {
+        "warfareId": 25010014,
+        "colorLv": 7,
+        "lvUpNeed": 16150104
+      }
+    },
+    "25010015": {
+      "0": {
+        "warfareId": 25010015,
+        "colorLv": 0,
+        "lvUpNeed": 16150015
+      },
+      "1": {
+        "warfareId": 25010015,
+        "colorLv": 1,
+        "lvUpNeed": 16150015
+      },
+      "2": {
+        "warfareId": 25010015,
+        "colorLv": 2,
+        "lvUpNeed": 16150030
+      },
+      "3": {
+        "warfareId": 25010015,
+        "colorLv": 3,
+        "lvUpNeed": 16150045
+      },
+      "4": {
+        "warfareId": 25010015,
+        "colorLv": 4,
+        "lvUpNeed": 16150060
+      },
+      "5": {
+        "warfareId": 25010015,
+        "colorLv": 5,
+        "lvUpNeed": 16150075
+      },
+      "6": {
+        "warfareId": 25010015,
+        "colorLv": 6,
+        "lvUpNeed": 16150090
+      },
+      "7": {
+        "warfareId": 25010015,
+        "colorLv": 7,
+        "lvUpNeed": 16150105
+      }
+    }
+  },
+  "warfare_droppreview": {
+    "16061111": {
+      "warfarecrestId": 16061111,
+      "nightmareId": "1115,1217,1318,1419,1520,1620,1720,1820,1920,2020"
+    },
+    "16061112": {
+      "warfarecrestId": 16061112,
+      "nightmareId": "2120,2220,2320,2420,2520,2620,2720,2820,2920,3020"
+    },
+    "16021112": {
+      "warfarecrestId": 16021112,
+      "nightmareId": "3120,3220,3320,3420,3520,3620,3720,3820,3920,4020"
+    },
+    "16021113": {
+      "warfarecrestId": 16021113,
+      "nightmareId": "4120,4220,4320,4420,4520,4620,4720,4820,4920,5020,5120,5220,5320,5420,5520,5620,5720,5820,5920,6020,6120,6220,6320,6420,6520,6620,6720,6820,6920,7020,7120,7220,7320,7420,7520,7620,7720,7820,7920,8020"
     }
   }
 }

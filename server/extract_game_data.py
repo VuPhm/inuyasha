@@ -128,6 +128,44 @@ def parse_vip_buy_limit(path: str) -> dict[str, dict[str, dict[str, Any]]]:
     return out
 
 
+def parse_warfare_lv(path: str) -> dict[str, dict[str, dict[str, dict[str, Any]]]]:
+    """Parse `WarfareLvRelation` 3-level nested `[warfareID][colorLV][LV]`."""
+    if not os.path.exists(path):
+        return {}
+    text = open(path, "r", encoding="utf-8", errors="replace").read()
+    m = re.search(r"\bitems\s*=\s*\{", text)
+    if not m:
+        return {}
+    body = text[m.end() :]
+    wf_re = re.compile(r"^\s{8}\[(\d+)\]\s*=\s*\{(.*?)^\s{8}\}", re.M | re.S)
+    clv_re = re.compile(r"^\s{12}\[(\d+)\]\s*=\s*\{(.*?)^\s{12}\}", re.M | re.S)
+    lv_re = re.compile(r"^\s{16}\[(\d+)\]\s*=\s*\{(.*?)^\s{16}\}", re.M | re.S)
+    out: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
+    for wfm in wf_re.finditer(body):
+        clv_map: dict[str, dict[str, dict[str, Any]]] = {}
+        for cm in clv_re.finditer(wfm.group(2)):
+            lv_map: dict[str, dict[str, Any]] = {}
+            for lm in lv_re.finditer(cm.group(2)):
+                lv_map[lm.group(1)] = _parse_fields(lm.group(2), indent=20)
+            clv_map[cm.group(1)] = lv_map
+        out[wfm.group(1)] = clv_map
+    return out
+
+
+def extract_warfare_data(cfg_dir: str) -> dict[str, Any]:
+    """Extract WarfareLvRelation (15x7x10) and WarfarecrestRefRelation (1575 rows)."""
+    raw_ref = parse_simple_lua_items(os.path.join(cfg_dir, "WarfarecrestRefRelation.lua"))
+    ref_by_crest: dict[str, list[dict[str, Any]]] = {}
+    for row in sorted(raw_ref.values(), key=lambda r: int(r.get("ID", 0))):
+        cid = str(row.get("warfareCrestID", ""))
+        if cid:
+            ref_by_crest.setdefault(cid, []).append(row)
+    return {
+        "warfare_lv": parse_warfare_lv(os.path.join(cfg_dir, "WarfareLvRelation.lua")),
+        "warfare_ref": ref_by_crest,
+    }
+
+
 def parse_array_lua_list(path: str) -> list[dict[str, Any]]:
     """Parse `Model = { ... items = { { k = v, ... }, ... } }` into a list preserving order."""
     if not os.path.exists(path):
@@ -497,6 +535,12 @@ def main() -> None:
     petout_rank_guild = parse_nested_lua_items(os.path.join(cfg_dir, "PetoutRankguildRewardRelation.lua"))
     petout_shop = parse_simple_lua_items(os.path.join(cfg_dir, "PetoutShopRelation.lua"))
 
+    warfare_model = parse_simple_lua_items(os.path.join(cfg_dir, "WarfareModel.lua"))
+    warfarespirit_model = parse_simple_lua_items(os.path.join(cfg_dir, "WarfarespiritModel.lua"))
+    warfarespirit_lv = parse_nested_lua_items(os.path.join(cfg_dir, "WarfarespiritLvRelation.lua"))
+    warfare_collocation = parse_nested_lua_items(os.path.join(cfg_dir, "WarfarecrestCollocation.lua"))
+    warfare_droppreview = parse_simple_lua_items(os.path.join(cfg_dir, "WarfarecrestDroppreview.lua"))
+
     hero_bonds = {
         hero: [relations[order]["PRModelId"] for order in sorted(relations, key=int)]
         for hero, relations in parse_nested_lua_items(os.path.join(cfg_dir, "HeroPrRelation.lua")).items()
@@ -582,6 +626,10 @@ def main() -> None:
         for pet_mod in ("1414", "7400", "7401", "7402", "7403", "7404", "7405", "7406", "7500", "7600"):
             if pet_mod in module_subs:
                 module_subs[pet_mod]["ifOpen"] = 1
+        # R8.6: Enable Warfare & Warfarespirit modules (8101..8108)
+        for wf_mod in ("8101", "8102", "8103", "8104", "8105", "8106", "8107", "8108"):
+            if wf_mod in module_subs:
+                module_subs[wf_mod]["ifOpen"] = 1
         r739_lianti_shop = [
             (7, 16050035, 10),
             (8, 16050036, 25),
@@ -760,6 +808,11 @@ def main() -> None:
             "petout_rank_per": len(petout_rank_per),
             "petout_rank_guild": len(petout_rank_guild),
             "petout_shop": len(petout_shop),
+            "warfare_model": len(warfare_model),
+            "warfarespirit_model": len(warfarespirit_model),
+            "warfarespirit_lv": sum(len(v) for v in warfarespirit_lv.values()),
+            "warfare_collocation": sum(len(v) for v in warfare_collocation.values()),
+            "warfare_droppreview": len(warfare_droppreview),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -958,6 +1011,11 @@ def main() -> None:
         "petout_rank_per": petout_rank_per,
         "petout_rank_guild": petout_rank_guild,
         "petout_shop": petout_shop,
+        "warfare_model": warfare_model,
+        "warfarespirit_model": warfarespirit_model,
+        "warfarespirit_lv": warfarespirit_lv,
+        "warfare_collocation": warfare_collocation,
+        "warfare_droppreview": warfare_droppreview,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -967,6 +1025,9 @@ def main() -> None:
         f.write("\n")
     with open(os.path.join(os.path.dirname(OUT_PATH), "pet_data.json"), "w", encoding="utf-8") as f:
         json.dump(extract_pet_data(cfg_dir), f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    with open(os.path.join(os.path.dirname(OUT_PATH), "warfare_data.json"), "w", encoding="utf-8") as f:
+        json.dump(extract_warfare_data(cfg_dir), f, ensure_ascii=False, indent=2)
         f.write("\n")
 
 

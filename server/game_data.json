@@ -27,7 +27,7 @@
     "nightmare_reset_use": 3,
     "reborn_goods": 28,
     "goods_model": 1043,
-    "shop_goods": 6,
+    "shop_goods": 10,
     "treasures": 46,
     "treasure_debris": 228,
     "elite_nodes": 36,
@@ -126,7 +126,18 @@
     "lv_plan_rewards": 10,
     "vip_welfare": 21,
     "bag_model": 9,
-    "bag_expand_use": 20
+    "bag_expand_use": 20,
+    "lianti_model": 5,
+    "lianti_lv": 101,
+    "lianti_dashi": 20,
+    "lianti_stone_exp": 4,
+    "pvpinter_lv": 8,
+    "pvpinter_buynum": 11,
+    "pvpinter_shop": 4,
+    "pvpinter_win_box": 24,
+    "pvpinter_top_gamble": 15,
+    "pvpinter_top_reward": 6,
+    "pvpinter_top_worship": 6
   },
   "player_config": {
     "initLv": 1,
@@ -144824,7 +144835,7 @@
       "moduleAlias": "Lianti",
       "name": "炼体",
       "isClient": 1,
-      "ifOpen": 0,
+      "ifOpen": 1,
       "openLv": 34,
       "advancedOpenVIPLv": 0,
       "VIPNeedLv": 34,
@@ -146788,7 +146799,7 @@
       "buyXSBZNum": 0,
       "ggzjMutipleR": 100,
       "abstractZhenJueNum": 1,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 3,
       "buyPetOutNum": 1,
       "buyGuildFBNum": 1
     },
@@ -146811,7 +146822,7 @@
       "buyXSBZNum": 0,
       "ggzjMutipleR": 105,
       "abstractZhenJueNum": 2,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 4,
       "buyPetOutNum": 2,
       "buyGuildFBNum": 1
     },
@@ -146834,7 +146845,7 @@
       "buyXSBZNum": 0,
       "ggzjMutipleR": 110,
       "abstractZhenJueNum": 3,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 5,
       "buyPetOutNum": 3,
       "buyGuildFBNum": 1
     },
@@ -146857,7 +146868,7 @@
       "buyXSBZNum": 0,
       "ggzjMutipleR": 114,
       "abstractZhenJueNum": 4,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 6,
       "buyPetOutNum": 4,
       "buyGuildFBNum": 1
     },
@@ -146880,7 +146891,7 @@
       "buyXSBZNum": 0,
       "ggzjMutipleR": 120,
       "abstractZhenJueNum": 5,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 7,
       "buyPetOutNum": 5,
       "buyGuildFBNum": 1
     },
@@ -146903,7 +146914,7 @@
       "buyXSBZNum": 0,
       "ggzjMutipleR": 125,
       "abstractZhenJueNum": 6,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 8,
       "buyPetOutNum": 6,
       "buyGuildFBNum": 1
     },
@@ -146926,7 +146937,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 135,
       "abstractZhenJueNum": 7,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 9,
       "buyPetOutNum": 7,
       "buyGuildFBNum": 1
     },
@@ -146949,7 +146960,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 145,
       "abstractZhenJueNum": 8,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 10,
       "buyPetOutNum": 8,
       "buyGuildFBNum": 2
     },
@@ -146972,7 +146983,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 155,
       "abstractZhenJueNum": 9,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 11,
       "buyPetOutNum": 9,
       "buyGuildFBNum": 2
     },
@@ -146995,7 +147006,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 165,
       "abstractZhenJueNum": 10,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 12,
       "buyPetOutNum": 10,
       "buyGuildFBNum": 2
     },
@@ -147018,7 +147029,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 175,
       "abstractZhenJueNum": 11,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 13,
       "buyPetOutNum": 11,
       "buyGuildFBNum": 2
     },
@@ -147041,7 +147052,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 185,
       "abstractZhenJueNum": 12,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 14,
       "buyPetOutNum": 12,
       "buyGuildFBNum": 2
     },
@@ -147064,7 +147075,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 195,
       "abstractZhenJueNum": 13,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 15,
       "buyPetOutNum": 13,
       "buyGuildFBNum": 2
     },
@@ -147087,7 +147098,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 204,
       "abstractZhenJueNum": 14,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 16,
       "buyPetOutNum": 14,
       "buyGuildFBNum": 2
     },
@@ -147110,7 +147121,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 215,
       "abstractZhenJueNum": 15,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 17,
       "buyPetOutNum": 15,
       "buyGuildFBNum": 2
     },
@@ -147133,7 +147144,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 225,
       "abstractZhenJueNum": 16,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 18,
       "buyPetOutNum": 16,
       "buyGuildFBNum": 2
     },
@@ -147156,7 +147167,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 235,
       "abstractZhenJueNum": 17,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 19,
       "buyPetOutNum": 17,
       "buyGuildFBNum": 2
     },
@@ -147179,7 +147190,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 245,
       "abstractZhenJueNum": 18,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 20,
       "buyPetOutNum": 18,
       "buyGuildFBNum": 2
     },
@@ -147202,7 +147213,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 254,
       "abstractZhenJueNum": 19,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 21,
       "buyPetOutNum": 19,
       "buyGuildFBNum": 2
     },
@@ -147225,7 +147236,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 265,
       "abstractZhenJueNum": 20,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 22,
       "buyPetOutNum": 20,
       "buyGuildFBNum": 2
     },
@@ -147248,7 +147259,7 @@
       "buyXSBZNum": 1,
       "ggzjMutipleR": 275,
       "abstractZhenJueNum": 21,
-      "buyKuafuNum": 0,
+      "buyKuafuNum": 23,
       "buyPetOutNum": 21,
       "buyGuildFBNum": 2
     }
@@ -201886,6 +201897,54 @@
       "ifOnceUse": false,
       "ifDynamicPrice": false,
       "needLV": 1
+    },
+    "7": {
+      "ID": 7,
+      "serverGroupID": 0,
+      "goodsModelID": 16050035,
+      "sellTypeID": 1111,
+      "initPrice": 10,
+      "currPrice": 10,
+      "ifVipLimitBuy": false,
+      "ifOnceUse": false,
+      "ifDynamicPrice": false,
+      "needLV": 34
+    },
+    "8": {
+      "ID": 8,
+      "serverGroupID": 0,
+      "goodsModelID": 16050036,
+      "sellTypeID": 1111,
+      "initPrice": 25,
+      "currPrice": 25,
+      "ifVipLimitBuy": false,
+      "ifOnceUse": false,
+      "ifDynamicPrice": false,
+      "needLV": 34
+    },
+    "9": {
+      "ID": 9,
+      "serverGroupID": 0,
+      "goodsModelID": 16050037,
+      "sellTypeID": 1111,
+      "initPrice": 60,
+      "currPrice": 60,
+      "ifVipLimitBuy": false,
+      "ifOnceUse": false,
+      "ifDynamicPrice": false,
+      "needLV": 34
+    },
+    "10": {
+      "ID": 10,
+      "serverGroupID": 0,
+      "goodsModelID": 16050038,
+      "sellTypeID": 1111,
+      "initPrice": 200,
+      "currPrice": 200,
+      "ifVipLimitBuy": false,
+      "ifOnceUse": false,
+      "ifDynamicPrice": false,
+      "needLV": 34
     }
   },
   "shop_goods_price": {
@@ -419005,6 +419064,1828 @@
     "20": {
       "expandNum": 20,
       "useDiamondNum": 200
+    }
+  },
+  "lianti_model": {
+    "1": {
+      "ID": 1,
+      "fightattrID": 432,
+      "fightattrName": "HP",
+      "lvAddValue": 0
+    },
+    "2": {
+      "ID": 2,
+      "fightattrID": 431,
+      "fightattrName": "Công",
+      "lvAddValue": 0
+    },
+    "3": {
+      "ID": 3,
+      "fightattrID": 433,
+      "fightattrName": "Thủ",
+      "lvAddValue": 0
+    },
+    "4": {
+      "ID": 4,
+      "fightattrID": 408,
+      "fightattrName": "Sát Thương",
+      "lvAddValue": 0
+    },
+    "5": {
+      "ID": 5,
+      "fightattrID": 409,
+      "fightattrName": "Giảm ST",
+      "lvAddValue": 0
+    }
+  },
+  "lianti_lv": {
+    "0": {
+      "liantiLv": 0,
+      "lvExp": 130,
+      "lvSkipExpMin": 80,
+      "lvSkipExpMax": 130,
+      "HPADD": 0,
+      "APADD": 0,
+      "DEFADD": 0,
+      "DAMADD": 0,
+      "DAMCUT": 0
+    },
+    "1": {
+      "liantiLv": 1,
+      "lvExp": 160,
+      "lvSkipExpMin": 100,
+      "lvSkipExpMax": 160,
+      "HPADD": 185,
+      "APADD": 31,
+      "DEFADD": 31,
+      "DAMADD": 62,
+      "DAMCUT": 62
+    },
+    "2": {
+      "liantiLv": 2,
+      "lvExp": 210,
+      "lvSkipExpMin": 120,
+      "lvSkipExpMax": 210,
+      "HPADD": 378,
+      "APADD": 63,
+      "DEFADD": 63,
+      "DAMADD": 126,
+      "DAMCUT": 126
+    },
+    "3": {
+      "liantiLv": 3,
+      "lvExp": 260,
+      "lvSkipExpMin": 160,
+      "lvSkipExpMax": 260,
+      "HPADD": 579,
+      "APADD": 97,
+      "DEFADD": 97,
+      "DAMADD": 193,
+      "DAMCUT": 193
+    },
+    "4": {
+      "liantiLv": 4,
+      "lvExp": 320,
+      "lvSkipExpMin": 190,
+      "lvSkipExpMax": 320,
+      "HPADD": 789,
+      "APADD": 132,
+      "DEFADD": 132,
+      "DAMADD": 263,
+      "DAMCUT": 263
+    },
+    "5": {
+      "liantiLv": 5,
+      "lvExp": 400,
+      "lvSkipExpMin": 240,
+      "lvSkipExpMax": 400,
+      "HPADD": 1007,
+      "APADD": 168,
+      "DEFADD": 168,
+      "DAMADD": 336,
+      "DAMCUT": 336
+    },
+    "6": {
+      "liantiLv": 6,
+      "lvExp": 480,
+      "lvSkipExpMin": 290,
+      "lvSkipExpMax": 480,
+      "HPADD": 1234,
+      "APADD": 206,
+      "DEFADD": 206,
+      "DAMADD": 412,
+      "DAMCUT": 412
+    },
+    "7": {
+      "liantiLv": 7,
+      "lvExp": 570,
+      "lvSkipExpMin": 340,
+      "lvSkipExpMax": 570,
+      "HPADD": 1469,
+      "APADD": 245,
+      "DEFADD": 245,
+      "DAMADD": 490,
+      "DAMCUT": 490
+    },
+    "8": {
+      "liantiLv": 8,
+      "lvExp": 670,
+      "lvSkipExpMin": 400,
+      "lvSkipExpMax": 670,
+      "HPADD": 1712,
+      "APADD": 286,
+      "DEFADD": 286,
+      "DAMADD": 571,
+      "DAMCUT": 571
+    },
+    "9": {
+      "liantiLv": 9,
+      "lvExp": 780,
+      "lvSkipExpMin": 470,
+      "lvSkipExpMax": 780,
+      "HPADD": 1964,
+      "APADD": 328,
+      "DEFADD": 328,
+      "DAMADD": 655,
+      "DAMCUT": 655
+    },
+    "10": {
+      "liantiLv": 10,
+      "lvExp": 890,
+      "lvSkipExpMin": 530,
+      "lvSkipExpMax": 890,
+      "HPADD": 2224,
+      "APADD": 371,
+      "DEFADD": 371,
+      "DAMADD": 742,
+      "DAMCUT": 742
+    },
+    "11": {
+      "liantiLv": 11,
+      "lvExp": 1020,
+      "lvSkipExpMin": 610,
+      "lvSkipExpMax": 1020,
+      "HPADD": 2493,
+      "APADD": 416,
+      "DEFADD": 416,
+      "DAMADD": 832,
+      "DAMCUT": 832
+    },
+    "12": {
+      "liantiLv": 12,
+      "lvExp": 1150,
+      "lvSkipExpMin": 690,
+      "lvSkipExpMax": 1150,
+      "HPADD": 2770,
+      "APADD": 462,
+      "DEFADD": 462,
+      "DAMADD": 924,
+      "DAMCUT": 924
+    },
+    "13": {
+      "liantiLv": 13,
+      "lvExp": 1290,
+      "lvSkipExpMin": 770,
+      "lvSkipExpMax": 1290,
+      "HPADD": 3055,
+      "APADD": 510,
+      "DEFADD": 510,
+      "DAMADD": 1019,
+      "DAMCUT": 1019
+    },
+    "14": {
+      "liantiLv": 14,
+      "lvExp": 1430,
+      "lvSkipExpMin": 860,
+      "lvSkipExpMax": 1430,
+      "HPADD": 3349,
+      "APADD": 559,
+      "DEFADD": 559,
+      "DAMADD": 1117,
+      "DAMCUT": 1117
+    },
+    "15": {
+      "liantiLv": 15,
+      "lvExp": 1590,
+      "lvSkipExpMin": 950,
+      "lvSkipExpMax": 1590,
+      "HPADD": 3651,
+      "APADD": 609,
+      "DEFADD": 609,
+      "DAMADD": 1218,
+      "DAMCUT": 1218
+    },
+    "16": {
+      "liantiLv": 16,
+      "lvExp": 1750,
+      "lvSkipExpMin": 1050,
+      "lvSkipExpMax": 1750,
+      "HPADD": 3961,
+      "APADD": 661,
+      "DEFADD": 661,
+      "DAMADD": 1321,
+      "DAMCUT": 1321
+    },
+    "17": {
+      "liantiLv": 17,
+      "lvExp": 1920,
+      "lvSkipExpMin": 1150,
+      "lvSkipExpMax": 1920,
+      "HPADD": 4280,
+      "APADD": 714,
+      "DEFADD": 714,
+      "DAMADD": 1427,
+      "DAMCUT": 1427
+    },
+    "18": {
+      "liantiLv": 18,
+      "lvExp": 2100,
+      "lvSkipExpMin": 1260,
+      "lvSkipExpMax": 2100,
+      "HPADD": 4607,
+      "APADD": 769,
+      "DEFADD": 769,
+      "DAMADD": 1536,
+      "DAMCUT": 1536
+    },
+    "19": {
+      "liantiLv": 19,
+      "lvExp": 2280,
+      "lvSkipExpMin": 1370,
+      "lvSkipExpMax": 2280,
+      "HPADD": 4943,
+      "APADD": 825,
+      "DEFADD": 825,
+      "DAMADD": 1648,
+      "DAMCUT": 1648
+    },
+    "20": {
+      "liantiLv": 20,
+      "lvExp": 2480,
+      "lvSkipExpMin": 1490,
+      "lvSkipExpMax": 2480,
+      "HPADD": 5287,
+      "APADD": 882,
+      "DEFADD": 882,
+      "DAMADD": 1763,
+      "DAMCUT": 1763
+    },
+    "21": {
+      "liantiLv": 21,
+      "lvExp": 2670,
+      "lvSkipExpMin": 1600,
+      "lvSkipExpMax": 2670,
+      "HPADD": 5639,
+      "APADD": 941,
+      "DEFADD": 941,
+      "DAMADD": 1880,
+      "DAMCUT": 1880
+    },
+    "22": {
+      "liantiLv": 22,
+      "lvExp": 2880,
+      "lvSkipExpMin": 1730,
+      "lvSkipExpMax": 2880,
+      "HPADD": 6000,
+      "APADD": 1001,
+      "DEFADD": 1001,
+      "DAMADD": 2000,
+      "DAMCUT": 2000
+    },
+    "23": {
+      "liantiLv": 23,
+      "lvExp": 3090,
+      "lvSkipExpMin": 1860,
+      "lvSkipExpMax": 3090,
+      "HPADD": 6369,
+      "APADD": 1063,
+      "DEFADD": 1063,
+      "DAMADD": 2123,
+      "DAMCUT": 2123
+    },
+    "24": {
+      "liantiLv": 24,
+      "lvExp": 3310,
+      "lvSkipExpMin": 1990,
+      "lvSkipExpMax": 3310,
+      "HPADD": 6747,
+      "APADD": 1126,
+      "DEFADD": 1126,
+      "DAMADD": 2249,
+      "DAMCUT": 2249
+    },
+    "25": {
+      "liantiLv": 25,
+      "lvExp": 3540,
+      "lvSkipExpMin": 2120,
+      "lvSkipExpMax": 3540,
+      "HPADD": 7133,
+      "APADD": 1190,
+      "DEFADD": 1190,
+      "DAMADD": 2378,
+      "DAMCUT": 2378
+    },
+    "26": {
+      "liantiLv": 26,
+      "lvExp": 3770,
+      "lvSkipExpMin": 2260,
+      "lvSkipExpMax": 3770,
+      "HPADD": 7527,
+      "APADD": 1256,
+      "DEFADD": 1256,
+      "DAMADD": 2509,
+      "DAMCUT": 2509
+    },
+    "27": {
+      "liantiLv": 27,
+      "lvExp": 4010,
+      "lvSkipExpMin": 2410,
+      "lvSkipExpMax": 4010,
+      "HPADD": 7930,
+      "APADD": 1323,
+      "DEFADD": 1323,
+      "DAMADD": 2643,
+      "DAMCUT": 2643
+    },
+    "28": {
+      "liantiLv": 28,
+      "lvExp": 4260,
+      "lvSkipExpMin": 2560,
+      "lvSkipExpMax": 4260,
+      "HPADD": 8341,
+      "APADD": 1392,
+      "DEFADD": 1392,
+      "DAMADD": 2780,
+      "DAMCUT": 2780
+    },
+    "29": {
+      "liantiLv": 29,
+      "lvExp": 4510,
+      "lvSkipExpMin": 2710,
+      "lvSkipExpMax": 4510,
+      "HPADD": 8761,
+      "APADD": 1462,
+      "DEFADD": 1462,
+      "DAMADD": 2920,
+      "DAMCUT": 2920
+    },
+    "30": {
+      "liantiLv": 30,
+      "lvExp": 4770,
+      "lvSkipExpMin": 2860,
+      "lvSkipExpMax": 4770,
+      "HPADD": 9189,
+      "APADD": 1533,
+      "DEFADD": 1533,
+      "DAMADD": 3063,
+      "DAMCUT": 3063
+    },
+    "31": {
+      "liantiLv": 31,
+      "lvExp": 5040,
+      "lvSkipExpMin": 3020,
+      "lvSkipExpMax": 5040,
+      "HPADD": 9625,
+      "APADD": 1606,
+      "DEFADD": 1606,
+      "DAMADD": 3208,
+      "DAMCUT": 3208
+    },
+    "32": {
+      "liantiLv": 32,
+      "lvExp": 5310,
+      "lvSkipExpMin": 3190,
+      "lvSkipExpMax": 5310,
+      "HPADD": 10070,
+      "APADD": 1680,
+      "DEFADD": 1680,
+      "DAMADD": 3356,
+      "DAMCUT": 3356
+    },
+    "33": {
+      "liantiLv": 33,
+      "lvExp": 5590,
+      "lvSkipExpMin": 3350,
+      "lvSkipExpMax": 5590,
+      "HPADD": 10523,
+      "APADD": 1756,
+      "DEFADD": 1756,
+      "DAMADD": 3507,
+      "DAMCUT": 3507
+    },
+    "34": {
+      "liantiLv": 34,
+      "lvExp": 5880,
+      "lvSkipExpMin": 3530,
+      "lvSkipExpMax": 5880,
+      "HPADD": 10985,
+      "APADD": 1833,
+      "DEFADD": 1833,
+      "DAMADD": 3661,
+      "DAMCUT": 3661
+    },
+    "35": {
+      "liantiLv": 35,
+      "lvExp": 6170,
+      "lvSkipExpMin": 3700,
+      "lvSkipExpMax": 6170,
+      "HPADD": 11455,
+      "APADD": 1911,
+      "DEFADD": 1911,
+      "DAMADD": 3818,
+      "DAMCUT": 3818
+    },
+    "36": {
+      "liantiLv": 36,
+      "lvExp": 6470,
+      "lvSkipExpMin": 3880,
+      "lvSkipExpMax": 6470,
+      "HPADD": 11933,
+      "APADD": 1991,
+      "DEFADD": 1991,
+      "DAMADD": 3977,
+      "DAMCUT": 3977
+    },
+    "37": {
+      "liantiLv": 37,
+      "lvExp": 6770,
+      "lvSkipExpMin": 4060,
+      "lvSkipExpMax": 6770,
+      "HPADD": 12420,
+      "APADD": 2072,
+      "DEFADD": 2072,
+      "DAMADD": 4139,
+      "DAMCUT": 4139
+    },
+    "38": {
+      "liantiLv": 38,
+      "lvExp": 7080,
+      "lvSkipExpMin": 4250,
+      "lvSkipExpMax": 7080,
+      "HPADD": 12915,
+      "APADD": 2155,
+      "DEFADD": 2155,
+      "DAMADD": 4304,
+      "DAMCUT": 4304
+    },
+    "39": {
+      "liantiLv": 39,
+      "lvExp": 7400,
+      "lvSkipExpMin": 4440,
+      "lvSkipExpMax": 7400,
+      "HPADD": 13418,
+      "APADD": 2239,
+      "DEFADD": 2239,
+      "DAMADD": 4472,
+      "DAMCUT": 4472
+    },
+    "40": {
+      "liantiLv": 40,
+      "lvExp": 7730,
+      "lvSkipExpMin": 4640,
+      "lvSkipExpMax": 7730,
+      "HPADD": 13930,
+      "APADD": 2324,
+      "DEFADD": 2324,
+      "DAMADD": 4643,
+      "DAMCUT": 4643
+    },
+    "41": {
+      "liantiLv": 41,
+      "lvExp": 8060,
+      "lvSkipExpMin": 4830,
+      "lvSkipExpMax": 8060,
+      "HPADD": 14450,
+      "APADD": 2411,
+      "DEFADD": 2411,
+      "DAMADD": 4816,
+      "DAMCUT": 4816
+    },
+    "42": {
+      "liantiLv": 42,
+      "lvExp": 8390,
+      "lvSkipExpMin": 5030,
+      "lvSkipExpMax": 8390,
+      "HPADD": 14979,
+      "APADD": 2499,
+      "DEFADD": 2499,
+      "DAMADD": 4992,
+      "DAMCUT": 4992
+    },
+    "43": {
+      "liantiLv": 43,
+      "lvExp": 8730,
+      "lvSkipExpMin": 5240,
+      "lvSkipExpMax": 8730,
+      "HPADD": 15516,
+      "APADD": 2589,
+      "DEFADD": 2589,
+      "DAMADD": 5171,
+      "DAMCUT": 5171
+    },
+    "44": {
+      "liantiLv": 44,
+      "lvExp": 9080,
+      "lvSkipExpMin": 5450,
+      "lvSkipExpMax": 9080,
+      "HPADD": 16061,
+      "APADD": 2680,
+      "DEFADD": 2680,
+      "DAMADD": 5353,
+      "DAMCUT": 5353
+    },
+    "45": {
+      "liantiLv": 45,
+      "lvExp": 9440,
+      "lvSkipExpMin": 5660,
+      "lvSkipExpMax": 9440,
+      "HPADD": 16615,
+      "APADD": 2772,
+      "DEFADD": 2772,
+      "DAMADD": 5538,
+      "DAMCUT": 5538
+    },
+    "46": {
+      "liantiLv": 46,
+      "lvExp": 9800,
+      "lvSkipExpMin": 5880,
+      "lvSkipExpMax": 9800,
+      "HPADD": 17177,
+      "APADD": 2866,
+      "DEFADD": 2866,
+      "DAMADD": 5725,
+      "DAMCUT": 5725
+    },
+    "47": {
+      "liantiLv": 47,
+      "lvExp": 10170,
+      "lvSkipExpMin": 6100,
+      "lvSkipExpMax": 10170,
+      "HPADD": 17748,
+      "APADD": 2961,
+      "DEFADD": 2961,
+      "DAMADD": 5915,
+      "DAMCUT": 5915
+    },
+    "48": {
+      "liantiLv": 48,
+      "lvExp": 10540,
+      "lvSkipExpMin": 6320,
+      "lvSkipExpMax": 10540,
+      "HPADD": 18327,
+      "APADD": 3058,
+      "DEFADD": 3058,
+      "DAMADD": 6108,
+      "DAMCUT": 6108
+    },
+    "49": {
+      "liantiLv": 49,
+      "lvExp": 10920,
+      "lvSkipExpMin": 6550,
+      "lvSkipExpMax": 10920,
+      "HPADD": 18914,
+      "APADD": 3156,
+      "DEFADD": 3156,
+      "DAMADD": 6304,
+      "DAMCUT": 6304
+    },
+    "50": {
+      "liantiLv": 50,
+      "lvExp": 11300,
+      "lvSkipExpMin": 6780,
+      "lvSkipExpMax": 11300,
+      "HPADD": 19510,
+      "APADD": 3255,
+      "DEFADD": 3255,
+      "DAMADD": 6503,
+      "DAMCUT": 6503
+    },
+    "51": {
+      "liantiLv": 51,
+      "lvExp": 11690,
+      "lvSkipExpMin": 7010,
+      "lvSkipExpMax": 11690,
+      "HPADD": 20114,
+      "APADD": 3356,
+      "DEFADD": 3356,
+      "DAMADD": 6704,
+      "DAMCUT": 6704
+    },
+    "52": {
+      "liantiLv": 52,
+      "lvExp": 12090,
+      "lvSkipExpMin": 7250,
+      "lvSkipExpMax": 12090,
+      "HPADD": 20727,
+      "APADD": 3458,
+      "DEFADD": 3458,
+      "DAMADD": 6908,
+      "DAMCUT": 6908
+    },
+    "53": {
+      "liantiLv": 53,
+      "lvExp": 12490,
+      "lvSkipExpMin": 7490,
+      "lvSkipExpMax": 12490,
+      "HPADD": 21348,
+      "APADD": 3561,
+      "DEFADD": 3561,
+      "DAMADD": 7115,
+      "DAMCUT": 7115
+    },
+    "54": {
+      "liantiLv": 54,
+      "lvExp": 12900,
+      "lvSkipExpMin": 7740,
+      "lvSkipExpMax": 12900,
+      "HPADD": 21977,
+      "APADD": 3666,
+      "DEFADD": 3666,
+      "DAMADD": 7325,
+      "DAMCUT": 7325
+    },
+    "55": {
+      "liantiLv": 55,
+      "lvExp": 13310,
+      "lvSkipExpMin": 7990,
+      "lvSkipExpMax": 13310,
+      "HPADD": 22615,
+      "APADD": 3772,
+      "DEFADD": 3772,
+      "DAMADD": 7538,
+      "DAMCUT": 7538
+    },
+    "56": {
+      "liantiLv": 56,
+      "lvExp": 13730,
+      "lvSkipExpMin": 8240,
+      "lvSkipExpMax": 13730,
+      "HPADD": 23261,
+      "APADD": 3880,
+      "DEFADD": 3880,
+      "DAMADD": 7753,
+      "DAMCUT": 7753
+    },
+    "57": {
+      "liantiLv": 57,
+      "lvExp": 14160,
+      "lvSkipExpMin": 8490,
+      "lvSkipExpMax": 14160,
+      "HPADD": 23916,
+      "APADD": 3989,
+      "DEFADD": 3989,
+      "DAMADD": 7971,
+      "DAMCUT": 7971
+    },
+    "58": {
+      "liantiLv": 58,
+      "lvExp": 14590,
+      "lvSkipExpMin": 8750,
+      "lvSkipExpMax": 14590,
+      "HPADD": 24579,
+      "APADD": 4099,
+      "DEFADD": 4099,
+      "DAMADD": 8192,
+      "DAMCUT": 8192
+    },
+    "59": {
+      "liantiLv": 59,
+      "lvExp": 15030,
+      "lvSkipExpMin": 9020,
+      "lvSkipExpMax": 15030,
+      "HPADD": 25250,
+      "APADD": 4211,
+      "DEFADD": 4211,
+      "DAMADD": 8416,
+      "DAMCUT": 8416
+    },
+    "60": {
+      "liantiLv": 60,
+      "lvExp": 15470,
+      "lvSkipExpMin": 9280,
+      "lvSkipExpMax": 15470,
+      "HPADD": 25930,
+      "APADD": 4324,
+      "DEFADD": 4324,
+      "DAMADD": 8643,
+      "DAMCUT": 8643
+    },
+    "61": {
+      "liantiLv": 61,
+      "lvExp": 15920,
+      "lvSkipExpMin": 9550,
+      "lvSkipExpMax": 15920,
+      "HPADD": 26618,
+      "APADD": 4439,
+      "DEFADD": 4439,
+      "DAMADD": 8872,
+      "DAMCUT": 8872
+    },
+    "62": {
+      "liantiLv": 62,
+      "lvExp": 16370,
+      "lvSkipExpMin": 9820,
+      "lvSkipExpMax": 16370,
+      "HPADD": 27315,
+      "APADD": 4555,
+      "DEFADD": 4555,
+      "DAMADD": 9104,
+      "DAMCUT": 9104
+    },
+    "63": {
+      "liantiLv": 63,
+      "lvExp": 16830,
+      "lvSkipExpMin": 10100,
+      "lvSkipExpMax": 16830,
+      "HPADD": 28020,
+      "APADD": 4672,
+      "DEFADD": 4672,
+      "DAMADD": 9339,
+      "DAMCUT": 9339
+    },
+    "64": {
+      "liantiLv": 64,
+      "lvExp": 17300,
+      "lvSkipExpMin": 10380,
+      "lvSkipExpMax": 17300,
+      "HPADD": 28733,
+      "APADD": 4791,
+      "DEFADD": 4791,
+      "DAMADD": 9577,
+      "DAMCUT": 9577
+    },
+    "65": {
+      "liantiLv": 65,
+      "lvExp": 17770,
+      "lvSkipExpMin": 10660,
+      "lvSkipExpMax": 17770,
+      "HPADD": 29455,
+      "APADD": 4911,
+      "DEFADD": 4911,
+      "DAMADD": 9818,
+      "DAMCUT": 9818
+    },
+    "66": {
+      "liantiLv": 66,
+      "lvExp": 18250,
+      "lvSkipExpMin": 10950,
+      "lvSkipExpMax": 18250,
+      "HPADD": 30185,
+      "APADD": 5033,
+      "DEFADD": 5033,
+      "DAMADD": 10061,
+      "DAMCUT": 10061
+    },
+    "67": {
+      "liantiLv": 67,
+      "lvExp": 18730,
+      "lvSkipExpMin": 11240,
+      "lvSkipExpMax": 18730,
+      "HPADD": 30923,
+      "APADD": 5156,
+      "DEFADD": 5156,
+      "DAMADD": 10307,
+      "DAMCUT": 10307
+    },
+    "68": {
+      "liantiLv": 68,
+      "lvExp": 19220,
+      "lvSkipExpMin": 11530,
+      "lvSkipExpMax": 19220,
+      "HPADD": 31670,
+      "APADD": 5280,
+      "DEFADD": 5280,
+      "DAMADD": 10556,
+      "DAMCUT": 10556
+    },
+    "69": {
+      "liantiLv": 69,
+      "lvExp": 19710,
+      "lvSkipExpMin": 11830,
+      "lvSkipExpMax": 19710,
+      "HPADD": 32425,
+      "APADD": 5406,
+      "DEFADD": 5406,
+      "DAMADD": 10808,
+      "DAMCUT": 10808
+    },
+    "70": {
+      "liantiLv": 70,
+      "lvExp": 20210,
+      "lvSkipExpMin": 12130,
+      "lvSkipExpMax": 20210,
+      "HPADD": 33189,
+      "APADD": 5533,
+      "DEFADD": 5533,
+      "DAMADD": 11063,
+      "DAMCUT": 11063
+    },
+    "71": {
+      "liantiLv": 71,
+      "lvExp": 20720,
+      "lvSkipExpMin": 12430,
+      "lvSkipExpMax": 20720,
+      "HPADD": 33961,
+      "APADD": 5662,
+      "DEFADD": 5662,
+      "DAMADD": 11320,
+      "DAMCUT": 11320
+    },
+    "72": {
+      "liantiLv": 72,
+      "lvExp": 21230,
+      "lvSkipExpMin": 12740,
+      "lvSkipExpMax": 21230,
+      "HPADD": 34741,
+      "APADD": 5792,
+      "DEFADD": 5792,
+      "DAMADD": 11580,
+      "DAMCUT": 11580
+    },
+    "73": {
+      "liantiLv": 73,
+      "lvExp": 21740,
+      "lvSkipExpMin": 13050,
+      "lvSkipExpMax": 21740,
+      "HPADD": 35530,
+      "APADD": 5923,
+      "DEFADD": 5923,
+      "DAMADD": 11843,
+      "DAMCUT": 11843
+    },
+    "74": {
+      "liantiLv": 74,
+      "lvExp": 22270,
+      "lvSkipExpMin": 13360,
+      "lvSkipExpMax": 22270,
+      "HPADD": 36327,
+      "APADD": 6056,
+      "DEFADD": 6056,
+      "DAMADD": 12109,
+      "DAMCUT": 12109
+    },
+    "75": {
+      "liantiLv": 75,
+      "lvExp": 22790,
+      "lvSkipExpMin": 13680,
+      "lvSkipExpMax": 22790,
+      "HPADD": 37133,
+      "APADD": 6190,
+      "DEFADD": 6190,
+      "DAMADD": 12378,
+      "DAMCUT": 12378
+    },
+    "76": {
+      "liantiLv": 76,
+      "lvExp": 23330,
+      "lvSkipExpMin": 14000,
+      "lvSkipExpMax": 23330,
+      "HPADD": 37947,
+      "APADD": 6326,
+      "DEFADD": 6326,
+      "DAMADD": 12649,
+      "DAMCUT": 12649
+    },
+    "77": {
+      "liantiLv": 77,
+      "lvExp": 23860,
+      "lvSkipExpMin": 14320,
+      "lvSkipExpMax": 23860,
+      "HPADD": 38769,
+      "APADD": 6463,
+      "DEFADD": 6463,
+      "DAMADD": 12923,
+      "DAMCUT": 12923
+    },
+    "78": {
+      "liantiLv": 78,
+      "lvExp": 24410,
+      "lvSkipExpMin": 14640,
+      "lvSkipExpMax": 24410,
+      "HPADD": 39600,
+      "APADD": 6601,
+      "DEFADD": 6601,
+      "DAMADD": 13200,
+      "DAMCUT": 13200
+    },
+    "79": {
+      "liantiLv": 79,
+      "lvExp": 24960,
+      "lvSkipExpMin": 14970,
+      "lvSkipExpMax": 24960,
+      "HPADD": 40439,
+      "APADD": 6741,
+      "DEFADD": 6741,
+      "DAMADD": 13480,
+      "DAMCUT": 13480
+    },
+    "80": {
+      "liantiLv": 80,
+      "lvExp": 25510,
+      "lvSkipExpMin": 15310,
+      "lvSkipExpMax": 25510,
+      "HPADD": 41287,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13763,
+      "DAMCUT": 13763
+    },
+    "81": {
+      "liantiLv": 81,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "82": {
+      "liantiLv": 82,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "83": {
+      "liantiLv": 83,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "84": {
+      "liantiLv": 84,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "85": {
+      "liantiLv": 85,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "86": {
+      "liantiLv": 86,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "87": {
+      "liantiLv": 87,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "88": {
+      "liantiLv": 88,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "89": {
+      "liantiLv": 89,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "90": {
+      "liantiLv": 90,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "91": {
+      "liantiLv": 91,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "92": {
+      "liantiLv": 92,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "93": {
+      "liantiLv": 93,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "94": {
+      "liantiLv": 94,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "95": {
+      "liantiLv": 95,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "96": {
+      "liantiLv": 96,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "97": {
+      "liantiLv": 97,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "98": {
+      "liantiLv": 98,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "99": {
+      "liantiLv": 99,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    },
+    "100": {
+      "liantiLv": 100,
+      "lvExp": 0,
+      "lvSkipExpMin": 0,
+      "lvSkipExpMax": 0,
+      "HPADD": 41292,
+      "APADD": 6882,
+      "DEFADD": 6882,
+      "DAMADD": 13764,
+      "DAMCUT": 13764
+    }
+  },
+  "lianti_dashi": {
+    "1": {
+      "liantiDashiStep": 1,
+      "needLiantiLv": 5,
+      "DAMADDR": 100,
+      "DAMCUTR": 100
+    },
+    "2": {
+      "liantiDashiStep": 2,
+      "needLiantiLv": 10,
+      "DAMADDR": 200,
+      "DAMCUTR": 200
+    },
+    "3": {
+      "liantiDashiStep": 3,
+      "needLiantiLv": 15,
+      "DAMADDR": 300,
+      "DAMCUTR": 300
+    },
+    "4": {
+      "liantiDashiStep": 4,
+      "needLiantiLv": 20,
+      "DAMADDR": 400,
+      "DAMCUTR": 400
+    },
+    "5": {
+      "liantiDashiStep": 5,
+      "needLiantiLv": 25,
+      "DAMADDR": 500,
+      "DAMCUTR": 500
+    },
+    "6": {
+      "liantiDashiStep": 6,
+      "needLiantiLv": 30,
+      "DAMADDR": 600,
+      "DAMCUTR": 600
+    },
+    "7": {
+      "liantiDashiStep": 7,
+      "needLiantiLv": 35,
+      "DAMADDR": 700,
+      "DAMCUTR": 700
+    },
+    "8": {
+      "liantiDashiStep": 8,
+      "needLiantiLv": 40,
+      "DAMADDR": 800,
+      "DAMCUTR": 800
+    },
+    "9": {
+      "liantiDashiStep": 9,
+      "needLiantiLv": 45,
+      "DAMADDR": 900,
+      "DAMCUTR": 900
+    },
+    "10": {
+      "liantiDashiStep": 10,
+      "needLiantiLv": 50,
+      "DAMADDR": 1000,
+      "DAMCUTR": 1000
+    },
+    "11": {
+      "liantiDashiStep": 11,
+      "needLiantiLv": 55,
+      "DAMADDR": 1100,
+      "DAMCUTR": 1100
+    },
+    "12": {
+      "liantiDashiStep": 12,
+      "needLiantiLv": 60,
+      "DAMADDR": 1200,
+      "DAMCUTR": 1200
+    },
+    "13": {
+      "liantiDashiStep": 13,
+      "needLiantiLv": 65,
+      "DAMADDR": 1300,
+      "DAMCUTR": 1300
+    },
+    "14": {
+      "liantiDashiStep": 14,
+      "needLiantiLv": 70,
+      "DAMADDR": 1400,
+      "DAMCUTR": 1400
+    },
+    "15": {
+      "liantiDashiStep": 15,
+      "needLiantiLv": 75,
+      "DAMADDR": 1500,
+      "DAMCUTR": 1500
+    },
+    "16": {
+      "liantiDashiStep": 16,
+      "needLiantiLv": 80,
+      "DAMADDR": 1600,
+      "DAMCUTR": 1600
+    },
+    "17": {
+      "liantiDashiStep": 17,
+      "needLiantiLv": 85,
+      "DAMADDR": 1700,
+      "DAMCUTR": 1700
+    },
+    "18": {
+      "liantiDashiStep": 18,
+      "needLiantiLv": 90,
+      "DAMADDR": 1800,
+      "DAMCUTR": 1800
+    },
+    "19": {
+      "liantiDashiStep": 19,
+      "needLiantiLv": 95,
+      "DAMADDR": 1900,
+      "DAMCUTR": 1900
+    },
+    "20": {
+      "liantiDashiStep": 20,
+      "needLiantiLv": 100,
+      "DAMADDR": 2000,
+      "DAMCUTR": 2000
+    }
+  },
+  "lianti_stone_exp": {
+    "16050035": {
+      "goodsModelId": 16050035,
+      "expMin": 5,
+      "expMax": 15,
+      "useConsume": "1112,0,1000"
+    },
+    "16050036": {
+      "goodsModelId": 16050036,
+      "expMin": 30,
+      "expMax": 50,
+      "useConsume": "1112,0,2000"
+    },
+    "16050037": {
+      "goodsModelId": 16050037,
+      "expMin": 70,
+      "expMax": 130,
+      "useConsume": "1112,0,3000"
+    },
+    "16050038": {
+      "goodsModelId": 16050038,
+      "expMin": 280,
+      "expMax": 520,
+      "useConsume": "1112,0,4000"
+    }
+  },
+  "pvpinter_config": {
+    "delayedDays": 7,
+    "lvUpMatchPlayerNums": 3,
+    "dailyTimes": 10,
+    "rewardTime": 0.916666666667,
+    "kingNums": 16,
+    "excelNums": 34,
+    "ratingRi": 50,
+    "fightSTA": 2,
+    "thresholdLvLively": 6,
+    "exchangeRate": 1,
+    "failedRatingHalfLv": 1,
+    "victoryRatingDoubleLv": 1,
+    "season": 28,
+    "maxLv": 6
+  },
+  "pvpinter_lv": {
+    "1": {
+      "Lv": 1,
+      "name": "Bán Yêu",
+      "needRating": 100,
+      "ratingK": 40,
+      "victoryRewards": "1605,16050062,20",
+      "failedRewards": "1605,16050062,10",
+      "rankHeadFrame": "kfpw_09.png",
+      "lvUpRewardsFirst": "",
+      "sale": "1"
+    },
+    "2": {
+      "Lv": 2,
+      "name": "Ngoan Yêu",
+      "needRating": 200,
+      "ratingK": 40,
+      "victoryRewards": "1605,16050062,20",
+      "failedRewards": "1605,16050062,10",
+      "rankHeadFrame": "kfpw_10.png",
+      "lvUpRewardsFirst": "1605,16050062,590||1111,0,50",
+      "sale": "0.95"
+    },
+    "3": {
+      "Lv": 3,
+      "name": "Cường Yêu",
+      "needRating": 300,
+      "ratingK": 32,
+      "victoryRewards": "1605,16050062,20",
+      "failedRewards": "1605,16050062,10",
+      "rankHeadFrame": "kfpw_11.png",
+      "lvUpRewardsFirst": "1605,16050062,650||1111,0,50",
+      "sale": "0.9"
+    },
+    "4": {
+      "Lv": 4,
+      "name": "Yêu Tướng",
+      "needRating": 400,
+      "ratingK": 32,
+      "victoryRewards": "1605,16050062,20",
+      "failedRewards": "1605,16050062,10",
+      "rankHeadFrame": "kfpw_12.png",
+      "lvUpRewardsFirst": "1605,16050062,680||1111,0,100",
+      "sale": "0.85"
+    },
+    "5": {
+      "Lv": 5,
+      "name": "Yêu Vương",
+      "needRating": 500,
+      "ratingK": 28,
+      "victoryRewards": "1605,16050062,20",
+      "failedRewards": "1605,16050062,10",
+      "rankHeadFrame": "kfpw_13.png",
+      "lvUpRewardsFirst": "1605,16050062,710||1111,0,100",
+      "sale": "0.8"
+    },
+    "6": {
+      "Lv": 6,
+      "name": "Đại Yêu",
+      "needRating": 600,
+      "ratingK": 28,
+      "victoryRewards": "1605,16050062,20",
+      "failedRewards": "1605,16050062,10",
+      "rankHeadFrame": "kfpw_14.png",
+      "lvUpRewardsFirst": "1605,16050062,740||1111,0,300",
+      "sale": "0.75"
+    },
+    "7": {
+      "Lv": 7,
+      "name": "Tu Ảnh",
+      "needRating": 1000000,
+      "ratingK": 28,
+      "victoryRewards": "1605,16050062,20",
+      "failedRewards": "1605,16050062,10",
+      "rankHeadFrame": "kfpw_15.png",
+      "lvUpRewardsFirst": "1605,16050062,770||1111,0,500",
+      "sale": "0.7"
+    },
+    "8": {
+      "Lv": 8,
+      "name": "Amaterasu",
+      "needRating": 1000000,
+      "ratingK": 104,
+      "victoryRewards": "1605,16050062,20",
+      "failedRewards": "1605,16050062,10",
+      "rankHeadFrame": "kfpw_16.png",
+      "lvUpRewardsFirst": "1605,16050062,820||1111,0,500",
+      "sale": "0.7"
+    }
+  },
+  "pvpinter_buynum": {
+    "1": {
+      "num": 1,
+      "price": 10
+    },
+    "2": {
+      "num": 2,
+      "price": 10
+    },
+    "3": {
+      "num": 3,
+      "price": 15
+    },
+    "4": {
+      "num": 4,
+      "price": 15
+    },
+    "5": {
+      "num": 5,
+      "price": 20
+    },
+    "6": {
+      "num": 6,
+      "price": 20
+    },
+    "7": {
+      "num": 7,
+      "price": 30
+    },
+    "8": {
+      "num": 8,
+      "price": 30
+    },
+    "9": {
+      "num": 9,
+      "price": 40
+    },
+    "10": {
+      "num": 10,
+      "price": 40
+    },
+    "11": {
+      "num": 11,
+      "price": 50
+    }
+  },
+  "pvpinter_shop": {
+    "1": {
+      "ID": 1,
+      "outResource": "1128,0,100",
+      "useResource": "1605,16050062,125",
+      "maxTotalNum": 0,
+      "needPVPInteLv": 1,
+      "isSale": 1
+    },
+    "2": {
+      "ID": 2,
+      "outResource": "1501,15010003,1",
+      "useResource": "1605,16050062,350",
+      "maxTotalNum": 0,
+      "needPVPInteLv": 2,
+      "isSale": 1
+    },
+    "3": {
+      "ID": 3,
+      "outResource": "1501,15010011,1",
+      "useResource": "1605,16050062,350",
+      "maxTotalNum": 0,
+      "needPVPInteLv": 2,
+      "isSale": 1
+    },
+    "4": {
+      "ID": 4,
+      "outResource": "1501,15010019,1",
+      "useResource": "1605,16050062,350",
+      "maxTotalNum": 0,
+      "needPVPInteLv": 2,
+      "isSale": 1
+    }
+  },
+  "pvpinter_win_box": {
+    "1": {
+      "2": {
+        "Lv": 1,
+        "winNum": 2,
+        "reward": "1605,16050062,200||1112,0,50000"
+      },
+      "4": {
+        "Lv": 1,
+        "winNum": 4,
+        "reward": "1605,16050062,300||1112,0,100000"
+      },
+      "6": {
+        "Lv": 1,
+        "winNum": 6,
+        "reward": "1605,16050062,300||1112,0,200000"
+      }
+    },
+    "2": {
+      "2": {
+        "Lv": 2,
+        "winNum": 2,
+        "reward": "1605,16050062,200||1112,0,50000"
+      },
+      "4": {
+        "Lv": 2,
+        "winNum": 4,
+        "reward": "1605,16050062,300||1112,0,100000"
+      },
+      "6": {
+        "Lv": 2,
+        "winNum": 6,
+        "reward": "1605,16050062,300||1112,0,200000"
+      }
+    },
+    "3": {
+      "2": {
+        "Lv": 3,
+        "winNum": 2,
+        "reward": "1605,16050062,200||1112,0,50000"
+      },
+      "4": {
+        "Lv": 3,
+        "winNum": 4,
+        "reward": "1605,16050062,300||1112,0,100000"
+      },
+      "6": {
+        "Lv": 3,
+        "winNum": 6,
+        "reward": "1605,16050062,300||1112,0,200000"
+      }
+    },
+    "4": {
+      "2": {
+        "Lv": 4,
+        "winNum": 2,
+        "reward": "1605,16050062,200||1112,0,50000"
+      },
+      "4": {
+        "Lv": 4,
+        "winNum": 4,
+        "reward": "1605,16050062,300||1112,0,100000"
+      },
+      "6": {
+        "Lv": 4,
+        "winNum": 6,
+        "reward": "1605,16050062,300||1112,0,200000"
+      }
+    },
+    "5": {
+      "2": {
+        "Lv": 5,
+        "winNum": 2,
+        "reward": "1605,16050062,200||1112,0,50000"
+      },
+      "4": {
+        "Lv": 5,
+        "winNum": 4,
+        "reward": "1605,16050062,300||1112,0,100000"
+      },
+      "6": {
+        "Lv": 5,
+        "winNum": 6,
+        "reward": "1605,16050062,300||1112,0,200000"
+      }
+    },
+    "6": {
+      "2": {
+        "Lv": 6,
+        "winNum": 2,
+        "reward": "1605,16050062,200||1112,0,50000"
+      },
+      "4": {
+        "Lv": 6,
+        "winNum": 4,
+        "reward": "1605,16050062,300||1112,0,100000"
+      },
+      "6": {
+        "Lv": 6,
+        "winNum": 6,
+        "reward": "1605,16050062,300||1112,0,200000"
+      }
+    },
+    "7": {
+      "2": {
+        "Lv": 7,
+        "winNum": 2,
+        "reward": "1605,16050062,200||1112,0,50000"
+      },
+      "4": {
+        "Lv": 7,
+        "winNum": 4,
+        "reward": "1605,16050062,300||1112,0,100000"
+      },
+      "6": {
+        "Lv": 7,
+        "winNum": 6,
+        "reward": "1605,16050062,300||1112,0,200000"
+      }
+    },
+    "8": {
+      "2": {
+        "Lv": 8,
+        "winNum": 2,
+        "reward": "1605,16050062,200||1112,0,50000"
+      },
+      "4": {
+        "Lv": 8,
+        "winNum": 4,
+        "reward": "1605,16050062,300||1112,0,100000"
+      },
+      "6": {
+        "Lv": 8,
+        "winNum": 6,
+        "reward": "1605,16050062,300||1112,0,200000"
+      }
+    }
+  },
+  "pvpinter_top_gamble": {
+    "16": {
+      "1": {
+        "battleID": 16,
+        "betsType": 1,
+        "betsAmount": "1112,0,10000",
+        "rewardAmount": "1112,0,20000",
+        "oddsDes": "1:2"
+      },
+      "2": {
+        "battleID": 16,
+        "betsType": 2,
+        "betsAmount": "1112,0,50000",
+        "rewardAmount": "1112,0,100000",
+        "oddsDes": "1:2"
+      },
+      "3": {
+        "battleID": 16,
+        "betsType": 3,
+        "betsAmount": "1112,0,100000",
+        "rewardAmount": "1112,0,200000",
+        "oddsDes": "1:2"
+      }
+    },
+    "8": {
+      "1": {
+        "battleID": 8,
+        "betsType": 1,
+        "betsAmount": "1112,0,20000",
+        "rewardAmount": "1112,0,40000",
+        "oddsDes": "1:2"
+      },
+      "2": {
+        "battleID": 8,
+        "betsType": 2,
+        "betsAmount": "1112,0,100000",
+        "rewardAmount": "1112,0,200000",
+        "oddsDes": "1:2"
+      },
+      "3": {
+        "battleID": 8,
+        "betsType": 3,
+        "betsAmount": "1112,0,200000",
+        "rewardAmount": "1112,0,400000",
+        "oddsDes": "1:2"
+      }
+    },
+    "4": {
+      "1": {
+        "battleID": 4,
+        "betsType": 1,
+        "betsAmount": "1112,0,30000",
+        "rewardAmount": "1112,0,60000",
+        "oddsDes": "1:2"
+      },
+      "2": {
+        "battleID": 4,
+        "betsType": 2,
+        "betsAmount": "1112,0,150000",
+        "rewardAmount": "1112,0,300000",
+        "oddsDes": "1:2"
+      },
+      "3": {
+        "battleID": 4,
+        "betsType": 3,
+        "betsAmount": "1112,0,300000",
+        "rewardAmount": "1112,0,600000",
+        "oddsDes": "1:2"
+      }
+    },
+    "2": {
+      "1": {
+        "battleID": 2,
+        "betsType": 1,
+        "betsAmount": "1112,0,40000",
+        "rewardAmount": "1112,0,80000",
+        "oddsDes": "1:2"
+      },
+      "2": {
+        "battleID": 2,
+        "betsType": 2,
+        "betsAmount": "1112,0,200000",
+        "rewardAmount": "1112,0,400000",
+        "oddsDes": "1:2"
+      },
+      "3": {
+        "battleID": 2,
+        "betsType": 3,
+        "betsAmount": "1112,0,400000",
+        "rewardAmount": "1112,0,800000",
+        "oddsDes": "1:2"
+      }
+    },
+    "1": {
+      "1": {
+        "battleID": 1,
+        "betsType": 1,
+        "betsAmount": "1112,0,50000",
+        "rewardAmount": "1112,0,100000",
+        "oddsDes": "1:2"
+      },
+      "2": {
+        "battleID": 1,
+        "betsType": 2,
+        "betsAmount": "1112,0,250000",
+        "rewardAmount": "1112,0,500000",
+        "oddsDes": "1:2"
+      },
+      "3": {
+        "battleID": 1,
+        "betsType": 3,
+        "betsAmount": "1112,0,500000",
+        "rewardAmount": "1112,0,1000000",
+        "oddsDes": "1:2"
+      }
+    }
+  },
+  "pvpinter_top_reward": [
+    {
+      "rankMax": 32,
+      "rankMin": 17,
+      "reward": "1606,16061119,5||1605,16050066,1||1605,16050065,500",
+      "frame": "",
+      "chatWindow": "",
+      "BUFFID": "",
+      "buffDes": "",
+      "randomRedBagID": 0
+    },
+    {
+      "rankMax": 16,
+      "rankMin": 9,
+      "reward": "1606,16061119,10||1605,16050066,1||1605,16050065,800",
+      "frame": "",
+      "chatWindow": "",
+      "BUFFID": "",
+      "buffDes": "",
+      "randomRedBagID": 0
+    },
+    {
+      "rankMax": 8,
+      "rankMin": 5,
+      "reward": "1606,16061119,15||1605,16050066,2||1605,16050065,1000",
+      "frame": "",
+      "chatWindow": "",
+      "BUFFID": "",
+      "buffDes": "",
+      "randomRedBagID": 0
+    },
+    {
+      "rankMax": 4,
+      "rankMin": 3,
+      "reward": "1606,16061119,20||1605,16050066,3||1605,16050065,1500",
+      "frame": "",
+      "chatWindow": "",
+      "BUFFID": "",
+      "buffDes": "",
+      "randomRedBagID": 23010003
+    },
+    {
+      "rankMax": 2,
+      "rankMin": 2,
+      "reward": "1606,16061119,25||1605,16050067,1||1605,16050065,1800",
+      "frame": "",
+      "chatWindow": "",
+      "BUFFID": "",
+      "buffDes": "",
+      "randomRedBagID": 23010002
+    },
+    {
+      "rankMax": 1,
+      "rankMin": 1,
+      "reward": "1606,16061119,30||1605,16050067,2||1605,16050065,2000",
+      "frame": "kfpw_16.png",
+      "chatWindow": "home_129.png",
+      "BUFFID": "",
+      "buffDes": "",
+      "randomRedBagID": 23010001
+    }
+  ],
+  "pvpinter_top_worship": {
+    "1": {
+      "days": 1,
+      "rewards": "1605,16050072,1||1605,16050065,100||1111,0,100"
+    },
+    "2": {
+      "days": 2,
+      "rewards": "1605,16050072,1||1605,16050065,100||1111,0,100"
+    },
+    "3": {
+      "days": 3,
+      "rewards": "1605,16050072,1||1605,16050065,100||1111,0,100"
+    },
+    "4": {
+      "days": 4,
+      "rewards": "1605,16050072,1||1605,16050065,100||1111,0,100"
+    },
+    "5": {
+      "days": 5,
+      "rewards": "1605,16050072,1||1605,16050065,100||1111,0,100"
+    },
+    "6": {
+      "days": 6,
+      "rewards": "1605,16050072,1||1605,16050065,100||1111,0,100"
     }
   }
 }

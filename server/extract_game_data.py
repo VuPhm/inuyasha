@@ -415,6 +415,18 @@ def main() -> None:
     vip_welfare = parse_simple_lua_items(os.path.join(cfg_dir, "VipWelfareModel.lua"))
     bag_model = parse_simple_lua_items(os.path.join(cfg_dir, "BagModel.lua"))
     bag_expand_use = parse_simple_lua_items(os.path.join(cfg_dir, "BagExpandUseRelation.lua"))
+    lianti_model = parse_simple_lua_items(os.path.join(cfg_dir, "LiantiModel.lua"))
+    lianti_lv = parse_simple_lua_items(os.path.join(cfg_dir, "LiantiLvRelation.lua"))
+    lianti_dashi = parse_simple_lua_items(os.path.join(cfg_dir, "LiantiDashiRelation.lua"))
+    lianti_stone_exp = parse_simple_lua_items(os.path.join(cfg_dir, "LiantiLiantishiexpRelation.lua"))
+    pvpinter_config = parse_singleton_lua_item(os.path.join(cfg_dir, "PvpinterConfig.lua"))
+    pvpinter_lv = parse_simple_lua_items(os.path.join(cfg_dir, "PvpinterLvRelation.lua"))
+    pvpinter_buynum = parse_simple_lua_items(os.path.join(cfg_dir, "PvpinterBuynumRelation.lua"))
+    pvpinter_shop = parse_simple_lua_items(os.path.join(cfg_dir, "PvpinterShopModel.lua"))
+    pvpinter_win_box = parse_nested_lua_items(os.path.join(cfg_dir, "PvpinterWinBoxModel.lua"))
+    pvpinter_top_gamble = parse_nested_lua_items(os.path.join(cfg_dir, "PvpinterTopGamble.lua"))
+    pvpinter_top_reward = parse_array_lua_list(os.path.join(cfg_dir, "PvpinterTopRewardRelation.lua"))
+    pvpinter_top_worship = parse_simple_lua_items(os.path.join(cfg_dir, "PvpinterTopWorship.lua"))
 
     hero_bonds = {
         hero: [relations[order]["PRModelId"] for order in sorted(relations, key=int)]
@@ -493,6 +505,35 @@ def main() -> None:
         for (box_id, row_id), pic_name in b84_86_pics.items():
             if box_id in goods_output and row_id in goods_output[box_id]:
                 goods_output[box_id][row_id]["pic"] = pic_name
+
+        # R7.39: Enable Lianti (ModuleSub 5700) & expose canonical VN Lianti stones (16050035..16050038) in ShopGoods
+        if "5700" in module_subs:
+            module_subs["5700"]["ifOpen"] = 1
+        r739_lianti_shop = [
+            (7, 16050035, 10),
+            (8, 16050036, 25),
+            (9, 16050037, 60),
+            (10, 16050038, 200),
+        ]
+        for sid, gid, price in r739_lianti_shop:
+            if str(sid) not in shop_goods:
+                shop_goods[str(sid)] = {
+                    "ID": sid,
+                    "serverGroupID": 0,
+                    "goodsModelID": gid,
+                    "sellTypeID": 1111,
+                    "initPrice": price,
+                    "currPrice": price,
+                    "ifVipLimitBuy": False,
+                    "ifOnceUse": False,
+                    "ifDynamicPrice": False,
+                    "needLV": 34,
+                }
+
+        # R7.40: VN VipModel.lua sets buyKuafuNum=0 for every VIP level; enable canonical vip+3 cap
+        for v_key, v_row in vip_model.items():
+            if int(v_row.get("buyKuafuNum", 0) or 0) <= 0:
+                v_row["buyKuafuNum"] = int(v_key) + 3
 
     data = {
         "source": source_label,
@@ -623,6 +664,17 @@ def main() -> None:
             "vip_welfare": len(vip_welfare),
             "bag_model": len(bag_model),
             "bag_expand_use": len(bag_expand_use),
+            "lianti_model": len(lianti_model),
+            "lianti_lv": len(lianti_lv),
+            "lianti_dashi": len(lianti_dashi),
+            "lianti_stone_exp": len(lianti_stone_exp),
+            "pvpinter_lv": len(pvpinter_lv),
+            "pvpinter_buynum": len(pvpinter_buynum),
+            "pvpinter_shop": len(pvpinter_shop),
+            "pvpinter_win_box": sum(len(v) for v in pvpinter_win_box.values()),
+            "pvpinter_top_gamble": sum(len(v) for v in pvpinter_top_gamble.values()),
+            "pvpinter_top_reward": len(pvpinter_top_reward),
+            "pvpinter_top_worship": len(pvpinter_top_worship),
         },
         "player_config": player_config,
         "vit_config": vit_config,
@@ -795,6 +847,18 @@ def main() -> None:
         "vip_welfare": vip_welfare,
         "bag_model": bag_model,
         "bag_expand_use": bag_expand_use,
+        "lianti_model": lianti_model,
+        "lianti_lv": lianti_lv,
+        "lianti_dashi": lianti_dashi,
+        "lianti_stone_exp": lianti_stone_exp,
+        "pvpinter_config": pvpinter_config,
+        "pvpinter_lv": pvpinter_lv,
+        "pvpinter_buynum": pvpinter_buynum,
+        "pvpinter_shop": pvpinter_shop,
+        "pvpinter_win_box": pvpinter_win_box,
+        "pvpinter_top_gamble": pvpinter_top_gamble,
+        "pvpinter_top_reward": pvpinter_top_reward,
+        "pvpinter_top_worship": pvpinter_top_worship,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

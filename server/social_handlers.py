@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import random
 import uuid
 from typing import Any
+
+from combat_sim import simulate_fight_info
 
 EMPTY_ENTITY_ID = "00000000-0000-0000-0000-000000000000"
 FRIEND_STA_PER_DRAW = 2
@@ -480,12 +483,16 @@ class SocialHandlersMixin:
             social["friends"] = [x for x in friends if x != target_id]
         peer = self._find_peer_by_player_id(target_id)
         if peer is not None:
-            my_pid = str(self.state["player"]["PlayerId"])
-            with peer._lock:
-                ps = peer._social_state()
-                if my_pid in ps["friends"]:
-                    ps["friends"] = [x for x in ps["friends"] if str(x) != my_pid]
-                    peer.save()
+            if getattr(peer, "is_remote_peer", False):
+                if existed:
+                    self._enqueue_hybrid_event(target_id, "friend_remove", {})
+            else:
+                my_pid = str(self.state["player"]["PlayerId"])
+                with peer._lock:
+                    ps = peer._social_state()
+                    if my_pid in ps["friends"]:
+                        ps["friends"] = [x for x in ps["friends"] if str(x) != my_pid]
+                        peer.save()
         return existed
 
     def _social_send_sta_one(
@@ -506,10 +513,13 @@ class SocialHandlersMixin:
         self._record_daily_task_progress(11, 1)
         peer = self._find_peer_by_player_id(target_id)
         if peer is not None:
-            with peer._lock:
-                ps = peer._social_state()
-                self._social_push_sta_gift(ps, my_pid, now)
-                peer.save()
+            if getattr(peer, "is_remote_peer", False):
+                self._enqueue_hybrid_event(target_id, "send_sta", {"sta": FRIEND_STA_PER_DRAW})
+            else:
+                with peer._lock:
+                    ps = peer._social_state()
+                    self._social_push_sta_gift(ps, my_pid, now)
+                    peer.save()
         return 0
 
     def _social_try_apply_one(self, social: dict[str, Any], target_id: str, message: str) -> int:
@@ -549,6 +559,24 @@ class SocialHandlersMixin:
             return 0
 
         peer = target_obj
+        if getattr(peer, "is_remote_peer", False):
+            peer_lv = int(peer.state.get("player", {}).get("Lv", 1))
+            if peer_lv < 2:
+                return -3011
+            sender_card = self._social_card_from_profile(self)
+            self._enqueue_hybrid_event(
+                target_id,
+                "friend_req",
+                {
+                    "from_name": str(sender_card.get("Name") or "Bạn bè"),
+                    "from_lv": int(sender_card.get("Lv") or 1),
+                    "from_fap": int(sender_card.get("FAP") or 0),
+                    "from_head": int(sender_card.get("HeadImageId") or 12011002),
+                    "from_fashion": int(sender_card.get("FashionModelId") or 0),
+                    "content": message or "Hãy kết bạn cùng phiêu lưu nhé!",
+                },
+            )
+            return 0
         with peer._lock:
             peer_lv = int(peer.state.get("player", {}).get("Lv", 1))
             if peer_lv < 2:
@@ -737,22 +765,120 @@ class SocialHandlersMixin:
         social["enemies"] = [x for x in social["enemies"] if str(x) != sender_id]
         if kind == "peer":
             peer = target_obj
-            with peer._lock:
-                ps = peer._social_state()
-                peer_max = peer._friend_max_for_lv(int(peer.state.get("player", {}).get("Lv", 1)))
-                if len(ps["friends"]) >= peer_max and my_pid not in {str(x) for x in ps["friends"]}:
-                    self.save()
-                    return self._social_reject(-3012)
-                ps["enemies"] = [x for x in ps["enemies"] if str(x) != my_pid]
-                if my_pid not in {str(x) for x in ps["friends"]}:
-                    ps["friends"].append(my_pid)
-                peer.save()
+            if getattr(peer, "is_remote_peer", False):
+                self._enqueue_hybrid_event(
+                    sender_id,
+                    "friend_accept",
+                    {"from_name": str(p.get("PlayerName") or "Bạn bè")},
+                )
+            else:
+                with peer._lock:
+                    ps = peer._social_state()
+                    peer_max = peer._friend_max_for_lv(int(peer.state.get("player", {}).get("Lv", 1)))
+                    if len(ps["friends"]) >= peer_max and my_pid not in {str(x) for x in ps["friends"]}:
+                        self.save()
+                        return self._social_reject(-3012)
+                    ps["enemies"] = [x for x in ps["enemies"] if str(x) != my_pid]
+                    if my_pid not in {str(x) for x in ps["friends"]}:
+                        ps["friends"].append(my_pid)
+                    peer.save()
 
         social["friends"].append(sender_id)
         if kind == "npc":
             self._social_push_sta_gift(social, sender_id, self.now_ts())
         self.save()
         return {}
+
+    def _rpc_friend_fight(self, data: Any) -> dict[str, Any]:
+        """Friendly PvP sparring duel (0 STA) against any local S1 peer, Cloud synced peer, or Friend NPC."""
+        p = self.state["player"]
+        if not isinstance(data, list) or not data:
+            return self._social_reject(-3013)
+        target_id = str(data[0]).strip()
+        my_pid = str(p.get("PlayerId", ""))
+        if not target_id or target_id == my_pid:
+            return self._social_reject(-3006)
+
+        kind, target_card, target_obj = self._social_resolve_player(target_id)
+        if kind not in ("peer", "npc"):
+            return self._social_reject(-3013)
+
+        if kind == "peer":
+            peer = target_obj
+            target_name = str(peer.state.get("player", {}).get("PlayerName") or target_card.get("Name") or "Bạn bè")
+            target_fap = int(peer.state.get("player", {}).get("FAP") or target_card.get("FAP") or 0)
+            enemies = peer._build_ally_fight_objs()
+        else:
+            npc_idx = self._social_npc_index(target_id) or 1
+            npc_prof = self._social_npc_profile(npc_idx)
+            target_name = str(npc_prof.get("Name") or target_card.get("Name") or "Bạn bè")
+            target_fap = int(npc_prof.get("FAP") or target_card.get("FAP") or 0)
+            enemies = self._arena_bot_fight_objs(npc_prof)
+
+        allies = self._build_ally_fight_objs()
+        ally_fsp = sum(int(u.get("FSP", 0)) for u in allies if u)
+        enemy_fsp = sum(int(u.get("FSP", 0)) for u in enemies if u)
+        fight_info = {
+            "FightObjs": [
+                {
+                    "Heros": allies + enemies,
+                    "TeamData": [
+                        {"Fsp": ally_fsp, "Fap": int(p.get("FAP", 0))},
+                        {"Fsp": enemy_fsp, "Fap": target_fap},
+                    ],
+                    "Pets": [],
+                    "RandNum": random.randint(1, 999999),
+                    "IsPVP": True,
+                }
+            ]
+        }
+
+        outcome = simulate_fight_info(
+            fight_info,
+            self.game_data["attacks"],
+            buffs_cfg=self.game_data["combat_buffs"],
+        )
+        is_win = 1 if outcome.won else 0
+
+        if kind == "peer":
+            peer = target_obj
+            my_name = str(p.get("PlayerName") or "Bạn bè")
+            my_fap = int(p.get("FAP", 0))
+            if getattr(peer, "is_remote_peer", False):
+                self._enqueue_hybrid_event(
+                    target_id,
+                    "pvp_challenge_log",
+                    {
+                        "attacker_name": my_name,
+                        "attacker_fap": my_fap,
+                        "won": bool(is_win),
+                        "friendly": True,
+                    },
+                )
+            else:
+                verdict = "giành chiến thắng" if is_win else "thất bại"
+                with peer._lock:
+                    peer._push_player_email(
+                        2,
+                        "Thư Giao Hữu Bạn Bè",
+                        f"{my_name} (Lực chiến {my_fap:,}) đã giao hữu với đội hình của bạn và {verdict}!",
+                        send_player_id=my_pid,
+                        send_player_name=my_name,
+                        sub_module_id=2502,
+                        head_image_id=0,
+                        fashion_model_id=0,
+                    )
+                    peer.save()
+
+        self.save()
+        return {
+            "IsWinFight": is_win,
+            "FightInfo": fight_info,
+            "TargetPlayerId": target_id,
+            "TargetName": target_name,
+            "TargetFAP": target_fap,
+            "BaseGetGameResourceList": [],
+        }
 
     # -------------------- FriendMessage RPCs (9) --------------------
 
@@ -913,16 +1039,31 @@ class SocialHandlersMixin:
         now = self.now_ts()
         if kind == "peer":
             peer = target_obj
-            with peer._lock:
-                ps = peer._social_state()
-                self._push_friend_mail_message(
-                    ps,
-                    msg_type=2,
-                    sender_card=self._social_card_from_profile(self),
-                    content=content,
-                    now=now,
+            if getattr(peer, "is_remote_peer", False):
+                sender_card = self._social_card_from_profile(self)
+                self._enqueue_hybrid_event(
+                    target_id,
+                    "friend_msg",
+                    {
+                        "from_name": str(sender_card.get("Name") or "Bạn bè"),
+                        "from_lv": int(sender_card.get("Lv") or 1),
+                        "from_fap": int(sender_card.get("FAP") or 0),
+                        "from_head": int(sender_card.get("HeadImageId") or 12011002),
+                        "from_fashion": int(sender_card.get("FashionModelId") or 0),
+                        "content": content,
+                    },
                 )
-                peer.save()
+            else:
+                with peer._lock:
+                    ps = peer._social_state()
+                    self._push_friend_mail_message(
+                        ps,
+                        msg_type=2,
+                        sender_card=self._social_card_from_profile(self),
+                        content=content,
+                        now=now,
+                    )
+                    peer.save()
         else:
             reply_idx = (len(content) + (self._social_npc_index(target_id) or 0)) % len(_FRIEND_NPC_REPLIES)
             self._push_friend_mail_message(

@@ -87,10 +87,15 @@ class GuildHandlersMixin:
         return g
 
     def _guild_registry_target(self) -> tuple[str, Path | None]:
-        if getattr(self, "state_path", None) is not None and getattr(self, "persist", False):
-            path = Path(self.state_path).parent / "s1_guilds.json"
-            return f"file:{path.resolve()}", path
-        host = getattr(self, "account_manager", None) or self
+        acct_mgr = getattr(self, "account_manager", None)
+        if getattr(self, "persist", False):
+            if getattr(acct_mgr, "data_dir", None) is not None:
+                path = Path(acct_mgr.data_dir) / "s1_guilds.json"
+                return f"file:{path.resolve()}", path
+            if getattr(self, "state_path", None) is not None:
+                path = Path(self.state_path).parent / "s1_guilds.json"
+                return f"file:{path.resolve()}", path
+        host = acct_mgr or self
         return f"mem:{id(host)}", None
 
     def _guild_cfg(self) -> dict[str, Any]:

@@ -164,17 +164,25 @@ function AccountSwitchLayer:refreshAccountView()
             color = ColorList.ccBlack,
             align = cc.TEXT_ALIGNMENT_CENTER,
         })
-        curLbl:setPosition(cc.p(w * 0.5, h * 0.78))
+        curLbl:setPosition(cc.p(w * 0.5, h * 0.82))
         self.mContentNode:addChild(curLbl)
 
         local accounts = res.Accounts or {}
-        local positions = {
-            cc.p(w * 0.28, h * 0.61),
-            cc.p(w * 0.72, h * 0.61),
+        local positions = (#accounts <= 4) and {
+            cc.p(w * 0.28, h * 0.66),
+            cc.p(w * 0.72, h * 0.66),
+            cc.p(w * 0.28, h * 0.50),
+            cc.p(w * 0.72, h * 0.50),
+        } or {
+            cc.p(w * 0.28, h * 0.69),
+            cc.p(w * 0.72, h * 0.69),
+            cc.p(w * 0.28, h * 0.56),
+            cc.p(w * 0.72, h * 0.56),
             cc.p(w * 0.28, h * 0.43),
             cc.p(w * 0.72, h * 0.43),
         }
-        for idx = 1, math.min(#accounts, 4) do
+        local slotScale = (#accounts <= 4) and 0.92 or 0.80
+        for idx = 1, math.min(#accounts, 6) do
             local acc = accounts[idx]
             local isCur = acc.active
             local btnText = acc.display or ("TK " .. tostring(idx))
@@ -182,22 +190,58 @@ function AccountSwitchLayer:refreshAccountView()
                 normalImage = isCur and "c_77.png" or "c_7.png",
                 text = btnText,
                 fontSize = 18,
-                scale = 0.92,
+                scale = slotScale,
                 color = ColorList.ccWhite,
                 outlineColor = ColorList.ccOutline,
                 outlineSize = 2,
                 position = positions[idx],
                 clickAction = function()
-                    requestLocalAccountApi("POST", {action = "switch", account_id = acc.account_id}, function(swRes)
-                        if swRes and swRes.ok then
-                            local targetUid = (swRes.SwitchedAccount and swRes.SwitchedAccount.user_id) or acc.user_id
-                            self:enterAccount(targetUid)
-                        end
-                    end)
+                    if isCur then
+                        ui.showFlashView({parent = self, text = "Bạn đang dùng tài khoản này rồi!"})
+                        return
+                    end
+                    local box = require("Common.MessageBoxLayer").new({
+                        bgImage = "c_43.png",
+                        closeBtnImage = "c_15.png",
+                        title = TR("Đổi Tài Khoản"),
+                        content = string.format("Xác nhận chuyển sang tài khoản %s?", tostring(btnText)),
+                        leftBtnTitle = TR("确定"),
+                        rightBtnTitle = TR("取消"),
+                        leftBtnCallback = function(dlg)
+                            dlg:removeFromParent()
+                            requestLocalAccountApi("POST", {action = "switch", account_id = acc.account_id}, function(swRes)
+                                if swRes and swRes.ok then
+                                    local targetUid = (swRes.SwitchedAccount and swRes.SwitchedAccount.user_id) or acc.user_id
+                                    self:enterAccount(targetUid)
+                                else
+                                    ui.showFlashView({parent = self, text = "Chuyển tài khoản thất bại"})
+                                end
+                            end)
+                        end,
+                        rightBtnCallback = function(dlg)
+                            dlg:removeFromParent()
+                        end,
+                    })
+                    self:addChild(box, 200)
                 end,
             })
             self.mContentNode:addChild(accBtn)
         end
+
+        local btnCloudSync = ui.newButton({
+            normalImage = "c_77.png",
+            text = "Đồng Bộ Cloud (BXH / Bạn Bè / PvP)",
+            fontSize = 18,
+            scale = 0.88,
+            color = ColorList.ccWhite,
+            outlineColor = ColorList.ccOutline,
+            outlineSize = 2,
+            position = cc.p(w * 0.5, h * 0.31),
+            clickAction = function()
+                self:addChild(require("System.HybridSyncLayer").new(), 150)
+            end,
+        })
+        self.mContentNode:addChild(btnCloudSync)
 
         local btnNewAcc = ui.newButton({
             normalImage = "c_7.png",
@@ -207,7 +251,7 @@ function AccountSwitchLayer:refreshAccountView()
             color = ColorList.ccWhite,
             outlineColor = ColorList.ccOutline,
             outlineSize = 2,
-            position = cc.p(w * 0.16, h * 0.20),
+            position = cc.p(w * 0.16, h * 0.17),
             clickAction = function()
                 requestLocalAccountApi("POST", {action = "create"}, function(crRes)
                     if crRes and crRes.ok then
@@ -219,31 +263,31 @@ function AccountSwitchLayer:refreshAccountView()
         })
         self.mContentNode:addChild(btnNewAcc)
 
-        local btnResetAcc = ui.newButton({
+        local btnDeleteAcc = ui.newButton({
             normalImage = "c_7.png",
-            text = "Reset TK",
+            text = "Xóa TK",
             fontSize = 18,
             scale = 0.78,
             color = ColorList.ccWhite,
             outlineColor = ColorList.ccOutline,
             outlineSize = 2,
-            position = cc.p(w * 0.39, h * 0.20),
+            position = cc.p(w * 0.39, h * 0.17),
             clickAction = function()
                 local box = require("Common.MessageBoxLayer").new({
                     bgImage = "c_43.png",
                     closeBtnImage = "c_15.png",
-                    title = TR("提示"),
-                    content = string.format("Xác nhận đặt lại tài khoản đang chọn (%s) về Lv.1 tạo nhân vật mới? (Hệ thống tự tạo bản lưu an toàn trước khi reset)", tostring(res.ActiveDisplay or res.ActiveAccountId)),
+                    title = TR("Xóa Tài Khoản"),
+                    content = string.format("Xác nhận XÓA VĨNH VIỄN tài khoản đang chọn (%s)? (Hệ thống tự tạo bản sao lưu dự phòng trước khi xóa)", tostring(res.ActiveDisplay or res.ActiveAccountId)),
                     leftBtnTitle = TR("确定"),
                     rightBtnTitle = TR("取消"),
                     leftBtnCallback = function(dlg)
                         dlg:removeFromParent()
-                        requestLocalAccountApi("POST", {action = "reset", account_id = res.ActiveAccountId}, function(rsRes)
-                            if rsRes and rsRes.ok then
-                                ui.showFlashView({text = "Đã đặt lại tài khoản về trạng thái mới!"})
-                                self:enterAccount(rsRes.ActiveUserId or "100001")
+                        requestLocalAccountApi("POST", {action = "delete", account_id = res.ActiveAccountId}, function(dlRes)
+                            if dlRes and dlRes.ok then
+                                ui.showFlashView({parent = display.getRunningScene(), text = "Đã xóa tài khoản!"})
+                                self:enterAccount(dlRes.ActiveUserId or "100001")
                             else
-                                ui.showFlashView({text = "Đặt lại tài khoản thất bại"})
+                                ui.showFlashView({parent = self, text = tostring((dlRes and dlRes.error) or "Không thể xóa tài khoản")})
                             end
                         end)
                     end,
@@ -251,10 +295,10 @@ function AccountSwitchLayer:refreshAccountView()
                         dlg:removeFromParent()
                     end,
                 })
-                display.getRunningScene():addChild(box, 1024)
+                self:addChild(box, 200)
             end,
         })
-        self.mContentNode:addChild(btnResetAcc)
+        self.mContentNode:addChild(btnDeleteAcc)
 
         local btnExport = ui.newButton({
             normalImage = "c_7.png",
@@ -264,7 +308,7 @@ function AccountSwitchLayer:refreshAccountView()
             color = ColorList.ccWhite,
             outlineColor = ColorList.ccOutline,
             outlineSize = 2,
-            position = cc.p(w * 0.62, h * 0.20),
+            position = cc.p(w * 0.62, h * 0.17),
             clickAction = function()
                 requestLocalAccountApi("POST", {action = "export"}, function(exRes)
                     if exRes and exRes.ok then
@@ -283,9 +327,9 @@ function AccountSwitchLayer:refreshAccountView()
                                 dlg:removeFromParent()
                             end,
                         })
-                        display.getRunningScene():addChild(box, 1024)
+                        self:addChild(box, 200)
                     else
-                        ui.showFlashView({text = "Sao lưu thất bại"})
+                        ui.showFlashView({parent = self, text = "Sao lưu thất bại"})
                     end
                 end)
             end,
@@ -300,7 +344,7 @@ function AccountSwitchLayer:refreshAccountView()
             color = ColorList.ccWhite,
             outlineColor = ColorList.ccOutline,
             outlineSize = 2,
-            position = cc.p(w * 0.84, h * 0.20),
+            position = cc.p(w * 0.84, h * 0.17),
             clickAction = function()
                 local box = require("Common.MessageBoxLayer").new({
                     bgImage = "c_43.png",
@@ -313,10 +357,10 @@ function AccountSwitchLayer:refreshAccountView()
                         dlg:removeFromParent()
                         requestLocalAccountApi("POST", {action = "import", confirm = true}, function(imRes)
                             if imRes and imRes.ok then
-                                ui.showFlashView({text = "Đã khôi phục dữ liệu thành công!"})
+                                ui.showFlashView({parent = display.getRunningScene(), text = "Đã khôi phục dữ liệu thành công!"})
                                 self:enterAccount(imRes.ActiveUserId or "100001")
                             else
-                                ui.showFlashView({text = "Không tìm thấy bản sao lưu hợp lệ"})
+                                ui.showFlashView({parent = self, text = "Không tìm thấy bản sao lưu hợp lệ"})
                             end
                         end)
                     end,
@@ -324,7 +368,7 @@ function AccountSwitchLayer:refreshAccountView()
                         dlg:removeFromParent()
                     end,
                 })
-                display.getRunningScene():addChild(box, 1024)
+                self:addChild(box, 200)
             end,
         })
         self.mContentNode:addChild(btnImport)
@@ -332,6 +376,447 @@ function AccountSwitchLayer:refreshAccountView()
 end
 
 return AccountSwitchLayer
+"""
+
+HYBRID_SYNC_LAYER_LUA = """--[[
+    System.HybridSyncLayer.lua — Local-First Cloud Sync UI (R8.2)
+    Connects to local embedded backend (127.0.0.1:18082/hybrid/*),
+    which syncs securely with Cloudflare Workers + D1 Sync Hub.
+-- ]]
+
+local HybridSyncLayer = class("HybridSyncLayer", function()
+    local self
+    self = require("Common.ModalColorLayer").new({
+        color4B = cc.c4b(0, 0, 0, 160),
+        title = TR("Đồng Bộ Cloud (Hybrid)"),
+        bgImage = "c_43.png",
+        closeBtnImage = "c_15.png",
+        onCloseCallback = function()
+            self:removeFromParent()
+        end
+    })
+    return self
+end)
+
+local function requestHybridApi(method, path, payloadTable, cb)
+    local xhr = cc.XMLHttpRequest:new()
+    xhr:setUnzip(false)
+    xhr.responseType = cc.XMLHTTPREQUEST_RESPONSE_STRING
+    xhr:open(method, "http://127.0.0.1:18082" .. path)
+    xhr:registerScriptHandler(function(event)
+        local data = nil
+        if event == "SUCCESS" and xhr.response and xhr.response ~= "" then
+            local okDec, dec = pcall(cjson.decode, xhr.response)
+            if okDec and type(dec) == "table" then
+                data = dec
+            end
+        end
+        if cb then
+            cb(data, xhr.status)
+        end
+    end)
+    if method == "POST" then
+        xhr:send(cjson.encode(payloadTable or {}))
+    else
+        xhr:send()
+    end
+end
+
+local function reloadGameScene()
+    NetworkResData:clearPlayerCacheInfo()
+    local loginJson = cjson.encode({
+        uid = "100001",
+        platformId = "1001",
+        token = "local-revival",
+    })
+    game.replaceRootScene(require("Login.StartGameScene").new(loginJson, true), "CCtransitionCrossFade", 0)
+end
+
+local function formatAgo(ts)
+    ts = tonumber(ts) or 0
+    if ts <= 0 then
+        return "Chưa đồng bộ"
+    end
+    local diff = os.time() - ts
+    if diff < 0 then
+        diff = 0
+    end
+    if diff < 60 then
+        return string.format("%d giây trước", diff)
+    elseif diff < 3600 then
+        return string.format("%d phút trước", math.floor(diff / 60))
+    elseif diff < 86400 then
+        return string.format("%d giờ trước", math.floor(diff / 3600))
+    else
+        return string.format("%d ngày trước", math.floor(diff / 86400))
+    end
+end
+
+function HybridSyncLayer:ctor()
+    self.mContentNode = cc.Node:create()
+    self.mBgSprite:addChild(self.mContentNode)
+    self:refreshView()
+end
+
+function HybridSyncLayer:showConflictDialog(serverSum, localSum)
+    local sLv = tonumber((serverSum and serverSum.lv) or 1) or 1
+    local sFap = tonumber((serverSum and serverSum.fap) or 0) or 0
+    local lLv = tonumber((localSum and localSum.lv) or 1) or 1
+    local lFap = tonumber((localSum and localSum.fap) or 0) or 0
+    local msg = string.format(
+        "Phát hiện xung đột 2 thiết bị!\\n- Máy này: Lv.%d (Lực chiến %d)\\n- Cloud: Lv.%d (Lực chiến %d)\\n\\nBấm 'Tải Cloud' để lấy bản Cloud (tự backup bản máy), hoặc 'Đẩy Máy Lên' để ghi đè Cloud.",
+        lLv, lFap, sLv, sFap
+    )
+    local box = require("Common.MessageBoxLayer").new({
+        bgImage = "c_43.png",
+        closeBtnImage = "c_15.png",
+        title = TR("Xung Đột Dữ Liệu"),
+        content = msg,
+        leftBtnTitle = TR("Tải Cloud"),
+        rightBtnTitle = TR("Đẩy Máy Lên"),
+        leftBtnCallback = function(dlg)
+            dlg:removeFromParent()
+            requestHybridApi("POST", "/hybrid/pull_save", {}, function(pr)
+                if pr and pr.ok then
+                    ui.showFlashView({parent = display.getRunningScene(), text = "Đã tải bản Cloud về máy! Đang tải lại game..."})
+                    reloadGameScene()
+                else
+                    ui.showFlashView({parent = self, text = tostring((pr and pr.error) or "Tải bản Cloud thất bại")})
+                end
+            end)
+        end,
+        rightBtnCallback = function(dlg)
+            dlg:removeFromParent()
+            requestHybridApi("POST", "/hybrid/sync", {force_push = true, ignore_cooldown = true}, function(sr)
+                if sr and sr.ok then
+                    ui.showFlashView({parent = self, text = string.format("Đã đẩy bản máy lên Cloud (Rev #%d)!", tonumber(sr.sync_rev) or 0)})
+                    if not tolua.isnull(self) then
+                        self:refreshView()
+                    end
+                else
+                    ui.showFlashView({parent = self, text = tostring((sr and sr.error) or "Đẩy bản máy lên thất bại")})
+                end
+            end)
+        end,
+    })
+    self:addChild(box, 200)
+end
+
+function HybridSyncLayer:refreshView()
+    self.mContentNode:removeAllChildren()
+    local w, h = self.mBgSize.width, self.mBgSize.height
+
+    local loadingLbl = ui.newLabel({
+        text = "Đang kiểm tra trạng thái Đồng Bộ Cloud...",
+        size = 22,
+        color = ColorList.ccBlack,
+        align = cc.TEXT_ALIGNMENT_CENTER,
+    })
+    loadingLbl:setPosition(cc.p(w * 0.5, h * 0.52))
+    self.mContentNode:addChild(loadingLbl)
+
+    requestHybridApi("GET", "/hybrid/status", nil, function(st)
+        if tolua.isnull(self) or tolua.isnull(self.mContentNode) then
+            return
+        end
+        self.mContentNode:removeAllChildren()
+        if not st or not st.ok then
+            local errLbl = ui.newLabel({
+                text = "Không kết nối được dịch vụ nền cục bộ",
+                size = 21,
+                color = ColorList.ccBlack,
+            })
+            errLbl:setPosition(cc.p(w * 0.5, h * 0.52))
+            self.mContentNode:addChild(errLbl)
+            return
+        end
+
+        if st.enabled then
+            self:renderConnectedView(st)
+        else
+            self:renderAuthView(st)
+        end
+    end)
+end
+
+function HybridSyncLayer:renderAuthView(st)
+    local w, h = self.mBgSize.width, self.mBgSize.height
+
+    local noteLbl = ui.newLabel({
+        text = "Chơi offline bình thường khi mất mạng · Bang Hội lưu riêng trên máy",
+        size = 17,
+        color = ColorList.ccBlack,
+        align = cc.TEXT_ALIGNMENT_CENTER,
+    })
+    noteLbl:setPosition(cc.p(w * 0.5, h * 0.82))
+    self.mContentNode:addChild(noteLbl)
+
+    local function addField(labelText, yRatio, initText, placeholder, isPwd)
+        local lbl = ui.newLabel({
+            text = labelText,
+            size = 19,
+            color = ColorList.ccBlack,
+        })
+        lbl:setPosition(cc.p(w * 0.19, h * yRatio))
+        self.mContentNode:addChild(lbl)
+
+        local box = ui.newEditBox({
+            image = "c_71.png",
+            size = cc.size(340, 40),
+            fontColor = ColorList.ccBlack,
+        })
+        box:setPosition(cc.p(w * 0.59, h * yRatio))
+        if isPwd then
+            box:setInputFlag(0)
+        end
+        box:setPlaceHolder(placeholder)
+        box:setText(tostring(initText or ""))
+        self.mContentNode:addChild(box)
+        return box
+    end
+
+    local urlBox = addField("Sync URL:", 0.70, st.server_url or "", "https://...workers.dev", false)
+    local userBox = addField("Tài khoản:", 0.57, st.username or "", "3-24 ký tự (chữ, số, _ . -)", false)
+    local passBox = addField("Mật khẩu:", 0.44, "", "4-64 ký tự", true)
+    local inviteBox = addField("Mã mời:", 0.31, "", "Chỉ cần nhập khi Đăng Ký", false)
+
+    local btnTest = ui.newButton({
+        normalImage = "c_7.png",
+        text = "Test Mạng",
+        fontSize = 18,
+        scale = 0.82,
+        color = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        outlineSize = 2,
+        position = cc.p(w * 0.21, h * 0.16),
+        clickAction = function()
+            local u = urlBox:getText() or ""
+            ui.showFlashView({parent = self, text = "Đang kiểm tra kết nối Cloudflare..."})
+            requestHybridApi("POST", "/hybrid/test", {server_url = u}, function(tr)
+                if tolua.isnull(self) then
+                    return
+                end
+                if tr and tr.ok then
+                    local cnt = tonumber((tr.info and tr.info.account_count) or 0) or 0
+                    ui.showFlashView({parent = self, text = string.format("Kết nối OK (%sms · %d người chơi)", tostring(tr.latency_ms or 0), cnt)})
+                else
+                    ui.showFlashView({parent = self, text = tostring((tr and tr.error) or "Không kết nối được Sync Hub")})
+                end
+            end)
+        end,
+    })
+    self.mContentNode:addChild(btnTest)
+
+    local btnReg = ui.newButton({
+        normalImage = "c_7.png",
+        text = "Đăng Ký",
+        fontSize = 19,
+        scale = 0.85,
+        color = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        outlineSize = 2,
+        position = cc.p(w * 0.50, h * 0.16),
+        clickAction = function()
+            local u = urlBox:getText() or ""
+            local uname = userBox:getText() or ""
+            local pwd = passBox:getText() or ""
+            local inv = inviteBox:getText() or ""
+            if uname == "" or pwd == "" then
+                ui.showFlashView({parent = self, text = "Vui lòng nhập Tài khoản, Mật khẩu và Mã mời"})
+                return
+            end
+            ui.showFlashView({parent = self, text = "Đang đăng ký & đồng bộ..."})
+            requestHybridApi("POST", "/hybrid/register", {
+                server_url = u,
+                username = uname,
+                password = pwd,
+                invite_code = inv,
+            }, function(rr)
+                if tolua.isnull(self) then
+                    return
+                end
+                if rr and rr.ok then
+                    ui.showFlashView({parent = self, text = "Đăng ký & đồng bộ thành công!"})
+                    self:refreshView()
+                else
+                    ui.showFlashView({parent = self, text = tostring((rr and rr.error) or "Đăng ký thất bại")})
+                end
+            end)
+        end,
+    })
+    self.mContentNode:addChild(btnReg)
+
+    local btnLogin = ui.newButton({
+        normalImage = "c_77.png",
+        text = "Đăng Nhập",
+        fontSize = 19,
+        scale = 0.85,
+        color = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        outlineSize = 2,
+        position = cc.p(w * 0.79, h * 0.16),
+        clickAction = function()
+            local u = urlBox:getText() or ""
+            local uname = userBox:getText() or ""
+            local pwd = passBox:getText() or ""
+            if uname == "" or pwd == "" then
+                ui.showFlashView({parent = self, text = "Vui lòng nhập Tài khoản và Mật khẩu"})
+                return
+            end
+            ui.showFlashView({parent = self, text = "Đang đăng nhập Cloud..."})
+            requestHybridApi("POST", "/hybrid/login", {
+                server_url = u,
+                username = uname,
+                password = pwd,
+            }, function(lr)
+                if tolua.isnull(self) then
+                    return
+                end
+                if lr and lr.ok then
+                    if lr.auto_pulled then
+                        ui.showFlashView({parent = display.getRunningScene(), text = "Đã khôi phục dữ liệu Cloud về máy mới!"})
+                        reloadGameScene()
+                    elseif lr.needs_choice then
+                        self:showConflictDialog(lr.cloud_summary, st.local_summary)
+                        self:refreshView()
+                    else
+                        ui.showFlashView({parent = self, text = "Đăng nhập thành công! Đang đồng bộ..."})
+                        requestHybridApi("POST", "/hybrid/sync", {ignore_cooldown = true}, function()
+                            if not tolua.isnull(self) then
+                                self:refreshView()
+                            end
+                        end)
+                    end
+                else
+                    ui.showFlashView({parent = self, text = tostring((lr and lr.error) or "Đăng nhập thất bại")})
+                end
+            end)
+        end,
+    })
+    self.mContentNode:addChild(btnLogin)
+end
+
+function HybridSyncLayer:renderConnectedView(st)
+    local w, h = self.mBgSize.width, self.mBgSize.height
+    local errLine = ""
+    if st.last_error and st.last_error ~= "" then
+        errLine = "\\nLưu ý: {6c0101}" .. tostring(st.last_error)
+    end
+    local infoText = string.format(
+        "Tài khoản Cloud: {6c0101}%s\\nPhiên bản lưu: Rev #%d  ·  Bạn bè đã đồng bộ: %d\\nĐồng bộ gần nhất: %s  ·  Hàng chờ: %d\\nTự động đồng bộ: 30 phút / vào BXH-PvP-Bạn bè (giãn 3 phút)%s",
+        tostring(st.username or ""),
+        tonumber(st.sync_rev) or 0,
+        tonumber(st.peer_count) or 0,
+        formatAgo(st.last_sync_at),
+        tonumber(st.pending_events) or 0,
+        errLine
+    )
+    local infoLbl = ui.newLabel({
+        text = infoText,
+        size = 19,
+        color = ColorList.ccBlack,
+        dimensions = cc.size(w * 0.88, 0),
+        align = cc.TEXT_ALIGNMENT_CENTER,
+    })
+    infoLbl:setPosition(cc.p(w * 0.5, h * 0.62))
+    self.mContentNode:addChild(infoLbl)
+
+    local btnSync = ui.newButton({
+        normalImage = "c_77.png",
+        text = "Đồng Bộ Ngay",
+        fontSize = 20,
+        scale = 0.90,
+        color = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        outlineSize = 2,
+        position = cc.p(w * 0.23, h * 0.22),
+        clickAction = function()
+            ui.showFlashView({parent = self, text = "Đang đồng bộ với Cloudflare..."})
+            requestHybridApi("POST", "/hybrid/sync", {force_push = false}, function(sr)
+                if tolua.isnull(self) then
+                    return
+                end
+                if sr and sr.ok then
+                    ui.showFlashView({
+                        parent = self,
+                        text = string.format(
+                            "Đồng bộ OK! Rev #%d · %d bạn bè · +%d thư mới",
+                            tonumber(sr.sync_rev) or 0,
+                            tonumber(sr.peer_count) or 0,
+                            tonumber(sr.inbox_applied) or 0
+                        )
+                    })
+                    self:refreshView()
+                elseif sr and sr.conflict then
+                    self:showConflictDialog(sr.server_summary, sr.local_summary)
+                else
+                    ui.showFlashView({parent = self, text = tostring((sr and sr.error) or "Đồng bộ thất bại")})
+                    self:refreshView()
+                end
+            end)
+        end,
+    })
+    self.mContentNode:addChild(btnSync)
+
+    local btnPull = ui.newButton({
+        normalImage = "c_7.png",
+        text = "Tải Bản Cloud",
+        fontSize = 19,
+        scale = 0.85,
+        color = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        outlineSize = 2,
+        position = cc.p(w * 0.54, h * 0.22),
+        clickAction = function()
+            local box = require("Common.MessageBoxLayer").new({
+                bgImage = "c_43.png",
+                closeBtnImage = "c_15.png",
+                title = TR("Tải Bản Lưu Cloud"),
+                content = "Tải bản lưu từ Cloud về máy này? (Hệ thống tự tạo bản backup cục bộ và giữ nguyên Bang Hội hiện tại)",
+                leftBtnTitle = TR("确定"),
+                rightBtnTitle = TR("取消"),
+                leftBtnCallback = function(dlg)
+                    dlg:removeFromParent()
+                    requestHybridApi("POST", "/hybrid/pull_save", {}, function(pr)
+                        if pr and pr.ok then
+                            ui.showFlashView({parent = display.getRunningScene(), text = "Đã tải bản Cloud! Đang tải lại game..."})
+                            reloadGameScene()
+                        else
+                            ui.showFlashView({parent = self, text = tostring((pr and pr.error) or "Không có bản lưu trên Cloud")})
+                        end
+                    end)
+                end,
+                rightBtnCallback = function(dlg)
+                    dlg:removeFromParent()
+                end,
+            })
+            self:addChild(box, 200)
+        end,
+    })
+    self.mContentNode:addChild(btnPull)
+
+    local btnLogout = ui.newButton({
+        normalImage = "c_7.png",
+        text = "Ngắt Cloud",
+        fontSize = 18,
+        scale = 0.82,
+        color = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        outlineSize = 2,
+        position = cc.p(w * 0.82, h * 0.22),
+        clickAction = function()
+            requestHybridApi("POST", "/hybrid/logout", {}, function()
+                if not tolua.isnull(self) then
+                    ui.showFlashView({parent = self, text = "Đã ngắt Đồng Bộ Cloud (dữ liệu offline vẫn giữ nguyên)"})
+                    self:refreshView()
+                end
+            end)
+        end,
+    })
+    self.mContentNode:addChild(btnLogout)
+end
+
+return HybridSyncLayer
 """
 
 
@@ -359,6 +844,10 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
         "gddh_handlers.py",
         "social_handlers.py",
         "guild_handlers.py",
+        "pvpinter_handlers.py",
+        "private_auth.py",
+        "hybrid_sync.py",
+        "sync_ca_bundle.pem",
     ]
     dest_zip.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(dest_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
@@ -415,6 +904,62 @@ def merge_obb_into_assets(work_dir: Path) -> int:
     return merged_count
 
 
+def disable_legacy_permissions_array(work_dir: Path) -> None:
+    """Empty out MQActivity.mPermissons so Android never prompts for obsolete permissions."""
+    mq_act_path = work_dir / "smali" / "com" / "moqikaka" / "sdk" / "MQActivity.smali"
+    mq_act_src = mq_act_path.read_text(encoding="utf-8")
+    mq_act_src, n_perm = re.subn(
+        r"const/4 v0, 0x2\s+new-array v0, v0, \[Ljava/lang/String;.*?iput-object v0, p0, Lcom/moqikaka/sdk/MQActivity;->mPermissons:\[Ljava/lang/String;",
+        "const/4 v0, 0x0\n\n    new-array v0, v0, [Ljava/lang/String;\n\n    iput-object v0, p0, Lcom/moqikaka/sdk/MQActivity;->mPermissons:[Ljava/lang/String;",
+        mq_act_src,
+        count=1,
+        flags=re.S,
+    )
+    if n_perm != 1:
+        raise RuntimeError("Failed to patch mPermissons in MQActivity.smali")
+    mq_act_path.write_text(mq_act_src, encoding="utf-8")
+
+
+def unpack_libs_apk(work_dir: Path) -> None:
+    """Move assets/libs.apk dex classes into smali_classes2 and stub MQApplication.loadDex."""
+    libs_apk = work_dir / "assets" / "libs.apk"
+    if not libs_apk.exists():
+        return
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        tmp_apk = td_path / "wrap.apk"
+        orig_apk = ROOT_DIR / "analysis" / "vn" / "extracted" / "com.cmn.inuyasha.apk"
+        with zipfile.ZipFile(orig_apk, "r") as zorig, zipfile.ZipFile(libs_apk, "r") as zlibs, zipfile.ZipFile(tmp_apk, "w") as zout:
+            zout.writestr("AndroidManifest.xml", zorig.read("AndroidManifest.xml"))
+            zout.writestr("resources.arsc", zorig.read("resources.arsc"))
+            zout.writestr("classes.dex", zlibs.read("classes.dex"))
+        dec_dir = td_path / "dec"
+        subprocess.run(["java", "-jar", str(APKTOOL_JAR), "d", "-f", str(tmp_apk), "-o", str(dec_dir)], check=True)
+        for rel_stub in [("org", "apache", "http"), ("android", "net", "http"), ("android", "net", "compatibility")]:
+            stub_dir = dec_dir / "smali"
+            for part in rel_stub:
+                stub_dir = stub_dir / part
+            if stub_dir.exists():
+                shutil.rmtree(stub_dir)
+        classes2_dir = work_dir / "smali_classes2"
+        if classes2_dir.exists():
+            shutil.rmtree(classes2_dir)
+        shutil.copytree(dec_dir / "smali", classes2_dir)
+    libs_apk.unlink(missing_ok=True)
+    mq_app_path = work_dir / "smali" / "com" / "moqikaka" / "sdk" / "MQApplication.smali"
+    mq_app_src = mq_app_path.read_text(encoding="utf-8")
+    mq_app_src, n = re.subn(
+        r"\.method public static loadDex\(Landroid/content/Context;\)V.*?\.end method",
+        ".method public static loadDex(Landroid/content/Context;)V\n    .locals 0\n\n    return-void\n.end method",
+        mq_app_src,
+        count=1,
+        flags=re.S,
+    )
+    if n != 1:
+        raise RuntimeError("Failed to stub MQApplication.loadDex")
+    mq_app_path.write_text(mq_app_src, encoding="utf-8")
+
+
 def inject_lifecycle_supervisor(work_dir: Path) -> None:
     if not SUPERVISOR_SMALI_DIR.exists():
         raise FileNotFoundError(f"Missing supervisor smali dir: {SUPERVISOR_SMALI_DIR}")
@@ -438,19 +983,9 @@ def inject_lifecycle_supervisor(work_dir: Path) -> None:
     game_app_path.write_text(game_app_src, encoding="utf-8")
 
     # 2. Hook MQActivity lifecycle & disable legacy storage permission array
+    disable_legacy_permissions_array(work_dir)
     mq_act_path = work_dir / "smali" / "com" / "moqikaka" / "sdk" / "MQActivity.smali"
     mq_act_src = mq_act_path.read_text(encoding="utf-8")
-
-    # Empty out mPermissons array so Android never prompts for obsolete permissions
-    mq_act_src, n_perm = re.subn(
-        r"const/4 v0, 0x2\s+new-array v0, v0, \[Ljava/lang/String;.*?iput-object v0, p0, Lcom/moqikaka/sdk/MQActivity;->mPermissons:\[Ljava/lang/String;",
-        "const/4 v0, 0x0\n\n    new-array v0, v0, [Ljava/lang/String;\n\n    iput-object v0, p0, Lcom/moqikaka/sdk/MQActivity;->mPermissons:[Ljava/lang/String;",
-        mq_act_src,
-        count=1,
-        flags=re.S,
-    )
-    if n_perm != 1:
-        raise RuntimeError("Failed to patch mPermissons in MQActivity.smali")
 
     # Hook MQActivity.onCreate before super.onCreate
     target_oc = "invoke-super {p0, p1}, Lorg/cocos2dx/lib/Cocos2dxActivity;->onCreate(Landroid/os/Bundle;)V"
@@ -581,41 +1116,7 @@ def patch_standalone_workspace(
     yml_path.write_text(yml_txt, encoding="utf-8")
 
     # 2. Unpack assets/libs.apk into smali_classes2 and stub MQApplication.loadDex
-    libs_apk = STANDALONE_WORK / "assets" / "libs.apk"
-    if libs_apk.exists():
-        with tempfile.TemporaryDirectory() as td:
-            td_path = Path(td)
-            tmp_apk = td_path / "wrap.apk"
-            orig_apk = ROOT_DIR / "analysis" / "vn" / "extracted" / "com.cmn.inuyasha.apk"
-            with zipfile.ZipFile(orig_apk, "r") as zorig, zipfile.ZipFile(libs_apk, "r") as zlibs, zipfile.ZipFile(tmp_apk, "w") as zout:
-                zout.writestr("AndroidManifest.xml", zorig.read("AndroidManifest.xml"))
-                zout.writestr("resources.arsc", zorig.read("resources.arsc"))
-                zout.writestr("classes.dex", zlibs.read("classes.dex"))
-            dec_dir = td_path / "dec"
-            subprocess.run(["java", "-jar", str(APKTOOL_JAR), "d", "-f", str(tmp_apk), "-o", str(dec_dir)], check=True)
-            for rel_stub in [("org", "apache", "http"), ("android", "net", "http"), ("android", "net", "compatibility")]:
-                stub_dir = dec_dir / "smali"
-                for part in rel_stub:
-                    stub_dir = stub_dir / part
-                if stub_dir.exists():
-                    shutil.rmtree(stub_dir)
-            classes2_dir = STANDALONE_WORK / "smali_classes2"
-            if classes2_dir.exists():
-                shutil.rmtree(classes2_dir)
-            shutil.copytree(dec_dir / "smali", classes2_dir)
-        libs_apk.unlink(missing_ok=True)
-        mq_app_path = STANDALONE_WORK / "smali" / "com" / "moqikaka" / "sdk" / "MQApplication.smali"
-        mq_app_src = mq_app_path.read_text(encoding="utf-8")
-        mq_app_src, n = re.subn(
-            r"\.method public static loadDex\(Landroid/content/Context;\)V.*?\.end method",
-            ".method public static loadDex(Landroid/content/Context;)V\n    .locals 0\n\n    return-void\n.end method",
-            mq_app_src,
-            count=1,
-            flags=re.S,
-        )
-        if n != 1:
-            raise RuntimeError("Failed to stub MQApplication.loadDex")
-        mq_app_path.write_text(mq_app_src, encoding="utf-8")
+    unpack_libs_apk(STANDALONE_WORK)
 
     # 3. Inject LocalBackendManager & LocalBackendService smali + lifecycle hooks
     inject_lifecycle_supervisor(STANDALONE_WORK)
@@ -654,9 +1155,123 @@ def patch_standalone_workspace(
         encoding="utf-8",
     )
 
-    # 5. Apply all R7.6 Lua patches + R7.7/R7.8 Standalone Lua patches
+    # 5. Apply shared gameplay patches (R7.6..R7.40 + OBB + B83..86), then standalone-only UI & Python runtime
+    apply_shared_gameplay_patches(STANDALONE_WORK)
+
     patch_luac_text(
-        STANDALONE_WORK / "assets" / "src" / "Home" / "HomeScene.luac",
+        STANDALONE_WORK / "assets" / "src" / "System" / "SystemLayer.luac",
+        [
+            (
+                '    canLogout = canLogout:len() == 0 and "true" or canLogout',
+                '    canLogout = "true"',
+            ),
+            (
+                '        {\n'
+                '            normalImage = "xt_15.png",\n'
+                '            title = TR("邮件"),\n'
+                '            muduleId = ModuleSub.eEmail,\n'
+                '            clickAction = function(parameters)\n'
+                '                print("按下邮件按钮")\n'
+                '                local isOpen, retInfo = NetworkResData:modulePlayerIsOpen(ModuleSub.eEmail)\n'
+                '                if not isOpen then\n'
+                '                    ui.showFlashView({parent = self, text = retInfo.openMessage,})\n'
+                '                    return\n'
+                '                end\n'
+                '                local email = require("Email.EmailHelper").new()\n'
+                '                local tempLayer\n'
+                '                tempLayer = email:showEmail({parent = self, onCloseCallback = function()\n'
+                '                    tempLayer:removeFromParent()\n'
+                '                    self:refreshRedDot()\n'
+                '                end})\n'
+                '            end,\n'
+                '        },\n'
+                '        \n'
+                '    }',
+                '        {\n'
+                '            normalImage = "xt_15.png",\n'
+                '            title = TR("邮件"),\n'
+                '            muduleId = ModuleSub.eEmail,\n'
+                '            clickAction = function(parameters)\n'
+                '                print("按下邮件按钮")\n'
+                '                local isOpen, retInfo = NetworkResData:modulePlayerIsOpen(ModuleSub.eEmail)\n'
+                '                if not isOpen then\n'
+                '                    ui.showFlashView({parent = self, text = retInfo.openMessage,})\n'
+                '                    return\n'
+                '                end\n'
+                '                local email = require("Email.EmailHelper").new()\n'
+                '                local tempLayer\n'
+                '                tempLayer = email:showEmail({parent = self, onCloseCallback = function()\n'
+                '                    tempLayer:removeFromParent()\n'
+                '                    self:refreshRedDot()\n'
+                '                end})\n'
+                '            end,\n'
+                '        },\n'
+                '        {\n'
+                '            normalImage = "xt_13.png",\n'
+                '            title = "Đồng Bộ Cloud",\n'
+                '            clickAction = function()\n'
+                '                self:addChild(require("System.HybridSyncLayer").new(), 50)\n'
+                '            end,\n'
+                '        },\n'
+                '        \n'
+                '    }',
+            ),
+        ],
+    )
+    patch_luac_text(
+        STANDALONE_WORK / "assets" / "src" / "Login" / "StartGameScene.luac",
+        [
+            (
+                '    btnEnterGame:setScale(Adapter.MinScale)\n'
+                '    self:addChild(btnEnterGame) ',
+                '    btnEnterGame:setScale(Adapter.MinScale)\n'
+                '    self:addChild(btnEnterGame)\n'
+                '    local btnAcctMgr = ui.newButton({\n'
+                '        normalImage = "c_7.png",\n'
+                '        position = Adapter.AutoPos(960, 100),\n'
+                '        text = "TK / Sao Lưu",\n'
+                '        fontSize = 20,\n'
+                '        textColor = ColorList.ccWhite,\n'
+                '        outlineColor = ColorList.ccOutline,\n'
+                '        clickAction = function()\n'
+                '            self:addChild(require("System.AccountSwitchLayer").new(), 200)\n'
+                '        end\n'
+                '    })\n'
+                '    btnAcctMgr:setScale(Adapter.MinScale * 0.9)\n'
+                '    self:addChild(btnAcctMgr)\n'
+                '    local btnCloudSync = ui.newButton({\n'
+                '        normalImage = "c_77.png",\n'
+                '        position = Adapter.AutoPos(960, 172),\n'
+                '        text = "Đồng Bộ Cloud",\n'
+                '        fontSize = 20,\n'
+                '        textColor = ColorList.ccWhite,\n'
+                '        outlineColor = ColorList.ccOutline,\n'
+                '        clickAction = function()\n'
+                '            self:addChild(require("System.HybridSyncLayer").new(), 205)\n'
+                '        end\n'
+                '    })\n'
+                '    btnCloudSync:setScale(Adapter.MinScale * 0.9)\n'
+                '    self:addChild(btnCloudSync)',
+            ),
+        ],
+    )
+    write_luac_text(
+        STANDALONE_WORK / "assets" / "src" / "System" / "AccountSwitchLayer.luac",
+        ACCOUNT_SWITCH_LAYER_LUA,
+    )
+    write_luac_text(
+        STANDALONE_WORK / "assets" / "src" / "System" / "HybridSyncLayer.luac",
+        HYBRID_SYNC_LAYER_LUA,
+    )
+
+    # 7. Bundle embedded 32-bit CPython 3.11 + server_bundle.zip + stdlib.zip
+    bundle_embedded_python(STANDALONE_WORK, f"{version_name}-{version_code}")
+
+
+def apply_shared_gameplay_patches(work_dir: Path) -> None:
+    """Apply all shared R7.6..R7.40 VN Lua gameplay patches, configs, OBB merge, and banner assets."""
+    patch_luac_text(
+        work_dir / "assets" / "src" / "Home" / "HomeScene.luac",
         [
             (
                 "        if heroCount > 2 then\n            newEventId = 107\n        else\n            newEventId = 103\n        end",
@@ -669,7 +1284,7 @@ def patch_standalone_workspace(
         ],
     )
     patch_luac_text(
-        STANDALONE_WORK / "assets" / "src" / "Guide" / "GuideMng.luac",
+        work_dir / "assets" / "src" / "Guide" / "GuideMng.luac",
         [
             (
                 "        if heroCount > 2 then\n            newEventId = 107\n        elseif heroCount > 1 then\n            newEventId = 1051\n        else\n            newEventId = 104\n        end",
@@ -678,7 +1293,7 @@ def patch_standalone_workspace(
         ],
     )
     patch_luac_text(
-        STANDALONE_WORK / "assets" / "src" / "Store" / "RechargeScene.luac",
+        work_dir / "assets" / "src" / "Store" / "RechargeScene.luac",
         [
             (
                 '                    local canPurchase = IPlatform:getInstance():isRechargeSupported()\n'
@@ -872,7 +1487,7 @@ def patch_standalone_workspace(
         ],
     )
     patch_luac_text(
-        STANDALONE_WORK / "assets" / "src" / "ExtraActivity" / "MonthCardLayer.luac",
+        work_dir / "assets" / "src" / "ExtraActivity" / "MonthCardLayer.luac",
         [
             (
                 'function MonthCardLayer:handleOrderID(ok, content, id)\n'
@@ -942,7 +1557,7 @@ def patch_standalone_workspace(
         ],
     )
     patch_luac_text(
-        STANDALONE_WORK / "assets" / "src" / "TimedActivity" / "LimittedTimedRecruitLayer.luac",
+        work_dir / "assets" / "src" / "TimedActivity" / "LimittedTimedRecruitLayer.luac",
         [
             (
                 '    self:loadActivityData()\n\n'
@@ -1135,9 +1750,9 @@ def patch_standalone_workspace(
         ],
     )
 
-    # 6. Standalone offline ChatMng, SystemLayer, StartGameScene, and AccountSwitchLayer patches
+    # 6. Shared ChatMng safe guard (disabled TCP loop until realtime chat server lands)
     patch_luac_text(
-        STANDALONE_WORK / "assets" / "src" / "Chat" / "ChatMng.luac",
+        work_dir / "assets" / "src" / "Chat" / "ChatMng.luac",
         [
             (
                 '    if ip and port then\n'
@@ -1169,67 +1784,31 @@ def patch_standalone_workspace(
         ],
     )
     patch_luac_text(
-        STANDALONE_WORK / "assets" / "src" / "System" / "SystemLayer.luac",
-        [
-            (
-                '    canLogout = canLogout:len() == 0 and "true" or canLogout',
-                '    canLogout = "true"',
-            ),
-        ],
-    )
-    patch_luac_text(
-        STANDALONE_WORK / "assets" / "src" / "Login" / "StartGameScene.luac",
-        [
-            (
-                '    btnEnterGame:setScale(Adapter.MinScale)\n'
-                '    self:addChild(btnEnterGame) ',
-                '    btnEnterGame:setScale(Adapter.MinScale)\n'
-                '    self:addChild(btnEnterGame)\n'
-                '    local btnAcctMgr = ui.newButton({\n'
-                '        normalImage = "c_7.png",\n'
-                '        position = Adapter.AutoPos(960, 100),\n'
-                '        text = "TK / Sao Lưu",\n'
-                '        fontSize = 20,\n'
-                '        textColor = ColorList.ccWhite,\n'
-                '        outlineColor = ColorList.ccOutline,\n'
-                '        clickAction = function()\n'
-                '            self:addChild(require("System.AccountSwitchLayer").new(), 1026)\n'
-                '        end\n'
-                '    })\n'
-                '    btnAcctMgr:setScale(Adapter.MinScale * 0.9)\n'
-                '    self:addChild(btnAcctMgr)',
-            ),
-        ],
-    )
-    write_luac_text(
-        STANDALONE_WORK / "assets" / "src" / "System" / "AccountSwitchLayer.luac",
-        ACCOUNT_SWITCH_LAYER_LUA,
-    )
-
-    patch_luac_text(
-        STANDALONE_WORK / "assets" / "src" / "TimedActivity" / "TimedSlotLayer.luac",
+        work_dir / "assets" / "src" / "TimedActivity" / "TimedSlotLayer.luac",
         [("local pos = slot:get_cur_pos(cursors[i])", "local pos = slot:get_cur_pos(i)")],
     )
 
-    patch_r712_lua(STANDALONE_WORK / "assets" / "src")
-    patch_reward_claim_lua(STANDALONE_WORK / "assets" / "src")
-    patch_mystery_shop_lua(STANDALONE_WORK / "assets" / "src")
-    patch_r714_lua(STANDALONE_WORK / "assets" / "src")
-    patch_r715_lua(STANDALONE_WORK / "assets" / "src")
-    patch_r7151_lua(STANDALONE_WORK / "assets" / "src")
-    patch_r716_explore_lua(STANDALONE_WORK / "assets" / "src")
-    patch_r721_teambattle_lua(STANDALONE_WORK / "assets" / "src")
-    patch_r735_shop_lua(STANDALONE_WORK / "assets" / "src")
-    patch_r736_mate_gem_shop_lua(STANDALONE_WORK / "assets" / "src")
-    patch_r737_mount_and_p4_lua(STANDALONE_WORK / "assets" / "src")
-    patch_luac_text(STANDALONE_WORK / "assets" / "src" / "Equipment" / "EquipmentComposeLayer.luac", [
+    patch_r712_lua(work_dir / "assets" / "src")
+    patch_reward_claim_lua(work_dir / "assets" / "src")
+    patch_mystery_shop_lua(work_dir / "assets" / "src")
+    patch_r714_lua(work_dir / "assets" / "src")
+    patch_r715_lua(work_dir / "assets" / "src")
+    patch_r7151_lua(work_dir / "assets" / "src")
+    patch_r716_explore_lua(work_dir / "assets" / "src")
+    patch_r721_teambattle_lua(work_dir / "assets" / "src")
+    patch_r735_shop_lua(work_dir / "assets" / "src")
+    patch_r736_mate_gem_shop_lua(work_dir / "assets" / "src")
+    patch_r737_mount_and_p4_lua(work_dir / "assets" / "src")
+    patch_r739_lianti_lua(work_dir / "assets" / "src")
+    patch_r740_pvpinter_lua(work_dir / "assets" / "src")
+    patch_luac_text(work_dir / "assets" / "src" / "Equipment" / "EquipmentComposeLayer.luac", [
         (
             '        if colorLV < 8 then    --排除最高等级的装备',
             '        local recipe = EquipColorRelation.items[colorLV]\n'
             '        if recipe and recipe.colorFinally > colorLV then',
         ),
     ])
-    patch_luac_text(STANDALONE_WORK / "assets" / "src" / "Store" / "RecruitScene.luac", [
+    patch_luac_text(work_dir / "assets" / "src" / "Store" / "RecruitScene.luac", [
         (
             'local cnt = singleUsed.count * (priceSave and (priceSave / 100) or 1)',
             'local cnt = math.ceil(singleUsed.count * (priceSave or 100) / 100)',
@@ -1252,15 +1831,12 @@ def patch_standalone_workspace(
         if not cfg_src.exists():
             raise FileNotFoundError(f"Missing VN-adapted config Lua: {cfg_src}")
         write_luac_text(
-            STANDALONE_WORK / "assets" / "src" / "Config" / f"{cfg_name}.luac",
+            work_dir / "assets" / "src" / "Config" / f"{cfg_name}.luac",
             cfg_src.read_text(encoding="utf-8"),
         )
 
-    # 7. Bundle embedded 32-bit CPython 3.11 + server_bundle.zip + stdlib.zip
-    bundle_embedded_python(STANDALONE_WORK, f"{version_name}-{version_code}")
-
     # 8. Merge OBB res/* directly into assets/res/* for 1-file installation
-    merged_n = merge_obb_into_assets(STANDALONE_WORK)
+    merged_n = merge_obb_into_assets(work_dir)
     print(f"Merged {merged_n} OBB resource files directly into APK assets/res/")
 
     # 9. Bundle Banner 83 / Tứ Đấu Thần / Inu Kimi assets missing from VN APK/OBB
@@ -1270,7 +1846,7 @@ def patch_standalone_workspace(
         for src_file in sorted(b83_dir.rglob("*")):
             if src_file.is_file():
                 rel = src_file.relative_to(b83_dir)
-                dst_file = STANDALONE_WORK / "assets" / rel
+                dst_file = work_dir / "assets" / rel
                 dst_file.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_file, dst_file)
                 b83_n += 1
@@ -1283,7 +1859,7 @@ def patch_standalone_workspace(
         for src_file in sorted(b84_dir.rglob("*")):
             if src_file.is_file():
                 rel = src_file.relative_to(b84_dir)
-                dst_file = STANDALONE_WORK / "assets" / rel
+                dst_file = work_dir / "assets" / rel
                 dst_file.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_file, dst_file)
                 b84_n += 1
@@ -3416,7 +3992,1528 @@ def patch_r737_mount_and_p4_lua(src: Path) -> None:
     patch_luac_text(src / "Config" / "GoodsOutputRelation.luac", gor_patches)
 
 
-def build_and_sign_release(out_name: str) -> Path:
+def patch_r739_lianti_lua(src: Path) -> None:
+    """R7.39: Enable Lianti (5700), expose Lianti stones in ShopGoodsModel, and fix client Lua bugs."""
+    patch_luac_text(src / "Config" / "ModuleSubModel.luac", [
+        (
+            """        [5700] = {
+            Id = 5700,
+            alias = "Lianti",
+            moduleId = 57,
+            moduleAlias = "Lianti",
+            name = "炼体",
+            isClient = 1,
+            ifOpen = 0,""",
+            """        [5700] = {
+            Id = 5700,
+            alias = "Lianti",
+            moduleId = 57,
+            moduleAlias = "Lianti",
+            name = "炼体",
+            isClient = 1,
+            ifOpen = 1,""",
+        ),
+    ])
+
+    patch_luac_text(src / "Config" / "ShopGoodsModel.luac", [
+        ("items_count = 6,", "items_count = 10,"),
+        (
+            """        [6] = {
+            ID = 6,
+            serverGroupID = 0,
+            goodsModelID = 16050002,
+            sellTypeID = 1111,
+            initPrice = 100,
+            currPrice = 100,
+            ifVipLimitBuy = false,
+            ifOnceUse = false,
+            ifDynamicPrice = false,
+            needLV = 1
+        }""",
+            """        [6] = {
+            ID = 6,
+            serverGroupID = 0,
+            goodsModelID = 16050002,
+            sellTypeID = 1111,
+            initPrice = 100,
+            currPrice = 100,
+            ifVipLimitBuy = false,
+            ifOnceUse = false,
+            ifDynamicPrice = false,
+            needLV = 1
+        },
+        [7] = {
+            ID = 7,
+            serverGroupID = 0,
+            goodsModelID = 16050035,
+            sellTypeID = 1111,
+            initPrice = 10,
+            currPrice = 10,
+            ifVipLimitBuy = false,
+            ifOnceUse = false,
+            ifDynamicPrice = false,
+            needLV = 34
+        },
+        [8] = {
+            ID = 8,
+            serverGroupID = 0,
+            goodsModelID = 16050036,
+            sellTypeID = 1111,
+            initPrice = 25,
+            currPrice = 25,
+            ifVipLimitBuy = false,
+            ifOnceUse = false,
+            ifDynamicPrice = false,
+            needLV = 34
+        },
+        [9] = {
+            ID = 9,
+            serverGroupID = 0,
+            goodsModelID = 16050037,
+            sellTypeID = 1111,
+            initPrice = 60,
+            currPrice = 60,
+            ifVipLimitBuy = false,
+            ifOnceUse = false,
+            ifDynamicPrice = false,
+            needLV = 34
+        },
+        [10] = {
+            ID = 10,
+            serverGroupID = 0,
+            goodsModelID = 16050038,
+            sellTypeID = 1111,
+            initPrice = 200,
+            currPrice = 200,
+            ifVipLimitBuy = false,
+            ifOnceUse = false,
+            ifDynamicPrice = false,
+            needLV = 34
+        }""",
+        ),
+    ])
+
+    patch_luac_text(src / "Formation" / "PlayerFormationLayer.luac", [
+        (
+            """    --if NetworkResData:modulePlayerIsOpen(ModuleSub.eLianti) and self.mIsMyself then
+    --    --炼体
+    --    table.insert(tabList, {text = TR("炼体"), tag = ModuleSub.eLianti, x = self.mSoltCellSize.width * 0.77, y = self.mSoltCellSize.height})
+    --end""",
+            """    if NetworkResData:modulePlayerIsOpen(ModuleSub.eLianti) and NetworkResData:moduleIsOpenInServer(ModuleSub.eLianti) and self.mIsMyself then
+        --炼体
+        table.insert(tabList, {text = TR("炼体"), tag = ModuleSub.eLianti, x = self.mSoltCellSize.width * 0.77, y = self.mSoltCellSize.height})
+    end""",
+        ),
+        (
+            """    local refrehFunc = function(noAction, isNewNode)
+        local currentLv = currentHero.LiantiLv
+        local currentLayer = currentHero.LianTiNodeId    --（正在点星的节点）
+
+        --提示语
+        --local gailv = currentHero.LvUpExp > 0 and (currentHero.LianTiNodeExp / currentHero.LvUpExp  * 100) or 0
+        --local tempGaiLv = { oddsMin = 0, des = TR("极低概率") }
+        --for i,v in pairs(LiantiOddsDesRelation.items) do
+        --    if gailv > v.oddsMin and tempGaiLv.oddsMin < v.oddsMin then
+        --        tempGaiLv = v
+        --    end
+        --end
+        tishiLabel:setString(TR("灵力每日 {6cff00}24:00 {ffffff}清零"))
+        --5个属性进度条
+        for i,v in pairs(progressBarList) do
+            local curV = 0
+            local maxV = 0
+            if i < currentHero.LianTiNodeId then
+                curV = v:getMaxValue()
+                maxV = v:getMaxValue()
+            elseif i > currentHero.LianTiNodeId then
+                curV = 0
+                maxV = 100
+            else
+                curV = currentHero.LianTiNodeExp
+                maxV = currentHero.LvUpExp
+
+                --正在燃烧的动画
+                local createFire = function()
+                    self.mFireeffect = ui.newEffect({
+                        parent = v,
+                        effectName = "effect_ui_lianti",
+                        animation = aimationlist[i],
+                        position = cc.p(30, 30),
+                        scale = 0.8,
+                        loop = true,
+                        startListener = function()
+                        end,
+                        completeListener = function()
+                        end
+                    })
+                    self.mFireeffect:setLocalZOrder(-1)
+                end
+                if not self.mFireeffect then
+                    createFire()
+                else
+                    if isNewNode then
+                        self.mFireeffect:removeFromParent()
+                        self.mFireeffect = nil
+                        createFire()
+                    end
+                end
+            end
+            v:setMaxValue(maxV)
+            v:setCurrValue(curV,noAction)
+        end
+        --属性lable
+        currentAttr:setString(LiantiModel.items[currentLayer].fightattrName..": {fbfe00}+".. LiantiLvRelation.items[currentLv][attrList[currentLayer]])
+
+        local nextString
+        if not LiantiLvRelation.items[currentLv + 1] then
+            nextString = TR("炼体等级已满！")
+        else
+            nextString = LiantiModel.items[currentLayer].fightattrName..": {fbfe00}+".. LiantiLvRelation.items[currentLv + 1][attrList[currentLayer]]
+        end
+        nextAttr:setString(nextString)
+        --当前等级
+        currentLvLabel:setString("Lv: "..tostring(currentLv))
+        nextLvLabel:setString("Lv: "..tostring(currentLv + 1))
+        --刷新金币钻石
+        self:refreshPlayerAttrs()
+
+
+    end""",
+            """    local function isLiantiMaxLv(lv)
+        local curRow = LiantiLvRelation.items[lv]
+        return (not LiantiLvRelation.items[lv + 1]) or (curRow and curRow.lvExp == 0)
+    end
+
+    local refrehFunc = function(noAction, isNewNode)
+        local currentLv = currentHero.LiantiLv or 0
+        local currentLayer = currentHero.LianTiNodeId or 1
+        local curExp = currentHero.LianTiNodeExp or 0
+        local maxExp = (currentHero.LvUpExp and currentHero.LvUpExp > 0) and currentHero.LvUpExp or 100
+        local isMaxLv = isLiantiMaxLv(currentLv)
+
+        tishiLabel:setString(TR("灵力每日 {6cff00}24:00 {ffffff}清零"))
+        for i,v in ipairs(progressBarList) do
+            local curV = 0
+            local maxV = 0
+            if isMaxLv then
+                curV = 100
+                maxV = 100
+            elseif i < currentLayer then
+                curV = v:getMaxValue()
+                maxV = v:getMaxValue()
+            elseif i > currentLayer then
+                curV = 0
+                maxV = 100
+            else
+                curV = curExp
+                maxV = maxExp
+
+                local createFire = function()
+                    self.mFireeffect = ui.newEffect({
+                        parent = v,
+                        effectName = "effect_ui_lianti",
+                        animation = aimationlist[i],
+                        position = cc.p(30, 30),
+                        scale = 0.8,
+                        loop = true,
+                        startListener = function()
+                        end,
+                        completeListener = function()
+                        end
+                    })
+                    self.mFireeffect:setLocalZOrder(-1)
+                end
+                if not self.mFireeffect then
+                    createFire()
+                else
+                    if isNewNode then
+                        self.mFireeffect:removeFromParent()
+                        self.mFireeffect = nil
+                        createFire()
+                    end
+                end
+            end
+            v:setMaxValue(maxV)
+            v:setCurrValue(curV,noAction)
+        end
+        local curAttrRow = LiantiLvRelation.items[currentLv] or LiantiLvRelation.items[0]
+        local curAttrVal = (curAttrRow and curAttrRow[attrList[currentLayer]]) or 0
+        currentAttr:setString(LiantiModel.items[currentLayer].fightattrName..": {fbfe00}+".. curAttrVal)
+
+        local nextString
+        if isMaxLv then
+            nextString = TR("炼体等级已满！")
+            nextLvLabel:setString("MAX")
+        else
+            nextString = LiantiModel.items[currentLayer].fightattrName..": {fbfe00}+".. LiantiLvRelation.items[currentLv + 1][attrList[currentLayer]]
+            nextLvLabel:setString("Lv: "..tostring(currentLv + 1))
+        end
+        nextAttr:setString(nextString)
+        currentLvLabel:setString("Lv: "..tostring(currentLv))
+        self:refreshPlayerAttrs()
+    end""",
+        ),
+        (
+            """    --经验增加的飘窗
+    local piaochuang = function(par, position, value)
+        if value == 0 then
+            return
+        end""",
+            """    --经验增加的飘窗
+    local piaochuang = function(par, position, value)
+        if not value or value <= 0 then
+            return
+        end""",
+        ),
+        (
+            """                if currentHero.LianTiNodeId == heroValue.LianTiNodeId then
+                    piaochuang(card,cc.p(50,70), heroValue.LianTiNodeExp - currentHero.LianTiNodeExp)
+                    refreshDataAndUi()""",
+            """                if currentHero.LiantiLv == heroValue.LiantiLv and currentHero.LianTiNodeId == heroValue.LianTiNodeId then
+                    piaochuang(card,cc.p(50,70), heroValue.LianTiNodeExp - currentHero.LianTiNodeExp)
+                    refreshDataAndUi()""",
+        ),
+        (
+            """                if NetworkResData:getPlayerAttr(tonumber(xiaohaoTemple[1])) < tonumber(xiaohaoTemple[3]) then
+                    showGoldNotEnough()
+                    return
+                end
+                LoadingWait:begin(self)
+                HttpRequest("Lianti","Lianti", {tempSlot, v.goodsModelId}, responseFunc)
+            end
+        end,
+        onLongClickCallBack = function ( ... )
+            local exp = math.random(v.expMin, v.expMax)""",
+            """                if isLiantiMaxLv(currentHero.LiantiLv or 0) then
+                    ui.showFlashView({parent = self, text = TR("炼体等级已满！")})
+                    return
+                end
+                if NetworkResData:getPlayerAttr(tonumber(xiaohaoTemple[1])) < tonumber(xiaohaoTemple[3]) then
+                    showGoldNotEnough()
+                    return
+                end
+                LoadingWait:begin(self)
+                HttpRequest("Lianti","Lianti", {tempSlot, v.goodsModelId}, responseFunc)
+            end
+        end,
+        onLongClickCallBack = function ( ... )
+            if isLiantiMaxLv(currentHero.LiantiLv or 0) or (currentHero.LvUpExp or 0) <= 0 then
+                card:stopTimer()
+                return
+            end
+            local exp = math.random(v.expMin, v.expMax)""",
+        ),
+        (
+            """        clickAction = function()
+            LoadingWait:begin(self)
+            HttpRequest("Lianti","OneKeyFiveLvLianti", {tempSlot},function(event)""",
+            """        clickAction = function()
+            if isLiantiMaxLv(currentHero.LiantiLv or 0) then
+                ui.showFlashView({parent = self, text = TR("炼体等级已满！")})
+                return
+            end
+            LoadingWait:begin(self)
+            HttpRequest("Lianti","OneKeyFiveLvLianti", {tempSlot},function(event)""",
+        ),
+    ])
+
+    patch_luac_text(src / "Hero" / "LianHunDaShiLayer.luac", [
+        (
+            """    -- 
+    --讨论 0 级的情况 
+    if self.mRecentLevel == 0 then
+            self:setRecentlevelUI(self.mRecentLevel,nil,nil)
+            for k,v in pairs(mLianhudashi) do
+                if self.mRecentLevel + 1 == v.liantiDashiStep then
+                    self:setnextLevelUI(mLianhudashi[self.mRecentLevel + 1].needLiantiLv,mLianhudashi[self.mRecentLevel + 1].DAMADDR,mLianhudashi[self.mRecentLevel + 1].DAMCUTR)
+                end
+                break
+            end
+    else
+        for k,v in pairs(mLianhudashi) do
+            if self.mRecentLevel == v.liantiDashiStep and self.mRecentLevel < #mLianhudashi + 1 then
+                    self:setRecentlevelUI(self.mRecentLevel,v.DAMADDR,v.DAMCUTR)
+                if self.mRecentLevel  < #mLianhudashi then
+                    self:setnextLevelUI(mLianhudashi[self.mRecentLevel + 1].needLiantiLv,mLianhudashi[self.mRecentLevel + 1].DAMADDR,mLianhudashi[self.mRecentLevel + 1].DAMCUTR)
+                elseif  self.mRecentLevel == #mLianhudashi then
+                     local title6= ui.newLabel{
+                        text = TR("已达到最高等级"),
+                        size = 28,
+                        color = ColorList.ccBlack,
+                        needShadow = true,
+                        shadowColor = ColorList.ccWhite,
+                    }
+                    title6:setPosition(250, 180)
+                    self.mBgSprite:addChild(title6)
+                end
+                break
+            end
+        end
+
+    end""",
+            """    if self.mRecentLevel == 0 then
+        self:setRecentlevelUI(self.mRecentLevel,nil,nil)
+        for _,v in ipairs(mLianhudashi) do
+            if self.mRecentLevel + 1 == v.liantiDashiStep then
+                self:setnextLevelUI(v.needLiantiLv,v.DAMADDR,v.DAMCUTR)
+                break
+            end
+        end
+    else
+        for _,v in ipairs(mLianhudashi) do
+            if self.mRecentLevel == v.liantiDashiStep then
+                self:setRecentlevelUI(self.mRecentLevel,v.DAMADDR,v.DAMCUTR)
+                if self.mRecentLevel < #mLianhudashi then
+                    local nextRow = mLianhudashi[self.mRecentLevel + 1]
+                    self:setnextLevelUI(nextRow.needLiantiLv,nextRow.DAMADDR,nextRow.DAMCUTR)
+                else
+                    local title6= ui.newLabel{
+                        text = TR("已达到最高等级"),
+                        size = 28,
+                        color = ColorList.ccBlack,
+                        needShadow = true,
+                        shadowColor = ColorList.ccWhite,
+                    }
+                    title6:setPosition(250, 180)
+                    self.mBgSprite:addChild(title6)
+                end
+                break
+            end
+        end
+    end""",
+        ),
+        (
+            """    for i,v in pairs(heroList) do
+        --下面对于字符字符数大于5的字符串修改字体大小
+        local fontsize = nil
+        local strCnt = string.asciilen(HeroModel.items[v.HeroModelId].name)""",
+            """    for i,v in pairs(heroList) do
+        local hero = v and v.HeroId and NetworkResData:getHero(v.HeroId)
+        if v and v.HeroModelId and HeroModel.items[v.HeroModelId] and hero then
+        --下面对于字符字符数大于5的字符串修改字体大小
+        local fontsize = nil
+        local strCnt = string.asciilen(HeroModel.items[v.HeroModelId].name)""",
+        ),
+        (
+            """        local hero = NetworkResData:getHero(v.HeroId)
+        for k,v in pairs(mLianhudashi) do
+            if self.mRecentLevel == 0 then
+                 --创建进度条
+                local progressBar = require("Common.ProgressBar").new({
+                    barImage    = "sy_50.png",
+                    bgImage     = "zdjs_11.png",
+                    currValue   = hero.LiantiLv,
+                    maxValue    = mLianhudashi[self.mRecentLevel + 1].needLiantiLv,
+                    barType     = ProgressBarType.eHorizontal,
+                    needLabel   = true,
+                    font = _FONT_TITLE,
+                    color = ColorList.ccWhite,
+                    needOutline = true,
+                    needShadow = true,
+                    size = 24,
+                })
+                progressBar:setScaleX(0.7)
+                progressBar:setPosition(progressBarPosList[i])
+                self.mBgSprite:addChild(progressBar)
+                break
+            elseif self.mRecentLevel == v.liantiDashiStep then
+                --创建进度条
+                local progressBar = require("Common.ProgressBar").new({
+                    barImage    = "sy_50.png",
+                    bgImage     = "zdjs_11.png",
+                    currValue   = hero.LiantiLv,
+                    maxValue    = mLianhudashi[self.mRecentLevel + 1].needLiantiLv,
+                    barType     = ProgressBarType.eHorizontal,
+                    needLabel   = true,
+                    font = _FONT_TITLE,
+                    color = ColorList.ccWhite,
+                    needOutline = true,
+                    needShadow = true,
+                    size = 24,
+                })
+                progressBar:setScaleX(0.7)
+                progressBar:setPosition(progressBarPosList[i])
+                self.mBgSprite:addChild(progressBar)
+                break
+            --讨论满级的情况
+            elseif self.mRecentLevel == #mLianhudashi then
+                local maxLevelLabel= ui.newLabel{
+                    text =TR("已达到最高等级"),
+                    size = 24,
+                    --needShadow = true,
+                    color = ColorList.ccWhite,
+                }
+                maxLevelLabel:setPosition(progressBarPosList[i])
+                self.mBgSprite:addChild(maxLevelLabel)
+                break
+            end   
+            
+        end
+    end""",
+            """        if self.mRecentLevel >= #mLianhudashi or not mLianhudashi[self.mRecentLevel + 1] then
+            local maxLevelLabel = ui.newLabel{
+                text = TR("已达到最高等级"),
+                size = 24,
+                color = ColorList.ccWhite,
+            }
+            maxLevelLabel:setPosition(progressBarPosList[i])
+            self.mBgSprite:addChild(maxLevelLabel)
+        else
+            local progressBar = require("Common.ProgressBar").new({
+                barImage    = "sy_50.png",
+                bgImage     = "zdjs_11.png",
+                currValue   = hero.LiantiLv or 0,
+                maxValue    = mLianhudashi[self.mRecentLevel + 1].needLiantiLv,
+                barType     = ProgressBarType.eHorizontal,
+                needLabel   = true,
+                font = _FONT_TITLE,
+                color = ColorList.ccWhite,
+                needOutline = true,
+                needShadow = true,
+                size = 24,
+            })
+            progressBar:setScaleX(0.7)
+            progressBar:setPosition(progressBarPosList[i])
+            self.mBgSprite:addChild(progressBar)
+        end
+        end
+    end""",
+        ),
+        (
+            """function LianHunDaShiLayer:getRecentliantiLevel()
+    local heroList = NetworkResData:getFormationInfo().SlotInfos
+    for k,v in pairs(mLianhudashi) do
+        local cnt = 0
+        local maxLevelCnt = 0
+        for m,n in pairs(heroList) do
+            local hero = NetworkResData:getHero(n.HeroId)
+            if hero and self:getMinLianLv() < v.needLiantiLv then
+                    return k - 1
+            --讨论满级的情况
+            elseif hero and hero.LiantiLv == mLianhudashi[#mLianhudashi].needLiantiLv then
+                    maxLevelCnt = maxLevelCnt + 1
+            end
+        end
+        --讨论0级的情况
+        --不满足6人上阵返回0级
+        if #heroList < 6 then
+            return 0
+        --讨论满级
+        elseif maxLevelCnt == #heroList then
+            return #mLianhudashi
+        end
+        
+
+    end
+end
+
+function LianHunDaShiLayer:getMinLianLv()
+    local heroList = NetworkResData:getFormationInfo().SlotInfos
+    local minLianTi =  NetworkResData:getHero(heroList[1].HeroId)
+    local minLianLv = minLianTi.LiantiLv
+    for m,n in pairs(heroList) do
+        local hero = NetworkResData:getHero(n.HeroId)
+        if not hero then
+            minLianLv = 0
+        end
+        if hero.LiantiLv < minLianLv then
+            minLianLv = hero.LiantiLv
+        end
+    end
+    return minLianLv
+end""",
+            """function LianHunDaShiLayer:getRecentliantiLevel()
+    local heroList = NetworkResData:getFormationInfo().SlotInfos or {}
+    local deployedCnt = 0
+    for _, n in pairs(heroList) do
+        if n and n.HeroId and NetworkResData:getHero(n.HeroId) then
+            deployedCnt = deployedCnt + 1
+        end
+    end
+    if deployedCnt < 6 then
+        return 0
+    end
+    local minLv = self:getMinLianLv()
+    local step = 0
+    for _, v in ipairs(mLianhudashi) do
+        if minLv >= v.needLiantiLv then
+            step = v.liantiDashiStep
+        end
+    end
+    return step
+end
+
+function LianHunDaShiLayer:getMinLianLv()
+    local heroList = NetworkResData:getFormationInfo().SlotInfos or {}
+    local minLianLv = nil
+    for _, n in pairs(heroList) do
+        local hero = n and n.HeroId and NetworkResData:getHero(n.HeroId)
+        if not hero then
+            return 0
+        end
+        local lv = hero.LiantiLv or 0
+        if not minLianLv or lv < minLianLv then
+            minLianLv = lv
+        end
+    end
+    return minLianLv or 0
+end""",
+        ),
+    ])
+
+
+
+def patch_r740_pvpinter_lua(src: Path) -> None:
+    """R7.40: Unlock PVPinter (6100) + WhosTheGod (6200) and fix 7 Challenge Lua compatibility bugs."""
+    patch_luac_text(src / "Challenge" / "ChallengeListLayer.luac", [
+        (
+            """    --[[local isOpen = NetworkResData:moduleIsOpenInServer(ModuleSub.ePVPInter)
+    if isOpen then
+       table.insert(self.mListItemInfo,{
+            -- 跨服战
+            normalImage = "tz_7.png",
+            title = TR("跨服战"),
+            intro = TR("参加跨服排位赛获得积分兑换奖品"),
+            moduleId = ModuleSub.ePVPInter,""",
+            """    local isOpen = NetworkResData:moduleIsOpenInServer(ModuleSub.ePVPInter)
+    if isOpen then
+       table.insert(self.mListItemInfo,{
+            -- 跨服战
+            normalImage = "tz_7.png",
+            title = TR("跨服战"),
+            intro = TR("参加跨服排位赛获得积分兑换奖品"),
+            muduleId = ModuleSub.ePVPInter,""",
+        ),
+        (
+            """        })
+    end
+    --]]""",
+            """        })
+    end""",
+        ),
+    ])
+
+    patch_luac_text(src / "Challenge" / "CrossServerBattleScene.luac", [
+        (
+            """local DanType = {
+    eBronze     = 21,    -- 青铜
+    eSliver     = 22,    -- 白银
+    eGold       = 23,    -- 黄金
+    ePt         = 24,    -- 铂金
+    eDiamond    = 25,    -- 钻石
+    eMaster     = 26,    -- 大师
+    eKing       = 27,    -- 王者
+    eMostKing   = 100,    -- 最强王者
+}""",
+            """local DanType = {
+    eBronze     = 1,    -- 半妖
+    eSliver     = 2,    -- 顽妖
+    eGold       = 3,    -- 强妖
+    ePt         = 4,    -- 妖将
+    eDiamond    = 5,    -- 妖王
+    eMaster     = 6,    -- 大妖
+    eKing       = 7,    -- 修影
+    eMostKing   = 8,    -- 天照
+}""",
+        ),
+        (
+            """-- 根据段位和图片类型获取文件名
+function CrossServerBattleScene:getFileNameByDanType( type , dan)
+    if type == DanImgType.eBox then
+        return PvpinterLvRelation.items[dan].rankHeadFrame
+    elseif type == DanImgType.eMark then
+        return string.format("kfpw_%d.png",dan == 100 and 8 or dan - 20 )
+    elseif type == DanImgType.eTitle then
+        --return string.format("kfpw_%d.png",dan == 100 and 31 or dan + 3)
+    end
+    return ""
+end
+
+-- 积分转换为胜点
+function CrossServerBattleScene:rateConvertToVictor( rate,lv )
+    -- body
+    local needRating = PvpinterLvRelation.items[lv].needRating
+    local k = PvpinterConfig.items[1].exchangeRate
+
+    return math.floor(0.5 + (rate - needRating) / k)
+end""",
+            """-- 根据段位和图片类型获取文件名
+function CrossServerBattleScene:getFileNameByDanType( type , dan)
+    local d = math.max(1, math.min(8, tonumber(dan) or 1))
+    if type == DanImgType.eBox then
+        return (PvpinterLvRelation.items[d] or PvpinterLvRelation.items[1]).rankHeadFrame
+    elseif type == DanImgType.eMark then
+        return string.format("kfpw_%d.png", d)
+    elseif type == DanImgType.eTitle then
+    end
+    return ""
+end
+
+-- 积分转换为胜点
+function CrossServerBattleScene:rateConvertToVictor( rate,lv )
+    local curLv = math.max(1, tonumber(lv) or 1)
+    local prevNeed = (curLv > 1 and PvpinterLvRelation.items[curLv - 1]) and PvpinterLvRelation.items[curLv - 1].needRating or 0
+    local k = math.max(1, tonumber(PvpinterConfig.items[1].exchangeRate) or 1)
+    return math.max(0, math.floor(0.5 + ((tonumber(rate) or 0) - prevNeed) / k))
+end""",
+        ),
+        (
+            """    -- 段位
+    local dan = PVPinterInfo and PVPinterInfo.Lv or DanType.eKing
+
+    if dan == 0 or dan == DanType.eBronze then
+        LVCHA = PvpinterLvRelation.items[dan].needRating
+    elseif dan < DanType.eMaster then
+        LVCHA = PvpinterLvRelation.items[dan].needRating - PvpinterLvRelation.items[dan - 1].needRating
+    else
+        LVCHA = PvpinterLvRelation.items[dan].needRating
+    end""",
+            """    -- 段位
+    local dan = math.max(1, math.min(8, (PVPinterInfo and tonumber(PVPinterInfo.Lv) and PVPinterInfo.Lv > 0) and PVPinterInfo.Lv or DanType.eBronze))
+
+    if dan <= DanType.eBronze then
+        LVCHA = PvpinterLvRelation.items[1].needRating
+    elseif dan < DanType.eMaster then
+        LVCHA = PvpinterLvRelation.items[dan].needRating - PvpinterLvRelation.items[dan - 1].needRating
+    else
+        LVCHA = PvpinterLvRelation.items[dan].needRating
+    end""",
+        ),
+        (
+            "        for i,v in ipairs(AnalysisStrResList(PvpinterLvRelation.items[PVPinterInfo.Lv].rankRewards)) do",
+            "        local curLvRow = PvpinterLvRelation.items[PVPinterInfo.Lv] or PvpinterLvRelation.items[1]\n"
+            '        local curRewStr = (curLvRow.lvUpRewardsFirst and curLvRow.lvUpRewardsFirst ~= "" and curLvRow.lvUpRewardsFirst) or curLvRow.victoryRewards\n'
+            "        for i,v in ipairs(AnalysisStrResList(curRewStr)) do",
+        ),
+        (
+            '            text = formatTime(data.Crdate - NetworkResData:getCurrentTime())..TR("前"),',
+            '            text = formatTime(math.max(0, NetworkResData:getCurrentTime() - (data.Crdate or 0)))..TR("前"),',
+        ),
+        (
+            "    local upgradeData = PvpinterLvRelation.items[PVPinterInfo.Lv + 1]",
+            "    local upgradeData = PvpinterLvRelation.items[PVPinterInfo.Lv + 1] or PvpinterLvRelation.items[PVPinterInfo.Lv]",
+        ),
+        (
+            "    if val.PVPinterFightLog then\n        table.insert(selfData.mBattleRecordList,1,val.PVPinterFightLog)",
+            "    if val.PVPinterFightLog then\n        selfData.mBattleRecordList = selfData.mBattleRecordList or {}\n        table.insert(selfData.mBattleRecordList,1,val.PVPinterFightLog)",
+        ),
+        (
+            """                if selfData.mIsSucess == 2 then
+                    battleStatus.win = 2
+                    battleStatus.lose = selfData.mTotalUpGrade - 2
+                elseif selfData.mIsSucess == 1 then
+                    battleStatus.lose = 2
+                    battleStatus.win = selfData.mTotalUpGrade - 2
+                end""",
+            """                if selfData.mIsSucess == 2 then
+                    battleStatus.win = 2
+                    battleStatus.lose = math.max(0, selfData.mTotalUpGrade - 2)
+                elseif selfData.mIsSucess == 1 then
+                    battleStatus.lose = 2
+                    battleStatus.win = math.max(0, selfData.mTotalUpGrade - 2)
+                end""",
+        ),
+        (
+            "    local limitTimes = VipModel.items[NetworkResData:getPlayerInfo().Vip].buyKuafuNum",
+            """    local vipLv = tonumber(NetworkResData:getPlayerInfo().Vip or 0) or 0
+    local rawLimit = tonumber(VipModel.items[vipLv] and VipModel.items[vipLv].buyKuafuNum or 0) or 0
+    local limitTimes = (rawLimit > 0) and rawLimit or (vipLv + 3)""",
+        ),
+    ])
+
+    patch_luac_text(src / "Challenge" / "CrossServerRankLayer.luac", [
+        (
+            """            -- 段位框
+            tempSprite = ui.newSprite(string.format("kfpw_%02d.png",tempData.PVPInterLv - 12))
+            tempSprite:setPosition(cc.p(tempCard:getContentSize().width / 2,tempCard:getContentSize().height / 2 + 10))
+            tempCard:addChild(tempSprite)
+
+            -- 段位
+            tempLabel = ui.newLabel({
+                text = PvpinterLvRelation.items[tempData.PVPInterLv].name,
+                font = _FONT_PANGWA,
+                color = ColorList.ccGold,
+                size = 24,
+                needOutLine = true,
+            })""",
+            """            local lvRow = PvpinterLvRelation.items[tempData.PVPInterLv or 1] or PvpinterLvRelation.items[1]
+            -- 段位框
+            tempSprite = ui.newSprite(lvRow.rankHeadFrame)
+            tempSprite:setPosition(cc.p(tempCard:getContentSize().width / 2,tempCard:getContentSize().height / 2 + 10))
+            tempCard:addChild(tempSprite)
+
+            -- 段位
+            tempLabel = ui.newLabel({
+                text = lvRow.name,
+                font = _FONT_PANGWA,
+                color = ColorList.ccGold,
+                size = 24,
+                needOutLine = true,
+            })""",
+        ),
+        (
+            "            totalPage = retVal.Value.TotalPage or 1",
+            "            totalPage = retVal.Value.TotalPage or 0",
+        ),
+        (
+            """            local tempLayer = require("Formation.PlayerFormationLayer").new({
+                isMyself = false,                           -- 是不是玩家自己
+                formationInfo = retVal.Value,               -- 阵容信息
+                battleSkills = retVal.Value.SkillInfos,     -- 上阵的主角技能
+                combatPet = retVal.Value.CombatPet,
+                playerLv = playerLv,                        -- 玩家等级
+            })""",
+            """            local fInfo = retVal.Value.Formation or retVal.Value
+            local tempLayer = require("Formation.PlayerFormationLayer").new({
+                isMyself = false,
+                formationInfo = fInfo,
+                battleSkills = fInfo.SkillInfos,
+                combatPet = fInfo.CombatPet,
+                playerLv = (fInfo.PlayerInfo and fInfo.PlayerInfo.Lv) or playerLv,
+            })""",
+        ),
+    ])
+
+    patch_luac_text(src / "Challenge" / "CrossServerRewardLayer.luac", [
+        (
+            "    self.mLevel = pargrams and pargrams.level or 21     --由于表结构问题，定死21为青铜等级",
+            "    self.mLevel = (pargrams and pargrams.level and PvpinterLvRelation.items[pargrams.level]) and pargrams.level or 1",
+        ),
+        (
+            """    local bgImage = {
+        [21] = {bg = "kfpw_28.png", hero = "kfpw_1.png"},
+        [22] = {bg = "kfpw_29.png", hero = "kfpw_2.png"},
+        [23] = {bg = "kfpw_30.png", hero = "kfpw_3.png"},
+        [24] = {bg = "kfpw_31.png", hero = "kfpw_4.png"},
+        [25] = {bg = "kfpw_32.png", hero = "kfpw_5.png"},
+        [26] = {bg = "kfpw_33.png", hero = "kfpw_6.png"},
+        [27] = {bg = "kfpw_34.png", hero = "kfpw_7.png"},
+        [100] = {bg = "kfpw_35.png", hero = "kfpw_8.png"},
+    }""",
+            """    local bgImage = {
+        [1] = {bg = "kfpw_28.png", hero = "kfpw_1.png"},
+        [2] = {bg = "kfpw_29.png", hero = "kfpw_2.png"},
+        [3] = {bg = "kfpw_30.png", hero = "kfpw_3.png"},
+        [4] = {bg = "kfpw_31.png", hero = "kfpw_4.png"},
+        [5] = {bg = "kfpw_32.png", hero = "kfpw_5.png"},
+        [6] = {bg = "kfpw_33.png", hero = "kfpw_6.png"},
+        [7] = {bg = "kfpw_34.png", hero = "kfpw_7.png"},
+        [8] = {bg = "kfpw_35.png", hero = "kfpw_8.png"},
+    }""",
+        ),
+        (
+            '        local tempGood = splitStrBySep(v.rankRewards,"||")',
+            '        local rewStr = (v.lvUpRewardsFirst and v.lvUpRewardsFirst ~= "" and v.lvUpRewardsFirst) or v.victoryRewards\n'
+            '        local tempGood = splitStrBySep(rewStr,"||")',
+        ),
+    ])
+
+    patch_luac_text(src / "Challenge" / "CrossServerBlanceLayer.luac", [
+        (
+            """    self.mLevel = pragrams and pragrams.level or 21
+    self.mUp = pragrams.isUp
+    self.mLevelImage = {
+        [21] = "kfpw_1.png",
+        [22] = "kfpw_2.png",
+        [23] = "kfpw_3.png",
+        [24] = "kfpw_4.png",
+        [25] = "kfpw_5.png",
+        [26] = "kfpw_6.png",
+        [27] = "kfpw_7.png",
+        [100] = "kfpw_8.png",
+    }""",
+            """    self.mLevel = (pragrams and pragrams.level and PvpinterLvRelation.items[pragrams.level]) and pragrams.level or 1
+    self.mUp = pragrams.isUp
+    self.mLevelImage = {
+        [1] = "kfpw_1.png",
+        [2] = "kfpw_2.png",
+        [3] = "kfpw_3.png",
+        [4] = "kfpw_4.png",
+        [5] = "kfpw_5.png",
+        [6] = "kfpw_6.png",
+        [7] = "kfpw_7.png",
+        [8] = "kfpw_8.png",
+    }""",
+        ),
+        (
+            "    local levelSprite = cc.Sprite:create(self.mLevelImage[self.mLevel])",
+            '    local levelSprite = cc.Sprite:create(self.mLevelImage[self.mLevel] or "kfpw_1.png")',
+        ),
+    ])
+
+    patch_luac_text(src / "Challenge" / "CrossServerShopLayer.luac", [
+        (
+            "    self.mLevel = pargrams and pargrams.level or 21     --由于表结构问题，定死21为青铜等级",
+            "    self.mLevel = (pargrams and pargrams.level and PvpinterLvRelation.items[pargrams.level]) and pargrams.level or 1",
+        ),
+        (
+            """        local goods = goodTemple[tonumber(tempData[2])]
+
+        --头像
+        local card = createCardNode({resourceTypeSub = tonumber(tempData[1]), modelId = tonumber(tempData[2]), cardShowAttrs = {CardShowAttr.eBorder}, isTouch = true})
+        bgSprite:addChild(card)
+        card:setPosition(cc.p(60,65))
+
+        --名字
+        local namelabel = ui.newLabel({
+            text = goods.name,
+            font = _FONT_PANGWA,
+            size = 24,
+            needOutLine = true
+        })
+        namelabel:setPosition(cc.p(120, 95))
+        namelabel:setColor(GetColorByQuality(goods.quality, 1))""",
+            """        local resType = tonumber(tempData[1])
+        local resModel = tonumber(tempData[2]) or 0
+        local resNum = tonumber(tempData[3]) or 1
+        local goods = (resModel > 0) and goodTemple[resModel] or nil
+        local itemName = (goods and goods.name) or (resType == 1128 and "Đá Cảm Ngộ") or (ResourcetypeSubName and ResourcetypeSubName[resType]) or ""
+        local itemQuality = (goods and goods.quality) or 15
+        local lvInfo = PvpinterLvRelation.items[self.mLevel] or PvpinterLvRelation.items[1]
+        local saleRate = (v.isSale == 1 and lvInfo and tonumber(lvInfo.sale)) or 1
+        local actualCost = math.max(1, math.floor((tonumber(useData[3]) or 0) * saleRate))
+
+        --头像
+        local card = createCardNode({resourceTypeSub = resType, modelId = resModel, num = resNum, cardShowAttrs = {CardShowAttr.eBorder, CardShowAttr.eNum}, isTouch = true})
+        bgSprite:addChild(card)
+        card:setPosition(cc.p(60,65))
+
+        --名字
+        local namelabel = ui.newLabel({
+            text = itemName,
+            font = _FONT_PANGWA,
+            size = 24,
+            needOutLine = true
+        })
+        namelabel:setPosition(cc.p(120, 95))
+        namelabel:setColor(GetColorByQuality(itemQuality, 1))""",
+        ),
+        (
+            '        local needlabel = ui.newLabel({\n            text = string.format(TR("{000000}消耗:{db_50062.png} {750721}X%s"), useData[3]),',
+            '        local needlabel = ui.newLabel({\n            text = string.format(TR("{000000}消耗:{db_50062.png} {750721}X%d"), actualCost),',
+        ),
+        (
+            "                            if self.mMedal < tonumber(useData[3]) then",
+            "                            if self.mMedal < actualCost then",
+        ),
+        (
+            "        if (self.mMedal < tonumber(useData[3])) or (self.mLevel < v.needPVPInteLv) or isFull then",
+            "        if (self.mMedal < actualCost) or (self.mLevel < v.needPVPInteLv) or isFull then",
+        ),
+    ])
+
+    patch_luac_text(src / "Challenge" / "CSBSecondScene.luac", [
+        (
+            """    local function createCheckOrGuessButton( data,parent,stage,position )
+        local clickCallback = nil
+        local textStr = TR("查看")
+        local isVisible = true
+        if self.mCurBattleStage == stage then
+            if not isGuessSomeStage(self.mCurStageType) then
+                textStr = TR("竞猜")
+                clickCallback = function ( ... )
+                    self:createGuessLayer(data)
+                end
+            else
+                isVisible = false
+            end
+        else
+            clickCallback = function ( ... )
+                self:createBattleRecordLayer(data,false)
+            end
+        end
+
+        if isVisible then
+            local guessButton = ui.newButton({
+                normalImage = "c_8.png",
+                text = textStr,
+                scale = 0.8,
+                position = position,--cc.p(cellSize.width * 0.5,cellSize.height * 0.15),
+                clickAction = clickCallback,
+            })
+            parent:addChild(guessButton)
+        end
+    end""",
+            """    local function createCheckOrGuessButton( data,parent,stage,position )
+        local canGuess = (stage >= StageType.eStage_2) and (not isGuessSomeStage(stage))
+        local watchPos = canGuess and cc.p(position.x - 52, position.y) or position
+        local watchButton = ui.newButton({
+            normalImage = "c_8.png",
+            text = TR("查看"),
+            scale = 0.78,
+            position = watchPos,
+            clickAction = function()
+                self:createBattleRecordLayer(data, false)
+            end,
+        })
+        parent:addChild(watchButton)
+        if canGuess then
+            local guessButton = ui.newButton({
+                normalImage = "c_7.png",
+                text = TR("竞猜"),
+                scale = 0.78,
+                position = cc.p(position.x + 52, position.y),
+                clickAction = function()
+                    self:createGuessLayer(data)
+                end,
+            })
+            parent:addChild(guessButton)
+        end
+    end""",
+        ),
+        (
+            "                    winSprite:setPosition(cc.p(i == 1 and 80 or -80,250))",
+            "                    winSprite:setPosition(cc.p(k == 1 and 80 or -80,250))",
+        ),
+        (
+            "        local worshipUse = AnalysisStrResList(PvpinterTopConfig.items[1].worshipUse)",
+            '        local worshipUseStr = (PvpinterTopConfig and PvpinterTopConfig.items and PvpinterTopConfig.items[1] and PvpinterTopConfig.items[1].worshipUse) or "1111,0,50"\n'
+            "        local worshipUse = AnalysisStrResList(worshipUseStr)",
+        ),
+        (
+            """function CSBSecondScene:requestGuessBattle( type,guid )
+    LoadingWait:begin(self)
+    HttpRequest("PVPinterTop", "Bet", {type,guid}, function( retVal )
+        LoadingWait:ends()
+        if retVal and retVal.Status == 0 then
+            ui.showFlashView({parent = self,text = TR("下注成功")})
+            -- 下注成功后,更新下我的竞猜信息
+            table.insert(selfData.guessInfo,retVal.Value.PVPinterTopBetInfo or {})""",
+            """function CSBSecondScene:requestGuessBattle( type,guid )
+    LoadingWait:begin(self)
+    HttpRequest("PVPinterTop", "Bet", {type,guid,self.mCurStageType,self.mCurGroupType}, function( retVal )
+        LoadingWait:ends()
+        if retVal and retVal.Status == 0 then
+            ui.showFlashView({parent = self,text = TR("下注成功")})
+            selfData.guessInfo = selfData.guessInfo or {}
+            table.insert(selfData.guessInfo,retVal.Value.PVPinterTopBetInfo or {})""",
+        ),
+        (
+            """            selfData.selfBattleReport = retVal.Value.BattleReport
+            self:createBattleRecordLayer(selfData.selfBattleReport,true)""",
+            """            selfData.selfBattleRecord = retVal.Value.BattleReport or {}
+            self:createBattleRecordLayer(selfData.selfBattleRecord,true)""",
+        ),
+        (
+            """            if retVal.Value.FightInfo.ClientRes then
+                self:startBattle(retVal.Value.FightInfo.ClientRes,data)
+            end""",
+            """            local res = retVal.Value.FightInfo and (retVal.Value.FightInfo.ClientRes or retVal.Value.FightInfo)
+            if res then
+                self:startBattle(res,data)
+            end""",
+        ),
+    ])
+
+    patch_luac_text(src / "Grab" / "TreasureDebrisLayer.luac", [
+        (
+            """                            --拥有数量
+                            local haveCount = ui.newLabel({
+                                text = string.format(TR("当前拥有数量:%s"), newTreasureDebris[i].Num),
+                                size = 26,
+                                needShadow = true
+                            })
+                            haveCount:setPosition(cc.p(mBgSize.width / 2 , mBgSize.height * 0.16 ))
+                            haveCount:setColor(ColorList.ccGreen)
+                            BgSprite:addChild(haveCount)
+                        end,
+                    })""",
+            """                            --拥有数量
+                            local haveCount = ui.newLabel({
+                                text = string.format(TR("当前拥有数量:%s"), newTreasureDebris[i].Num),
+                                size = 24,
+                                needShadow = true
+                            })
+                            haveCount:setPosition(cc.p(mBgSize.width * 0.34, mBgSize.height * 0.16))
+                            haveCount:setColor(ColorList.ccGreen)
+                            BgSprite:addChild(haveCount)
+
+                            local btnHuntMore = ui.newButton({
+                                normalImage = "c_7.png",
+                                text = "Tầm Bảo Tiếp",
+                                fontSize = 18,
+                                scale = 0.72,
+                                color = ColorList.ccWhite,
+                                outlineColor = ColorList.ccOutline,
+                                outlineSize = 2,
+                                position = cc.p(mBgSize.width * 0.76, mBgSize.height * 0.16),
+                                clickAction = function()
+                                    if target and not tolua.isnull(target) then
+                                        target:removeFromParent()
+                                    end
+                                    local grabScene = self:getParent():getParent():getParent():getParent()
+                                    local onClose = grabScene.mPargrams and grabScene.mPargrams.onCloseCallback
+                                    local callFunc = function()
+                                        local ttype = TreasureModel.items[treasureModel.ID].typeID
+                                        local selectType = (tonumber(ttype) == ResourcetypeSub.eBook) and 2 or 1
+                                        game.replaceScene(require("Grab.GrabTreasureScene").new({treasureId = treasureModel.ID, selectType = selectType, onCloseCallback = onClose}), "CCtransitionCrossFade", 0.0)
+                                    end
+                                    game.replaceScene(require("Grab.GrabListScene").new(treasureModel.ID, debrisID, grabScene:getTime(), callFunc), "CCtransitionCrossFade", 0)
+                                end,
+                            })
+                            BgSprite:addChild(btnHuntMore)
+                        end,
+                    })""",
+        ),
+        (
+            """    --合成按钮
+    self.mComposeBtn = ui.newButton({
+        normalImage   = "c_7.png",
+        text = TR("合成"),
+        fontSize = 30,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            self:requestCompose(treasure.ID)
+        end,
+        position = cc.p(self.bgSize.width * 0.8, self.bgSize.height * 0.17),
+    })
+    node:addChild(self.mComposeBtn)
+
+
+    --一键抢夺按钮
+    local oneKeyButton = ui.newButton({
+        normalImage   = "db_10.png",
+        text = TR("一键寻宝"),
+        fontSize = 22,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            require("Config.StaConfig")
+             local isOpen, retInfo = NetworkResData:modulePlayerIsOpen(ModuleSub.eOneKeyChallengeGrab)
+             if not isOpen then
+                 ui.showFlashView({parent = cc.Director:getInstance():getRunningScene(), text = retInfo.openMessage})
+                 return
+             end
+             if StaConfig.items[1].perUseNum > NetworkResData:getPlayerInfo().STA then
+                 showStaOrVitNotEnough(ResourcetypeSub.eSTA)
+                 return
+             end
+             --背包是否已满的判断
+             if checkBagSpace() == false then
+                 return
+             end
+
+            self:requestForOneKey(treasure.ID)
+        end,
+        position = cc.p(self.bgSize.width * 0.805, self.bgSize.height * 0.64),
+    })
+    node:addChild(oneKeyButton)""",
+            """    local maxComposeCount = 0
+    local curDebrisList = self.mTreasureList[index + 1] or {}
+    if #curDebrisList == #treasure.debrisModelIds and #curDebrisList > 0 then
+        maxComposeCount = 9999
+        for _, dv in pairs(curDebrisList) do
+            local n = tonumber(dv.Num) or 0
+            if n < maxComposeCount then
+                maxComposeCount = n
+            end
+        end
+    end
+
+    local function canLaunchOneKeyHunt()
+        require("Config.StaConfig")
+        local isOpen, retInfo = NetworkResData:modulePlayerIsOpen(ModuleSub.eOneKeyChallengeGrab)
+        if not isOpen then
+            ui.showFlashView({parent = cc.Director:getInstance():getRunningScene(), text = retInfo.openMessage})
+            return false
+        end
+        if StaConfig.items[1].perUseNum > NetworkResData:getPlayerInfo().STA then
+            showStaOrVitNotEnough(ResourcetypeSub.eSTA)
+            return false
+        end
+        if checkBagSpace() == false then
+            return false
+        end
+        return true
+    end
+
+    --Tầm bảo tiếp ngay cả khi đã đủ mảnh
+    local btnHuntNext = ui.newButton({
+        normalImage = "c_7.png",
+        text = "Tầm Bảo +1",
+        fontSize = 18,
+        scale = 0.72,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            if canLaunchOneKeyHunt() then
+                self:requestForOneKey(treasure.ID, 1)
+            end
+        end,
+        position = cc.p(self.bgSize.width * 0.60, self.bgSize.height * 0.16),
+    })
+    node:addChild(btnHuntNext)
+
+    --合成按钮
+    self.mComposeBtn = ui.newButton({
+        normalImage   = "c_7.png",
+        text = TR("合成"),
+        fontSize = 24,
+        scale = 0.76,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            self:requestCompose(treasure.ID)
+        end,
+        position = cc.p(self.bgSize.width * 0.77, self.bgSize.height * 0.16),
+    })
+    node:addChild(self.mComposeBtn)
+
+    --Hợp thành nhiều bảo vật 1 lần
+    local btnComposeAll = ui.newButton({
+        normalImage = "c_77.png",
+        text = (maxComposeCount > 1) and string.format("H.Thành x%d", maxComposeCount) or "H.Thành Tất",
+        fontSize = 18,
+        scale = 0.72,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            self:requestCompose(treasure.ID, 0)
+        end,
+        position = cc.p(self.bgSize.width * 0.94, self.bgSize.height * 0.16),
+    })
+    node:addChild(btnComposeAll)
+
+    --一键抢夺按钮
+    local oneKeyButton = ui.newButton({
+        normalImage   = "db_10.png",
+        text = TR("一键寻宝"),
+        fontSize = 22,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            if canLaunchOneKeyHunt() then
+                self:requestForOneKey(treasure.ID, self.canCompose and 1 or nil)
+            end
+        end,
+        position = cc.p(self.bgSize.width * 0.805, self.bgSize.height * 0.64),
+    })
+    node:addChild(oneKeyButton)""",
+        ),
+        (
+            """function TreasureDebrisLayer:requestCompose(treasureModelId)""",
+            """function TreasureDebrisLayer:requestCompose(treasureModelId, composeCount)""",
+        ),
+        (
+            """    if self.canCompose then
+        LoadingWait:begin(cc.Director:getInstance():getRunningScene())
+        HttpRequest("TreasureDebris","TreasureDebrisCompose", {treasureModelId}, handler(self, self.responseCompose))
+    else""",
+            """    if self.canCompose then
+        LoadingWait:begin(cc.Director:getInstance():getRunningScene())
+        local reqArgs = (composeCount ~= nil) and {treasureModelId, composeCount} or {treasureModelId}
+        HttpRequest("TreasureDebris","TreasureDebrisCompose", reqArgs, handler(self, self.responseCompose))
+    else""",
+        ),
+        (
+            """            ui.showFlashView({parent = cc.Director:getInstance():getRunningScene(), text = TR("宝物合成成功！")})""",
+            """            local compN = tonumber(event.Value and event.Value.ComposedCount) or 1
+            local compMsg = (compN > 1) and string.format("Đã hợp thành %d bảo vật!", compN) or TR("宝物合成成功！")
+            ui.showFlashView({parent = cc.Director:getInstance():getRunningScene(), text = compMsg})""",
+        ),
+        (
+            """function TreasureDebrisLayer:requestForOneKey(treasureModelId)
+    LoadingWait:begin(cc.Director:getInstance():getRunningScene())
+    HttpRequest("TreasureLoot","TreasureLootForOneKey", {treasureModelId}, handler(self, self.responseForKey))
+end""",
+            """function TreasureDebrisLayer:requestForOneKey(treasureModelId, allowContinue)
+    LoadingWait:begin(cc.Director:getInstance():getRunningScene())
+    local reqArgs = allowContinue and {treasureModelId, 1} or {treasureModelId}
+    HttpRequest("TreasureLoot","TreasureLootForOneKey", reqArgs, handler(self, self.responseForKey))
+end""",
+        ),
+    ])
+
+    FRIEND_DUEL_HELPER_LUA = """local function startFriendDuelFight(loadingParent, friend)
+    local targetId = friend and friend.PlayerId
+    local targetName = (friend and friend.Name) or "Bạn bè"
+    local targetFap = tonumber(friend and friend.FAP) or 0
+    if not targetId or targetId == "" then
+        return
+    end
+    LoadingWait:begin(loadingParent or cc.Director:getInstance():getRunningScene())
+    HttpRequest("Friend", "FriendFight", {targetId}, function(retVal)
+        LoadingWait:ends()
+        if not retVal or retVal.Status ~= 0 or not retVal.Value or not retVal.Value.FightInfo then
+            ui.showFlashView({parent = cc.Director:getInstance():getRunningScene(), text = "Không thể giao hữu lúc này"})
+            return
+        end
+        local fightVal = retVal.Value
+        local isWin = (tonumber(fightVal.IsWinFight) or 0) ~= 0
+        local displayInfo = getBattleDisplayInfo(BattleType.eArena)
+        require("ComBattle.BattleEntry"):startBattle({
+            data = fightVal.FightInfo,
+            skip = displayInfo.skip,
+            tuoguan = displayInfo.tuoguan,
+            skill = displayInfo.skill,
+            mapId = ConfigFunc:getBattleNodeBgList(),
+            callback = function()
+                local returnToFriends = function(dlg)
+                    if dlg and not tolua.isnull(dlg) then
+                        dlg:removeFromParent()
+                    end
+                    game.replaceScene(require("Friend.FriendScene").new(), "CCtransitionCrossFade", 0.0)
+                end
+                local verdict = isWin and "CHIẾN THẮNG" or "THẤT BẠI"
+                local box = require("Common.MessageBoxLayer").new({
+                    bgImage = "c_43.png",
+                    closeBtnImage = "c_15.png",
+                    title = TR("Kết Quả Giao Hữu"),
+                    content = string.format(
+                        "Trận giao hữu với %s (Lực chiến %d):\\n\\nKết quả: %s!\\n(Không tốn Hoạt Lực · Tự gửi chiến báo khi Đồng bộ)",
+                        tostring(fightVal.TargetName or targetName),
+                        tonumber(fightVal.TargetFAP) or targetFap,
+                        verdict
+                    ),
+                    leftBtnTitle = TR("Quay Lại"),
+                    leftBtnCallback = returnToFriends,
+                    returnAction = returnToFriends,
+                })
+                cc.Director:getInstance():getRunningScene():addChild(box, 256)
+            end,
+        })
+    end)
+end
+"""
+
+    patch_luac_text(src / "Friend" / "ContactLayer.luac", [
+        (
+            'local ContactLayer = class("ContactLayer", function()',
+            FRIEND_DUEL_HELPER_LUA + '\nlocal ContactLayer = class("ContactLayer", function()',
+        ),
+        (
+            """    --- 留言
+    self.mBtnConsort = ui.newButton({
+        normalImage = "c_7.png",
+        position = cc.p(self.mParentSize.width / 2, self.mParentSize.height * 0.6),
+        text = TR("留言"),
+        fontSize = 24,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            self.mBtnConsort:setVisible(false)
+            self.mBtnDelete:setVisible(false)
+            self.mBtnView:setVisible(false)
+            self.mBtnCancel:setVisible(true)
+            self.mBtnSend:setVisible(true)
+            self.mEditBox:setVisible(true)
+            self.mTitleLabel:setString(TR("内容:"))
+        end
+    })
+    self.mParentLayer:addChild(self.mBtnConsort)
+
+    --- 查看阵容
+    self.mBtnView = ui.newButton({
+        normalImage = "c_7.png",
+        position = cc.p(self.mParentSize.width / 2, self.mParentSize.height * 0.45),
+        text = TR("查看阵容"),
+        fontSize = 24,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            self:requestFomationInfo()
+        end
+    })
+    self.mParentLayer:addChild(self.mBtnView)
+
+    --- 删除
+    self.mBtnDelete = ui.newButton({
+        normalImage = "c_7.png",
+        position = cc.p(self.mParentSize.width / 2, self.mParentSize.height * 0.3),
+        text = TR("删除"),
+        fontSize = 24,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            self.mDeleteFriendCallback()
+            self:removeFromParent()
+        end
+    })
+    self.mParentLayer:addChild(self.mBtnDelete)""",
+            """    --- Giao Hữu (Đấu PvP 0 STA)
+    self.mBtnFight = ui.newButton({
+        normalImage = "c_77.png",
+        position = cc.p(self.mParentSize.width / 2, self.mParentSize.height * 0.63),
+        text = "Giao Hữu (Đấu)",
+        fontSize = 22,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            startFriendDuelFight(self, self.mFriend)
+        end
+    })
+    self.mParentLayer:addChild(self.mBtnFight)
+
+    --- 留言
+    self.mBtnConsort = ui.newButton({
+        normalImage = "c_7.png",
+        position = cc.p(self.mParentSize.width / 2, self.mParentSize.height * 0.49),
+        text = TR("留言"),
+        fontSize = 22,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            if self.mBtnFight then
+                self.mBtnFight:setVisible(false)
+            end
+            self.mBtnConsort:setVisible(false)
+            self.mBtnDelete:setVisible(false)
+            self.mBtnView:setVisible(false)
+            self.mBtnCancel:setVisible(true)
+            self.mBtnSend:setVisible(true)
+            self.mEditBox:setVisible(true)
+            self.mTitleLabel:setString(TR("内容:"))
+        end
+    })
+    self.mParentLayer:addChild(self.mBtnConsort)
+
+    --- 查看阵容
+    self.mBtnView = ui.newButton({
+        normalImage = "c_7.png",
+        position = cc.p(self.mParentSize.width / 2, self.mParentSize.height * 0.35),
+        text = TR("查看阵容"),
+        fontSize = 22,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            self:requestFomationInfo()
+        end
+    })
+    self.mParentLayer:addChild(self.mBtnView)
+
+    --- 删除
+    self.mBtnDelete = ui.newButton({
+        normalImage = "c_7.png",
+        position = cc.p(self.mParentSize.width / 2, self.mParentSize.height * 0.21),
+        text = TR("删除"),
+        fontSize = 22,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            self.mDeleteFriendCallback()
+            self:removeFromParent()
+        end
+    })
+    self.mParentLayer:addChild(self.mBtnDelete)""",
+        ),
+        (
+            """        clickAction = function()
+            self.mBtnView:setVisible(true)
+            self.mBtnConsort:setVisible(true)
+            self.mBtnDelete:setVisible(true)
+            self.mBtnCancel:setVisible(false)""",
+            """        clickAction = function()
+            if self.mBtnFight then
+                self.mBtnFight:setVisible(true)
+            end
+            self.mBtnView:setVisible(true)
+            self.mBtnConsort:setVisible(true)
+            self.mBtnDelete:setVisible(true)
+            self.mBtnCancel:setVisible(false)""",
+        ),
+    ])
+
+    patch_luac_text(src / "Friend" / "FriendScene.luac", [
+        (
+            'local FriendScene = class("FriendScene", function()',
+            FRIEND_DUEL_HELPER_LUA + '\nlocal FriendScene = class("FriendScene", function()',
+        ),
+        (
+            """    --- 交流
+    local btnContact = ui.newButton({
+        normalImage = "c_8.png",
+        position    = cc.p(215, 27),
+        text        = TR("交流"),
+        size        = cc.size(120,54),
+        fontSize    = 18,
+        clickAction = function()
+            self:addChild(require("Friend.ContactLayer").new(self, friend, function()
+                -- 请求删除
+                self:requestRemoveFriend(friend.PlayerId, function()
+                    for i, v in ipairs(self.mFriendList) do
+                        if v == data then
+                            table.remove(self.mFriendList, i)
+                            break
+                        end
+                    end
+                    self:refreshView()
+                    -- 删除后回调
+                    sliderview:reloadData()
+                end)
+            end))
+        end
+    })
+    lvItem:addChild(btnContact)
+
+    local btnImage = "c_8.png"
+    local btnText = ""
+    if friend.CanSendSTA == false then
+        btnImage = "c_8.png"
+        btnText = TR("已赠送")
+    end
+    --- 赠送耐力
+    local btnSendSTA
+    btnSendSTA = ui.newButton({
+        normalImage = btnImage,
+        position    = cc.p(95, 27),""",
+            """    --- 交流
+    local btnContact = ui.newButton({
+        normalImage = "c_8.png",
+        position    = cc.p(150, 27),
+        text        = TR("交流"),
+        scale       = 0.80,
+        fontSize    = 18,
+        clickAction = function()
+            self:addChild(require("Friend.ContactLayer").new(self, friend, function()
+                -- 请求删除
+                self:requestRemoveFriend(friend.PlayerId, function()
+                    for i, v in ipairs(self.mFriendList) do
+                        if v == data then
+                            table.remove(self.mFriendList, i)
+                            break
+                        end
+                    end
+                    self:refreshView()
+                    -- 删除后回调
+                    sliderview:reloadData()
+                end)
+            end))
+        end
+    })
+    lvItem:addChild(btnContact)
+
+    --- Đấu giao hữu 1 chạm
+    local btnDuel = ui.newButton({
+        normalImage = "c_77.png",
+        position    = cc.p(244, 27),
+        text        = "Đấu",
+        scale       = 0.78,
+        fontSize    = 18,
+        textColor   = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        clickAction = function()
+            startFriendDuelFight(self, friend)
+        end
+    })
+    lvItem:addChild(btnDuel)
+
+    local btnImage = "c_8.png"
+    local btnText = ""
+    if friend.CanSendSTA == false then
+        btnImage = "c_8.png"
+        btnText = TR("已赠送")
+    end
+    --- 赠送耐力
+    local btnSendSTA
+    btnSendSTA = ui.newButton({
+        normalImage = btnImage,
+        scale       = 0.80,
+        position    = cc.p(58, 27),""",
+        ),
+    ])
+
+def build_and_sign_work(work_dir: Path, out_name: str) -> Path:
     if not RELEASE_KEYSTORE.exists():
         raise FileNotFoundError(
             f"Missing release keystore outside repository: {RELEASE_KEYSTORE}"
@@ -3428,7 +5525,7 @@ def build_and_sign_release(out_name: str) -> Path:
     for p in (unsigned_apk, aligned_apk, signed_apk):
         p.unlink(missing_ok=True)
 
-    subprocess.run(["java", "-jar", str(APKTOOL_JAR), "b", str(STANDALONE_WORK), "-o", str(unsigned_apk)], check=True)
+    subprocess.run(["java", "-jar", str(APKTOOL_JAR), "b", str(work_dir), "-o", str(unsigned_apk)], check=True)
     subprocess.run([str(ZIPALIGN), "-f", "4", str(unsigned_apk), str(aligned_apk)], check=True)
     subprocess.run(
         [
@@ -3451,6 +5548,10 @@ def build_and_sign_release(out_name: str) -> Path:
     unsigned_apk.unlink(missing_ok=True)
     aligned_apk.unlink(missing_ok=True)
     return signed_apk
+
+
+def build_and_sign_release(out_name: str) -> Path:
+    return build_and_sign_work(STANDALONE_WORK, out_name)
 
 
 def main() -> None:

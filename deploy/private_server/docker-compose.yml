@@ -1,0 +1,16 @@
+services:
+  inuyasha-private:
+    build:
+      context: ../..
+      dockerfile: deploy/private_server/Dockerfile
+    container_name: inuyasha-private
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./private_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

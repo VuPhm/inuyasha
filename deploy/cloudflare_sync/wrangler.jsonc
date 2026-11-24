@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "inuyasha-sync-hub",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-01-01",
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true
+    },
+    "traces": {
+      "enabled": true
+    }
+  },
+  "vars": {
+    "SERVER_NAME": "InuYasha Hybrid Sync Hub",
+    "ALLOW_REGISTRATION": "true",
+    "MAX_ACCOUNTS": "100"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "inuyasha-sync-db",
+      "database_id": "f5f176e1-632d-4f8c-81ba-e7c035938db6"
+    }
+  ]
+}

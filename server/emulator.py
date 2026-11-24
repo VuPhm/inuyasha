@@ -53,12 +53,15 @@ from event_runtime import EventClock, EventRuntime, build_default_event_registry
 from gddh_handlers import GddhHandlersMixin
 from ggzj_handlers import GgzjHandlersMixin
 from guild_handlers import GuildHandlersMixin
+from hybrid_sync import HybridSyncManager
 from nightmare_handlers import (
     _CAMPAIGN_FAP_ANCHORS,
     NightmareHandlersMixin,
     interpolate_log_curve,
     scale_wave_to_target_fap,
 )
+from private_auth import AuthError, PrivateAuthManager, PrivateServerConfig
+from pvpinter_handlers import PVPinterHandlersMixin
 from reborn_handlers import RebornHandlersMixin, _default_reborn_step_info
 from social_handlers import SocialHandlersMixin
 from teambattle_handlers import TeambattleHandlersMixin
@@ -101,11 +104,13 @@ GAME_DATA_PATH = SERVER_DIR / "game_data.json"
 LEGACY_SAVE_STATE_PATH = SERVER_DIR / "save_state.json"
 SAVES_DIR = SERVER_DIR / "saves"
 DEV_SAVES_DIR = SERVER_DIR / "dev_saves"
+PRIVATE_SAVES_DIR = SERVER_DIR / "private_saves"
 NORMAL_STATE_PATH = SAVES_DIR / "normal_profile.json"
 DEBUG_STATE_PATH = SAVES_DIR / "debug_profile.json"
 AUDIT_LOG_PATH = SAVES_DIR / "audit_ledger.jsonl"
 RPC_TRACE_PATH = SERVER_DIR / "rpc_trace.log"
 DEV_RPC_TRACE_PATH = SERVER_DIR / "dev_rpc_trace.log"
+PRIVATE_RPC_TRACE_PATH = SERVER_DIR / "private_rpc_trace.log"
 
 ENV_PRESETS: dict[str, dict[str, Any]] = {
     "stable": {
@@ -117,6 +122,11 @@ ENV_PRESETS: dict[str, dict[str, Any]] = {
         "port": 8082,
         "data_dir": DEV_SAVES_DIR,
         "trace_path": DEV_RPC_TRACE_PATH,
+    },
+    "private": {
+        "port": 8080,
+        "data_dir": PRIVATE_SAVES_DIR,
+        "trace_path": PRIVATE_RPC_TRACE_PATH,
     },
 }
 
@@ -392,6 +402,7 @@ class ProfileStore(
     GddhHandlersMixin,
     SocialHandlersMixin,
     GuildHandlersMixin,
+    PVPinterHandlersMixin,
 ):
     """Single-profile game state & RPC engine backed by extracted VN/EN config."""
 
@@ -639,6 +650,8 @@ class ProfileStore(
         data.setdefault("reborn_goods", [])
         data.setdefault("reborn_shop", {})
         data.setdefault("equip_artifacts", {})
+        data.setdefault("lianti_dashi_step", 0)
+        data.setdefault("pvpinter", {})
         data.setdefault("ggzj", {})
         data.setdefault("gddh", {})
         self._ensure_social_container(data)
@@ -663,11 +676,11 @@ class ProfileStore(
         for h in data.get("heroes", []):
             h.setdefault("WarfareColorLv", 0)
             h.setdefault("WarfareLv", 0)
-            h.setdefault("LiantiLv", 0)
             h.setdefault("RebornStep", 0)
             h.setdefault("Lv", 1)
             h.setdefault("Step", 0)
             self._ensure_hero_reborn_fields(h)
+            self._ensure_hero_lianti_fields(h)
         data.setdefault("mates", {})
         for eq in data.get("equips", []):
             eq.setdefault("Step", 0)
@@ -938,6 +951,10 @@ class ProfileStore(
             "RebornStepInfo": _default_reborn_step_info(reborn_id),
             "RebornStep": 0,
             "LiantiLv": 0,
+            "LianTiNodeId": 1,
+            "LianTiNodeExp": 0,
+            "LvUpExp": self._lianti_lv_exp(0) or 130,
+            "LiantiInvested": {"gold": 0, "stones": {}},
             "WarfareColorLv": 0,
             "WarfareLv": 0,
             "HP": hp,
@@ -1369,9 +1386,15 @@ class ProfileStore(
             ap1 = int(ap1 * (1.0 + tr_ap_pct_bonus / 10000.0))
         def1 = hero_def + eq_def + set_def + star_bonus["DEF"] + glory_bonus["DEF"] + cheer_bonus["DEF"] + reborn_cheer["DEF"] + artifact_bonus["DEF"]
         gem_bonus = self._slot_gem_bonuses(slot)
-        ap1 += gem_bonus[431]
-        hp1 += gem_bonus[432]
-        def1 += gem_bonus[433]
+        hero_lianti = self._lianti_hero_bonuses(hero)
+        ap1 += gem_bonus[431] + hero_lianti["APADD"]
+        hp1 += gem_bonus[432] + hero_lianti["HPADD"]
+        def1 += gem_bonus[433] + hero_lianti["DEFADD"]
+        _dashi_step, lianti_damaddr, lianti_damcutr = (
+            self._lianti_dashi_bonuses(heroes_by_id)
+            if (include_player_star and hasattr(self, "state"))
+            else (0, 0, 0)
+        )
         if include_player_star and hasattr(self, "state") and self.state.get("fashions"):
             fashion = self._fashion_collection_stats()
             fashion_pr = self._fashion_pr_bonuses(int(slot.get("SlotId", 0)))
@@ -1427,8 +1450,9 @@ class ProfileStore(
             "CRId": int(cfg.get("CRID", 0)) + talent[307] + set_crid,
             "TEND": int(cfg.get("TEND", 0)) + talent[308] + set_tend,
             "CP": talent[404], "BCP": talent[405], "CPR": talent[406], "BCPR": talent[407],
-            "DAMADD": talent[408] + set_damadd + gem_bonus[408], "DAMCUT": talent[409] + set_damcut + gem_bonus[409],
-            "DAMADDR": talent[410] + tr_damaddr, "DAMCUTR": talent[411] + tr_damcutr,
+            "DAMADD": talent[408] + set_damadd + gem_bonus[408] + hero_lianti["DAMADD"],
+            "DAMCUT": talent[409] + set_damcut + gem_bonus[409] + hero_lianti["DAMCUT"],
+            "DAMADDR": talent[410] + tr_damaddr + lianti_damaddr, "DAMCUTR": talent[411] + tr_damcutr + lianti_damcutr,
             "RADAMADDR": talent[412], "RADAMCUTR": talent[413],
             "RBDAMADDR": talent[414], "RBDAMCUTR": talent[415],
             "RCDAMADDR": talent[416], "RCDAMCUTR": talent[417],
@@ -2527,6 +2551,21 @@ class ProfileStore(
             "LeaderBoard.Formation": self._rpc_leaderboard_formation,
             "PVPinter.GetPVPInterTopRank": self._rpc_pvpinter_top_rank,
             "PVPinter.GetSlotFormations": self._rpc_pvpinter_slot_formations,
+            "PVPinter.GetPVPInterInfo": self._rpc_pvpinter_get_info,
+            "PVPinter.GetPVPinterFightLog": self._rpc_pvpinter_get_fight_log,
+            "PVPinter.FightForMatch": self._rpc_pvpinter_fight_match,
+            "PVPinter.FightForUping": self._rpc_pvpinter_fight_uping,
+            "PVPinter.BuyFightCount": self._rpc_pvpinter_buy_fight_count,
+            "PVPinterShopinfo.ShopInfo": self._rpc_pvpinter_shop_info,
+            "PVPinterShopinfo.BuyShop": self._rpc_pvpinter_shop_buy,
+            "PVPinterTop.Open": self._rpc_pvpinter_top_open,
+            "PVPinterTop.GetOwnInfo": self._rpc_pvpinter_top_get_own_info,
+            "PVPinterTop.GetBattleReport": self._rpc_pvpinter_top_get_battle_report,
+            "PVPinterTop.GetOwnBattleReport": self._rpc_pvpinter_top_get_own_battle_report,
+            "PVPinterTop.GetBattleContent": self._rpc_pvpinter_top_get_battle_content,
+            "PVPinterTop.Bet": self._rpc_pvpinter_top_bet,
+            "PVPinterTop.BetReward": self._rpc_pvpinter_top_bet_reward,
+            "PvpinterTopWorshipInfo.Worship": self._rpc_pvpinter_top_worship,
             "PVPShop.PVPShopBuy": self._rpc_pvp_shop_buy,
             "PVPShop.ResetDaily": self._rpc_pvp_shop_reset_daily,
             "Daydayfund.GetInfo": self._rpc_daydayfund_get_info,
@@ -2548,6 +2587,7 @@ class ProfileStore(
             "Friend.PlayerSearch": self._rpc_friend_search,
             "Friend.DeleteFriend": self._rpc_friend_delete,
             "Friend.FriendApplyResponse": self._rpc_friend_apply_response,
+            "Friend.FriendFight": self._rpc_friend_fight,
             "FriendMessage.SendFriendSTA": self._rpc_friend_send_sta,
             "FriendMessage.BatchSendFriendSTA": self._rpc_friend_batch_send_sta,
             "FriendMessage.GetFriendSTAMessages": self._rpc_friend_get_sta_messages,
@@ -2596,6 +2636,9 @@ class ProfileStore(
             "Glory.GetGloryData": self._rpc_glory_get_data,
             "Glory.GloryLvUp": self._rpc_glory_lv_up,
             "Glory.GloryLvUpForOneKey": self._rpc_glory_lv_up_one_key,
+            "Lianti.Lianti": self._rpc_lianti_upgrade,
+            "Lianti.OneKeyLianti": self._rpc_lianti_one_key,
+            "Lianti.OneKeyFiveLvLianti": self._rpc_lianti_one_key_five_lv,
             "MysteryShop.GetInfo": self._rpc_mystery_shop_get_info,
             "MysteryShop.RefreshtGoodsList": self._rpc_mystery_shop_refresh,
             "MysteryShop.MysteryShopBuyGoods": self._rpc_mystery_shop_buy,
@@ -2754,6 +2797,7 @@ class ProfileStore(
         fn = handlers.get(key)
         handled = fn is not None
         self._sync_events()
+        before_lianti_dashi = int(self.state.get("lianti_dashi_step", 0))
         before_diamond = int(self.state.get("player", {}).get("Diamond", 0))
         with self.ledger.capture_diamond_debits() as diamond_debits:
             value = fn(data) if fn else {}
@@ -2792,12 +2836,16 @@ class ProfileStore(
         if key in {"Player.Login", "Player.Login_ForTest", "Player.NewPlayer"}:
             avatar: dict[str, Any] = {}
         elif key == "Player.GetInitData":
+            dashi_step = self._compute_lianti_dashi_step()
+            self.state["lianti_dashi_step"] = dashi_step
             avatar = {
                 "TimedActivityOpenInfo": timed_open,
                 "RedDotInfo": self._compute_red_dot_info(),
                 "EquipArtifactInfo": copy.deepcopy(self._compute_equip_artifact_state()[0]),
+                "LiantiDashiStep": dashi_step,
             }
         else:
+            after_lianti_dashi = self._compute_lianti_dashi_step()
             avatar = {k: v for k, v in self.state["player"].items() if k != "Lv"}
             if self._last_rpc_context.get("lv_changed"):
                 avatar["Lv"] = self.state["player"]["Lv"]
@@ -2805,6 +2853,14 @@ class ProfileStore(
                 avatar["XYCurCount"] = int(self.state.get("explore", {}).get("RemainNum", 15))
             if self._last_rpc_context.get("slots_changed"):
                 avatar["SlotInfo"] = self.state["slots"]
+            if after_lianti_dashi != before_lianti_dashi:
+                self.state["lianti_dashi_step"] = after_lianti_dashi
+                avatar["LiantiDashiStep"] = after_lianti_dashi
+                if "SlotInfo" not in avatar:
+                    self._recalc_all_slots_and_fap()
+                    avatar["SlotInfo"] = self.state["slots"]
+                    avatar["FAP"] = self.state["player"]["FAP"]
+                self.save()
             if self._last_rpc_context.get("goods_changed") is not None:
                 avatar["GoodsInfo"] = self._last_rpc_context["goods_changed"]
             if self._last_rpc_context.get("treasure_debris_changed") is not None:
@@ -3793,6 +3849,12 @@ class ProfileStore(
             "SkillInfos": [],
             "CombatPet": None,
         }
+
+    def _enqueue_hybrid_event(self, to_player_id: str, event_type: str, payload: dict[str, Any] | None = None) -> None:
+        mgr = getattr(self, "account_manager", None)
+        hs = getattr(mgr, "hybrid_sync", None) if mgr is not None else None
+        if hs is not None:
+            hs.enqueue_event(to_player_id, event_type, payload or {})
 
     def _get_peer_s1_profiles(self) -> list[ProfileStore]:
         if not callable(self.peer_profiles_fn):
@@ -6184,12 +6246,20 @@ class ProfileStore(
             return {}
 
         treasure_id = int(data[0]) if isinstance(data, list) and data else 0
+        allow_continue = bool(data[1]) if isinstance(data, list) and len(data) >= 2 and data[1] else False
         treasure = self.game_data["treasures"].get(str(treasure_id), {})
-        owned = {
-            int(row["TreasureDebrisModelId"])
-            for row in self.state["treasure_debris"] if int(row["Num"]) > 0
+        req_debris = [int(mid) for mid in treasure.get("debrisModelIds", [])]
+        owned_counts = {
+            int(row["TreasureDebrisModelId"]): int(row.get("Num", 0))
+            for row in self.state["treasure_debris"]
+            if int(row.get("Num", 0)) > 0
         }
-        missing = [mid for mid in treasure.get("debrisModelIds", []) if mid not in owned]
+        if allow_continue and req_debris:
+            min_owned = min(owned_counts.get(mid, 0) for mid in req_debris)
+            target_num = min_owned + 1
+            missing = [mid for mid in req_debris if owned_counts.get(mid, 0) < target_num]
+        else:
+            missing = [mid for mid in req_debris if owned_counts.get(mid, 0) <= 0]
         if not missing:
             self._last_rpc_context["status"] = -2010
             return {}
@@ -6225,6 +6295,7 @@ class ProfileStore(
 
     def _rpc_treasure_compose(self, data: Any) -> dict[str, Any]:
         treasure_model_id = int(data[0]) if isinstance(data, list) and data else 0
+        req_count = int(data[1]) if isinstance(data, list) and len(data) >= 2 and data[1] is not None else 1
         tr_cfg = self.game_data.get("treasures", {}).get(str(treasure_model_id))
         if not tr_cfg:
             self._last_rpc_context["status"] = -1
@@ -6236,15 +6307,18 @@ class ProfileStore(
 
         debris_list = self.state.setdefault("treasure_debris", [])
         by_model = {int(d["TreasureDebrisModelId"]): d for d in debris_list}
-        for did in req_debris:
-            entry = by_model.get(int(did))
-            if not entry or int(entry.get("Num", 0)) < 1:
-                return {"IsTreasureDebrisNotEnough": 0}
+        max_sets = min(int(by_model.get(int(did), {}).get("Num", 0)) for did in req_debris)
+        if req_count == 0:
+            compose_n = min(50, max_sets)
+        else:
+            compose_n = max(1, min(50, req_count))
+        if compose_n < 1 or max_sets < compose_n:
+            return {"IsTreasureDebrisNotEnough": 0}
 
         for did in req_debris:
             did_int = int(did)
             entry = by_model[did_int]
-            entry["Num"] = int(entry["Num"]) - 1
+            entry["Num"] = int(entry["Num"]) - compose_n
             if entry["Num"] <= 0:
                 self.state["treasure_debris"] = [
                     d for d in self.state["treasure_debris"] if int(d["TreasureDebrisModelId"]) != did_int
@@ -6253,12 +6327,12 @@ class ProfileStore(
 
         rtype = int(tr_cfg.get("typeID", 1402 if str(treasure_model_id).startswith("1402") else 1401))
         base_res = self._grant_resources_from_tuples(
-            [(rtype, treasure_model_id, 1)],
-            source=f"treasure_compose:{treasure_model_id}",
+            [(rtype, treasure_model_id, compose_n)],
+            source=f"treasure_compose:{treasure_model_id}:x{compose_n}",
             tx_prefix=f"compose:{self.profile_name}:{treasure_model_id}:{uuid.uuid4()}",
         )
         self.save()
-        return {"BaseGetGameResourceList": base_res}
+        return {"BaseGetGameResourceList": base_res, "ComposedCount": compose_n}
 
     def _elite_battle_info_payload(self) -> dict[str, Any]:
         el = self.state.setdefault("elite", {"fight_count": 3, "buy_count": 0, "consume_buy_count": 0, "nodes": {}})
@@ -6557,11 +6631,20 @@ class ProfileStore(
         self.save()
         return {"BaseGetGameResourceList": base_res}
 
+    def _private_cfg(self) -> PrivateServerConfig | None:
+        if getattr(self.account_manager, "private_mode", False):
+            return getattr(self.account_manager, "private_config", None)
+        return None
+
     def _rpc_player_charge_list(self, _data: Any) -> list[dict[str, Any]]:
         cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}})
         bought = {str(x) for x in cs.get("first_bought", [])}
+        cfg = self._private_cfg()
+        allow_1m = cfg.allow_instant_1m_recharge if cfg else True
         out: list[dict[str, Any]] = []
         for tier in CHARGE_TIERS:
+            if not allow_1m and tier["ProductId"] == "com.cmn.inuyasha.gem1000000":
+                continue
             is_first = tier["ProductId"] not in bought
             out.append(
                 {
@@ -6615,6 +6698,13 @@ class ProfileStore(
     def _rpc_player_charge_generate_order(self, data: Any) -> str:
         arg = data[0] if isinstance(data, list) and data else "com.cmn.inuyasha.gem60"
         tier = self._resolve_charge_tier(arg)
+        cfg = self._private_cfg()
+        if cfg and (
+            not cfg.allow_free_recharge
+            or (tier and tier["ProductId"] == "com.cmn.inuyasha.gem1000000" and not cfg.allow_instant_1m_recharge)
+        ):
+            self._last_rpc_context["status"] = -1
+            return ""
         if not tier:
             self._last_rpc_context["status"] = -1
             return ""
@@ -6736,8 +6826,21 @@ class ProfileStore(
         if tier is None:
             self._last_rpc_context["status"] = -1
             return {}
-        order_id = str(data[1]).strip() if len(data) >= 2 and data[1] is not None else ""
+        cfg = self._private_cfg()
+        if cfg and (
+            not cfg.allow_free_recharge
+            or (tier["ProductId"] == "com.cmn.inuyasha.gem1000000" and not cfg.allow_instant_1m_recharge)
+        ):
+            self._last_rpc_context["status"] = -1
+            return {}
         cs = self.state.setdefault("charge_state", {"first_bought": [], "drawn_boxes": [], "orders": {}, "card_orders": {}})
+        today = self.clock.today_str()
+        daily_rec = cs.get("daily_free_count")
+        cur_count = int(daily_rec.get("count", 0)) if isinstance(daily_rec, dict) and daily_rec.get("day") == today else 0
+        if cfg and cfg.max_free_recharge_per_day > 0 and cur_count >= int(cfg.max_free_recharge_per_day):
+            self._last_rpc_context["status"] = -1
+            return {}
+        order_id = str(data[1]).strip() if len(data) >= 2 and data[1] is not None else ""
         tx_key = None
         if order_id:
             ord_entry = cs.setdefault("orders", {}).get(order_id)
@@ -6752,6 +6855,8 @@ class ProfileStore(
             ord_entry["pray_tree_tracked"] = True
             ord_entry["period_economy_tracked"] = True
             tx_key = f"order:{self.profile_name}:{order_id}"
+        if cfg and cfg.max_free_recharge_per_day > 0:
+            cs["daily_free_count"] = {"day": today, "count": cur_count + 1}
         return self._apply_simulated_charge(
             tier,
             actor="player",
@@ -6784,7 +6889,8 @@ class ProfileStore(
     def _rpc_card_generate_order(self, data: Any) -> dict[str, Any]:
         cid = int(data[0]) if isinstance(data, list) and data else 1
         cfg = CARD_MODEL_CFG.get(cid)
-        if not cfg:
+        p_cfg = self._private_cfg()
+        if not cfg or (p_cfg and not p_cfg.allow_free_recharge):
             self._last_rpc_context["status"] = -1
             return {}
         order_id = f"CARDORD-{uuid.uuid4().hex[:14]}"
@@ -6801,7 +6907,8 @@ class ProfileStore(
     def _rpc_card_activity(self, data: Any) -> list[dict[str, Any]]:
         cid = int(data[0]) if isinstance(data, list) and data else 1
         cfg = CARD_MODEL_CFG.get(cid)
-        if not cfg:
+        p_cfg = self._private_cfg()
+        if not cfg or (p_cfg and not p_cfg.allow_free_recharge):
             self._last_rpc_context["status"] = -1
             return []
         order_id = str(data[1]).strip() if isinstance(data, list) and len(data) >= 2 and data[1] is not None else ""
@@ -8227,21 +8334,35 @@ class ProfileStore(
         old_max_rank = int(pvp.get("history_max_rank", old_rank))
         new_rank = min(old_rank, target_rank) if is_win else old_rank
         pvp["rank"] = new_rank
-        if is_win and peer is not None and target_rank < old_rank:
-            with peer._lock:
-                peer_pvp = peer.state.setdefault("pvp", {})
-                peer_pvp["rank"] = old_rank
-                peer._push_player_email(
-                    2,
-                    "Chiến báo Đấu Trường",
-                    f"{p.get('PlayerName', 'Đối thủ')} đã đánh bại bạn tại Đấu Trường (Hạng {target_rank} → {old_rank}).",
-                    send_player_id=str(p["PlayerId"]),
-                    send_player_name=str(p.get("PlayerName", "Đối thủ")),
-                    sub_module_id=2502,
-                    head_image_id=0,
-                    fashion_model_id=0,
+        if is_win and peer is not None:
+            if getattr(peer, "is_remote_peer", False):
+                pvp["arena_score"] = int(pvp.get("arena_score", 1000)) + 15
+                self._enqueue_hybrid_event(
+                    target_pid,
+                    "pvp_challenge_log",
+                    {
+                        "attacker_name": str(p.get("PlayerName", "Đối thủ")),
+                        "attacker_fap": int(p.get("FAP", 0)),
+                        "old_rank": old_rank,
+                        "new_rank": new_rank,
+                        "won": True,
+                    },
                 )
-                peer.save()
+            elif target_rank < old_rank:
+                with peer._lock:
+                    peer_pvp = peer.state.setdefault("pvp", {})
+                    peer_pvp["rank"] = old_rank
+                    peer._push_player_email(
+                        2,
+                        "Chiến báo Đấu Trường",
+                        f"{p.get('PlayerName', 'Đối thủ')} đã đánh bại bạn tại Đấu Trường (Hạng {target_rank} → {old_rank}).",
+                        send_player_id=str(p["PlayerId"]),
+                        send_player_name=str(p.get("PlayerName", "Đối thủ")),
+                        sub_module_id=2502,
+                        head_image_id=0,
+                        fashion_model_id=0,
+                    )
+                    peer.save()
 
         breakthrough_diamond = 0
         if is_win and new_rank < old_max_rank:
@@ -8350,33 +8471,34 @@ class ProfileStore(
         return {"TopRankList": top_steps}
 
     def _rpc_account_list(self, _data: Any) -> dict[str, Any]:
-        if self.account_manager is None:
-            return {"ActiveAccountId": "acct_1", "Accounts": []}
+        if self.account_manager is None or getattr(self.account_manager, "private_mode", False):
+            self._last_rpc_context["status"] = -1
+            return {}
         return self.account_manager.list_s1_accounts(ensure_slots=3)
 
     def _rpc_account_switch(self, data: Any) -> dict[str, Any]:
-        if self.account_manager is None:
+        if self.account_manager is None or getattr(self.account_manager, "private_mode", False):
             self._last_rpc_context["status"] = -1
             return {}
         target_acct = str(data[0]) if isinstance(data, list) and data else "acct_1"
         return self.account_manager.switch_s1_account(target_acct)
 
     def _rpc_account_create(self, data: Any) -> dict[str, Any]:
-        if self.account_manager is None:
+        if self.account_manager is None or getattr(self.account_manager, "private_mode", False):
             self._last_rpc_context["status"] = -1
             return {}
         label = str(data[0]) if isinstance(data, list) and data and data[0] else None
         return self.account_manager.create_s1_account(label=label)
 
     def _rpc_account_export(self, data: Any) -> dict[str, Any]:
-        if self.account_manager is None:
+        if self.account_manager is None or getattr(self.account_manager, "private_mode", False):
             self._last_rpc_context["status"] = -1
             return {}
         dest = str(data[0]) if isinstance(data, list) and data and data[0] else None
         return self.account_manager.export_save_bundle(dest_path=dest)
 
     def _rpc_account_import(self, data: Any) -> dict[str, Any]:
-        if self.account_manager is None:
+        if self.account_manager is None or getattr(self.account_manager, "private_mode", False):
             self._last_rpc_context["status"] = -1
             return {}
         src = str(data[0]) if isinstance(data, list) and data and data[0] else None
@@ -8968,7 +9090,15 @@ class ProfileStore(
             int(hero.get("RebornId", base_reborn_id)) > base_reborn_id
             or any(int(s.get("Status", 0)) == 1 for s in (hero.get("RebornStepInfo") or []))
         )
-        if cur_lv <= 1 and cur_step <= 0 and cur_reborn <= 0 and not has_reborn_progress and int(hero.get("LiantiLv", 0)) <= 0:
+        if (
+            cur_lv <= 1
+            and cur_step <= 0
+            and cur_reborn <= 0
+            and not has_reborn_progress
+            and int(hero.get("LiantiLv", 0)) <= 0
+            and int(hero.get("LianTiNodeId", 1)) <= 1
+            and int(hero.get("LianTiNodeExp", 0)) <= 0
+        ):
             self._last_rpc_context["status"] = -1
             return {}
 
@@ -9013,6 +9143,13 @@ class ProfileStore(
             if use_dupes > 0:
                 refund_tuples.append((1201, int(hero["HeroModelId"]), use_dupes))
         refund_tuples.extend(self._hero_reborn_refund_tuples(hero))
+        lianti_inv = hero.get("LiantiInvested") if isinstance(hero.get("LiantiInvested"), dict) else {}
+        inv_gold = int(lianti_inv.get("gold", 0) or 0)
+        if inv_gold > 0:
+            refund_tuples.append((1112, 0, inv_gold))
+        for gid_s, qty in (lianti_inv.get("stones") or {}).items():
+            if str(gid_s).isdigit() and int(qty) > 0:
+                refund_tuples.append((1605, int(gid_s), int(qty)))
 
         hero["Lv"] = 1
         hero["EXP"] = 0
@@ -9021,6 +9158,10 @@ class ProfileStore(
         hero["RebornStepInfo"] = _default_reborn_step_info(base_reborn_id)
         hero["RebornStep"] = 0
         hero["LiantiLv"] = 0
+        hero["LianTiNodeId"] = 1
+        hero["LianTiNodeExp"] = 0
+        hero["LvUpExp"] = self._lianti_lv_exp(0) or 130
+        hero["LiantiInvested"] = {"gold": 0, "stones": {}}
         hero["HP"] = int(cfg.get("HPBase", hero.get("HP", 100)))
         hero["AP"] = int(cfg.get("APBase", hero.get("AP", 20)))
         hero["DEF"] = int(cfg.get("DEFBase", hero.get("DEF", 10)))
@@ -9524,6 +9665,291 @@ class ProfileStore(
         self._last_rpc_context["slots_changed"] = True
         self.save()
         return self._glory_payload(active_type_id=type_id)
+
+    def _lianti_lv_exp(self, lv: int) -> int:
+        return int(self.game_data.get("lianti_lv", {}).get(str(int(lv)), {}).get("lvExp", 0))
+
+    def _lianti_max_lv(self) -> int:
+        tbl = self.game_data.get("lianti_lv", {})
+        if not tbl:
+            return 81
+        max_tbl = max((int(k) for k in tbl if str(k).isdigit()), default=81)
+        highest_upgradable = max((int(k) for k, v in tbl.items() if str(k).isdigit() and int(v.get("lvExp", 0)) > 0), default=-1)
+        return min(max_tbl, highest_upgradable + 1) if highest_upgradable >= 0 else 0
+
+    def _ensure_hero_lianti_fields(self, hero: dict[str, Any]) -> None:
+        max_lv = self._lianti_max_lv()
+        lv = max(0, min(max_lv, int(hero.get("LiantiLv", 0))))
+        hero["LiantiLv"] = lv
+        lv_exp = self._lianti_lv_exp(lv)
+        if lv_exp <= 0:
+            hero["LianTiNodeId"] = 5
+            hero["LvUpExp"] = 100
+            hero["LianTiNodeExp"] = 100
+        else:
+            hero["LianTiNodeId"] = max(1, min(5, int(hero.get("LianTiNodeId", 1))))
+            hero["LvUpExp"] = lv_exp
+            hero["LianTiNodeExp"] = max(0, min(lv_exp - 1, int(hero.get("LianTiNodeExp", 0))))
+        inv = hero.get("LiantiInvested")
+        if not isinstance(inv, dict):
+            inv = {}
+        inv.setdefault("gold", 0)
+        if not isinstance(inv.get("stones"), dict):
+            inv["stones"] = {}
+        hero["LiantiInvested"] = inv
+
+    def _lianti_hero_bonuses(self, hero: dict[str, Any] | None) -> dict[str, int]:
+        if not hero:
+            return {"HPADD": 0, "APADD": 0, "DEFADD": 0, "DAMADD": 0, "DAMCUT": 0}
+        row = self.game_data.get("lianti_lv", {}).get(str(int(hero.get("LiantiLv", 0))), {})
+        return {
+            "HPADD": int(row.get("HPADD", 0)),
+            "APADD": int(row.get("APADD", 0)),
+            "DEFADD": int(row.get("DEFADD", 0)),
+            "DAMADD": int(row.get("DAMADD", 0)),
+            "DAMCUT": int(row.get("DAMCUT", 0)),
+        }
+
+    def _compute_lianti_dashi_step(self, heroes_by_id: dict[str, dict[str, Any]] | None = None) -> int:
+        if not isinstance(getattr(self, "state", None), dict):
+            return 0
+        hmap = heroes_by_id if heroes_by_id is not None else {h["Id"]: h for h in self.state.get("heroes", [])}
+        deployed: list[dict[str, Any]] = []
+        for slot in self.state.get("slots", [])[:6]:
+            hid = slot.get("HeroId")
+            if hid and hid != EMPTY_ENTITY_ID and hid in hmap:
+                deployed.append(hmap[hid])
+        if len(deployed) < 6:
+            return 0
+        min_lv = min(int(h.get("LiantiLv", 0)) for h in deployed)
+        best = 0
+        for row in self.game_data.get("lianti_dashi", {}).values():
+            step_num = int(row.get("liantiDashiStep", 0))
+            need_lv = int(row.get("needLiantiLv", 999))
+            if min_lv >= need_lv and step_num > best:
+                best = step_num
+        return best
+
+    def _lianti_dashi_bonuses(self, heroes_by_id: dict[str, dict[str, Any]] | None = None) -> tuple[int, int, int]:
+        step = self._compute_lianti_dashi_step(heroes_by_id)
+        if step <= 0:
+            return (0, 0, 0)
+        row = self.game_data.get("lianti_dashi", {}).get(str(step), {})
+        return (step, int(row.get("DAMADDR", 0)), int(row.get("DAMCUTR", 0)))
+
+    @staticmethod
+    def _lianti_stone_gold_cost(stone_row: dict[str, Any]) -> int:
+        reqs = _parse_resource_str(str(stone_row.get("useConsume", "1112,0,1000")))
+        return sum(qty for rtype, _mid, qty in reqs if rtype == 1112)
+
+    def _apply_lianti_exp(self, hero: dict[str, Any], gain: int) -> None:
+        max_lv = self._lianti_max_lv()
+        self._ensure_hero_lianti_fields(hero)
+        if self._lianti_lv_exp(hero["LiantiLv"]) <= 0 or gain <= 0:
+            return
+        hero["LianTiNodeExp"] = int(hero["LianTiNodeExp"]) + int(gain)
+        while int(hero["LianTiNodeExp"]) >= int(hero["LvUpExp"]) and int(hero["LiantiLv"]) < max_lv:
+            cur_lv_exp = self._lianti_lv_exp(hero["LiantiLv"])
+            if cur_lv_exp <= 0:
+                break
+            hero["LianTiNodeExp"] = int(hero["LianTiNodeExp"]) - cur_lv_exp
+            hero["LianTiNodeId"] = int(hero["LianTiNodeId"]) + 1
+            if hero["LianTiNodeId"] > 5:
+                hero["LiantiLv"] = int(hero["LiantiLv"]) + 1
+                next_lv_exp = self._lianti_lv_exp(hero["LiantiLv"])
+                if next_lv_exp <= 0 or hero["LiantiLv"] >= max_lv:
+                    hero["LianTiNodeId"] = 5
+                    hero["LvUpExp"] = 100
+                    hero["LianTiNodeExp"] = 100
+                    break
+                hero["LianTiNodeId"] = 1
+                hero["LvUpExp"] = next_lv_exp
+
+    def _build_lianti_info(self, hero: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "HeroId": hero["Id"],
+            "LiantiLv": int(hero["LiantiLv"]),
+            "LvUpExp": int(hero["LvUpExp"]),
+            "LianTiNodeExp": int(hero["LianTiNodeExp"]),
+            "LianTiNodeId": int(hero["LianTiNodeId"]),
+        }
+
+    def _consume_goods_multi(self, goods_model_id: int, count: int) -> bool:
+        rem = int(count)
+        if rem <= 0:
+            return True
+        avail = sum(
+            int(g.get("Num", 0))
+            for g in self.state.get("goods", [])
+            if int(g.get("GoodsModelId", 0)) == goods_model_id
+        )
+        if avail < rem:
+            return False
+        for g in list(self.state.get("goods", [])):
+            if int(g.get("GoodsModelId", 0)) != goods_model_id:
+                continue
+            cur = int(g.get("Num", 0))
+            if cur <= 0:
+                continue
+            take = min(cur, rem)
+            g["Num"] = cur - take
+            rem -= take
+            if g["Num"] <= 0:
+                self.state["goods"].remove(g)
+            if rem <= 0:
+                break
+        self._mark_goods_changed(goods_model_id)
+        return True
+
+    def _lianti_commit(
+        self, hero: dict[str, Any], stones_used: Counter[int], gold_spent: int, source: str
+    ) -> dict[str, Any]:
+        player = self.state["player"]
+        for gid, qty in stones_used.items():
+            if qty > 0:
+                self._consume_goods_multi(gid, qty)
+                stones_inv = hero["LiantiInvested"].setdefault("stones", {})
+                stones_inv[str(gid)] = int(stones_inv.get(str(gid), 0)) + int(qty)
+        if gold_spent > 0:
+            self.ledger.apply_player_delta(
+                player,
+                self.profile_name,
+                "Gold",
+                -gold_spent,
+                source=source,
+            )
+            hero["LiantiInvested"]["gold"] = int(hero["LiantiInvested"].get("gold", 0)) + int(gold_spent)
+        self._recalc_all_slots_and_fap()
+        self._last_rpc_context["slots_changed"] = True
+        self.save()
+        return {"LiantiInfo": self._build_lianti_info(hero)}
+
+    def _lianti_validate_hero_and_open(self, hero_id: str) -> dict[str, Any] | None:
+        open_lv = int(self.game_data.get("module_subs", {}).get("5700", {}).get("openLv", 34))
+        if int(self.state["player"].get("Lv", 1)) < open_lv:
+            self._last_rpc_context["status"] = -1
+            return None
+        hero = next((h for h in self.state.get("heroes", []) if str(h.get("Id")) == hero_id), None)
+        if not hero:
+            self._last_rpc_context["status"] = -1
+            return None
+        self._ensure_hero_lianti_fields(hero)
+        if self._lianti_lv_exp(hero["LiantiLv"]) <= 0:
+            self._last_rpc_context["status"] = -1
+            return None
+        return hero
+
+    def _rpc_lianti_upgrade(self, data: Any) -> dict[str, Any]:
+        if not isinstance(data, list) or len(data) < 2:
+            self._last_rpc_context["status"] = -1
+            return {}
+        hero = self._lianti_validate_hero_and_open(str(data[0]))
+        if not hero:
+            return {}
+        try:
+            gid = int(data[1])
+        except (TypeError, ValueError):
+            self._last_rpc_context["status"] = -1
+            return {}
+        stone_row = self.game_data.get("lianti_stone_exp", {}).get(str(gid))
+        if not stone_row:
+            self._last_rpc_context["status"] = -1
+            return {}
+        gold_cost = self._lianti_stone_gold_cost(stone_row)
+        avail = sum(
+            int(g.get("Num", 0)) for g in self.state.get("goods", []) if int(g.get("GoodsModelId", 0)) == gid
+        )
+        if avail < 1 or int(self.state["player"].get("Gold", 0)) < gold_cost:
+            self._last_rpc_context["status"] = -1
+            return {}
+        gain = random.randint(int(stone_row.get("expMin", 5)), int(stone_row.get("expMax", 15)))
+        self._apply_lianti_exp(hero, gain)
+        return self._lianti_commit(hero, Counter({gid: 1}), gold_cost, source=f"lianti:{gid}")
+
+    def _rpc_lianti_one_key(self, data: Any) -> dict[str, Any]:
+        if not isinstance(data, list) or len(data) < 3 or not isinstance(data[2], list):
+            self._last_rpc_context["status"] = -1
+            return {}
+        hero = self._lianti_validate_hero_and_open(str(data[0]))
+        if not hero:
+            return {}
+        try:
+            gid = int(data[1])
+        except (TypeError, ValueError):
+            self._last_rpc_context["status"] = -1
+            return {}
+        stone_row = self.game_data.get("lianti_stone_exp", {}).get(str(gid))
+        if not stone_row or not data[2]:
+            self._last_rpc_context["status"] = -1
+            return {}
+        exp_min = int(stone_row.get("expMin", 5))
+        exp_max = int(stone_row.get("expMax", 15))
+        gold_cost = self._lianti_stone_gold_cost(stone_row)
+        avail = sum(
+            int(g.get("Num", 0)) for g in self.state.get("goods", []) if int(g.get("GoodsModelId", 0)) == gid
+        )
+        rem_gold = int(self.state["player"].get("Gold", 0))
+        used = 0
+        total_gold = 0
+        for raw_exp in data[2]:
+            if self._lianti_lv_exp(hero["LiantiLv"]) <= 0 or avail < 1 or rem_gold < gold_cost:
+                break
+            try:
+                gain = max(exp_min, min(exp_max, int(raw_exp)))
+            except (TypeError, ValueError):
+                gain = exp_min
+            avail -= 1
+            rem_gold -= gold_cost
+            used += 1
+            total_gold += gold_cost
+            self._apply_lianti_exp(hero, gain)
+        if used <= 0:
+            self._last_rpc_context["status"] = -1
+            return {}
+        return self._lianti_commit(hero, Counter({gid: used}), total_gold, source=f"lianti_one_key:{gid}x{used}")
+
+    def _rpc_lianti_one_key_five_lv(self, data: Any) -> dict[str, Any]:
+        if not isinstance(data, list) or not data:
+            self._last_rpc_context["status"] = -1
+            return {}
+        hero = self._lianti_validate_hero_and_open(str(data[0]))
+        if not hero:
+            return {}
+        target_lv = min(self._lianti_max_lv(), int(hero["LiantiLv"]) + 5)
+        stone_rows = sorted(
+            self.game_data.get("lianti_stone_exp", {}).values(),
+            key=lambda r: int(r.get("expMax", 0)),
+            reverse=True,
+        )
+        qty_by_gid: dict[int, int] = {}
+        for g in self.state.get("goods", []):
+            mid = int(g.get("GoodsModelId", 0))
+            if str(mid) in self.game_data.get("lianti_stone_exp", {}):
+                qty_by_gid[mid] = qty_by_gid.get(mid, 0) + int(g.get("Num", 0))
+        rem_gold = int(self.state["player"].get("Gold", 0))
+        stones_used: Counter[int] = Counter()
+        total_gold = 0
+        while int(hero["LiantiLv"]) < target_lv and self._lianti_lv_exp(hero["LiantiLv"]) > 0:
+            picked = None
+            for row in stone_rows:
+                gid = int(row["goodsModelId"])
+                gcost = self._lianti_stone_gold_cost(row)
+                if qty_by_gid.get(gid, 0) >= 1 and rem_gold >= gcost:
+                    picked = (row, gid, gcost)
+                    break
+            if not picked:
+                break
+            row, gid, gcost = picked
+            qty_by_gid[gid] -= 1
+            rem_gold -= gcost
+            stones_used[gid] += 1
+            total_gold += gcost
+            gain = random.randint(int(row.get("expMin", 5)), int(row.get("expMax", 15)))
+            self._apply_lianti_exp(hero, gain)
+        if not stones_used:
+            self._last_rpc_context["status"] = -1
+            return {}
+        return self._lianti_commit(hero, stones_used, total_gold, source=f"lianti_five:{hero['HeroModelId']}")
 
     def _rpc_gift_lv_bags(self, _data: Any) -> dict[str, Any]:
         """Return claimable level gift IDs per LevelGiftLayer.lua:112-119."""
@@ -10182,6 +10608,12 @@ class ProfileStore(
                 continue
             seen_pids.add(pid)
             slots = prof.state.get("slots", [])
+            pvp_inter = prof.state.get("pvpinter", {})
+            pi_lv = max(1, min(8, int(pvp_inter.get("lv", 1) or int(p.get("PVPInterLv", 1) or 1))))
+            pi_rate = int(pvp_inter.get("rate", int(p.get("Lv", 1)) * 10))
+            pi_tot = int(pvp_inter.get("total_fights", 0))
+            pi_wins = int(pvp_inter.get("win_count", 0))
+            pi_wr = int(round(100 * pi_wins / pi_tot)) if pi_tot > 0 else 100
             candidates.append(
                 {
                     "Id": pid,
@@ -10194,6 +10626,9 @@ class ProfileStore(
                     "ServerName": "S1 - Chiến Quốc",
                     "Zone": "S1 - Chiến Quốc",
                     "PraiseNum": 0,
+                    "PVPInterLv": pi_lv,
+                    "Rate": pi_rate,
+                    "WinRate": pi_wr,
                 }
             )
 
@@ -10202,6 +10637,7 @@ class ProfileStore(
                 bot = self._arena_bot_profile(r, st)
                 bot_id = f"cs-bot:{st}:{r}"
                 srv_name = self._CROSS_SERVER_NAMES[(st + r) % len(self._CROSS_SERVER_NAMES)]
+                bot_dan = min(8, max(1, st + (3 if r <= 3 else (2 if r <= 12 else 1))))
                 candidates.append(
                     {
                         "Id": bot_id,
@@ -10214,6 +10650,9 @@ class ProfileStore(
                         "ServerName": srv_name,
                         "Zone": srv_name,
                         "PraiseNum": 0,
+                        "PVPInterLv": bot_dan,
+                        "Rate": max(100, bot_dan * 120 + max(0, 60 - r)),
+                        "WinRate": max(55, min(95, 92 - r // 2)),
                     }
                 )
 
@@ -10223,9 +10662,12 @@ class ProfileStore(
             entry["Rank"] = idx
         return ranked
 
-    def _rpc_pvpinter_top_rank(self, _data: Any) -> dict[str, Any]:
-        """Return cross-server Top-50 ranking for RankScene Tab 3 (eCrossServerRank)."""
-        return {"PVPinterTopRank": self._build_cross_server_rank_entries()}
+    def _rpc_pvpinter_top_rank(self, data: Any) -> dict[str, Any]:
+        """Return cross-server Top-50 ranking for RankScene Tab 3 & CrossServerRankLayer."""
+        page = int(data[0]) if isinstance(data, list) and data and data[0] is not None else 0
+        if page > 0:
+            return {"TotalPage": 0, "PVPinterTopRank": []}
+        return {"TotalPage": 0, "PVPinterTopRank": self._build_cross_server_rank_entries()}
 
     def _rpc_pvpinter_slot_formations(self, data: Any) -> dict[str, Any]:
         """Return full Formation snapshot for RankScene cross-server tab inspection."""
@@ -10255,7 +10697,7 @@ class ProfileStore(
 
 
 class GameEmulatorState:
-    """Multi-profile coordinator hosting NORMAL_PROFILE (ServerId=1) and DEBUG_PROFILE (ServerId=2)."""
+    """Multi-profile coordinator hosting NORMAL_PROFILE (ServerId=1), DEBUG_PROFILE (ServerId=2), or Private Server mode."""
 
     def __init__(
         self,
@@ -10268,10 +10710,13 @@ class GameEmulatorState:
         trace_path: Path | None = None,
         env: str = "stable",
         data_dir: Path | None = None,
+        private_mode: bool | None = None,
+        private_config: PrivateServerConfig | None = None,
     ) -> None:
         self.persist = persist
         self.default_profile = default_profile
         self.env = env if env in ENV_PRESETS else "stable"
+        self.private_mode = (self.env == "private") if private_mode is None else bool(private_mode)
         preset = ENV_PRESETS[self.env]
         resolved_dir = Path(data_dir) if data_dir is not None else Path(preset["data_dir"])
         self.data_dir = resolved_dir
@@ -10294,7 +10739,40 @@ class GameEmulatorState:
             vip_model=self.game_data.get("vip_model", {}),
         )
         self._acct_lock = threading.RLock()
+        self._rpc_lock = threading.RLock()
         self.accounts_index_path = resolved_dir / "accounts_index.json"
+        self.private_config: PrivateServerConfig | None = None
+        self.auth: PrivateAuthManager | None = None
+        self.hybrid_sync: HybridSyncManager | None = None
+
+        if self.private_mode:
+            if persist:
+                self.data_dir.mkdir(parents=True, exist_ok=True)
+            self.private_config = (
+                private_config
+                if private_config is not None
+                else PrivateServerConfig.load(self.data_dir / "private_server_config.json", persist=persist)
+            )
+            self.active_account_id = ""
+            self.s1_meta = {}
+            self.profiles = {}
+            self.s1_accounts = {}
+            self.auth = PrivateAuthManager(self.data_dir, self)
+            if self.private_config.expose_debug_server:
+                self.profiles["debug"] = ProfileStore(
+                    "debug",
+                    self.game_data,
+                    self.ledger,
+                    state_path=resolved_debug,
+                    persist=persist,
+                    reset=False,
+                    legacy_seed_path=None,
+                    trace_path=self.trace_path if persist else None,
+                    clock=self.clock,
+                    account_manager=self,
+                )
+            return
+
         self.active_account_id = "acct_1"
         self.s1_meta: dict[str, dict[str, Any]] = {
             "acct_1": {
@@ -10340,7 +10818,9 @@ class GameEmulatorState:
         self.s1_accounts: dict[str, ProfileStore] = {
             "acct_1": normal_store,
         }
+        self._explicit_s1_slots: bool = False
         self._init_s1_accounts()
+        self.hybrid_sync = HybridSyncManager(self.data_dir, self, persist=persist)
 
     def _init_s1_accounts(self) -> None:
         seed_dir_env = os.environ.get("INUYASHA_SEED_DIR", "").strip()
@@ -10368,16 +10848,28 @@ class GameEmulatorState:
         if self.persist and self.accounts_index_path.exists():
             try:
                 idx_data = json.loads(self.accounts_index_path.read_text(encoding="utf-8"))
+                self._explicit_s1_slots = bool(idx_data.get("explicit_slots", False))
+                saved_aids: set[str] = set()
                 for meta in idx_data.get("accounts", []):
                     aid = str(meta.get("account_id", ""))
-                    if not aid or aid == "acct_1":
-                        if aid == "acct_1" and meta.get("label"):
+                    if not aid:
+                        continue
+                    saved_aids.add(aid)
+                    if aid == "acct_1":
+                        if meta.get("label"):
                             self.s1_meta["acct_1"]["label"] = str(meta["label"])
                         continue
                     self._materialize_s1_account(meta)
+                if self._explicit_s1_slots and "acct_1" not in saved_aids and len(self.s1_accounts) > 1:
+                    self.s1_accounts.pop("acct_1", None)
+                    self.s1_meta.pop("acct_1", None)
                 active_id = str(idx_data.get("active_account_id", "acct_1"))
                 if active_id in self.s1_accounts:
                     self.active_account_id = active_id
+                elif self.s1_accounts:
+                    self.active_account_id = next(iter(self.s1_accounts))
+                if "acct_1" not in self.s1_accounts and self.active_account_id in self.s1_accounts:
+                    self.profiles["normal"] = self.s1_accounts[self.active_account_id]
             except Exception:
                 pass
 
@@ -10446,6 +10938,7 @@ class GameEmulatorState:
         payload = {
             "schema_version": 1,
             "active_account_id": self.active_account_id,
+            "explicit_slots": bool(getattr(self, "_explicit_s1_slots", False)),
             "accounts": ordered,
             "updated_at": int(time.time()),
         }
@@ -10453,6 +10946,8 @@ class GameEmulatorState:
 
     def ensure_s1_account_slots(self, min_slots: int = 3) -> None:
         with self._acct_lock:
+            if getattr(self, "_explicit_s1_slots", False):
+                return
             changed = False
             for slot in range(2, min_slots + 1):
                 aid = f"acct_{slot}"
@@ -10472,9 +10967,20 @@ class GameEmulatorState:
             if changed or (self.persist and not self.accounts_index_path.exists()):
                 self._save_accounts_index()
 
-    def get_s1_peer_profiles(self, caller: ProfileStore | None = None) -> list[ProfileStore]:
+    def get_s1_peer_profiles(self, caller: ProfileStore | None = None) -> list[Any]:
+        caller_pid = str(caller.state.get("player", {}).get("PlayerId", "")) if caller is not None else ""
         with self._acct_lock:
-            return [p for p in self.s1_accounts.values() if p is not caller]
+            local_peers: list[Any] = [p for p in self.s1_accounts.values() if p is not caller]
+        seen_pids = {str(p.state.get("player", {}).get("PlayerId", "")) for p in local_peers}
+        if caller_pid:
+            seen_pids.add(caller_pid)
+        if self.hybrid_sync is not None:
+            for remote in self.hybrid_sync.get_peer_proxies(exclude_player_id=caller_pid):
+                rpid = str(remote.state.get("player", {}).get("PlayerId", ""))
+                if rpid and rpid not in seen_pids:
+                    seen_pids.add(rpid)
+                    local_peers.append(remote)
+        return local_peers
 
     def _summarize_s1_account(self, aid: str) -> dict[str, Any]:
         meta = self.s1_meta[aid]
@@ -10601,6 +11107,53 @@ class GameEmulatorState:
             store.save()
             info = self.list_s1_accounts(ensure_slots=max(3, len(self.s1_accounts)))
             info["ResetAccount"] = self._summarize_s1_account(aid)
+            info["SafetyBackupPath"] = str(safety_path)
+            return info
+
+    def delete_s1_account(self, account_id: str | None = None) -> dict[str, Any]:
+        """Permanently delete an S1 account (after safety backup), keeping at least 1 account."""
+        with self._acct_lock:
+            aid = str(account_id or self.active_account_id).strip()
+            if aid not in self.s1_accounts:
+                for cand_id, meta in self.s1_meta.items():
+                    if str(meta.get("user_id")) == aid or f"acct_{aid}" == cand_id:
+                        aid = cand_id
+                        break
+            if aid not in self.s1_accounts:
+                raise ValueError(f"Unknown S1 account: {account_id}")
+            if len(self.s1_accounts) <= 1:
+                return {
+                    "ok": False,
+                    "error": "Không thể xóa tài khoản duy nhất còn lại! Hãy tạo thêm tài khoản khác trước.",
+                }
+            backups_dir = self.data_dir / "backups"
+            backups_dir.mkdir(parents=True, exist_ok=True)
+            safety_path = backups_dir / f"pre_delete_{aid}_backup.json"
+            self.export_save_bundle(dest_path=safety_path)
+
+            store = self.s1_accounts.pop(aid)
+            self.s1_meta.pop(aid, None)
+            if aid not in ("normal", "debug"):
+                self.profiles.pop(aid, None)
+            if self.persist and getattr(store, "state_path", None) is not None:
+                try:
+                    store.state_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+            self._explicit_s1_slots = True
+            ordered_remaining = [
+                m["account_id"]
+                for m in sorted(self.s1_meta.values(), key=lambda x: int(x.get("slot", 1)))
+                if m["account_id"] in self.s1_accounts
+            ]
+            if self.active_account_id == aid or self.active_account_id not in self.s1_accounts:
+                self.active_account_id = ordered_remaining[0] if ordered_remaining else next(iter(self.s1_accounts))
+            if aid == "acct_1" or self.profiles.get("normal") is store:
+                self.profiles["normal"] = self.s1_accounts[self.active_account_id]
+            self._save_accounts_index()
+            info = self.list_s1_accounts(ensure_slots=0)
+            info["DeletedAccountId"] = aid
             info["SafetyBackupPath"] = str(safety_path)
             return info
 
@@ -10739,6 +11292,10 @@ class GameEmulatorState:
             ProfileStore._write_json_atomic(self.clock_path, self.clock.to_dict())
 
     def get_profile_by_name(self, name: str) -> ProfileStore:
+        if self.private_mode and self.auth is not None:
+            resolved = self.auth.resolve_store_by_identifier(name)
+            if resolved is not None:
+                return resolved
         if name in self.s1_accounts:
             return self.s1_accounts[name]
         if name not in self.profiles:
@@ -10748,6 +11305,10 @@ class GameEmulatorState:
     @property
     def state(self) -> dict[str, Any]:
         """Expose active default profile state for backward-compatible callers/tests."""
+        if self.private_mode:
+            if self.s1_accounts:
+                return next(iter(self.s1_accounts.values())).state
+            return {}
         if self.default_profile == "normal":
             return self.s1_accounts[self.active_account_id].state
         return self.profiles[self.default_profile].state
@@ -10784,6 +11345,38 @@ class GameEmulatorState:
             return self.s1_accounts.get(self.active_account_id, self.profiles["normal"])
 
     def handle_rpc(self, req: dict[str, Any]) -> dict[str, Any]:
+        if self.private_mode and self.auth is not None:
+            with self._rpc_lock:
+                mod = str(req.get("ModuleName") or "")
+                fn = str(req.get("MethodName") or "")
+                if mod == "Player" and fn in ("Login", "Login_ForTest"):
+                    data = req.get("Data")
+                    login_info = data[4] if isinstance(data, list) and len(data) >= 5 else ""
+                    user_id = str(data[5] or "").strip() if isinstance(data, list) and len(data) >= 6 else ""
+                    st_code, acct = self.auth.verify_auth_token(user_id, login_info)
+                    if st_code != 0 or acct is None:
+                        return {
+                            "Status": st_code or -1101,
+                            "Message": "Phiên đăng nhập không hợp lệ hoặc tài khoản bị khóa",
+                            "Value": {},
+                            "TimeTick": int(self.clock.now()),
+                        }
+                    store = self.s1_accounts[acct["account_id"]]
+                    self.auth.issue_game_session(acct["account_id"])
+                    return store.handle_rpc(req)
+
+                req_pid = str(req.get("PlayerId") or "").strip()
+                req_session = str(req.get("Session") or "").strip()
+                st_code, _acct, store = self.auth.resolve_by_game_session(req_pid, req_session)
+                if st_code != 0 or store is None:
+                    return {
+                        "Status": st_code or -1101,
+                        "Message": "Phiên đăng nhập hết hạn hoặc đã đăng nhập ở thiết bị khác",
+                        "Value": {},
+                        "TimeTick": int(self.clock.now()),
+                    }
+                return store.handle_rpc(req)
+
         req_pid = str(req.get("PlayerId") or "").strip() or None
         req_uid: str | None = None
         if req.get("ModuleName") == "Player" and req.get("MethodName") in ("Login", "Login_ForTest"):
@@ -10799,7 +11392,13 @@ class GameEmulatorState:
                                 self._save_accounts_index()
                                 break
         profile = self.get_profile(req.get("ServerId"), player_id=req_pid, user_id=req_uid)
-        return profile.handle_rpc(req)
+        resp = profile.handle_rpc(req)
+        if self.hybrid_sync is not None:
+            self.hybrid_sync.maybe_trigger_async_sync(
+                str(req.get("ModuleName") or ""),
+                str(req.get("MethodName") or ""),
+            )
+        return resp
 
 
 class EmulatorHandler(http.server.BaseHTTPRequestHandler):
@@ -10843,6 +11442,24 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                 Path(trace_path).parent.mkdir(parents=True, exist_ok=True)
                 with open(trace_path, "a", encoding="utf-8") as tf:
                     tf.write(f"{line}\n")
+
+    def _client_ip(self) -> str:
+        fwd = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+        return fwd or str(self.client_address[0] if self.client_address else "")
+
+    def _request_base_url(self) -> str:
+        emu = self.server.emu
+        if getattr(emu, "private_mode", False) and getattr(emu, "private_config", None):
+            pub = str(emu.private_config.public_base_url or "").strip().rstrip("/")
+            if pub:
+                return pub
+        proto = (self.headers.get("X-Forwarded-Proto") or "http").split(",")[0].strip() or "http"
+        host = (
+            self.headers.get("X-Forwarded-Host")
+            or self.headers.get("Host")
+            or f"127.0.0.1:{self.server.server_port}"
+        ).split(",")[0].strip()
+        return f"{proto}://{host}"
 
     def _require_local_admin(self) -> bool:
         client_ip = str(self.client_address[0] if self.client_address else "")
@@ -10941,16 +11558,76 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
             self._append_trace(f"{time.strftime('%H:%M:%S')} STEP_GET {self.path}")
             self._send_json(200, {"Code": 0, "Message": "OK"})
             return
+        if path == "/admin/accounts":
+            if not self._require_local_admin():
+                return
+            if self.server.emu.private_mode and self.server.emu.auth is not None:
+                self._send_json(200, {"ok": True, "env": self.server.emu.env, "accounts": self.server.emu.auth.list_accounts()})
+            else:
+                self._send_json(200, self.server.emu.list_s1_accounts(ensure_slots=3))
+            return
+        if path == "/auth/info":
+            if not self.server.emu.private_mode or self.server.emu.auth is None or self.server.emu.private_config is None:
+                self._send_json(404, {"error": "Not found", "path": path})
+                return
+            cfg = self.server.emu.private_config
+            self._send_json(
+                200,
+                {
+                    "ok": True,
+                    "server_name": cfg.server_name,
+                    "notice": cfg.notice,
+                    "allow_registration": cfg.allow_registration,
+                    "max_accounts": cfg.max_accounts,
+                    "allow_free_recharge": cfg.allow_free_recharge,
+                    "allow_instant_1m_recharge": cfg.allow_instant_1m_recharge,
+                    "max_free_recharge_per_day": cfg.max_free_recharge_per_day,
+                    "registered_accounts": len(self.server.emu.auth.accounts),
+                    "active_sessions": self.server.emu.auth.active_session_count(),
+                    "version": "5.0.4.98-r8.1-private",
+                },
+            )
+            return
         if path.startswith("/sdk/"):
+            if self.server.emu.private_mode:
+                self._send_json(404, {"error": "Not found", "path": path})
+                return
             self._send_json(
                 200,
                 {"State": 1, "UserID": "100001", "sessionId": "local-revival-session-0001", "Message": "OK"},
             )
             return
         if path == "/account":
+            if self.server.emu.private_mode:
+                if not self._require_local_admin():
+                    return
+                self._send_json(403, {"ok": False, "error": "Standalone account switcher disabled in private mode"})
+                return
             self._send_json(200, self.server.emu.list_s1_accounts(ensure_slots=3))
             return
+        if path == "/hybrid/status":
+            if self.server.emu.private_mode or self.server.emu.hybrid_sync is None:
+                self._send_json(404, {"ok": False, "error": "Hybrid sync unavailable in private mode"})
+                return
+            self._send_json(200, self.server.emu.hybrid_sync.status())
+            return
         if path == "/health":
+            if self.server.emu.private_mode and self.server.emu.auth is not None:
+                cfg = self.server.emu.private_config
+                self._send_json(
+                    200,
+                    {
+                        "ok": True,
+                        "env": self.server.emu.env,
+                        "mode": "private",
+                        "server_name": cfg.server_name if cfg else "InuYasha Private",
+                        "registered_accounts": len(self.server.emu.auth.accounts),
+                        "active_sessions": self.server.emu.auth.active_session_count(),
+                        "release": RELEASE_META,
+                        "game": "InuYasha: Seek Jade",
+                    },
+                )
+                return
             self._send_json(
                 200,
                 {
@@ -10985,6 +11662,32 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                 return
             try:
                 payload = json.loads(body.decode("utf-8") or "{}")
+                if path == "/admin/account_action":
+                    if not self.server.emu.private_mode or self.server.emu.auth is None:
+                        self._send_json(400, {"error": "Account action requires --env private mode"})
+                        return
+                    action = str(payload.get("action") or "").strip()
+                    uname = str(payload.get("username") or "").strip()
+                    auth_mgr = self.server.emu.auth
+                    if action in ("ban", "unban"):
+                        res = auth_mgr.set_banned(uname, action == "ban")
+                    elif action == "reset_password":
+                        res = auth_mgr.reset_password_admin(uname, str(payload.get("new_password") or ""))
+                    elif action == "set_role":
+                        res = auth_mgr.set_role(uname, str(payload.get("role") or "player"))
+                    elif action == "import_offline_save":
+                        res = auth_mgr.import_offline_save(
+                            uname,
+                            bundle_path=payload.get("bundle_path"),
+                            state_path=payload.get("state_path"),
+                            bundle_data=payload.get("bundle_data"),
+                            source_account_id=str(payload.get("source_account_id") or "acct_1"),
+                        )
+                    else:
+                        self._send_json(400, {"error": f"Unknown account_action: {action}"})
+                        return
+                    self._send_json(200, {"ok": True, "env": self.server.emu.env, **res})
+                    return
                 prof_name = str(payload.get("profile") or self.server.emu.default_profile)
                 prof = self.server.emu.get_profile_by_name(prof_name)
                 actor = str(payload.get("actor") or "local_admin")
@@ -11104,11 +11807,53 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                     self._send_json(200, {"ok": True, "env": self.server.emu.env, "profile": prof_name, **info})
                     return
                 self._send_json(404, {"error": f"Unknown admin endpoint: {path}"})
+            except AuthError as exc:
+                self._send_json(exc.http_status, {"error": exc.message})
             except (ValueError, KeyError, json.JSONDecodeError) as exc:
                 self._send_json(400, {"error": str(exc)})
             return
 
+        if path in ("/auth/register", "/auth/login", "/auth/change_password"):
+            if not self.server.emu.private_mode or self.server.emu.auth is None:
+                self._send_json(404, {"error": "Auth endpoints only available in private server mode"})
+                return
+            try:
+                payload = json.loads(body.decode("utf-8") or "{}")
+                if not isinstance(payload, dict):
+                    raise ValueError("Invalid JSON object")
+                ip = self._client_ip()
+                if path == "/auth/register":
+                    res = self.server.emu.auth.register(
+                        str(payload.get("username") or ""),
+                        str(payload.get("password") or ""),
+                        ip=ip,
+                    )
+                elif path == "/auth/login":
+                    res = self.server.emu.auth.login(
+                        str(payload.get("username") or ""),
+                        str(payload.get("password") or ""),
+                        ip=ip,
+                    )
+                else:
+                    res = self.server.emu.auth.change_password(
+                        str(payload.get("username") or ""),
+                        str(payload.get("old_password") or ""),
+                        str(payload.get("new_password") or ""),
+                        ip=ip,
+                    )
+                self._send_json(200, res)
+            except AuthError as exc:
+                self._send_json(exc.http_status, {"ok": False, "error": exc.message})
+            except (ValueError, KeyError, json.JSONDecodeError) as exc:
+                self._send_json(400, {"ok": False, "error": str(exc)})
+            return
+
         if path == "/account":
+            if self.server.emu.private_mode:
+                if not self._require_local_admin():
+                    return
+                self._send_json(403, {"ok": False, "error": "Standalone account switcher disabled in private mode"})
+                return
             try:
                 payload = json.loads(body.decode("utf-8") or "{}")
                 action = str(payload.get("action") or "list")
@@ -11123,6 +11868,9 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                     return
                 if action == "reset":
                     self._send_json(200, self.server.emu.reset_s1_account(account_id=payload.get("account_id")))
+                    return
+                if action == "delete":
+                    self._send_json(200, self.server.emu.delete_s1_account(account_id=payload.get("account_id")))
                     return
                 if action == "export":
                     self._send_json(200, self.server.emu.export_save_bundle(dest_path=payload.get("dest_path")))
@@ -11142,6 +11890,46 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                 self._send_json(400, {"ok": False, "error": str(exc)})
             return
 
+        if path.startswith("/hybrid/"):
+            if self.server.emu.private_mode or self.server.emu.hybrid_sync is None:
+                self._send_json(404, {"ok": False, "error": "Hybrid sync unavailable in private mode"})
+                return
+            hs = self.server.emu.hybrid_sync
+            try:
+                payload = json.loads(body.decode("utf-8") or "{}") if body else {}
+                if path == "/hybrid/test":
+                    res = hs.test_connection(server_url=payload.get("server_url"))
+                elif path == "/hybrid/register":
+                    res = hs.register(
+                        username=str(payload.get("username") or ""),
+                        password=str(payload.get("password") or ""),
+                        invite_code=str(payload.get("invite_code") or ""),
+                        server_url=payload.get("server_url"),
+                    )
+                elif path == "/hybrid/login":
+                    res = hs.login(
+                        username=str(payload.get("username") or ""),
+                        password=str(payload.get("password") or ""),
+                        server_url=payload.get("server_url"),
+                    )
+                elif path == "/hybrid/sync":
+                    res = hs.sync_now(
+                        force_push=bool(payload.get("force_push", False)),
+                        ignore_cooldown=bool(payload.get("ignore_cooldown", False)),
+                        reason="manual",
+                    )
+                elif path == "/hybrid/pull_save":
+                    res = hs.pull_cloud_save()
+                elif path == "/hybrid/logout":
+                    res = hs.logout()
+                else:
+                    self._send_json(404, {"ok": False, "error": f"Unknown hybrid path: {path}"})
+                    return
+                self._send_json(200, res)
+            except (ValueError, KeyError, json.JSONDecodeError) as exc:
+                self._send_json(400, {"ok": False, "error": str(exc)})
+            return
+
         if path in ("/api/report.ashx", "/api/stepnew.ashx"):
             self._append_trace(f"{time.strftime('%H:%M:%S')} STEP_POST {path} body={body[:300]!r}")
             self._send_json(200, {"Code": 0, "Message": "OK"})
@@ -11154,6 +11942,69 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
 
         if path == "/API/ServerList_Client.ashx":
             self._append_trace(f"{time.strftime('%H:%M:%S')} SERVERLIST body={body[:300]!r}")
+            if self.server.emu.private_mode and self.server.emu.auth is not None and self.server.emu.private_config is not None:
+                qs = urllib.parse.parse_qs(body.decode("utf-8", "replace"), keep_blank_values=True)
+                req_uid = (qs.get("UserID") or [""])[0].strip()
+                req_login_info = (qs.get("LoginInfo") or [""])[0].strip()
+                st_code, acct = self.server.emu.auth.verify_auth_token(req_uid, req_login_info)
+                if st_code != 0 or acct is None:
+                    self._send_client_json(
+                        200,
+                        {
+                            "Code": st_code or -1101,
+                            "Message": "Phiên đăng nhập không hợp lệ hoặc tài khoản đã bị khóa",
+                            "Data": None,
+                        },
+                    )
+                    return
+                cfg = self.server.emu.private_config
+                base_url = self._request_base_url()
+                chat_host = urllib.parse.urlparse(base_url).hostname or "127.0.0.1"
+                resolved_token = str(self.server.emu.auth.sessions.get(acct["account_id"], {}).get("auth_token") or "")
+                servers: list[dict[str, Any]] = [
+                    {
+                        "ServerID": 1,
+                        "ServerName": cfg.server_name,
+                        "ServerState": 1,
+                        "ServerHeat": 2,
+                        "ServerUrl": base_url,
+                        "ChatServerUrl": f"{chat_host}:{int(cfg.chat_port)}",
+                        "ChargeServerUrl": f"{base_url}/charge",
+                        "OfficialOrTest": 0,
+                    }
+                ]
+                if cfg.expose_debug_server and "debug" in self.server.emu.profiles:
+                    servers.append(
+                        {
+                            "ServerID": 2,
+                            "ServerName": "S2 Debug",
+                            "ServerState": 1,
+                            "ServerHeat": 1,
+                            "ServerUrl": base_url,
+                            "ChatServerUrl": f"{chat_host}:{int(cfg.chat_port)}",
+                            "ChargeServerUrl": f"{base_url}/charge",
+                            "OfficialOrTest": 0,
+                        }
+                    )
+                self._send_client_json(
+                    200,
+                    {
+                        "Code": 0,
+                        "Data": {
+                            "Server": servers,
+                            "ServerHistory": [1],
+                            "Notice": cfg.notice,
+                            "Resource": {},
+                            "UserInfo": {
+                                "UserID": str(acct["user_id"]),
+                                "PartnerId": "1001",
+                                "LoginInfo": resolved_token,
+                            },
+                        },
+                    },
+                )
+                return
+
             host = self.headers.get("Host") or f"127.0.0.1:{self.server.server_port}"
             host_ip = host.split(":", 1)[0]
             default_sid = 2 if self.server.emu.default_profile == "debug" else 1
@@ -11243,6 +12094,8 @@ class ThreadingEmulatorServer(socketserver.ThreadingMixIn, http.server.HTTPServe
         data_dir: Path | None = None,
         trace_path: Path | None = None,
         admin_token: str | None = None,
+        private_mode: bool | None = None,
+        private_config: PrivateServerConfig | None = None,
     ) -> None:
         self.emu = GameEmulatorState(
             persist=persist,
@@ -11251,6 +12104,8 @@ class ThreadingEmulatorServer(socketserver.ThreadingMixIn, http.server.HTTPServe
             env=env,
             data_dir=data_dir,
             trace_path=trace_path,
+            private_mode=private_mode,
+            private_config=private_config,
         )
         tok = admin_token or os.environ.get("INUYASHA_ADMIN_TOKEN") or secrets.token_urlsafe(24)
         self.admin_token = tok
@@ -11281,7 +12136,7 @@ def main() -> None:
             pass
 
     parser = argparse.ArgumentParser(description="InuYasha: Seek Jade Local Server Emulator")
-    parser.add_argument("--env", choices=["stable", "dev"], default="stable", help="Server environment preset")
+    parser.add_argument("--env", choices=["stable", "dev", "private"], default="stable", help="Server environment preset")
     parser.add_argument("--host", default="127.0.0.1", help="Bind host (use 0.0.0.0 for LAN/Pixel 3 XL)")
     parser.add_argument("--port", type=int, default=None, help="Bind port (default: 8080 stable, 8082 dev)")
     parser.add_argument("--profile", choices=["normal", "debug"], default="normal", help="Default server profile")
@@ -11307,12 +12162,18 @@ def main() -> None:
         trace_path=args.trace_path,
         admin_token=args.admin_token,
     )
-    print(
-        f"InuYasha: Seek Jade [{srv.emu.env.upper()}] listening on http://{args.host}:{port}/poc/ "
-        f"(data_dir={srv.emu.data_dir}, default={args.profile}, "
-        f"normal_pid={srv.emu.profiles['normal'].state['player']['PlayerId']}, "
-        f"debug_pid={srv.emu.profiles['debug'].state['player']['PlayerId']})"
-    )
+    if srv.emu.private_mode and srv.emu.auth is not None:
+        print(
+            f"InuYasha: Seek Jade [PRIVATE] listening on http://{args.host}:{port} "
+            f"(data_dir={srv.emu.data_dir}, accounts={len(srv.emu.auth.accounts)})"
+        )
+    else:
+        print(
+            f"InuYasha: Seek Jade [{srv.emu.env.upper()}] listening on http://{args.host}:{port}/poc/ "
+            f"(data_dir={srv.emu.data_dir}, default={args.profile}, "
+            f"normal_pid={srv.emu.profiles['normal'].state['player']['PlayerId']}, "
+            f"debug_pid={srv.emu.profiles['debug'].state['player']['PlayerId']})"
+        )
 
     def _handle_sigterm(_signum: int, _frame: Any) -> None:
         threading.Thread(target=srv.shutdown, daemon=True).start()

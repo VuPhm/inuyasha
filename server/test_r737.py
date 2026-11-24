@@ -168,7 +168,7 @@ class R737MountBondsAndFactionBannersTest(unittest.TestCase):
             info = self._call(p, "TimedLimitExchange", "GetInfo")
             self.assertEqual(info["Status"], 0)
             serials = [int(row["Serial"]) for row in info["Value"]["ActivityList"]]
-            self.assertEqual(serials, list(range(1, 19)))
+            self.assertEqual(serials, list(range(1, 26)))
 
             # Serial 5 -> 16060003 (800 dia), Serial 7 -> 16060036 (800 dia),
             # Serial 8 -> 14022001 (1500 dia), Serial 10 -> 14012001 (1500 dia)

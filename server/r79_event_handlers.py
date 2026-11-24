@@ -283,7 +283,7 @@ class R79EventHandlersMixin:
         (1605, 16050001, 1000),
         (1111, 0, 888),
         (1602, 16020016, 1),
-        (1605, 16050030, 50),
+        (1605, 16050065, 50),
     ]
     MONEY_TREE_POOL: list[tuple[int, int, int, int]] = [
         # (ResourceTypeSub, ModelId, Count, weight)
@@ -294,15 +294,15 @@ class R79EventHandlersMixin:
         (1111, 0, 200, 1200),
         (1111, 0, 500, 600),
         (1111, 0, 888, 250),
-        (1605, 16050030, 20, 650),
-        (1605, 16050034, 50, 600),
+        (1605, 16050065, 25, 650),
+        (1605, 16050038, 25, 600),
         (1605, 16050061, 5, 450),
         (1602, 16020014, 2, 350),
     ]
     MONEY_TREE_MILESTONES: list[tuple[int, list[tuple[int, int, int]]]] = [
         (5, [(1112, 0, 1_000_000), (1605, 16050001, 1000)]),
         (10, [(1111, 0, 200), (1605, 16050061, 2), (1112, 0, 1_500_000), (1605, 16050001, 1500), (1602, 16020014, 3)]),
-        (20, [(1112, 0, 2_000_000), (1602, 16020016, 2), (1605, 16050030, 50)]),
+        (20, [(1112, 0, 2_000_000), (1602, 16020016, 2), (1605, 16050065, 80)]),
         (40, [(1111, 0, 1888), (1605, 16050001, 3000), (1606, 16060019, 2)]),
     ]
 
@@ -444,7 +444,7 @@ class R79EventHandlersMixin:
     PRAY_TREE_NEED_DIAMOND = 300
     PRAY_TREE_DAYS: list[tuple[int, str]] = [
         (1, "1111,0,120||1112,0,150000||1605,16050061,2"),
-        (2, "1111,0,150||1605,16050001,80||1605,16050055,2"),
+        (2, "1111,0,150||1605,16050001,80||1605,16050027,2"),
         (3, "1111,0,180||1603,16030006,3||1603,16030008,3"),
         (4, "1111,0,220||1606,16060002,1||1605,16050010,3"),
         (5, "1111,0,300||1606,16060019,1||1605,16050061,3"),
@@ -1331,7 +1331,7 @@ class R79EventHandlersMixin:
         return {"BaseGetGameResourceList": base_res}
 
     MIAOSHA_PACKS: list[dict[str, Any]] = [
-        {"ActivityId": 7000, "Id": 1, "ChargeMoney": 30, "BuyNum": 188, "GetResource": "1605,16050061,3||1605,16050055,3||1112,0,200000"},
+        {"ActivityId": 7000, "Id": 1, "ChargeMoney": 30, "BuyNum": 188, "GetResource": "1605,16050061,3||1605,16050027,3||1112,0,200000"},
         {"ActivityId": 7000, "Id": 2, "ChargeMoney": 98, "BuyNum": 488, "GetResource": "1606,16060002,1||1605,16050001,150||1112,0,500000"},
         {"ActivityId": 7000, "Id": 3, "ChargeMoney": 198, "BuyNum": 888, "GetResource": "1606,16060019,1||1602,16020023,1||1112,0,1000000"},
     ]
@@ -1419,34 +1419,34 @@ class R79EventHandlersMixin:
 
     CHARGE_SINGLE_TIERS: list[tuple[int, str]] = [
         (60, "1111,0,60||1112,0,100000||1605,16050061,1"),
-        (300, "1111,0,180||1605,16050001,100||1605,16050055,2"),
+        (300, "1111,0,180||1605,16050001,100||1605,16050027,2"),
         (980, "1111,0,500||1606,16060002,1||1605,16050061,3"),
         (1980, "1111,0,1000||1606,16060019,1||1602,16020023,1"),
     ]
     CHARGE_TOTAL_TIERS: list[tuple[int, str]] = [
         (60, "1112,0,150000||1605,16050061,2"),
-        (300, "1111,0,200||1605,16050055,3||1605,16050001,100"),
+        (300, "1111,0,200||1605,16050027,3||1605,16050001,100"),
         (1000, "1111,0,500||1606,16060002,1||1605,16050010,5"),
         (3000, "1111,0,1200||1606,16060019,1||1606,16060008,1"),
     ]
     USE_TOTAL_TIERS: list[tuple[int, str]] = [
         (100, "1112,0,100000||1605,16050061,1"),
-        (500, "1112,0,250000||1605,16050055,2||1605,16050001,80"),
+        (500, "1112,0,250000||1605,16050027,2||1605,16050001,80"),
         (1500, "1111,0,300||1606,16060002,1||1605,16050061,3"),
         (3000, "1111,0,600||1606,16060019,1||1602,16020023,1"),
     ]
     CHARGE_DAYS_TIERS: list[tuple[int, int, str]] = [
         (1, 1, "1111,0,100||1605,16050061,1"),
-        (2, 2, "1111,0,200||1605,16050055,2"),
+        (2, 2, "1111,0,200||1605,16050027,2"),
         (3, 3, "1111,0,350||1606,16060002,1"),
         (5, 5, "1111,0,688||1606,16060019,1"),
     ]
     DOUBLE_DIAMOND_TIERS: list[int] = [60, 300, 980, 1980]
     DAY_LOGIN_TIERS: list[tuple[int, str]] = [
-        (1, "1111,0,88||1605,16050061,1||1605,16050055,1"),
+        (1, "1111,0,88||1605,16050061,1||1605,16050027,1"),
         (2, "1111,0,128||1112,0,200000||1605,16050001,80"),
         (3, "1111,0,188||1606,16060002,1||1605,16050061,2"),
-        (5, "1111,0,388||1606,16060019,1||1605,16050055,3"),
+        (5, "1111,0,388||1606,16060019,1||1605,16050027,3"),
     ]
 
     def _eval_timed_sub(self, event_id: str) -> tuple[Any, dict[str, Any]]:
@@ -1737,7 +1737,7 @@ class R79EventHandlersMixin:
         (2, 500, "1606,16060002,1||1111,0,500"),
         (3, 300, "1605,16050001,200||1111,0,300"),
         (4, 100, "1605,16050061,3||1111,0,150"),
-        (5, 60, "1605,16050055,2||1111,0,100"),
+        (5, 60, "1605,16050027,2||1111,0,100"),
     ]
 
     def _compute_charge_or_use_rank(
@@ -1851,7 +1851,7 @@ class R79EventHandlersMixin:
             60,
             [
                 (101, "1605,16050061,3||1112,0,150000"),
-                (102, "1605,16050055,3||1112,0,150000"),
+                (102, "1605,16050027,3||1112,0,150000"),
                 (103, "1605,16050001,100||1112,0,150000"),
             ],
         ),
@@ -1935,6 +1935,8 @@ class R79EventHandlersMixin:
         {"id": 4, "Reward": "1606,16060002,1", "NeedScore": 100, "Num": 3, "Discount": 0.8},
         {"id": 5, "Reward": "1606,16060019,1", "NeedScore": 250, "Num": 2, "Discount": 0.7},
         {"id": 6, "Reward": "1602,16020023,1", "NeedScore": 300, "Num": 2, "Discount": 0.7},
+        {"id": 7, "Reward": "1608,16080001,1", "NeedScore": 200, "Num": 2, "Discount": 0.8},
+        {"id": 8, "Reward": "1608,16080004,1", "NeedScore": 500, "Num": 2, "Discount": 0.8},
     ]
 
     def _extract_act_and_buy_args(
@@ -1947,8 +1949,17 @@ class R79EventHandlersMixin:
             except (TypeError, ValueError):
                 has_act = False
         ev_id = self._resolve_timed_event_id(default_event_id, data if has_act else None, family=family)
-        item_id = int(data[1]) if isinstance(data, list) and len(data) >= 2 else (int(data[0]) if isinstance(data, list) and data else 0)
-        count = int(data[2]) if isinstance(data, list) and len(data) >= 3 else 1
+        if has_act:
+            item_id = int(data[1]) if len(data) >= 2 else 0
+            count = int(data[2]) if len(data) >= 3 else 1
+        elif isinstance(data, list) and len(data) >= 2:
+            item_id = int(data[0])
+            count = int(data[1])
+        elif isinstance(data, list) and data:
+            item_id = int(data[0])
+            count = 1
+        else:
+            item_id, count = 0, 1
         return ev_id, item_id, max(1, count)
 
     def _build_points_mall_payload(self, ev: Any, prog: dict[str, Any]) -> dict[str, Any]:
@@ -2174,12 +2185,83 @@ class R79EventHandlersMixin:
             "Need": [(1111, 0, 2000)],
             "Give": [(1605, 16050038, 50)],
         },
+        {
+            "Serial": 19,
+            "GlobalNum": 20,
+            "PersonalNum": 3,
+            "NeedLv": 10,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 280)],
+            "Give": [(1606, 16060001, 1)],
+        },
+        {
+            "Serial": 20,
+            "GlobalNum": 99,
+            "PersonalNum": 4,
+            "NeedLv": 20,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 2000)],
+            "Give": [(1608, 16080001, 1)],
+        },
+        {
+            "Serial": 21,
+            "GlobalNum": 99,
+            "PersonalNum": 4,
+            "NeedLv": 20,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 3000)],
+            "Give": [(1608, 16080007, 1)],
+        },
+        {
+            "Serial": 22,
+            "GlobalNum": 99,
+            "PersonalNum": 4,
+            "NeedLv": 20,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 3000)],
+            "Give": [(1608, 16080010, 1)],
+        },
+        {
+            "Serial": 23,
+            "GlobalNum": 99,
+            "PersonalNum": 4,
+            "NeedLv": 20,
+            "NeedVIPLv": 0,
+            "Need": [(1111, 0, 5000)],
+            "Give": [(1608, 16080004, 1)],
+        },
     ]
+
+    FASHION_SHARD_ROTATION_PAIRS: tuple[tuple[int, int], ...] = (
+        (16070004, 16070005),
+        (16070008, 16070009),
+        (16070010, 16070011),
+        (16070006, 16070007),
+    )
+
+    def _get_timed_exchange_recipes(self) -> list[dict[str, Any]]:
+        """Return base exchange recipes plus 2 daily-rotating Main Hero fashion shard slots."""
+        day_ordinal = date.fromisoformat(self.clock.today_str()).toordinal()
+        pair = self.FASHION_SHARD_ROTATION_PAIRS[day_ordinal % len(self.FASHION_SHARD_ROTATION_PAIRS)]
+        recipes = list(self.TIMED_EXCHANGE_RECIPES)
+        for serial, shard_id in enumerate(pair, start=24):
+            recipes.append(
+                {
+                    "Serial": serial,
+                    "GlobalNum": 99,
+                    "PersonalNum": 10,
+                    "NeedLv": 20,
+                    "NeedVIPLv": 0,
+                    "Need": [(1111, 0, 500)],
+                    "Give": [(1607, int(shard_id), 100)],
+                }
+            )
+        return recipes
 
     def _build_timed_exchange_payload(self, ev: Any, prog: dict[str, Any]) -> dict[str, Any]:
         exchanged = prog.setdefault("exchanged", {})
         act_list: list[dict[str, Any]] = []
-        for rec in self.TIMED_EXCHANGE_RECIPES:
+        for rec in self._get_timed_exchange_recipes():
             ser = int(rec["Serial"])
             used = int(exchanged.get(str(ser), 0))
             act_list.append(
@@ -2208,7 +2290,7 @@ class R79EventHandlersMixin:
     def _rpc_timed_limit_exchange_exchange(self, data: Any) -> dict[str, Any]:
         ev_id, serial, count = self._extract_act_and_buy_args(data, "timed_exchange", self._EXCHANGE_FAMILY)
         ev, prog = self._eval_timed_sub(ev_id)
-        rec = next((r for r in self.TIMED_EXCHANGE_RECIPES if int(r["Serial"]) == serial), None)
+        rec = next((r for r in self._get_timed_exchange_recipes() if int(r["Serial"]) == serial), None)
         if not ev.eligible or not rec:
             self._last_rpc_context["status"] = -1
             return {}
@@ -2260,7 +2342,7 @@ class R79EventHandlersMixin:
         "1606,16060002,1||1111,0,300",
         "1605,16050001,150||1111,0,200",
         "1605,16050061,2||1111,0,100",
-        "1605,16050055,2||1112,0,150000",
+        "1605,16050027,2||1112,0,150000",
     ]
 
     def _compute_active_rank_list(
@@ -2386,14 +2468,14 @@ class R79EventHandlersMixin:
 
     CRITICAL_TASK_SPECS: list[tuple[int, str, int, str]] = [
         (1, "Nạp Kim Cương", 60, "1111,0,100||1605,16050061,2"),
-        (2, "Chiến Thắng Quyết Đấu", 1, "1111,0,50||1605,16050055,2"),
+        (2, "Chiến Thắng Quyết Đấu", 1, "1111,0,50||1605,16050027,2"),
         (3, "Chiêu Mộ Tướng", 1, "1111,0,60||1605,16050001,50"),
         (4, "Chiêu Mộ Trang Bị", 1, "1112,0,100000||1605,16050003,3"),
         (5, "Đánh Yêu Vương", 1, "1111,0,60||1603,16030006,1"),
         (6, "Chinh Chiến Ải", 1, "1111,0,50||1112,0,80000"),
         (7, "Khiêu Chiến Mộ Thần Binh", 1, "1111,0,60||1605,16050010,2"),
         (8, "Chiêu Tài Miêu", 1, "1112,0,120000||1605,16050061,1"),
-        (9, "Tiêu Phí Kim Cương", 100, "1111,0,88||1605,16050055,2"),
+        (9, "Tiêu Phí Kim Cương", 100, "1111,0,88||1605,16050027,2"),
     ]
 
     def _critical_task_done_num(self, task_type: int, ev: Any, progress: dict[str, Any]) -> int:

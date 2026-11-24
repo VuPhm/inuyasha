@@ -1006,6 +1006,25 @@ class ProfileStore(
                     result[attr] += amount
         return result
 
+    def _worn_fashion_stats(self) -> Counter[int]:
+        """Return attrStr stats of the currently worn Main Hero fashion, if owned."""
+        stats: Counter[int] = Counter()
+        if not hasattr(self, "state") or not isinstance(self.state, dict):
+            return stats
+        fid = int(self.state.get("player", {}).get("FashionModelId", 0))
+        if fid <= 0:
+            return stats
+        if not any(int(item.get("FashionModelId", 0)) == fid for item in self.state.get("fashions", [])):
+            return stats
+        fm = self.game_data.get("fashion_model", {}).get(str(fid))
+        if not fm:
+            return stats
+        for chunk in str(fm.get("attrStr", "") or "").split(","):
+            parts = [p.strip() for p in chunk.split("|")]
+            if len(parts) >= 2 and parts[0].lstrip("-").isdigit() and parts[1].lstrip("-").isdigit():
+                stats[int(parts[0])] += int(parts[1])
+        return stats
+
     def _fashion_pr_bonuses(self, slot_id: int) -> dict[str, int]:
         """Compute flat HP/AP/DEF bonuses from completed FashionPrRelation sets."""
         bonuses = {"HP": 0, "AP": 0, "DEF": 0}
@@ -1401,6 +1420,15 @@ class ProfileStore(
             ap1 += fashion[431] + fashion_pr["AP"]  # APADD
             hp1 += fashion[432] + fashion_pr["HP"]  # HPADD
             def1 += fashion[433] + fashion_pr["DEF"]  # DEFADD
+        worn_fashion = (
+            self._worn_fashion_stats()
+            if (include_player_star and hasattr(self, "state") and int(cfg.get("specialType", 0)) == 255)
+            else Counter()
+        )
+        if worn_fashion:
+            hp1 += worn_fashion[201]
+            ap1 += worn_fashion[202]
+            def1 += worn_fashion[203]
         # The VN Property calculation has separate terms for the hero's rate and other flat stats.
         ap_extra = ap1 - hero_ap + talent[202]
         hp_extra = hp1 - hero_hp + talent[201]
@@ -1441,18 +1469,18 @@ class ProfileStore(
             "HPHeroR": 0,
             "APToHPHeroR": 0,
             "RP": min(MAX_RAGE, int(cfg.get("RP", 50)) + talent[205] + set_rp),
-            "HIT": int(cfg.get("HIT", 10000)) + talent[301] + set_hit + gem_bonus[301],
-            "DOD": int(cfg.get("DOD", 0)) + talent[302] + set_dod + gem_bonus[302],
-            "CRI": int(cfg.get("CRI", 0)) + talent[303] + set_cri + gem_bonus[303],
-            "TEN": int(cfg.get("TEN", 0)) + talent[304] + set_ten + gem_bonus[304],
-            "BLO": int(cfg.get("BLO", 0)) + talent[305] + set_blo + gem_bonus[305],
-            "BOG": int(cfg.get("BOG", 0)) + talent[306] + set_bog + gem_bonus[306],
-            "CRId": int(cfg.get("CRID", 0)) + talent[307] + set_crid,
-            "TEND": int(cfg.get("TEND", 0)) + talent[308] + set_tend,
+            "HIT": int(cfg.get("HIT", 10000)) + talent[301] + set_hit + gem_bonus[301] + worn_fashion[301],
+            "DOD": int(cfg.get("DOD", 0)) + talent[302] + set_dod + gem_bonus[302] + worn_fashion[302],
+            "CRI": int(cfg.get("CRI", 0)) + talent[303] + set_cri + gem_bonus[303] + worn_fashion[303],
+            "TEN": int(cfg.get("TEN", 0)) + talent[304] + set_ten + gem_bonus[304] + worn_fashion[304],
+            "BLO": int(cfg.get("BLO", 0)) + talent[305] + set_blo + gem_bonus[305] + worn_fashion[305],
+            "BOG": int(cfg.get("BOG", 0)) + talent[306] + set_bog + gem_bonus[306] + worn_fashion[306],
+            "CRId": int(cfg.get("CRID", 0)) + talent[307] + set_crid + worn_fashion[307],
+            "TEND": int(cfg.get("TEND", 0)) + talent[308] + set_tend + worn_fashion[308],
             "CP": talent[404], "BCP": talent[405], "CPR": talent[406], "BCPR": talent[407],
-            "DAMADD": talent[408] + set_damadd + gem_bonus[408] + hero_lianti["DAMADD"],
-            "DAMCUT": talent[409] + set_damcut + gem_bonus[409] + hero_lianti["DAMCUT"],
-            "DAMADDR": talent[410] + tr_damaddr + lianti_damaddr, "DAMCUTR": talent[411] + tr_damcutr + lianti_damcutr,
+            "DAMADD": talent[408] + set_damadd + gem_bonus[408] + hero_lianti["DAMADD"] + worn_fashion[408],
+            "DAMCUT": talent[409] + set_damcut + gem_bonus[409] + hero_lianti["DAMCUT"] + worn_fashion[409],
+            "DAMADDR": talent[410] + tr_damaddr + lianti_damaddr + worn_fashion[410], "DAMCUTR": talent[411] + tr_damcutr + lianti_damcutr + worn_fashion[411],
             "RADAMADDR": talent[412], "RADAMCUTR": talent[413],
             "RBDAMADDR": talent[414], "RBDAMCUTR": talent[415],
             "RCDAMADDR": talent[416], "RCDAMCUTR": talent[417],
@@ -2253,6 +2281,7 @@ class ProfileStore(
         reborn_step: int = 0,
         reborn_id: int = 0,
         override_stats: dict[str, Any] | None = None,
+        fashion_model_id: int = 0,
     ) -> dict[str, Any]:
         stats = override_stats or {}
         if override_stats:
@@ -2305,7 +2334,17 @@ class ProfileStore(
                                  for buff in row["buffList"].split(",") if buff)
         for bid in self._hero_reborn_talent_buffs(reborn_id):
             buff_ids.setdefault(bid, None)
-        ra_id = int(cfg["UAID"]) if self._hero_uaid_unlocked(cfg, reborn_id) else int(cfg.get("RAID", 1002008))
+        fm = (
+            self.game_data.get("fashion_model", {}).get(str(fashion_model_id))
+            if (fashion_model_id > 0 and int(cfg.get("specialType", 0)) == 255)
+            else None
+        )
+        na_id = int(fm.get("NAID") or cfg.get("NAID", 1001008)) if fm else int(cfg.get("NAID", 1001008))
+        base_raid = int(fm.get("RAID") or cfg.get("RAID", 1002008)) if fm else int(cfg.get("RAID", 1002008))
+        ra_id = int(cfg["UAID"]) if self._hero_uaid_unlocked(cfg, reborn_id) else base_raid
+        large_pic = str(fm.get("actionPic") or cfg["largePic"]) if fm else cfg["largePic"]
+        small_pic = str(fm.get("headerPic") or cfg["smallPic"]) if fm else cfg["smallPic"]
+        skill_sound = str(fm.get("skillSound") or cfg.get("skillSound", "0")) if fm else cfg.get("skillSound", "0")
         return {
             "HP": hp,
             "TotalHp": hp,
@@ -2320,7 +2359,7 @@ class ProfileStore(
             "BOG": bog,
             "CRId": crid,
             "TEND": tend,
-            "NAId": cfg.get("NAID", 1001008),
+            "NAId": na_id,
             "RAId": ra_id,
             "HeroModelId": cfg["ID"],
             "Name": cfg["name"],
@@ -2347,9 +2386,9 @@ class ProfileStore(
             "BodyTypeR": 12500 if is_boss else 10000,
             "Step": step if self.is_normal_gameplay else max(1, step),
             "RebornStep": reborn_step,
-            "LargePic": cfg["largePic"],
-            "SmallPic": cfg["smallPic"],
-            "SkillSound": cfg.get("skillSound", "0"),
+            "LargePic": large_pic,
+            "SmallPic": small_pic,
+            "SkillSound": skill_sound,
         }
 
     def handle_rpc(self, req: dict[str, Any]) -> dict[str, Any]:
@@ -4676,6 +4715,7 @@ class ProfileStore(
     def _build_ally_fight_objs(self) -> list[dict[str, Any]]:
         heroes_cfg = self.game_data["heroes"]
         heroes_by_id = {h["Id"]: h for h in self.state["heroes"]}
+        worn_fashion_id = int(self.state.get("player", {}).get("FashionModelId", 0))
         allies: list[dict[str, Any]] = [{} for _ in range(6)]
         if self.profile_name == "debug":
             for idx, inst in enumerate(self.state["heroes"][:6]):
@@ -4687,6 +4727,7 @@ class ProfileStore(
                     hp_mult=2.5,
                     ap_mult=2.5,
                     step=int(inst.get("Step", 1)),
+                    fashion_model_id=worn_fashion_id,
                 )
             return allies
 
@@ -4706,6 +4747,7 @@ class ProfileStore(
                     reborn_step=int(inst.get("RebornStep", 0)),
                     reborn_id=int(inst.get("RebornId", 0)),
                     override_stats=slot["Property"],
+                    fashion_model_id=worn_fashion_id,
                 )
                 placed = True
         if not placed and self.state["heroes"]:
@@ -4718,6 +4760,7 @@ class ProfileStore(
                 step=int(inst.get("Step", 0)),
                 reborn_step=int(inst.get("RebornStep", 0)),
                 reborn_id=int(inst.get("RebornId", 0)),
+                fashion_model_id=worn_fashion_id,
             )
         return allies
 
@@ -5846,7 +5889,7 @@ class ProfileStore(
         odds_code = int(g_cfg.get("goodsOutputOddsCode", 0))
         consume = count
         tuples: list[tuple[int, int, int]] = []
-        if type_id in (1501, 1502):
+        if type_id in (1501, 1502, 1607):
             req_each = max(1, int(g_cfg.get("maxNum", 1)))
             crafts = count // req_each
             if crafts <= 0 or out_type <= 0 or out_model <= 0:
@@ -8091,6 +8134,7 @@ class ProfileStore(
                     reborn_step=int(inst.get("RebornStep", 0)),
                     reborn_id=int(inst.get("RebornId", 0)),
                     override_stats=slot["Property"],
+                    fashion_model_id=int(bot.get("FashionModelId", 0)),
                 )
         return enemies
 
@@ -8682,6 +8726,8 @@ class ProfileStore(
         entity_id = str(data[0]) if isinstance(data, list) and data else EMPTY_ENTITY_ID
         if entity_id == EMPTY_ENTITY_ID:
             self.state["player"]["FashionModelId"] = 0
+            self._recalc_all_slots_and_fap()
+            self._last_rpc_context["slots_changed"] = True
             self.save()
             return {"FashionModelId": 0}
         target = next((f for f in self.state.get("fashions", []) if str(f["Id"]) == entity_id), None)
@@ -8689,6 +8735,8 @@ class ProfileStore(
             self._last_rpc_context["status"] = -1
             return {}
         self.state["player"]["FashionModelId"] = int(target["FashionModelId"])
+        self._recalc_all_slots_and_fap()
+        self._last_rpc_context["slots_changed"] = True
         self.save()
         return {"FashionModelId": int(target["FashionModelId"])}
 

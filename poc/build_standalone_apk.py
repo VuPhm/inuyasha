@@ -1160,6 +1160,7 @@ def patch_standalone_workspace(
         utils_path.read_text(encoding="utf-8").replace("http://crashnew.moqikaka.com", f"http://{server_host_port}"),
         encoding="utf-8",
     )
+    patch_modern_android_sdk(STANDALONE_WORK)
 
     # 5. Apply shared gameplay patches (R7.6..R7.40 + OBB + B83..86), then standalone-only UI & Python runtime
     apply_shared_gameplay_patches(STANDALONE_WORK)
@@ -5848,6 +5849,126 @@ def patch_r86_warfare_lua(src: Path) -> None:
     end""",
         ),
     ])
+
+
+def _safe_device_id_smali(method_name: str) -> str:
+    """Return a non-privileged Build.MANUFACTURER-Build.MODEL getter for MQUtils."""
+    return (
+        f".method public {method_name}()Ljava/lang/String;\n"
+        "    .locals 2\n"
+        "\n"
+        "    new-instance v0, Ljava/lang/StringBuilder;\n"
+        "\n"
+        "    invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V\n"
+        "\n"
+        "    sget-object v1, Landroid/os/Build;->MANUFACTURER:Ljava/lang/String;\n"
+        "\n"
+        "    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;\n"
+        "\n"
+        "    move-result-object v0\n"
+        "\n"
+        '    const-string v1, "-"\n'
+        "\n"
+        "    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;\n"
+        "\n"
+        "    move-result-object v0\n"
+        "\n"
+        "    sget-object v1, Landroid/os/Build;->MODEL:Ljava/lang/String;\n"
+        "\n"
+        "    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;\n"
+        "\n"
+        "    move-result-object v0\n"
+        "\n"
+        "    invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;\n"
+        "\n"
+        "    move-result-object v0\n"
+        "\n"
+        "    return-object v0\n"
+        ".end method"
+    )
+
+
+def patch_modern_android_sdk(work_dir: Path, min_sdk: int = 21, target_sdk: int = 30) -> None:
+    """R8.7: Harden manifest, sdkInfo, and legacy device ID calls for modern Android."""
+    manifest_path = work_dir / "AndroidManifest.xml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+
+    # 1. Deduplicate <uses-permission .../> lines preserving order
+    seen_perms: set[str] = set()
+    perm_re = re.compile(r'^(\s*<uses-permission\b[^>]*android:name="([^"]+)"[^>]*/>\s*)$')
+    dedup_lines: list[str] = []
+    for line in manifest.splitlines(keepends=True):
+        pm = perm_re.match(line.rstrip("\r\n"))
+        if pm:
+            pname = pm.group(2)
+            if pname in seen_perms:
+                continue
+            seen_perms.add(pname)
+        dedup_lines.append(line)
+    manifest = "".join(dedup_lines)
+
+    # 2. Ensure requestLegacyExternalStorage="true" on <application>
+    if "android:requestLegacyExternalStorage=" not in manifest:
+        manifest, n_app = re.subn(
+            r"<application\s+",
+            '<application android:requestLegacyExternalStorage="true" ',
+            manifest,
+            count=1,
+        )
+        if n_app != 1:
+            raise RuntimeError("Failed to find <application> tag in AndroidManifest.xml")
+
+    # 3. Ensure MQActivity has android:exported="true" and every <intent-filter> component declares android:exported
+    manifest, n_main = re.subn(
+        r'(<activity\b(?![^>]*\bandroid:exported=)[^>]*android:name="com\.moqikaka\.sdk\.MQActivity")',
+        r'\1 android:exported="true"',
+        manifest,
+        count=1,
+    )
+    if n_main == 0 and 'android:name="com.moqikaka.sdk.MQActivity"' not in manifest:
+        raise RuntimeError("MQActivity not found in AndroidManifest.xml")
+
+    def _add_exported_default(match: re.Match[str]) -> str:
+        tag, attrs, body = match.group(1), match.group(2), match.group(3)
+        if "<intent-filter" not in body or "android:exported=" in attrs:
+            return match.group(0)
+        return f"<{tag} android:exported=\"false\"{attrs}>{body}</{tag}>"
+
+    manifest = re.sub(
+        r"<(activity|service|receiver|provider)\b([^>]*)>(.*?)</\1>",
+        _add_exported_default,
+        manifest,
+        flags=re.S,
+    )
+    manifest_path.write_text(manifest, encoding="utf-8")
+
+    # 4. Set minSdkVersion and targetSdkVersion in apktool.yml
+    yml_path = work_dir / "apktool.yml"
+    yml_txt = yml_path.read_text(encoding="utf-8")
+    yml_txt, n_sdk = re.subn(
+        r"sdkInfo:\s*\n(?:\s+(?:minSdkVersion|targetSdkVersion):\s*\d+\s*\n)+",
+        f"sdkInfo:\n  minSdkVersion: {min_sdk}\n  targetSdkVersion: {target_sdk}\n",
+        yml_txt,
+        count=1,
+    )
+    if n_sdk != 1:
+        raise RuntimeError("Failed to update sdkInfo in apktool.yml")
+    yml_path.write_text(yml_txt, encoding="utf-8")
+
+    # 5. Neutralize TelephonyManager.getDeviceId() + WifiInfo + /sdcard/.moqikaka calls in MQUtils.smali
+    mq_path = work_dir / "smali" / "com" / "moqikaka" / "sdk" / "MQUtils.smali"
+    mq_src = mq_path.read_text(encoding="utf-8")
+    for method_name in ("getDeviceUUid", "getDeviceIMEI2"):
+        mq_src, n_rep = re.subn(
+            rf"\.method public {re.escape(method_name)}\(\)Ljava/lang/String;.*?\.end method",
+            _safe_device_id_smali(method_name),
+            mq_src,
+            count=1,
+            flags=re.S,
+        )
+        if n_rep != 1:
+            raise RuntimeError(f"Failed to patch {method_name} in MQUtils.smali")
+    mq_path.write_text(mq_src, encoding="utf-8")
 
 
 def build_and_sign_work(work_dir: Path, out_name: str) -> Path:

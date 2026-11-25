@@ -363,9 +363,41 @@ test("5. Change password revokes other sessions, Admin ban blocks access, and 41
   assert.equal(bannedLogin.status, 403);
 
   // Oversized body -> 413
-  const big = "x".repeat(260 * 1024);
+  const big = "x".repeat(520 * 1024);
   const bigRes = await req(env, "POST", "/auth/login", {
     body: JSON.stringify({ username: "a", password: big }),
   });
   assert.equal(bigRes.status, 413);
+
+  // Snapshot up to 128 KB succeeds (~64 KB accepted), >128 KB rejected with 413
+  const regSnap = await req(env, "POST", "/auth/register", {
+    body: { username: "snapuser", password: "pw123", invite_code: "TETSUIGA-2026", device_id: "snap1" },
+  });
+  assert.equal(regSnap.status, 201);
+
+  const ok64Res = await req(env, "POST", "/sync", {
+    token: regSnap.json.token,
+    body: {
+      base_rev: 0,
+      device_id: "snap1",
+      save_hash: "h-64k",
+      save_gzip_b64: "SAVE_64K",
+      snapshot: { name: "Snap64K", lv: 40, fap: 120000, pad: "a".repeat(64 * 1024) },
+    },
+  });
+  assert.equal(ok64Res.status, 200);
+  assert.equal(ok64Res.json.pushed, true);
+
+  const over128Res = await req(env, "POST", "/sync", {
+    token: regSnap.json.token,
+    body: {
+      base_rev: 1,
+      device_id: "snap1",
+      save_hash: "h-135k",
+      save_gzip_b64: "SAVE_135K",
+      snapshot: { name: "Snap135K", lv: 40, fap: 120000, pad: "b".repeat(135 * 1024) },
+    },
+  });
+  assert.equal(over128Res.status, 413);
+  assert.equal(over128Res.json.error, "Snapshot quá lớn");
 });

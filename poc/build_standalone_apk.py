@@ -131,7 +131,8 @@ function AccountSwitchLayer:enterAccount(userId)
     game.replaceRootScene(require("Login.StartGameScene").new(loginJson, true), "CCtransitionCrossFade", 0)
 end
 
-function AccountSwitchLayer:refreshAccountView()
+function AccountSwitchLayer:refreshAccountView(attempt)
+    attempt = attempt or 1
     self.mContentNode:removeAllChildren()
     local w, h = self.mBgSize.width, self.mBgSize.height
 
@@ -150,20 +151,51 @@ function AccountSwitchLayer:refreshAccountView()
         end
         self.mContentNode:removeAllChildren()
         if not res or not res.Accounts then
+            if attempt <= 3 then
+                local waitLbl = ui.newLabel({
+                    text = "Đang khởi động dịch vụ nền cục bộ... (thử lại " .. tostring(attempt) .. "/3)",
+                    size = 20,
+                    color = ColorList.ccBlack,
+                    align = cc.TEXT_ALIGNMENT_CENTER,
+                })
+                waitLbl:setPosition(cc.p(w * 0.5, h * 0.52))
+                self.mContentNode:addChild(waitLbl)
+                performWithDelay(self, function()
+                    if not tolua.isnull(self) then
+                        self:refreshAccountView(attempt + 1)
+                    end
+                end, 1.2)
+                return
+            end
             local errLbl = ui.newLabel({
-                text = "Không thể đọc danh sách tài khoản cục bộ",
-                size = 22,
+                text = "Không thể đọc danh sách tài khoản cục bộ\\nVui lòng đợi vài giây rồi bấm Thử Lại",
+                size = 21,
                 color = ColorList.ccBlack,
+                align = cc.TEXT_ALIGNMENT_CENTER,
             })
-            errLbl:setPosition(cc.p(w * 0.5, h * 0.52))
+            errLbl:setPosition(cc.p(w * 0.5, h * 0.58))
             self.mContentNode:addChild(errLbl)
+            local retryBtn = ui.newButton({
+                normalImage = "c_7.png",
+                text = "Thử Lại",
+                fontSize = 20,
+                scale = 0.9,
+                color = ColorList.ccWhite,
+                outlineColor = ColorList.ccOutline,
+                outlineSize = 2,
+                position = cc.p(w * 0.5, h * 0.36),
+                clickAction = function()
+                    self:refreshAccountView(1)
+                end,
+            })
+            self.mContentNode:addChild(retryBtn)
             return
         end
 
         local curLbl = ui.newLabel({
-            text = "Đang chọn: {6c0101}" .. tostring(res.ActiveDisplay or res.ActiveAccountId),
+            text = "Đang chọn: " .. tostring(res.ActiveDisplay or res.ActiveAccountId),
             size = 21,
-            color = ColorList.ccBlack,
+            color = cc.c3b(0x6c, 0x01, 0x01),
             align = cc.TEXT_ALIGNMENT_CENTER,
         })
         curLbl:setPosition(cc.p(w * 0.5, h * 0.82))
@@ -424,10 +456,10 @@ local function requestHybridApi(method, path, payloadTable, cb)
     end
 end
 
-local function reloadGameScene()
+local function reloadGameScene(targetUid)
     NetworkResData:clearPlayerCacheInfo()
     local loginJson = cjson.encode({
-        uid = "100001",
+        uid = tostring(targetUid or "100001"),
         platformId = "1001",
         token = "local-revival",
     })
@@ -481,7 +513,7 @@ function HybridSyncLayer:showConflictDialog(serverSum, localSum)
             requestHybridApi("POST", "/hybrid/pull_save", {}, function(pr)
                 if pr and pr.ok then
                     ui.showFlashView({parent = display.getRunningScene(), text = "Đã tải bản Cloud về máy! Đang tải lại game..."})
-                    reloadGameScene()
+                    reloadGameScene(pr.active_user_id)
                 else
                     ui.showFlashView({parent = self, text = tostring((pr and pr.error) or "Tải bản Cloud thất bại")})
                 end
@@ -504,7 +536,8 @@ function HybridSyncLayer:showConflictDialog(serverSum, localSum)
     self:addChild(box, 200)
 end
 
-function HybridSyncLayer:refreshView()
+function HybridSyncLayer:refreshView(attempt)
+    attempt = attempt or 1
     self.mContentNode:removeAllChildren()
     local w, h = self.mBgSize.width, self.mBgSize.height
 
@@ -523,13 +556,44 @@ function HybridSyncLayer:refreshView()
         end
         self.mContentNode:removeAllChildren()
         if not st or not st.ok then
+            if attempt <= 3 then
+                local waitLbl = ui.newLabel({
+                    text = "Đang khởi động dịch vụ nền cục bộ... (thử lại " .. tostring(attempt) .. "/3)",
+                    size = 20,
+                    color = ColorList.ccBlack,
+                    align = cc.TEXT_ALIGNMENT_CENTER,
+                })
+                waitLbl:setPosition(cc.p(w * 0.5, h * 0.52))
+                self.mContentNode:addChild(waitLbl)
+                performWithDelay(self, function()
+                    if not tolua.isnull(self) then
+                        self:refreshView(attempt + 1)
+                    end
+                end, 1.2)
+                return
+            end
             local errLbl = ui.newLabel({
-                text = "Không kết nối được dịch vụ nền cục bộ",
+                text = "Không kết nối được dịch vụ nền cục bộ\\nVui lòng đợi vài giây rồi bấm Thử Lại",
                 size = 21,
                 color = ColorList.ccBlack,
+                align = cc.TEXT_ALIGNMENT_CENTER,
             })
-            errLbl:setPosition(cc.p(w * 0.5, h * 0.52))
+            errLbl:setPosition(cc.p(w * 0.5, h * 0.58))
             self.mContentNode:addChild(errLbl)
+            local retryBtn = ui.newButton({
+                normalImage = "c_7.png",
+                text = "Thử Lại",
+                fontSize = 20,
+                scale = 0.9,
+                color = ColorList.ccWhite,
+                outlineColor = ColorList.ccOutline,
+                outlineSize = 2,
+                position = cc.p(w * 0.5, h * 0.36),
+                clickAction = function()
+                    self:refreshView(1)
+                end,
+            })
+            self.mContentNode:addChild(retryBtn)
             return
         end
 
@@ -545,7 +609,7 @@ function HybridSyncLayer:renderAuthView(st)
     local w, h = self.mBgSize.width, self.mBgSize.height
 
     local noteLbl = ui.newLabel({
-        text = "Chơi offline bình thường khi mất mạng · Bang Hội lưu riêng trên máy",
+        text = "Chơi offline bình thường khi mất mạng  |  Bang Hội lưu riêng trên máy",
         size = 17,
         color = ColorList.ccBlack,
         align = cc.TEXT_ALIGNMENT_CENTER,
@@ -600,7 +664,7 @@ function HybridSyncLayer:renderAuthView(st)
                 end
                 if tr and tr.ok then
                     local cnt = tonumber((tr.info and tr.info.account_count) or 0) or 0
-                    ui.showFlashView({parent = self, text = string.format("Kết nối OK (%sms · %d người chơi)", tostring(tr.latency_ms or 0), cnt)})
+                    ui.showFlashView({parent = self, text = string.format("Kết nối OK (%sms | %d người chơi)", tostring(tr.latency_ms or 0), cnt)})
                 else
                     ui.showFlashView({parent = self, text = tostring((tr and tr.error) or "Không kết nối được Sync Hub")})
                 end
@@ -677,7 +741,10 @@ function HybridSyncLayer:renderAuthView(st)
                 if lr and lr.ok then
                     if lr.auto_pulled then
                         ui.showFlashView({parent = display.getRunningScene(), text = "Đã khôi phục dữ liệu Cloud về máy mới!"})
-                        reloadGameScene()
+                        reloadGameScene(lr.bound_user_id)
+                    elseif lr.switched_account then
+                        ui.showFlashView({parent = display.getRunningScene(), text = "Đã tự chuyển về tài khoản liên kết Cloud: " .. tostring(lr.bound_display or lr.bound_account_id)})
+                        reloadGameScene(lr.bound_user_id)
                     elseif lr.needs_choice then
                         self:showConflictDialog(lr.cloud_summary, st.local_summary)
                         self:refreshView()
@@ -700,28 +767,46 @@ end
 
 function HybridSyncLayer:renderConnectedView(st)
     local w, h = self.mBgSize.width, self.mBgSize.height
-    local errLine = ""
-    if st.last_error and st.last_error ~= "" then
-        errLine = "\\nLưu ý: {6c0101}" .. tostring(st.last_error)
+    local function addRow(txt, yRatio, sz, col, dims)
+        local opts = {
+            text = txt,
+            size = sz,
+            color = col or ColorList.ccBlack,
+            align = cc.TEXT_ALIGNMENT_CENTER,
+        }
+        if dims then
+            opts.dimensions = dims
+        end
+        local lbl = ui.newLabel(opts)
+        lbl:setPosition(cc.p(w * 0.5, h * yRatio))
+        self.mContentNode:addChild(lbl)
+        return lbl
     end
-    local infoText = string.format(
-        "Tài khoản Cloud: {6c0101}%s\\nPhiên bản lưu: Rev #%d  ·  Bạn bè đã đồng bộ: %d\\nĐồng bộ gần nhất: %s  ·  Hàng chờ: %d\\nTự động đồng bộ: 30 phút / vào BXH-PvP-Bạn bè (giãn 3 phút)%s",
-        tostring(st.username or ""),
-        tonumber(st.sync_rev) or 0,
-        tonumber(st.peer_count) or 0,
-        formatAgo(st.last_sync_at),
-        tonumber(st.pending_events) or 0,
-        errLine
+
+    addRow("Tài khoản Cloud: " .. tostring(st.username or ""), 0.78, 20, cc.c3b(0x6c, 0x01, 0x01))
+    addRow("Hồ sơ liên kết: " .. tostring(st.bound_display or st.bound_account_id or ""), 0.70, 19)
+    addRow(
+        string.format(
+            "Phiên bản lưu: Rev #%d  |  Bạn bè đã đồng bộ: %d",
+            tonumber(st.sync_rev) or 0,
+            tonumber(st.peer_count) or 0
+        ),
+        0.62,
+        18
     )
-    local infoLbl = ui.newLabel({
-        text = infoText,
-        size = 19,
-        color = ColorList.ccBlack,
-        dimensions = cc.size(w * 0.88, 0),
-        align = cc.TEXT_ALIGNMENT_CENTER,
-    })
-    infoLbl:setPosition(cc.p(w * 0.5, h * 0.62))
-    self.mContentNode:addChild(infoLbl)
+    addRow(
+        string.format(
+            "Đồng bộ gần nhất: %s  |  Hàng chờ: %d",
+            formatAgo(st.last_sync_at),
+            tonumber(st.pending_events) or 0
+        ),
+        0.54,
+        18
+    )
+    addRow("Tự động đồng bộ: 30 phút / vào BXH-PvP-Bạn bè (giãn 3 phút)", 0.46, 17)
+    if st.last_error and st.last_error ~= "" then
+        addRow("Lưu ý: " .. tostring(st.last_error), 0.36, 18, cc.c3b(0xb0, 0x10, 0x10), cc.size(w * 0.88, 0))
+    end
 
     local btnSync = ui.newButton({
         normalImage = "c_77.png",
@@ -731,7 +816,7 @@ function HybridSyncLayer:renderConnectedView(st)
         color = ColorList.ccWhite,
         outlineColor = ColorList.ccOutline,
         outlineSize = 2,
-        position = cc.p(w * 0.23, h * 0.22),
+        position = cc.p(w * 0.23, h * 0.19),
         clickAction = function()
             ui.showFlashView({parent = self, text = "Đang đồng bộ với Cloudflare..."})
             requestHybridApi("POST", "/hybrid/sync", {force_push = false}, function(sr)
@@ -742,7 +827,7 @@ function HybridSyncLayer:renderConnectedView(st)
                     ui.showFlashView({
                         parent = self,
                         text = string.format(
-                            "Đồng bộ OK! Rev #%d · %d bạn bè · +%d thư mới",
+                            "Đồng bộ OK! Rev #%d | %d bạn bè | +%d thư mới",
                             tonumber(sr.sync_rev) or 0,
                             tonumber(sr.peer_count) or 0,
                             tonumber(sr.inbox_applied) or 0
@@ -768,7 +853,7 @@ function HybridSyncLayer:renderConnectedView(st)
         color = ColorList.ccWhite,
         outlineColor = ColorList.ccOutline,
         outlineSize = 2,
-        position = cc.p(w * 0.54, h * 0.22),
+        position = cc.p(w * 0.54, h * 0.19),
         clickAction = function()
             local box = require("Common.MessageBoxLayer").new({
                 bgImage = "c_43.png",
@@ -782,7 +867,7 @@ function HybridSyncLayer:renderConnectedView(st)
                     requestHybridApi("POST", "/hybrid/pull_save", {}, function(pr)
                         if pr and pr.ok then
                             ui.showFlashView({parent = display.getRunningScene(), text = "Đã tải bản Cloud! Đang tải lại game..."})
-                            reloadGameScene()
+                            reloadGameScene(pr.active_user_id)
                         else
                             ui.showFlashView({parent = self, text = tostring((pr and pr.error) or "Không có bản lưu trên Cloud")})
                         end
@@ -805,7 +890,7 @@ function HybridSyncLayer:renderConnectedView(st)
         color = ColorList.ccWhite,
         outlineColor = ColorList.ccOutline,
         outlineSize = 2,
-        position = cc.p(w * 0.82, h * 0.22),
+        position = cc.p(w * 0.82, h * 0.19),
         clickAction = function()
             requestHybridApi("POST", "/hybrid/logout", {}, function()
                 if not tolua.isnull(self) then
@@ -822,14 +907,80 @@ return HybridSyncLayer
 """
 
 
+def _validate_lua_source_quotes(lua_source: str, label: str) -> None:
+    """Catch unescaped newlines inside Lua '...' or "..." string literals at build time."""
+    i = 0
+    n = len(lua_source)
+    line_no = 1
+    in_quote: str | None = None
+    open_line = 1
+    while i < n:
+        ch = lua_source[i]
+        if ch == "\n":
+            if in_quote is not None:
+                raise ValueError(f"{label}:{open_line}: unclosed Lua string literal ({in_quote})")
+            line_no += 1
+            i += 1
+            continue
+        if in_quote is not None:
+            if ch == "\\" and i + 1 < n:
+                if lua_source[i + 1] == "\n":
+                    line_no += 1
+                i += 2
+                continue
+            if ch == in_quote:
+                in_quote = None
+            i += 1
+            continue
+        if ch == "-" and i + 1 < n and lua_source[i + 1] == "-":
+            if i + 2 < n and lua_source[i + 2] == "[":
+                eq = i + 3
+                while eq < n and lua_source[eq] == "=":
+                    eq += 1
+                if eq < n and lua_source[eq] == "[":
+                    closing = "]" + ("=" * (eq - i - 3)) + "]"
+                    end = lua_source.find(closing, eq + 1)
+                    if end == -1:
+                        return
+                    line_no += lua_source.count("\n", i, end + len(closing))
+                    i = end + len(closing)
+                    continue
+            nl = lua_source.find("\n", i + 2)
+            if nl == -1:
+                return
+            i = nl
+            continue
+        if ch == "[":
+            eq = i + 1
+            while eq < n and lua_source[eq] == "=":
+                eq += 1
+            if eq < n and lua_source[eq] == "[":
+                closing = "]" + ("=" * (eq - i - 1)) + "]"
+                end = lua_source.find(closing, eq + 1)
+                if end == -1:
+                    raise ValueError(f"{label}:{line_no}: unclosed Lua long string")
+                line_no += lua_source.count("\n", i, end + len(closing))
+                i = end + len(closing)
+                continue
+        if ch in ('"', "'"):
+            in_quote = ch
+            open_line = line_no
+        i += 1
+    if in_quote is not None:
+        raise ValueError(f"{label}:{open_line}: unclosed Lua string literal at EOF ({in_quote})")
+
+
 def write_luac_text(luac_path: Path, lua_source: str) -> None:
+    _validate_lua_source_quotes(lua_source, str(luac_path))
     luac_path.write_bytes(XXTEA_SIGN + xxtea_encrypt(lua_source.encode("utf-8")))
 
 
-def build_server_bundle_zip(dest_zip: Path) -> None:
-    server_dir = ROOT_DIR / "server"
+def build_server_bundle_zip(dest_zip: Path, server_dir: Path | None = None) -> None:
+    server_dir = Path(server_dir) if server_dir is not None else (ROOT_DIR / "server")
+    max_server_py_bytes = 450 * 1024
     files = [
         "emulator.py",
+        "emulator_common.py",
         "event_handlers.py",
         "r79_event_handlers.py",
         "event_runtime.py",
@@ -847,6 +998,9 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
         "social_handlers.py",
         "guild_handlers.py",
         "pvpinter_handlers.py",
+        "pvp_boss_handlers.py",
+        "treasure_rebirth_handlers.py",
+        "progression_handlers.py",
         "pet_handlers.py",
         "pet_data.json",
         "warfare_handlers.py",
@@ -861,10 +1015,21 @@ def build_server_bundle_zip(dest_zip: Path) -> None:
             src = server_dir / fname
             if not src.exists():
                 raise FileNotFoundError(f"Missing server file: {src}")
+            if src.suffix == ".py":
+                raw_bytes = src.read_bytes()
+                if len(raw_bytes) > max_server_py_bytes:
+                    raise RuntimeError(
+                        f"Server Python file {src} is {len(raw_bytes)} bytes (> {max_server_py_bytes} bytes IDE safe limit); "
+                        "split into a Mixin module before bundling."
+                    )
+                src_text = raw_bytes.decode("utf-8")
+                if "truncated for diff preview" in src_text:
+                    raise RuntimeError(f"Corrupted Python marker in {src}")
+                compile(src_text, str(src), "exec")
             zf.write(src, arcname=fname)
 
 
-def bundle_embedded_python(work_dir: Path, version_tag: str) -> None:
+def bundle_embedded_python(work_dir: Path, version_tag: str, server_dir: Path | None = None) -> None:
     if not CHAQUOPY_ARM_ZIP.exists() or not CHAQUOPY_STDLIB_ZIP.exists():
         raise FileNotFoundError(f"Missing Chaquopy Python 3.11 artifacts in {BUILD_CACHE_DIR / 'deps'}")
     if not PREBUILT_LAUNCHER.exists():
@@ -889,7 +1054,7 @@ def bundle_embedded_python(work_dir: Path, version_tag: str) -> None:
     backend_assets_dir = work_dir / "assets" / "inubackend"
     backend_assets_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(CHAQUOPY_STDLIB_ZIP, backend_assets_dir / "stdlib.zip")
-    build_server_bundle_zip(backend_assets_dir / "server_bundle.zip")
+    build_server_bundle_zip(backend_assets_dir / "server_bundle.zip", server_dir=server_dir)
     (backend_assets_dir / "version.txt").write_text(f"{version_tag}\n", encoding="utf-8")
 
 
@@ -1045,6 +1210,7 @@ def patch_standalone_workspace(
     version_code: int,
     version_name: str,
     app_label: str,
+    server_dir: Path | None = None,
 ) -> None:
     server_host_port = "127.0.0.1:18082"
     if STANDALONE_WORK.exists():
@@ -1229,6 +1395,17 @@ def patch_standalone_workspace(
         STANDALONE_WORK / "assets" / "src" / "Login" / "StartGameScene.luac",
         [
             (
+                '            if not self.mSelectServer then\n'
+                '                ui.showFlashView({parent = self, image = nil,text = TR("请先选择登录的服务器！")})\n'
+                '                return\n'
+                '            end',
+                '            if not self.mSelectServer then\n'
+                '                ui.showFlashView({parent = self, image = nil,text = "Đang kết nối máy chủ cục bộ..."})\n'
+                '                self:requestServerList()\n'
+                '                return\n'
+                '            end',
+            ),
+            (
                 '    btnEnterGame:setScale(Adapter.MinScale)\n'
                 '    self:addChild(btnEnterGame) ',
                 '    btnEnterGame:setScale(Adapter.MinScale)\n'
@@ -1260,6 +1437,66 @@ def patch_standalone_workspace(
                 '    btnCloudSync:setScale(Adapter.MinScale * 0.9)\n'
                 '    self:addChild(btnCloudSync)',
             ),
+            (
+                '        self:requestServerList(function(event)\n'
+                '            LoadingWait:ends()\n'
+                '            local value = cjson.decode(self.mXhrReq.response)\n'
+                '            if value.Data and value.Data.Notice then\n'
+                '                --公告\n'
+                '                local gonggao = require("Login.NewAnnouncementLayer").new(value.Data.Notice)\n'
+                '                self:addChild(gonggao, 1025)\n'
+                '            end\n'
+                '        end)',
+                '        self:requestServerList(function(event)\n'
+                '            LoadingWait:ends()\n'
+                '            if event ~= "SUCCESS" or not self.mXhrReq or self.mXhrReq.status ~= 200 or not self.mXhrReq.response or self.mXhrReq.response == "" then\n'
+                '                return\n'
+                '            end\n'
+                '            local okDec, value = pcall(cjson.decode, self.mXhrReq.response)\n'
+                '            if not okDec or type(value) ~= "table" then\n'
+                '                return\n'
+                '            end\n'
+                '            if value.Data and value.Data.Notice then\n'
+                '                --公告\n'
+                '                local gonggao = require("Login.NewAnnouncementLayer").new(value.Data.Notice)\n'
+                '                self:addChild(gonggao, 1025)\n'
+                '            end\n'
+                '        end)',
+            ),
+            (
+                'function StartGameScene:requestServerList(afterResponse)\n'
+                '    self.mManageCenter = self:getManageCenterAddress()',
+                'function StartGameScene:requestServerList(afterResponse)\n'
+                '    self.mLastAfterResponse = afterResponse\n'
+                '    self.mManageCenter = self:getManageCenterAddress()',
+            ),
+            (
+                'function StartGameScene:responseServerList(event)\n'
+                '    self.mServerDataList = {}\n'
+                '    dump(event, self.mXhrReq.status)\n'
+                '    LoadingWait:ends()\n'
+                '    if event ~= "SUCCESS" or self.mXhrReq.status ~= 200 then',
+                'function StartGameScene:responseServerList(event)\n'
+                '    self.mServerDataList = {}\n'
+                '    dump(event, self.mXhrReq.status)\n'
+                '    LoadingWait:ends()\n'
+                '    if event ~= "SUCCESS" or self.mXhrReq.status ~= 200 then\n'
+                '        local retries = tonumber(self.mLocalRetryCount or 0) or 0\n'
+                '        if retries < 5 then\n'
+                '            self.mLocalRetryCount = retries + 1\n'
+                '            performWithDelay(self, function()\n'
+                '                if not tolua.isnull(self) then\n'
+                '                    self:requestServerList(self.mLastAfterResponse)\n'
+                '                end\n'
+                '            end, 1.0)\n'
+                '            return\n'
+                '        end',
+            ),
+            (
+                '    local value = cjson.decode(self.mXhrReq.response)',
+                '    self.mLocalRetryCount = 0\n'
+                '    local value = cjson.decode(self.mXhrReq.response)',
+            ),
         ],
     )
     write_luac_text(
@@ -1272,7 +1509,7 @@ def patch_standalone_workspace(
     )
 
     # 7. Bundle embedded 32-bit CPython 3.11 + server_bundle.zip + stdlib.zip
-    bundle_embedded_python(STANDALONE_WORK, f"{version_name}-{version_code}")
+    bundle_embedded_python(STANDALONE_WORK, f"{version_name}-{version_code}", server_dir=server_dir)
 
 
 def apply_shared_gameplay_patches(work_dir: Path) -> None:
@@ -1810,6 +2047,9 @@ def apply_shared_gameplay_patches(work_dir: Path) -> None:
     patch_r740_pvpinter_lua(work_dir / "assets" / "src")
     patch_r85_pet_lua(work_dir / "assets" / "src")
     patch_r86_warfare_lua(work_dir / "assets" / "src")
+    patch_battle_effect_fallbacks(work_dir / "assets" / "src")
+    patch_battle_damage_stats_lua(work_dir / "assets" / "src")
+    patch_battle_speed_toggle_lua(work_dir / "assets" / "src")
     patch_luac_text(work_dir / "assets" / "src" / "Equipment" / "EquipmentComposeLayer.luac", [
         (
             '        if colorLV < 8 then    --排除最高等级的装备',
@@ -5523,6 +5763,828 @@ end
     ])
 
 
+BATTLE_DAMAGE_STATS_LUA = r"""-- ComBattle.BattleDamageStats: Safe post-battle damage/taken/heal statistics & VS comparison modal.
+local BattleDamageStats = {}
+
+local _state = nil
+
+local function formatNumber(n)
+    local v = math.floor(tonumber(n) or 0)
+    if v < 0 then v = -v end
+    local s = tostring(v)
+    local out = ""
+    local len = #s
+    for i = 1, len do
+        out = out .. string.sub(s, i, i)
+        local rem = len - i
+        if rem > 0 and rem % 3 == 0 then
+            out = out .. ","
+        end
+    end
+    return out
+end
+
+local function safeHeroName(heroObj, side)
+    local hid = heroObj and heroObj.getHeroID and heroObj:getHeroID() or 0
+    local model = HeroModel and HeroModel.items and HeroModel.items[hid]
+    if side == 1 and model and model.specialType == 255 then
+        local ok, pInfo = pcall(function() return NetworkResData:getPlayerInfo() end)
+        if ok and pInfo and pInfo.PlayerName and pInfo.PlayerName ~= "" then
+            return pInfo.PlayerName
+        end
+    end
+    if heroObj and heroObj.displayName and heroObj.displayName ~= "" then
+        return heroObj.displayName
+    end
+    if model and model.name and model.name ~= "" then
+        return model.name
+    end
+    return "Tướng #" .. tostring(hid)
+end
+
+local function makeEntry(heroObj, posId, waveIdx, side)
+    local hid = heroObj and heroObj.getHeroID and heroObj:getHeroID() or 0
+    local model = HeroModel and HeroModel.items and HeroModel.items[hid]
+    local fashionId = nil
+    if side == 1 and model and model.specialType == 255 then
+        local ok, pInfo = pcall(function() return NetworkResData:getPlayerInfo() end)
+        if ok and pInfo and pInfo.FashionModelId and pInfo.FashionModelId ~= 0 then
+            fashionId = pInfo.FashionModelId
+        end
+    end
+    return {
+        posId = posId,
+        waveIdx = waveIdx,
+        side = side,
+        heroId = hid,
+        name = safeHeroName(heroObj, side),
+        step = (heroObj and heroObj.tupo) or 0,
+        quality = (heroObj and heroObj.quality) or (model and model.quality) or 10,
+        fashionId = fashionId,
+        damage = 0,
+        taken = 0,
+        heal = 0,
+    }
+end
+
+function BattleDamageStats:beginBattle(battleData)
+    _state = {
+        allies = {},
+        enemies = {},
+        enemyByWavePos = {},
+        wasSkipped = false,
+        stepsRecorded = 0,
+    }
+    if type(battleData) ~= "table" then
+        return
+    end
+    for waveIdx, wave in ipairs(battleData) do
+        if wave and type(wave.heros) == "table" then
+            _state.enemyByWavePos[waveIdx] = {}
+            for posId = 1, 12 do
+                local h = wave.heros[posId]
+                if h then
+                    if posId <= 6 then
+                        if not _state.allies[posId] then
+                            _state.allies[posId] = makeEntry(h, posId, waveIdx, 1)
+                        end
+                    else
+                        local entry = makeEntry(h, posId, waveIdx, 2)
+                        _state.enemyByWavePos[waveIdx][posId] = entry
+                        table.insert(_state.enemies, entry)
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function resolveEntry(posId, waveIdx)
+    if not _state or not posId then return nil end
+    local p = tonumber(posId)
+    if not p then return nil end
+    if p >= 1 and p <= 6 then
+        return _state.allies[p]
+    elseif p >= 7 and p <= 12 then
+        local w = _state.enemyByWavePos[waveIdx or 1]
+        if w and w[p] then return w[p] end
+        for _, wm in pairs(_state.enemyByWavePos) do
+            if wm[p] then return wm[p] end
+        end
+    end
+    return nil
+end
+
+local function recordBuffList(buffRecords, waveIdx)
+    if type(buffRecords) ~= "table" then return end
+    local hpAttr = (FightEnum_FightAttr and FightEnum_FightAttr.hp) or 1
+    local damAttr = (FightEnum_FightAttr and FightEnum_FightAttr.dam) or -1
+    for _, q in pairs(buffRecords) do
+        if type(q) == "table" then
+            local val = tonumber(q.attrChangeValue) or 0
+            local at = q.attrType
+            if val ~= 0 and (at == hpAttr or at == damAttr) then
+                local src = resolveEntry(q.buffHeroPosID, waveIdx)
+                local dst = resolveEntry(q.posID, waveIdx)
+                if val < 0 then
+                    local dmg = -val
+                    if src and (not dst or src.side ~= dst.side) then
+                        src.damage = src.damage + dmg
+                    end
+                    if dst then
+                        dst.taken = dst.taken + dmg
+                    end
+                elseif val > 0 then
+                    local healer = src or dst
+                    if healer then
+                        healer.heal = healer.heal + val
+                    end
+                end
+            end
+        end
+    end
+end
+
+function BattleDamageStats:recordStep(mFightRetData, waveIdx)
+    if not _state or type(mFightRetData) ~= "table" then return end
+    local wIdx = tonumber(waveIdx) or 1
+    _state.stepsRecorded = _state.stepsRecorded + 1
+
+    if type(mFightRetData.FightRecords) == "table" then
+        for _, path in ipairs(mFightRetData.FightRecords) do
+            if type(path) == "table" then
+                local attacker = resolveEntry(path.posID, wIdx)
+                if type(path.AffectLists) == "table" then
+                    for _, q in pairs(path.AffectLists) do
+                        if type(q) == "table" then
+                            local hpDelta = tonumber(q.hp) or 0
+                            local target = resolveEntry(q.posID, wIdx)
+                            if hpDelta < 0 then
+                                local dmg = -hpDelta
+                                if attacker and (not target or attacker.side ~= target.side) then
+                                    attacker.damage = attacker.damage + dmg
+                                end
+                                if target then
+                                    target.taken = target.taken + dmg
+                                end
+                            elseif hpDelta > 0 then
+                                if attacker then
+                                    attacker.heal = attacker.heal + hpDelta
+                                elseif target then
+                                    target.heal = target.heal + hpDelta
+                                end
+                            end
+                            recordBuffList(q.beforeCalcBuffRecords, wIdx)
+                            recordBuffList(q.afterCalcBuffRecords, wIdx)
+                        end
+                    end
+                end
+                local selfHp = tonumber(path.hp) or 0
+                if selfHp > 0 and attacker then
+                    attacker.heal = attacker.heal + selfHp
+                end
+                recordBuffList(path.beforeCalcBuffRecords, wIdx)
+                recordBuffList(path.afterCalcBuffRecords, wIdx)
+            end
+        end
+    end
+
+    recordBuffList(mFightRetData.beforeCalcBuffRecords, wIdx)
+    recordBuffList(mFightRetData.afterCalcBuffRecords, wIdx)
+end
+
+function BattleDamageStats:simulateOnSkip(battleData)
+    if not _state then return end
+    _state.wasSkipped = true
+    local rawData = BattleData and BattleData.battle and BattleData.battle.params and BattleData.battle.params.data
+    if not rawData or not rawData.FightObjs then return end
+    require("CSCommon.ServerInterface")
+    require("CSCommon.NewObject")
+    local BattleCalc = require("CSCommon.BattleCalc")
+    local clonedData = clone(rawData)
+    local simWaves = ConvertDataToBattleData(clonedData)
+    if type(simWaves) ~= "table" or #simWaves == 0 then return end
+
+    -- Re-initialize cleanly and simulate all waves without touching live BattleData/RNG
+    self:beginBattle(simWaves)
+    _state.wasSkipped = true
+    local maxRound = (bd and bd.getBattleRoundMax and bd.getBattleRoundMax()) or 30
+    for wIdx, wave in ipairs(simWaves) do
+        local calc = newObject(BattleCalc)
+        local okInit = calc:init(wave.heros, wave.teamData, wave.petData, maxRound, wave.randNums, wave.isPvP)
+        if okInit then
+            for _ = 1, 400 do
+                local ret = calc:fightATimes({autoPlay = true})
+                if not ret then break end
+                self:recordStep(ret, wIdx)
+                if ret.isWin ~= nil or ret.resultType ~= nil then
+                    break
+                end
+            end
+        end
+    end
+end
+
+function BattleDamageStats:hasData()
+    if not _state then return false end
+    for _ in pairs(_state.allies) do return true end
+    return #_state.enemies > 0
+end
+
+local function collectSorted(listOrMap, metricKey)
+    local out = {}
+    local total = 0
+    for _, item in pairs(listOrMap) do
+        local val = math.floor(tonumber(item[metricKey]) or 0)
+        total = total + val
+        table.insert(out, {
+            entry = item,
+            value = val,
+        })
+    end
+    table.sort(out, function(a, b)
+        if a.value ~= b.value then
+            return a.value > b.value
+        end
+        return (a.entry.posId or 0) < (b.entry.posId or 0)
+    end)
+    return out, total
+end
+
+function BattleDamageStats:attachButton(parentLayer)
+    if not parentLayer or tolua.isnull(parentLayer) then return end
+    if not self:hasData() then return end
+    if parentLayer._battleStatsBtn and not tolua.isnull(parentLayer._battleStatsBtn) then
+        return
+    end
+    local btnScale = math.min(Adapter.MinScale, (display.height / 640)) * 0.88
+    local btn = ui.newButton({
+        normalImage = "c_7.png",
+        text = "Thống Kê",
+        fontSize = 17,
+        textColor = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        position = cc.p(display.width - 105 * btnScale, display.height - 46 * btnScale),
+        clickAction = function()
+            self:showModal(parentLayer)
+        end,
+    })
+    btn:setScale(btnScale)
+    parentLayer:addChild(btn, 50)
+    parentLayer._battleStatsBtn = btn
+end
+
+local function addBorderBox(parent, w, h, color4b, thickness)
+    local t = thickness or 2
+    local top = cc.LayerColor:create(color4b, w, t)
+    top:setPosition(0, h - t)
+    parent:addChild(top, 20)
+    local bot = cc.LayerColor:create(color4b, w, t)
+    bot:setPosition(0, 0)
+    parent:addChild(bot, 20)
+    local left = cc.LayerColor:create(color4b, t, h)
+    left:setPosition(0, 0)
+    parent:addChild(left, 20)
+    local right = cc.LayerColor:create(color4b, t, h)
+    right:setPosition(w - t, 0)
+    parent:addChild(right, 20)
+end
+
+function BattleDamageStats:showModal(parentLayer)
+    if not self:hasData() then return end
+    local host = parentLayer or cc.Director:getInstance():getRunningScene()
+    if not host or tolua.isnull(host) then return end
+    if host._battleStatsModal and not tolua.isnull(host._battleStatsModal) then
+        host._battleStatsModal:removeFromParent()
+    end
+
+    local overlay = cc.LayerColor:create(cc.c4b(0, 0, 0, 195))
+    overlay:setContentSize(display.width, display.height)
+    local listener = cc.EventListenerTouchOneByOne:create()
+    listener:setSwallowTouches(true)
+    listener:registerScriptHandler(function() return true end, cc.Handler.EVENT_TOUCH_BEGAN)
+    overlay:getEventDispatcher():addEventListenerWithSceneGraphPriority(listener, overlay)
+
+    local W, H = 1040, 580
+    local safeScale = math.min((display.width * 0.92) / W, (display.height * 0.90) / H)
+
+    local panel = cc.Node:create()
+    panel:setContentSize(cc.size(W, H))
+    panel:setAnchorPoint(cc.p(0.5, 0.5))
+    panel:setPosition(display.cx, display.cy)
+    panel:setScale(safeScale)
+    overlay:addChild(panel)
+
+    local panelBg = cc.LayerColor:create(cc.c4b(16, 20, 32, 245), W, H)
+    panelBg:setPosition(0, 0)
+    panel:addChild(panelBg, 0)
+
+    local headerBg = cc.LayerColor:create(cc.c4b(28, 35, 54, 255), W, 54)
+    headerBg:setPosition(0, H - 54)
+    panel:addChild(headerBg, 1)
+
+    addBorderBox(panel, W, H, cc.c4b(218, 178, 92, 230), 2)
+
+    local titleLbl = ui.newLabel({
+        text = "THỐNG KÊ SÁT THƯƠNG TRẬN ĐẤU",
+        size = 25,
+        color = cc.c3b(255, 224, 120),
+        outlineColor = ColorList.ccOutline,
+        needOutLine = true,
+        align = ui.TEXT_ALIGN_CENTER,
+    })
+    titleLbl:setPosition(W * 0.5, H - 27)
+    panel:addChild(titleLbl, 5)
+
+    local closeBtn = ui.newButton({
+        normalImage = "c_15.png",
+        position = cc.p(W - 30, H - 27),
+        clickAction = function()
+            if not tolua.isnull(overlay) then
+                overlay:removeFromParent()
+            end
+        end,
+    })
+    closeBtn:setScale(0.85)
+    panel:addChild(closeBtn, 25)
+
+    local contentNode = cc.Node:create()
+    panel:addChild(contentNode, 5)
+
+    local activeMetric = "damage"
+    local tabButtons = {}
+    local tabs = {
+        { key = "damage", label = "Sát Thương" },
+        { key = "taken",  label = "Chịu Đòn" },
+        { key = "heal",   label = "Hồi Máu" },
+    }
+
+    local renderBody
+    local function updateTabStyles()
+        for _, info in ipairs(tabButtons) do
+            local isSel = (info.key == activeMetric)
+            info.btn:setColor(isSel and cc.c3b(255, 255, 255) or cc.c3b(165, 175, 195))
+            info.btn:setScale(isSel and 0.88 or 0.80)
+        end
+    end
+
+    for idx, t in ipairs(tabs) do
+        local isSel = (t.key == activeMetric)
+        local tb = ui.newButton({
+            normalImage = "c_7.png",
+            text = t.label,
+            fontSize = 16,
+            textColor = ColorList.ccWhite,
+            outlineColor = ColorList.ccOutline,
+            position = cc.p(W * 0.5 + (idx - 2) * 170, H - 80),
+            clickAction = function()
+                if activeMetric ~= t.key then
+                    activeMetric = t.key
+                    updateTabStyles()
+                    renderBody()
+                end
+            end,
+        })
+        tb:setScale(isSel and 0.88 or 0.80)
+        tb:setColor(isSel and cc.c3b(255, 255, 255) or cc.c3b(165, 175, 195))
+        panel:addChild(tb, 10)
+        table.insert(tabButtons, { key = t.key, btn = tb })
+    end
+
+    local function buildSideColumn(items, teamTotal, globalMax, isAlly, colX, colY, colW, colH)
+        local colNode = cc.Node:create()
+        colNode:setContentSize(cc.size(colW, colH))
+        colNode:setPosition(colX, colY)
+        contentNode:addChild(colNode)
+
+        local colBg = cc.LayerColor:create(cc.c4b(10, 13, 22, 215), colW, colH)
+        colBg:setPosition(0, 0)
+        colNode:addChild(colBg, 0)
+
+        local borderCol = isAlly and cc.c4b(65, 165, 235, 150) or cc.c4b(235, 95, 80, 150)
+        addBorderBox(colNode, colW, colH, borderCol, 1)
+
+        local headerColor = isAlly and cc.c3b(95, 215, 255) or cc.c3b(255, 120, 105)
+        local headerTxt = (isAlly and "ĐỘI TA: " or "ĐỘI ĐỊCH: ") .. formatNumber(teamTotal)
+        local hdr = ui.newLabel({
+            text = headerTxt,
+            size = 19,
+            color = headerColor,
+            outlineColor = ColorList.ccOutline,
+            needOutLine = true,
+        })
+        hdr:setAnchorPoint(cc.p(0.5, 0.5))
+        hdr:setPosition(colW * 0.5, colH - 18)
+        colNode:addChild(hdr, 5)
+
+        local listView = ccui.ListView:create()
+        listView:setDirection(ccui.ScrollViewDir.vertical)
+        listView:setBounceEnabled(true)
+        listView:setContentSize(cc.size(colW - 12, colH - 38))
+        listView:setPosition(6, 4)
+        listView:setItemsMargin(3)
+        colNode:addChild(listView, 5)
+
+        local CardNode = require("Common.CardNode")
+        local rowW = colW - 12
+        local rowH = 56
+        local barMaxW = rowW - 82
+
+        for idx, row in ipairs(items) do
+            local entry = row.entry
+            local val = row.value
+            local cell = ccui.Layout:create()
+            cell:setContentSize(cc.size(rowW, rowH))
+
+            local rowBg = cc.LayerColor:create(
+                idx == 1 and val > 0 and cc.c4b(68, 56, 26, 185) or cc.c4b(24, 29, 42, 175),
+                rowW, rowH - 2
+            )
+            rowBg:setPosition(0, 1)
+            cell:addChild(rowBg)
+
+            -- Hero Avatar
+            local avatarOk = pcall(function()
+                local card = CardNode.new({ isTouchEnabled = false, superHeroNeedEffect = false })
+                card:setHero(
+                    { HeroModelId = entry.heroId, Step = entry.step or 0 },
+                    { CardShowAttr.eBorder },
+                    false,
+                    nil,
+                    entry.fashionId
+                )
+                card:setScale(0.50)
+                card:setPosition(32, rowH * 0.5)
+                cell:addChild(card, 2)
+            end)
+            if not avatarOk then
+                local fb = cc.LayerColor:create(cc.c4b(60, 60, 75, 255), 44, 44)
+                fb:setPosition(10, 6)
+                cell:addChild(fb, 2)
+            end
+
+            -- Rank / MVP badge
+            if idx == 1 and val > 0 then
+                local mvp = ui.newLabel({
+                    text = "MVP",
+                    size = 13,
+                    color = cc.c3b(255, 224, 65),
+                    outlineColor = ColorList.ccOutline,
+                    needOutLine = true,
+                })
+                mvp:setPosition(32, rowH - 9)
+                cell:addChild(mvp, 5)
+            end
+
+            -- Name (left)
+            local nameLbl = ui.newLabel({
+                text = tostring(idx) .. ". " .. tostring(entry.name),
+                size = 17,
+                color = idx == 1 and val > 0 and cc.c3b(255, 232, 130) or ColorList.ccWhite,
+                outlineColor = ColorList.ccOutline,
+                needOutLine = true,
+            })
+            nameLbl:setAnchorPoint(cc.p(0, 0.5))
+            nameLbl:setPosition(66, rowH - 16)
+            cell:addChild(nameLbl, 3)
+
+            -- Exact value + % of team (right)
+            local teamPct = (teamTotal > 0) and (val * 100 / teamTotal) or 0
+            local valLbl = ui.newLabel({
+                text = string.format("%s (%.1f%%)", formatNumber(val), teamPct),
+                size = 16,
+                color = isAlly and cc.c3b(135, 230, 255) or cc.c3b(255, 175, 130),
+                outlineColor = ColorList.ccOutline,
+                needOutLine = true,
+            })
+            valLbl:setAnchorPoint(cc.p(1, 0.5))
+            valLbl:setPosition(rowW - 10, rowH - 16)
+            cell:addChild(valLbl, 3)
+
+            -- Horizontal bar background (scaled against globalMax across BOTH teams)
+            local barH = 15
+            local barBg = cc.LayerColor:create(cc.c4b(12, 14, 20, 225), barMaxW, barH)
+            barBg:setPosition(66, 9)
+            cell:addChild(barBg, 2)
+
+            -- 50% midpoint guide tick
+            local midTick = cc.LayerColor:create(cc.c4b(255, 255, 255, 45), 1, barH)
+            midTick:setPosition(66 + barMaxW * 0.5, 9)
+            cell:addChild(midTick, 4)
+
+            local ratio = (globalMax > 0) and math.min(1, math.max(0, val / globalMax)) or 0
+            local fillW = math.floor(barMaxW * ratio)
+            if val > 0 and fillW < 4 then fillW = 4 end
+            if fillW > 0 then
+                local fillColor
+                if activeMetric == "heal" then
+                    fillColor = isAlly and cc.c4b(60, 210, 120, 240) or cc.c4b(145, 205, 85, 240)
+                elseif activeMetric == "taken" then
+                    fillColor = isAlly and cc.c4b(235, 185, 65, 240) or cc.c4b(200, 120, 70, 240)
+                else
+                    fillColor = isAlly
+                        and (idx == 1 and cc.c4b(65, 195, 255, 250) or cc.c4b(45, 145, 230, 235))
+                        or (idx == 1 and cc.c4b(255, 105, 75, 250) or cc.c4b(215, 75, 65, 235))
+                end
+                local fillBar = cc.LayerColor:create(fillColor, fillW, barH - 2)
+                fillBar:setPosition(66, 10)
+                cell:addChild(fillBar, 3)
+            end
+
+            listView:pushBackCustomItem(cell)
+        end
+    end
+
+    renderBody = function()
+        contentNode:removeAllChildren()
+
+        local allyList, allyTotal = collectSorted(_state.allies, activeMetric)
+        local enemyList, enemyTotal = collectSorted(_state.enemies, activeMetric)
+        local sumBoth = allyTotal + enemyTotal
+        local globalMax = 1
+        if allyList[1] and allyList[1].value > globalMax then globalMax = allyList[1].value end
+        if enemyList[1] and enemyList[1].value > globalMax then globalMax = enemyList[1].value end
+
+        -- Overall VS split bar (Team comparison across both sides)
+        local vsBarW = W - 64
+        local vsBarH = 20
+        local vsX = 32
+        local vsY = H - 140
+
+        local allyShare = (sumBoth > 0) and (allyTotal / sumBoth) or 0.5
+        local enemyShare = (sumBoth > 0) and (enemyTotal / sumBoth) or 0.5
+
+        local vsLeftLbl = ui.newLabel({
+            text = string.format("Đội Ta: %s (%.1f%%)", formatNumber(allyTotal), allyShare * 100),
+            size = 18,
+            color = cc.c3b(105, 220, 255),
+            outlineColor = ColorList.ccOutline,
+            needOutLine = true,
+        })
+        vsLeftLbl:setAnchorPoint(cc.p(0, 0.5))
+        vsLeftLbl:setPosition(vsX, vsY + 32)
+        contentNode:addChild(vsLeftLbl)
+
+        local vsRightLbl = ui.newLabel({
+            text = string.format("Đội Địch: %s (%.1f%%)", formatNumber(enemyTotal), enemyShare * 100),
+            size = 18,
+            color = cc.c3b(255, 130, 110),
+            outlineColor = ColorList.ccOutline,
+            needOutLine = true,
+        })
+        vsRightLbl:setAnchorPoint(cc.p(1, 0.5))
+        vsRightLbl:setPosition(vsX + vsBarW, vsY + 32)
+        contentNode:addChild(vsRightLbl)
+
+        local vsBg = cc.LayerColor:create(cc.c4b(15, 18, 25, 235), vsBarW, vsBarH)
+        vsBg:setPosition(vsX, vsY)
+        contentNode:addChild(vsBg)
+
+        local leftW = math.floor(vsBarW * allyShare)
+        local rightW = vsBarW - leftW
+        if leftW > 0 then
+            local lb = cc.LayerColor:create(cc.c4b(45, 165, 245, 240), leftW, vsBarH - 2)
+            lb:setPosition(vsX, vsY + 1)
+            contentNode:addChild(lb)
+        end
+        if rightW > 0 then
+            local rb = cc.LayerColor:create(cc.c4b(235, 80, 65, 240), rightW, vsBarH - 2)
+            rb:setPosition(vsX + leftW, vsY + 1)
+            contentNode:addChild(rb)
+        end
+        local divLine = cc.LayerColor:create(cc.c4b(255, 240, 170, 255), 3, vsBarH + 4)
+        divLine:setPosition(vsX + leftW - 1, vsY - 2)
+        contentNode:addChild(divLine)
+
+        -- Two side-by-side columns
+        local colGap = 16
+        local colW = (W - 64 - colGap) * 0.5
+        local colH = H - 188
+        local colY = 34
+        buildSideColumn(allyList, allyTotal, globalMax, true, 32, colY, colW, colH)
+        buildSideColumn(enemyList, enemyTotal, globalMax, false, 32 + colW + colGap, colY, colW, colH)
+
+        local noteText = _state.wasSkipped
+            and "Thanh ngang đo theo tướng cao nhất toàn trận (mô phỏng nhanh do đã Bỏ Qua)"
+            or "Thanh ngang đo theo tướng cao nhất toàn trận để so tương quan trong team & 2 bên"
+        local noteLbl = ui.newLabel({
+            text = noteText,
+            size = 15,
+            color = cc.c3b(200, 205, 215),
+            outlineColor = ColorList.ccOutline,
+            needOutLine = true,
+        })
+        noteLbl:setPosition(W * 0.5, 16)
+        contentNode:addChild(noteLbl)
+    end
+
+    renderBody()
+    host:addChild(overlay, 260)
+    host._battleStatsModal = overlay
+end
+
+return BattleDamageStats
+"""
+
+
+def patch_battle_damage_stats_lua(src: Path) -> None:
+    """Install ComBattle/BattleDamageStats.luac and wire read-only hooks + settle UI button."""
+    write_luac_text(src / "ComBattle" / "BattleDamageStats.luac", BATTLE_DAMAGE_STATS_LUA)
+
+    patch_luac_text(src / "ComBattle" / "BattleLoadingLayer.luac", [
+        (
+            "\tBattleData.battle.data = v1\n",
+            "\tBattleData.battle.data = v1\n"
+            '\tpcall(function() require("ComBattle.BattleDamageStats"):beginBattle(v1) end)\n',
+        ),
+    ])
+
+    patch_luac_text(src / "ComBattle" / "BattleData.luac", [
+        (
+            "\tBattleData.stage.BattleFinishValue = {value = true}\n"
+            "\tparams.callback(BattleData.stage.BattleFinishValue)\n",
+            '\tpcall(function() require("ComBattle.BattleDamageStats"):simulateOnSkip(BattleData.battle.data) end)\n'
+            "\tBattleData.stage.BattleFinishValue = {value = true}\n"
+            "\tparams.callback(BattleData.stage.BattleFinishValue)\n",
+        ),
+        (
+            "            --标记战斗结束\n"
+            "            if mFightRetData.isWin ~= nil then\n"
+            "                BattleData.stage.BattleFinishValue = res.result\n"
+            "            end\n"
+            "            return res\n",
+            "            --标记战斗结束\n"
+            "            if mFightRetData.isWin ~= nil then\n"
+            "                BattleData.stage.BattleFinishValue = res.result\n"
+            "            end\n"
+            '            pcall(function() require("ComBattle.BattleDamageStats"):recordStep(mFightRetData, BattleData.battle.stageIdx) end)\n'
+            "            return res\n",
+        ),
+    ])
+
+    patch_luac_text(src / "Adventure" / "BattleWinHintLayer.luac", [
+        (
+            '    self.mSoundId = playEffect("music_battle_win.mp3")\n',
+            '    self.mSoundId = playEffect("music_battle_win.mp3")\n'
+            '    pcall(function() require("ComBattle.BattleDamageStats"):attachButton(self) end)\n',
+        ),
+    ])
+
+    patch_luac_text(src / "Adventure" / "BattleLoseHintLayer.luac", [
+        (
+            '    self.mSoundId = playEffect("music_battle_lost.mp3")\n',
+            '    self.mSoundId = playEffect("music_battle_lost.mp3")\n'
+            '    pcall(function() require("ComBattle.BattleDamageStats"):attachButton(self) end)\n',
+        ),
+    ])
+
+    patch_luac_text(src / "Grab" / "FightBalanceLayer.luac", [
+        (
+            "    -- 执行该页面当前的新手引导\n"
+            "    self:executeGuide()\n",
+            "    -- 执行该页面当前的新手引导\n"
+            "    self:executeGuide()\n"
+            '    pcall(function() require("ComBattle.BattleDamageStats"):attachButton(self) end)\n',
+        ),
+    ])
+
+
+def patch_battle_effect_fallbacks(src: Path) -> None:
+    """Guard ComBattle/BattleData.luac against missing ComBattle.Config.* modules.
+
+    VN APK omits 13 ComBattle/Config/*.luac effect scripts referenced by AttackModel
+    (including 4 Main Fashion skins 19010003-19010006 and hero 12015022 Tứ Đấu Thần),
+    which caused BattleLoadingLayer:start() to throw a Lua error and hang at 0/100.
+    """
+    patch_luac_text(src / "ComBattle" / "BattleData.luac", [
+        (
+            '\t\tlocal config = require("ComBattle.Config." .. fileName)',
+            '\t\tlocal ok, config = pcall(require, "ComBattle.Config." .. fileName)\n'
+            '\t\tif not ok or not config then\n'
+            '\t\t\tlocal fallback = "attack_empty"\n'
+            '\t\t\tif type(fileName) == "string" then\n'
+            '\t\t\t\tif string.find(fileName, "_nuji$") then\n'
+            '\t\t\t\t\tif string.find(fileName, "nvzhu") or string.find(fileName, "yuandanshizhuang") then\n'
+            '\t\t\t\t\t\tfallback = "hero_nvzhujue_a_nuji"\n'
+            '\t\t\t\t\telseif string.find(fileName, "nanzhu") then\n'
+            '\t\t\t\t\t\tfallback = "hero_nanzhujue_a_nuji"\n'
+            '\t\t\t\t\telse\n'
+            '\t\t\t\t\t\tfallback = "common_yuancheng_nengliang1"\n'
+            '\t\t\t\t\tend\n'
+            '\t\t\t\telseif string.find(fileName, "_pugong$") then\n'
+            '\t\t\t\t\tfallback = "common_pugong03"\n'
+            '\t\t\t\tend\n'
+            '\t\t\tend\n'
+            '\t\t\tlocal ok2, cfg2 = pcall(require, "ComBattle.Config." .. fallback)\n'
+            '\t\t\tif ok2 and cfg2 then\n'
+            '\t\t\t\tconfig = cfg2\n'
+            '\t\t\telse\n'
+            "\t\t\t\tconfig = require(\"ComBattle.Config.attack_empty\")\n"
+            "\t\t\tend\n"
+            "\t\tend",
+        ),
+    ])
+
+
+def patch_battle_speed_toggle_lua(src: Path) -> None:
+    """Allow explicit x1 / x2 battle speed switching in ALL battle modes.
+
+    Separates speed control from tuoguan.display / tuoguan.func so players can
+    always toggle between x1 and x2 (even in Arena, Grab, Wrestle, Team,
+    CrossServer, PetBattle, CheckBattle, Friend Duel, etc.) and persists their
+    last chosen speed across battles via BattleData.game.userSpeed.
+    """
+    patch_luac_text(src / "ComBattle" / "BattleData.luac", [
+        (
+            "\tif (BattleData.game.tuoguan == BattleTuoguanState.eJiasuTuoguan)\n"
+            "\t\tor (BattleData.game.tuoguan == BattleTuoguanState.eJiasu) then\n"
+            "\t\tBattleData.game.speed = bd.BattleSpeedTuoguan\n"
+            "\telse\n"
+            "\t\tBattleData.game.speed = bd.BattleSpeedOriginal\n"
+            "\tend\n",
+            "\tif (BattleData.game.tuoguan == BattleTuoguanState.eJiasuTuoguan)\n"
+            "\t\tor (BattleData.game.tuoguan == BattleTuoguanState.eJiasu) then\n"
+            "\t\tBattleData.game.speed = bd.BattleSpeedTuoguan\n"
+            "\telse\n"
+            "\t\tBattleData.game.speed = bd.BattleSpeedOriginal\n"
+            "\tend\n"
+            "\tif BattleData.game.userSpeed == bd.BattleSpeedOriginal or BattleData.game.userSpeed == bd.BattleSpeedTuoguan then\n"
+            "\t\tBattleData.game.speed = BattleData.game.userSpeed\n"
+            "\tend\n",
+        ),
+    ])
+
+    patch_luac_text(src / "ComBattle" / "BattleUILayer.luac", [
+        (
+            "    local function changeSpeed()\n"
+            "        if BattleData.game.tuoguan ~= BattleTuoguanState.eNormal then\n"
+            "            --托管状态下加速\n"
+            "            BattleData.game.speed = bd.BattleSpeedTuoguan\n"
+            "        else\n"
+            "            BattleData.game.speed = bd.BattleSpeedOriginal\n"
+            "        end\n"
+            "        --更新速度\n"
+            "        BattleData:updateSpeed()\n"
+            "    end\n",
+            "    local refreshSpeedToggleBtn\n"
+            "    local function changeSpeed()\n"
+            "        if BattleData.game.tuoguan ~= BattleTuoguanState.eNormal then\n"
+            "            BattleData.game.speed = bd.BattleSpeedTuoguan\n"
+            "        else\n"
+            "            BattleData.game.speed = bd.BattleSpeedOriginal\n"
+            "        end\n"
+            "        BattleData.game.userSpeed = BattleData.game.speed\n"
+            "        BattleData:updateSpeed()\n"
+            "        if refreshSpeedToggleBtn then refreshSpeedToggleBtn() end\n"
+            "    end\n",
+        ),
+        (
+            "        self:addChild(btnHosted)\n"
+            "    end\n"
+            "\n"
+            "    local posSkip = bd.AutoPos(1047, 581)\n",
+            "        self:addChild(btnHosted)\n"
+            "    end\n"
+            "\n"
+            "    local hasHostedBtn = BattleData.battle.params.tuoguan.display and getSpeedBtnPic()\n"
+            "    local speedPos = hasHostedBtn and bd.AutoPos(260, 581) or bd.AutoPos(123, 581)\n"
+            "    local function getSpeedLabel()\n"
+            "        return (BattleData.game.speed == bd.BattleSpeedTuoguan) and \"Tốc: x2\" or \"Tốc: x1\"\n"
+            "    end\n"
+            "    local btnSpeedToggle = ui.newButton({\n"
+            "        normalImage = \"c_7.png\",\n"
+            "        text = getSpeedLabel(),\n"
+            "        fontSize = 18,\n"
+            "        textColor = (BattleData.game.speed == bd.BattleSpeedTuoguan) and cc.c3b(255, 230, 100) or ColorList.ccWhite,\n"
+            "        outlineColor = ColorList.ccOutline,\n"
+            "        position = speedPos,\n"
+            "        scale = bd.MinScale,\n"
+            "        clickAction = function()\n"
+            "            if BattleData.game.speed == bd.BattleSpeedTuoguan then\n"
+            "                BattleData.game.speed = bd.BattleSpeedOriginal\n"
+            "            else\n"
+            "                BattleData.game.speed = bd.BattleSpeedTuoguan\n"
+            "            end\n"
+            "            BattleData.game.userSpeed = BattleData.game.speed\n"
+            "            BattleData:updateSpeed()\n"
+            "            refreshSpeedToggleBtn()\n"
+            "        end,\n"
+            "    })\n"
+            "    refreshSpeedToggleBtn = function()\n"
+            "        if not btnSpeedToggle or tolua.isnull(btnSpeedToggle) then return end\n"
+            "        if btnSpeedToggle.mTitleLabel then\n"
+            "            btnSpeedToggle.mTitleLabel:setString(getSpeedLabel())\n"
+            "            btnSpeedToggle.mTitleLabel:setColor((BattleData.game.speed == bd.BattleSpeedTuoguan) and cc.c3b(255, 230, 100) or ColorList.ccWhite)\n"
+            "        end\n"
+            "    end\n"
+            "    self.btnSpeedToggle = btnSpeedToggle\n"
+            "    self:addChild(btnSpeedToggle, 20)\n"
+            "\n"
+            "    local posSkip = bd.AutoPos(1047, 581)\n",
+        ),
+    ])
+
+
 def patch_r85_pet_lua(src: Path) -> None:
     """R8.5: Enable Pet/PetOut/PetCompare (1414, 7400..7406, 7500, 7600) and localize 27 Pet names to VN."""
     module_specs = [
@@ -6019,6 +7081,7 @@ def main() -> None:
     parser.add_argument("--version-name", default="5.0.4.98-r7.7-standalone", help="Android versionName")
     parser.add_argument("--app-label", default="InuYasha Offline", help="Launcher display name")
     parser.add_argument("--out", default="com.cmn.inuyasha.revival_r7_7_standalone.apk", help="Output APK filename")
+    parser.add_argument("--server-dir", default="", help="Optional override directory containing server/*.py & data files")
     args = parser.parse_args()
 
     patch_standalone_workspace(
@@ -6026,6 +7089,7 @@ def main() -> None:
         version_code=args.version_code,
         version_name=args.version_name,
         app_label=args.app_label,
+        server_dir=Path(args.server_dir).resolve() if args.server_dir else None,
     )
     out = build_and_sign_release(args.out)
     print(f"Standalone APK ready: {out} ({out.stat().st_size} bytes)")

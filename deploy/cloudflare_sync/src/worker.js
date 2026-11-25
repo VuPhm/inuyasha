@@ -14,9 +14,9 @@
 
 const USERNAME_RE = /^[A-Za-z0-9_.-]{3,24}$/;
 const PBKDF2_ITERS = 100_000; // Cloudflare Workers WebCrypto native max
-const MAX_BODY_BYTES = 256 * 1024; // 256 KB hard cap
-const MAX_SAVE_B64_LEN = 220 * 1024;
-const MAX_SNAPSHOT_LEN = 32 * 1024;
+const MAX_BODY_BYTES = 512 * 1024; // 512 KB hard cap
+const MAX_SAVE_B64_LEN = 384 * 1024;
+const MAX_SNAPSHOT_LEN = 128 * 1024;
 const MAX_EVENTS_PER_SYNC = 50;
 const MAX_EVENT_PAYLOAD_LEN = 2048;
 
@@ -126,11 +126,11 @@ async function hashPassword(password, saltHex = null) {
 async function readBoundedJson(request) {
   const contentLen = request.headers.get("content-length");
   if (contentLen && Number(contentLen) > MAX_BODY_BYTES) {
-    throw { status: 413, message: "Payload quá lớn (tối đa 256 KB)" };
+    throw { status: 413, message: "Payload quá lớn (tối đa 512 KB)" };
   }
   const buf = await request.arrayBuffer();
   if (buf.byteLength > MAX_BODY_BYTES) {
-    throw { status: 413, message: "Payload quá lớn (tối đa 256 KB)" };
+    throw { status: 413, message: "Payload quá lớn (tối đa 512 KB)" };
   }
   if (buf.byteLength === 0) {
     return {};
@@ -506,9 +506,9 @@ async function handleSync(request, env) {
   // Acknowledge previously received inbox events
   const ackIds = Array.isArray(body.ack_inbox_ids)
     ? body.ack_inbox_ids
-        .map((x) => Math.floor(Number(x)))
-        .filter((x) => Number.isFinite(x) && x > 0)
-        .slice(0, 100)
+      .map((x) => Math.floor(Number(x)))
+      .filter((x) => Number.isFinite(x) && x > 0)
+      .slice(0, 100)
     : [];
   if (ackIds.length > 0) {
     const placeholders = ackIds.map(() => "?").join(",");

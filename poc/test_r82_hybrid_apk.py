@@ -5,11 +5,19 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 from pathlib import Path
+import socket
 import subprocess
+import sys
+import tempfile
+import time
 import unittest
+import urllib.error
+import urllib.request
 from zipfile import ZipFile
 
+from build_standalone_apk import _validate_lua_source_quotes
 from patch_vn_apk import APKSIGNER, XXTEA_KEY, XXTEA_SIGN, xxtea_decrypt
 
 SDK_AAPT2 = Path("/Users/vup/Library/Android/sdk/build-tools/36.0.0/aapt2")
@@ -24,10 +32,13 @@ def read_apk_lua(apk: Path, asset_path: str) -> str:
 
 
 class R82HybridApkTest(unittest.TestCase):
-    apk = Path("analysis/vn/patched/com.cmn.inuyasha.revival_r8_3_862_hybrid.apk")
+    apk = Path("analysis/vn/patched/com.cmn.inuyasha.revival_r8_14_873_hybrid.apk")
 
     def test_01_packaging_signature_and_embedded_hybrid_backend(self) -> None:
         self.assertTrue(self.apk.is_file(), f"Missing built APK: {self.apk}")
+        smali_txt = Path("android/smali/com/cmn/inuyasha/standalone/LocalBackendManager.smali").read_text(encoding="utf-8")
+        self.assertIn("isLoopbackHealthyDirect", smali_txt)
+        self.assertIn("Looper;->getMainLooper", smali_txt)
         with ZipFile(self.apk) as zf:
             names = set(zf.namelist())
             self.assertIn("lib/armeabi/libinubackend.so", names)
@@ -38,12 +49,26 @@ class R82HybridApkTest(unittest.TestCase):
             bundle_bytes = zf.read("assets/inubackend/server_bundle.zip")
             with ZipFile(io.BytesIO(bundle_bytes)) as bzf:
                 bnames = set(bzf.namelist())
-                self.assertIn("hybrid_sync.py", bnames)
+                for req_py in (
+                    "hybrid_sync.py",
+                    "emulator.py",
+                    "emulator_common.py",
+                    "pvp_boss_handlers.py",
+                    "treasure_rebirth_handlers.py",
+                    "progression_handlers.py",
+                ):
+                    self.assertIn(req_py, bnames)
                 self.assertIn("sync_ca_bundle.pem", bnames)
-                self.assertIn("emulator.py", bnames)
+                trunc_marker = "truncated for " + "diff preview"
+                for bname in sorted(bnames):
+                    if bname.endswith(".py"):
+                        py_raw = bzf.read(bname)
+                        self.assertLess(len(py_raw), 450 * 1024, f"{bname} exceeds 450 KiB")
+                        py_src = py_raw.decode("utf-8")
+                        self.assertNotIn(trunc_marker, py_src, f"Corrupted file in bundle: {bname}")
+                        compile(py_src, bname, "exec")
                 hs_src = bzf.read("hybrid_sync.py").decode("utf-8")
                 self.assertIn("https://inuyasha-sync-hub.vuphamletruong.workers.dev", hs_src)
-                compile(hs_src, "hybrid_sync.py", "exec")
                 ca_pem = bzf.read("sync_ca_bundle.pem").decode("utf-8")
                 self.assertIn("BEGIN CERTIFICATE", ca_pem)
 
@@ -54,9 +79,10 @@ class R82HybridApkTest(unittest.TestCase):
                 errors="replace",
             )
             self.assertIn("name='com.cmn.inuyasha.revival'", badging)
-            self.assertIn("versionCode='862'", badging)
-            self.assertIn("versionName='5.0.4.98-r8.3-hybrid'", badging)
+            self.assertIn("versionCode='873'", badging)
+            self.assertIn("versionName='5.0.4.98-r8.14-hybrid'", badging)
             self.assertIn("application-label:'InuYasha Hybrid'", badging)
+            self.assertIn("targetSdkVersion:'30'", badging)
 
         verify_res = subprocess.run(
             [str(APKSIGNER), "verify", str(self.apk)],
@@ -67,6 +93,9 @@ class R82HybridApkTest(unittest.TestCase):
 
     def test_02_hybrid_sync_lua_ui_and_gameplay_patches(self) -> None:
         hs_lua = read_apk_lua(self.apk, "assets/src/System/HybridSyncLayer.luac")
+        _validate_lua_source_quotes(hs_lua, "HybridSyncLayer.luac")
+        self.assertNotIn("\u00b7", hs_lua)
+        self.assertNotIn("{6c0101}", hs_lua)
         for needle in (
             "127.0.0.1:18082",
             "/hybrid/status",
@@ -79,16 +108,22 @@ class R82HybridApkTest(unittest.TestCase):
             "Xung Đột Dữ Liệu",
             "Tải Cloud",
             "Đẩy Máy Lên",
+            "Hồ sơ liên kết",
+            "reloadGameScene(lr.bound_user_id)",
+            "lr.switched_account",
         ):
             self.assertIn(needle, hs_lua)
 
         sg = read_apk_lua(self.apk, "assets/src/Login/StartGameScene.luac")
         self.assertIn('require("System.HybridSyncLayer").new()', sg)
         self.assertIn("Đồng Bộ Cloud", sg)
+        self.assertIn("mLocalRetryCount", sg)
 
         asw = read_apk_lua(self.apk, "assets/src/System/AccountSwitchLayer.luac")
+        _validate_lua_source_quotes(asw, "AccountSwitchLayer.luac")
         self.assertIn('require("System.HybridSyncLayer").new()', asw)
         self.assertIn("Đồng Bộ Cloud", asw)
+        self.assertIn("Thử Lại", asw)
         self.assertIn("Xác nhận chuyển sang tài khoản", asw)
         self.assertIn('action = "delete"', asw)
         self.assertIn("Xóa TK", asw)
@@ -99,6 +134,7 @@ class R82HybridApkTest(unittest.TestCase):
         sys_lua = read_apk_lua(self.apk, "assets/src/System/SystemLayer.luac")
         self.assertIn('require("System.HybridSyncLayer").new(), 50', sys_lua)
         self.assertIn("Đồng Bộ Cloud", sys_lua)
+        self.assertIn("Thử Lại", hs_lua)
         self.assertIn("ui.showFlashView({parent = self,", hs_lua)
         self.assertIn("self:addChild(box, 200)", hs_lua)
         self.assertIn("205)", sg)
@@ -122,6 +158,82 @@ class R82HybridApkTest(unittest.TestCase):
         self.assertIn("ModuleSub.eLianti", pf)
         csb = read_apk_lua(self.apk, "assets/src/Challenge/CrossServerBattleScene.luac")
         self.assertIn("eMostKing   = 8", csb)
+
+        # Battle speed x1 / x2 toggle independent of tuoguan.display / tuoguan.func
+        bui = read_apk_lua(self.apk, "assets/src/ComBattle/BattleUILayer.luac")
+        _validate_lua_source_quotes(bui, "BattleUILayer.luac")
+        for needle in ("btnSpeedToggle", "BattleData.game.userSpeed", "Tốc: x2", "Tốc: x1"):
+            self.assertIn(needle, bui)
+        bdata = read_apk_lua(self.apk, "assets/src/ComBattle/BattleData.luac")
+        _validate_lua_source_quotes(bdata, "BattleData.luac")
+        self.assertIn("BattleData.game.userSpeed", bdata)
+
+    def test_03_extracted_server_bundle_boots_and_serves_health_and_hybrid_status(self) -> None:
+        self.assertTrue(self.apk.is_file(), f"Missing built APK: {self.apk}")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+
+        with tempfile.TemporaryDirectory() as td:
+            tdp = Path(td)
+            srv_dir = tdp / "server"
+            sav_dir = tdp / "saves"
+            srv_dir.mkdir(parents=True)
+            sav_dir.mkdir(parents=True)
+            with ZipFile(self.apk) as zf:
+                bundle_bytes = zf.read("assets/inubackend/server_bundle.zip")
+            with ZipFile(io.BytesIO(bundle_bytes)) as bzf:
+                bzf.extractall(srv_dir)
+
+            proc = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(srv_dir / "emulator.py"),
+                    "--env",
+                    "dev",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    str(port),
+                    "--data-dir",
+                    str(sav_dir),
+                    "--trace-path",
+                    str(sav_dir / "rpc_trace.log"),
+                ],
+                cwd=str(srv_dir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            try:
+                health = None
+                for _ in range(150):
+                    if proc.poll() is not None:
+                        out, _ = proc.communicate(timeout=2)
+                        self.fail(f"Extracted backend exited early (rc={proc.returncode}): {out}")
+                    try:
+                        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=0.5) as r:
+                            if r.status == 200:
+                                health = json.loads(r.read().decode())
+                                break
+                    except (OSError, urllib.error.URLError, json.JSONDecodeError):
+                        time.sleep(0.05)
+                self.assertIsNotNone(health, "Extracted server_bundle backend failed to respond on /health")
+                self.assertTrue(health.get("ok"), f"Unexpected /health payload: {health}")
+
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/hybrid/status", timeout=2) as r:
+                    self.assertEqual(r.status, 200)
+                    st = json.loads(r.read().decode())
+                self.assertTrue(st["ok"])
+            finally:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=2)
+                if proc.stdout is not None:
+                    proc.stdout.close()
 
 
 if __name__ == "__main__":

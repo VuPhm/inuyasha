@@ -3,6 +3,7 @@ package com.cmn.inuyasha.standalone;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
+import android.os.Looper;
 import android.util.Log;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -12,6 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +32,7 @@ public final class LocalBackendManager {
     private static volatile boolean activityActive = false;
     private static volatile long lastDestroyAtMs = 0L;
     private static volatile long lastHealthOkMs = 0L;
+    private static volatile long lastLaunchStartMs = 0L;
 
     private LocalBackendManager() {}
 
@@ -39,7 +42,7 @@ public final class LocalBackendManager {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                ensureStarted(appCtx);
+                ensureStarted(appCtx, 15000L);
             }
         }, "InuBackendPrewarm").start();
         try {
@@ -51,8 +54,50 @@ public final class LocalBackendManager {
 
     public static void ensureStarted(Context context) {
         final Context appCtx = context.getApplicationContext();
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            activityActive = true;
+            lastDestroyAtMs = 0L;
+            if (isProcessAlive(backendProcess) && lastHealthOkMs > 0L && (System.currentTimeMillis() - lastHealthOkMs < 5000L)) {
+                return;
+            }
+            Thread starter = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    ensureStarted(appCtx, 15000L);
+                }
+            }, "InuBackendActivityStart");
+            starter.setDaemon(true);
+            starter.start();
+            long waitStart = System.currentTimeMillis();
+            try {
+                while (System.currentTimeMillis() - waitStart < 3000L) {
+                    if (lastHealthOkMs > 0L && lastHealthOkMs >= lastLaunchStartMs && isProcessAlive(backendProcess)) {
+                        break;
+                    }
+                    if (!starter.isAlive()) {
+                        break;
+                    }
+                    Thread.sleep(40L);
+                }
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            return;
+        }
+        ensureStarted(appCtx, 12000L);
+    }
+
+    public static void ensureStarted(Context context, long maxWaitMs) {
+        final Context appCtx = context.getApplicationContext();
         activityActive = true;
         lastDestroyAtMs = 0L;
+        final long t0 = System.currentTimeMillis();
+        final Process procToWait;
+        final File stdoutToLog;
+        final String saveDirPath;
+        final String nativeLibDir;
+        final long procLaunchMs;
+
         synchronized (LOCK) {
             long now = System.currentTimeMillis();
             if (isProcessAlive(backendProcess) && (now - lastHealthOkMs < 2500L || isLoopbackHealthy(350))) {
@@ -64,81 +109,123 @@ public final class LocalBackendManager {
                 Log.i(TAG, "Reusing existing healthy loopback backend on 127.0.0.1:" + PORT);
                 return;
             }
-            long t0 = System.currentTimeMillis();
-            try {
-                File baseDir = new File(appCtx.getFilesDir(), "inubackend");
-                File pyDir = new File(baseDir, "py");
-                File serverDir = new File(baseDir, "server");
-                unpackAssetsIfNeeded(appCtx, baseDir, pyDir, serverDir);
-
+            if (isProcessAlive(backendProcess) && lastLaunchStartMs > 0L && (now - lastLaunchStartMs < 25000L)) {
+                procToWait = backendProcess;
+                procLaunchMs = lastLaunchStartMs;
                 File saveDir = getSaveDir(appCtx);
-                File mirrorDir = getMirrorDir(appCtx);
-                restoreFromMirrorIfEmpty(saveDir, mirrorDir);
+                stdoutToLog = new File(saveDir, "backend_stdout.log");
+                saveDirPath = saveDir.getAbsolutePath();
+                nativeLibDir = appCtx.getApplicationInfo().nativeLibraryDir;
+            } else {
+                Process startedProc = null;
+                File stdoutFile = null;
+                String resolvedSaveDir = "";
+                String resolvedNativeDir = "";
+                try {
+                    File baseDir = new File(appCtx.getFilesDir(), "inubackend");
+                    File pyDir = new File(baseDir, "py");
+                    File serverDir = new File(baseDir, "server");
+                    unpackAssetsIfNeeded(appCtx, baseDir, pyDir, serverDir);
 
-                stopProcessLocked();
+                    File saveDir = getSaveDir(appCtx);
+                    resolvedSaveDir = saveDir.getAbsolutePath();
+                    File mirrorDir = getMirrorDir(appCtx);
+                    restoreFromMirrorIfEmpty(saveDir, mirrorDir);
 
-                String nativeLibDir = appCtx.getApplicationInfo().nativeLibraryDir;
-                File exeFile = new File(nativeLibDir, "libinubackend.so");
-                File emulatorPy = new File(serverDir, "emulator.py");
-                File traceFile = new File(saveDir, "rpc_trace.log");
-                File stdoutFile = new File(saveDir, "backend_stdout.log");
-                File dynloadDir = new File(pyDir, "lib-dynload");
-                dynloadDir.mkdirs();
+                    stopProcessLocked();
 
-                ProcessBuilder pb = new ProcessBuilder(
-                    exeFile.getAbsolutePath(),
-                    emulatorPy.getAbsolutePath(),
-                    "--env", "dev",
-                    "--host", HOST,
-                    "--port", String.valueOf(PORT),
-                    "--data-dir", saveDir.getAbsolutePath(),
-                    "--trace-path", traceFile.getAbsolutePath()
-                );
-                pb.directory(serverDir);
-                pb.redirectErrorStream(true);
-                pb.redirectOutput(ProcessBuilder.Redirect.appendTo(stdoutFile));
+                    resolvedNativeDir = appCtx.getApplicationInfo().nativeLibraryDir;
+                    File exeFile = new File(resolvedNativeDir, "libinubackend.so");
+                    File emulatorPy = new File(serverDir, "emulator.py");
+                    File traceFile = new File(saveDir, "rpc_trace.log");
+                    stdoutFile = new File(saveDir, "backend_stdout.log");
+                    File dynloadDir = new File(pyDir, "lib-dynload");
+                    dynloadDir.mkdirs();
 
-                Map<String, String> env = pb.environment();
-                env.put("LD_LIBRARY_PATH", nativeLibDir);
-                env.put("INUYASHA_NATIVE_LIB_DIR", nativeLibDir);
-                env.put("INUYASHA_DYNLOAD_DIR", dynloadDir.getAbsolutePath());
-                env.put("PYTHONHOME", pyDir.getAbsolutePath());
-                env.put(
-                    "PYTHONPATH",
-                    new File(pyDir, "stdlib.zip").getAbsolutePath()
-                        + ":" + dynloadDir.getAbsolutePath()
-                        + ":" + serverDir.getAbsolutePath()
-                );
-                env.put("PYTHONNOUSERSITE", "1");
-                env.put("PYTHONDONTWRITEBYTECODE", "1");
-                env.put("INUYASHA_SEED_DIR", new File(serverDir, "seeds").getAbsolutePath());
-                env.put("INUYASHA_PUBLIC_BACKUP_PATH", "/sdcard/Download/InuYasha_Save_Backup.json");
+                    ProcessBuilder pb = new ProcessBuilder(
+                        exeFile.getAbsolutePath(),
+                        emulatorPy.getAbsolutePath(),
+                        "--env", "dev",
+                        "--host", HOST,
+                        "--port", String.valueOf(PORT),
+                        "--data-dir", resolvedSaveDir,
+                        "--trace-path", traceFile.getAbsolutePath()
+                    );
+                    pb.directory(serverDir);
+                    pb.redirectErrorStream(true);
+                    pb.redirectOutput(ProcessBuilder.Redirect.appendTo(stdoutFile));
 
-                backendProcess = pb.start();
-                boolean ready = false;
-                for (int i = 0; i < 90; i++) {
-                    if (isLoopbackHealthy(300)) {
-                        ready = true;
-                        lastHealthOkMs = System.currentTimeMillis();
-                        break;
-                    }
-                    if (!isProcessAlive(backendProcess)) {
-                        break;
-                    }
-                    Thread.sleep(45L);
+                    Map<String, String> env = pb.environment();
+                    env.put("LD_LIBRARY_PATH", resolvedNativeDir);
+                    env.put("INUYASHA_NATIVE_LIB_DIR", resolvedNativeDir);
+                    env.put("INUYASHA_DYNLOAD_DIR", dynloadDir.getAbsolutePath());
+                    env.put("PYTHONHOME", pyDir.getAbsolutePath());
+                    env.put(
+                        "PYTHONPATH",
+                        new File(pyDir, "stdlib.zip").getAbsolutePath()
+                            + ":" + dynloadDir.getAbsolutePath()
+                            + ":" + serverDir.getAbsolutePath()
+                    );
+                    env.put("PYTHONNOUSERSITE", "1");
+                    env.put("PYTHONDONTWRITEBYTECODE", "1");
+                    env.put("INUYASHA_SEED_DIR", new File(serverDir, "seeds").getAbsolutePath());
+                    env.put("INUYASHA_PUBLIC_BACKUP_PATH", "/sdcard/Download/InuYasha_Save_Backup.json");
+
+                    startedProc = pb.start();
+                    backendProcess = startedProc;
+                    lastLaunchStartMs = System.currentTimeMillis();
+                    lastHealthOkMs = 0L;
+                } catch (Throwable t) {
+                    Log.e(TAG, "Failed to start embedded backend", t);
+                    return;
                 }
-                long elapsed = System.currentTimeMillis() - t0;
-                Log.i(
-                    TAG,
-                    "BACKEND_START ready=" + ready
-                        + " elapsed_ms=" + elapsed
-                        + " save_dir=" + saveDir.getAbsolutePath()
-                        + " native_lib=" + nativeLibDir
-                );
-            } catch (Throwable t) {
-                Log.e(TAG, "Failed to start embedded backend", t);
+                procToWait = startedProc;
+                procLaunchMs = lastLaunchStartMs;
+                stdoutToLog = stdoutFile;
+                saveDirPath = resolvedSaveDir;
+                nativeLibDir = resolvedNativeDir;
             }
         }
+
+        boolean ready = false;
+        final long waitStart = System.currentTimeMillis();
+        try {
+            while (System.currentTimeMillis() - waitStart < maxWaitMs) {
+                long okMs = lastHealthOkMs;
+                if (okMs > 0L && okMs >= procLaunchMs && isProcessAlive(procToWait)) {
+                    ready = true;
+                    break;
+                }
+                if (isLoopbackHealthy(300)) {
+                    ready = true;
+                    lastHealthOkMs = System.currentTimeMillis();
+                    break;
+                }
+                if (!isProcessAlive(procToWait)) {
+                    int exitCode = -1;
+                    try {
+                        if (procToWait != null) {
+                            exitCode = procToWait.exitValue();
+                        }
+                    } catch (Throwable ignored) {}
+                    String tail = readFileTail(stdoutToLog, 800);
+                    Log.e(TAG, "BACKEND_EXITED_EARLY exit=" + exitCode + " tail=" + tail);
+                    break;
+                }
+                Thread.sleep(60L);
+            }
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
+        long elapsed = System.currentTimeMillis() - t0;
+        Log.i(
+            TAG,
+            "BACKEND_START ready=" + ready
+                + " alive=" + isProcessAlive(procToWait)
+                + " elapsed_ms=" + elapsed
+                + " save_dir=" + saveDirPath
+                + " native_lib=" + nativeLibDir
+        );
     }
 
     public static void onActivityResume(final Context context) {
@@ -148,7 +235,7 @@ public final class LocalBackendManager {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                ensureStarted(appCtx);
+                ensureStarted(appCtx, 12000L);
             }
         }, "InuBackendResumeCheck").start();
     }
@@ -192,7 +279,7 @@ public final class LocalBackendManager {
             }
             if (!alive && !isLoopbackHealthy(300)) {
                 Log.w(TAG, "Watchdog detected stopped backend while game active; restarting");
-                ensureStarted(appCtx);
+                ensureStarted(appCtx, 15000L);
             }
         }
         mirrorSaves(appCtx);
@@ -239,7 +326,28 @@ public final class LocalBackendManager {
         }
     }
 
-    public static boolean isLoopbackHealthy(int timeoutMs) {
+    public static boolean isLoopbackHealthy(final int timeoutMs) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            final boolean[] ok = new boolean[1];
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    ok[0] = isLoopbackHealthyDirect(timeoutMs);
+                }
+            }, "InuHealthProbe");
+            t.setDaemon(true);
+            t.start();
+            try {
+                t.join(timeoutMs + 250L);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            return ok[0];
+        }
+        return isLoopbackHealthyDirect(timeoutMs);
+    }
+
+    private static boolean isLoopbackHealthyDirect(int timeoutMs) {
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(HEALTH_URL).openConnection();
@@ -262,13 +370,66 @@ public final class LocalBackendManager {
         return false;
     }
 
+    private static boolean isDirWritable(File dir) {
+        try {
+            if (!dir.exists() && !dir.mkdirs()) {
+                return false;
+            }
+            if (!dir.isDirectory()) {
+                return false;
+            }
+            File probe = new File(dir, ".write_probe_" + Thread.currentThread().getId());
+            try (FileOutputStream fos = new FileOutputStream(probe)) {
+                fos.write(0x20);
+            }
+            probe.delete();
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static String readFileTail(File f, int maxBytes) {
+        if (f == null || !f.exists() || maxBytes <= 0) {
+            return "";
+        }
+        try (RandomAccessFile raf = new RandomAccessFile(f, "r")) {
+            long len = raf.length();
+            if (len <= 0L) {
+                return "";
+            }
+            long start = Math.max(0L, len - maxBytes);
+            int toRead = (int) (len - start);
+            raf.seek(start);
+            byte[] buf = new byte[toRead];
+            int offset = 0;
+            while (offset < toRead) {
+                int n = raf.read(buf, offset, toRead - offset);
+                if (n < 0) {
+                    break;
+                }
+                offset += n;
+            }
+            return new String(buf, 0, offset, StandardCharsets.UTF_8);
+        } catch (Throwable ignored) {
+            return "";
+        }
+    }
+
     public static File getSaveDir(Context ctx) {
         File ext = ctx.getExternalFilesDir(null);
-        File dir = new File(ext != null ? ext : ctx.getFilesDir(), "saves");
-        if (!dir.exists()) {
-            dir.mkdirs();
+        if (ext != null) {
+            File extSaves = new File(ext, "saves");
+            if (isDirWritable(extSaves)) {
+                return extSaves;
+            }
+            Log.w(TAG, "External save dir not writable, falling back to internal filesDir: " + extSaves.getAbsolutePath());
         }
-        return dir;
+        File internalSaves = new File(ctx.getFilesDir(), "saves");
+        if (!internalSaves.exists()) {
+            internalSaves.mkdirs();
+        }
+        return internalSaves;
     }
 
     public static File getMirrorDir(Context ctx) {

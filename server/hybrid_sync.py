@@ -22,14 +22,18 @@ import base64
 import copy
 import gzip
 import hashlib
+import http.client
+import ipaddress
 import json
 import os
 from pathlib import Path
+import socket
 import ssl
 import threading
 import time
 from typing import Any
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 
@@ -176,9 +180,13 @@ class ReadOnlyPeerProxy:
 
     def _own_slot_formations_view(self) -> dict[str, Any]:
         if self._slot_formations_view:
-            return copy.deepcopy(self._slot_formations_view)
+            sf = copy.deepcopy(self._slot_formations_view)
+            if "SlotInfos" in sf and "SlotInfo" not in sf:
+                sf["SlotInfo"] = copy.deepcopy(sf["SlotInfos"])
+            return sf
         return {
             "PlayerId": self.state["player"]["PlayerId"],
+            "SlotInfo": copy.deepcopy(self.state["slots"]),
             "SlotInfos": copy.deepcopy(self.state["slots"]),
             "MateInfos": [],
             "SlotFormationInfo": copy.deepcopy(self.state["embattle"]),
@@ -203,9 +211,35 @@ class ReadOnlyPeerProxy:
         return None
 
 
+_CORE_PROP_KEYS = ("HP", "AP", "DEF", "SPD", "FSP", "FAP")
+
+
+def _compact_property(prop: Any) -> dict[str, Any]:
+    """Keep core stats and drop redundant zero-valued padding fields."""
+    if not isinstance(prop, dict):
+        return {}
+    out: dict[str, Any] = {}
+    for k, v in prop.items():
+        if v is None:
+            continue
+        if k in _CORE_PROP_KEYS:
+            out[k] = v
+            continue
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            if v != 0:
+                out[k] = v
+        elif v:
+            out[k] = v
+    return out
+
+
+def _snap_json_bytes(obj: dict[str, Any]) -> int:
+    return len(json.dumps(obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+
+
 def build_public_snapshot(store: Any) -> dict[str, Any]:
     """
-    Build a compact public peer snapshot (~6-18 KB) from a local ProfileStore.
+    Build a compact public peer snapshot (<= 28 KB) from a local ProfileStore.
     Contains everything needed by friends for LeaderBoard, Arena PvP, and Formation view.
     Excludes Guild info (guilds stay 100% local).
     """
@@ -227,14 +261,17 @@ def build_public_snapshot(store: Any) -> dict[str, Any]:
                 "Lv": int(sl.get("Lv", 1)),
                 "Step": int(sl.get("Step", 0)),
                 "FAP": int(sl.get("FAP", 0)),
-                "Property": copy.deepcopy(sl.get("Property", {})),
+                "Property": _compact_property(sl.get("Property", {})),
             }
         )
 
     slot_formations = store._own_slot_formations_view()
+    if isinstance(slot_formations, dict):
+        # SlotInfo duplicates SlotInfos; ReadOnlyPeerProxy reconstructs SlotInfo on read.
+        slot_formations.pop("SlotInfo", None)
     ally_fight_objs = store._build_ally_fight_objs()
 
-    snap = {
+    snap: dict[str, Any] = {
         "name": str(p.get("PlayerName") or "Adventurer")[:40],
         "lv": max(1, int(p.get("Lv", 1))),
         "fap": max(0, int(p.get("FAP", 0))),
@@ -259,14 +296,46 @@ def build_public_snapshot(store: Any) -> dict[str, Any]:
         "ally_fight_objs": ally_fight_objs,
     }
 
-    # Safety size trim if endgame slot_formations ever exceeds 28 KB
-    if len(json.dumps(snap, separators=(",", ":"), ensure_ascii=False).encode("utf-8")) > 28 * 1024:
-        sf = snap.get("slot_formations")
-        if isinstance(sf, dict) and isinstance(sf.get("SlotInfos"), list):
-            for sinfo in sf["SlotInfos"]:
-                if isinstance(sinfo, dict):
-                    sinfo.pop("GemList", None)
-                    sinfo.pop("ExtraAttrs", None)
+    budget_bytes = 28 * 1024
+    sf = snap.get("slot_formations")
+    slot_infos = sf.get("SlotInfos") if isinstance(sf, dict) and isinstance(sf.get("SlotInfos"), list) else []
+
+    # Tier 1: compact per-slot Property & strip bulky socket lists when > 28 KB
+    if _snap_json_bytes(snap) > budget_bytes:
+        for sinfo in slot_infos:
+            if isinstance(sinfo, dict):
+                if isinstance(sinfo.get("Property"), dict):
+                    sinfo["Property"] = _compact_property(sinfo["Property"])
+                for key in ("Gem", "Warfarespirit", "GemList", "ExtraAttrs"):
+                    sinfo.pop(key, None)
+
+    # Tier 2: shrink equip/treasure/pet sub-dicts and duplicated slot Property when still > 28 KB
+    if _snap_json_bytes(snap) > budget_bytes:
+        keep_eq_keys = ("Id", "ModelId", "Lv", "Step", "Quality")
+        for sinfo in slot_infos:
+            if not isinstance(sinfo, dict):
+                continue
+            for eq_key in ("Weapon", "Helmet", "Clothes", "Necklace", "Book", "Badge", "Pet"):
+                sub = sinfo.get(eq_key)
+                if isinstance(sub, dict):
+                    sinfo[eq_key] = {k: sub[k] for k in keep_eq_keys if k in sub}
+        for cs in snap.get("slots", []):
+            if isinstance(cs, dict):
+                cs.pop("Property", None)
+
+    # Tier 3: shrink Mate/Skill/Hero details & fallback slots list when still > 28 KB
+    if _snap_json_bytes(snap) > budget_bytes:
+        if isinstance(sf, dict):
+            sf["MateInfos"] = []
+            sf["SkillInfos"] = []
+        keep_hero_keys = ("Id", "ModelId", "Lv", "Step", "Quality", "FAP")
+        for sinfo in slot_infos:
+            if isinstance(sinfo, dict) and isinstance(sinfo.get("Hero"), dict):
+                hero = sinfo["Hero"]
+                sinfo["Hero"] = {k: hero[k] for k in keep_hero_keys if k in hero}
+        if _snap_json_bytes(snap) > budget_bytes:
+            snap["slots"] = []
+
     return snap
 
 
@@ -306,6 +375,7 @@ class HybridSyncManager:
         self.persist = persist
         self._http_opener = http_opener  # Optional injectable mock for unit tests
         self._ssl_ctx = _build_ssl_context()
+        self._resolved_ip_cache: dict[str, tuple[str, float]] = {}
         self._lock = threading.RLock()
         self._sync_in_flight = False
         self._last_attempt_mono = 0.0
@@ -321,6 +391,7 @@ class HybridSyncManager:
             "enabled": False,
             "account_id": "",
             "player_id": "",
+            "local_account_id": "",
             "username": "",
             "token": "",
             "device_id": f"dev-{uuid.uuid4().hex[:12]}",
@@ -427,10 +498,70 @@ class HybridSyncManager:
             return s1["acct_1"]
         return self.emu.profiles.get(self.emu.default_profile)
 
-    def _bind_local_player_id(self, cloud_pid: str) -> None:
-        store = self._active_store()
+    def _find_slot_by_player_id(self, pid: str) -> str | None:
+        target = str(pid or "").strip()
+        if not target or self.emu is None:
+            return None
+        s1 = getattr(self.emu, "s1_accounts", {})
+        matches: list[tuple[tuple[int, int, int, str], str]] = []
+        for aid, st in s1.items():
+            p = st.state.get("player", {})
+            if str(p.get("PlayerId", "")).strip() == target:
+                score = (
+                    0 if int(p.get("IsNewPlayer", 1)) == 1 else 1,
+                    int(p.get("Lv", 1)),
+                    int(p.get("FAP", 0)),
+                    aid,
+                )
+                matches.append((score, aid))
+        if not matches:
+            return None
+        matches.sort(reverse=True)
+        return matches[0][1]
+
+    def _bound_account_id(self) -> str:
+        s1 = getattr(self.emu, "s1_accounts", {})
+        bound = str(self.cfg.get("local_account_id") or "").strip()
+        if bound and bound in s1:
+            return bound
+        cloud_pid = str(self.cfg.get("player_id") or "").strip()
+        if cloud_pid:
+            matched = self._find_slot_by_player_id(cloud_pid)
+            if matched and matched in s1:
+                self.cfg["local_account_id"] = matched
+                return matched
+        return getattr(self.emu, "active_account_id", "acct_1")
+
+    def _bound_store(self) -> Any:
+        s1 = getattr(self.emu, "s1_accounts", {})
+        aid = self._bound_account_id()
+        if aid in s1:
+            return s1[aid]
+        return self._active_store()
+
+    def _account_user_id_and_display(self, aid: str) -> tuple[str, str]:
+        if self.emu is not None and hasattr(self.emu, "_summarize_s1_account"):
+            try:
+                summary = self.emu._summarize_s1_account(aid)
+                return str(summary.get("user_id") or "100001"), str(summary.get("display") or aid)
+            except Exception:
+                pass
+        meta = getattr(self.emu, "s1_meta", {}).get(aid, {})
+        uid = str(meta.get("user_id") or "100001")
+        label = str(meta.get("label") or aid)
+        return uid, label
+
+    def _bind_local_player_id(self, cloud_pid: str, account_id: str | None = None) -> None:
+        s1 = getattr(self.emu, "s1_accounts", {})
+        target_aid = str(account_id or "").strip() or self._bound_account_id()
+        store = s1.get(target_aid) if target_aid in s1 else self._bound_store()
         if store is None or not cloud_pid:
             return
+        for other_aid, other_st in s1.items():
+            if other_aid != target_aid and str(other_st.state.get("player", {}).get("PlayerId", "")).strip() == cloud_pid:
+                if hasattr(self.emu, "_deduplicate_s1_player_ids"):
+                    self.emu._deduplicate_s1_player_ids()
+                return
         with store._lock:
             cur_pid = str(store.state.get("player", {}).get("PlayerId", ""))
             if cur_pid != cloud_pid:
@@ -438,6 +569,157 @@ class HybridSyncManager:
                 store.save()
 
     # -------------------- HTTP Transport --------------------
+
+    _DOH_ENDPOINTS: tuple[tuple[str, str], ...] = (
+        ("1.1.1.1", "/dns-query"),
+        ("1.0.0.1", "/dns-query"),
+        ("8.8.8.8", "/resolve"),
+    )
+
+    @staticmethod
+    def _is_dns_resolution_error(exc: BaseException) -> bool:
+        reason = getattr(exc, "reason", exc)
+        if isinstance(reason, socket.gaierror):
+            return True
+        if getattr(reason, "errno", None) in (7, -2, -3, -5, 11001, 11002):
+            return True
+        msg = f"{exc} {reason}".lower()
+        return any(
+            needle in msg
+            for needle in (
+                "no address associated with hostname",
+                "name or service not known",
+                "nodename nor servname",
+                "temporary failure in name resolution",
+                "getaddrinfo failed",
+                "errno 7",
+            )
+        )
+
+    @classmethod
+    def _format_network_error(cls, exc: BaseException) -> str:
+        reason = getattr(exc, "reason", exc)
+        if cls._is_dns_resolution_error(exc):
+            return (
+                "Không kết nối được Sync Hub: Thiết bị đang ngoại tuyến hoặc "
+                "không phân giải được tên miền máy chủ (kiểm tra Wi-Fi/4G)."
+            )
+        if isinstance(reason, (TimeoutError, socket.timeout)) or "timed out" in str(exc).lower():
+            return "Không kết nối được Sync Hub: Kết nối quá thời gian (kiểm tra mạng Wi-Fi/4G)."
+        if isinstance(reason, ssl.SSLError) or "certificate" in str(exc).lower() or "ssl" in str(exc).lower():
+            return "Không kết nối được Sync Hub: Lỗi xác thực bảo mật TLS."
+        if isinstance(reason, OSError) and getattr(reason, "errno", None) in (
+            51, 61, 65, 101, 111, 113, 10051, 10061, 10065
+        ):
+            return (
+                "Không kết nối được Sync Hub: Thiết bị đang ngoại tuyến hoặc "
+                "không có đường truyền mạng (kiểm tra Wi-Fi/4G)."
+            )
+        return "Không kết nối được Sync Hub: Không thể kết nối tới máy chủ (kiểm tra kết nối mạng)."
+
+    def _cache_host_ip(self, host: str) -> None:
+        if not host:
+            return
+        now = time.time()
+        cached = self._resolved_ip_cache.get(host)
+        if cached and (now - cached[1]) < 300.0:
+            return
+        try:
+            infos = socket.getaddrinfo(host, None, socket.AF_INET, socket.SOCK_STREAM)
+            if infos:
+                ip_str = str(infos[0][4][0])
+                ipaddress.IPv4Address(ip_str)
+                self._resolved_ip_cache[host] = (ip_str, now)
+        except (OSError, ValueError):
+            pass
+
+    def _resolve_host_via_doh(self, host: str, timeout: float) -> str | None:
+        if not host:
+            return None
+        try:
+            ipaddress.ip_address(host)
+            return host
+        except ValueError:
+            pass
+
+        qname = urllib.parse.quote(host, safe="")
+        doh_timeout = min(max(1.5, timeout), 3.0)
+        for doh_ip, doh_path in self._DOH_ENDPOINTS:
+            doh_url = f"https://{doh_ip}{doh_path}?name={qname}&type=A"
+            req = urllib.request.Request(
+                doh_url,
+                headers={"Accept": "application/dns-json", "User-Agent": SYNC_USER_AGENT},
+                method="GET",
+            )
+            try:
+                with urllib.request.urlopen(req, context=self._ssl_ctx, timeout=doh_timeout) as resp:
+                    body = json.loads(resp.read().decode("utf-8", "replace"))
+                for ans in body.get("Answer") or []:
+                    if not isinstance(ans, dict) or int(ans.get("type", 0)) != 1:
+                        continue
+                    cand = str(ans.get("data") or "").strip()
+                    try:
+                        ipaddress.IPv4Address(cand)
+                    except ValueError:
+                        continue
+                    self._resolved_ip_cache[host] = (cand, time.time())
+                    return cand
+            except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
+                continue
+        return None
+
+    def _http_json_via_ip(
+        self,
+        method: str,
+        url: str,
+        target_ip: str,
+        headers: dict[str, str],
+        data_bytes: bytes | None,
+        timeout: float,
+    ) -> tuple[int, dict[str, Any]]:
+        parsed = urllib.parse.urlsplit(url)
+        host = parsed.hostname or ""
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        path = parsed.path or "/"
+        if parsed.query:
+            path = f"{path}?{parsed.query}"
+        req_headers = dict(headers)
+        req_headers["Host"] = parsed.netloc or host
+
+        if parsed.scheme == "https":
+            ssl_ctx = self._ssl_ctx
+
+            class _SNIHTTPSConnection(http.client.HTTPSConnection):
+                def connect(self_conn) -> None:
+                    sock = socket.create_connection(
+                        (target_ip, self_conn.port),
+                        self_conn.timeout,
+                        self_conn.source_address,
+                    )
+                    if getattr(self_conn, "_tunnel_host", None):
+                        self_conn.sock = sock
+                        self_conn._tunnel()
+                    self_conn.sock = ssl_ctx.wrap_socket(sock, server_hostname=host)
+
+            conn: http.client.HTTPConnection = _SNIHTTPSConnection(
+                host, port=port, timeout=timeout, context=ssl_ctx
+            )
+        else:
+            conn = http.client.HTTPConnection(target_ip, port=port, timeout=timeout)
+
+        try:
+            conn.request(method, path, body=data_bytes, headers=req_headers)
+            resp = conn.getresponse()
+            raw = resp.read().decode("utf-8", "replace")
+            status = int(resp.status)
+        finally:
+            conn.close()
+
+        try:
+            body_json = json.loads(raw) if raw else {}
+        except ValueError:
+            body_json = {"ok": False, "error": raw or f"HTTP {status}"}
+        return status, body_json
 
     def _http_json(
         self,
@@ -464,10 +746,12 @@ class HybridSyncManager:
         if callable(self._http_opener):
             return self._http_opener(method, url, headers, data_bytes, req_timeout)
 
+        host = urllib.parse.urlsplit(url).hostname or ""
         req = urllib.request.Request(url, data=data_bytes, headers=headers, method=method)
         try:
             with urllib.request.urlopen(req, context=self._ssl_ctx, timeout=req_timeout) as resp:
                 raw = resp.read().decode("utf-8", "replace")
+                self._cache_host_ip(host)
                 return int(resp.status), json.loads(raw) if raw else {}
         except urllib.error.HTTPError as exc:
             raw = exc.read().decode("utf-8", "replace")
@@ -477,21 +761,67 @@ class HybridSyncManager:
                 parsed = {"ok": False, "error": raw or f"HTTP {exc.code}"}
             return int(exc.code), parsed
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
-            return 0, {"ok": False, "error": f"Không kết nối được Sync Hub: {exc}"}
+            if self._is_dns_resolution_error(exc) and host:
+                now = time.time()
+                cached = self._resolved_ip_cache.get(host)
+                tried: set[str] = set()
+                last_exc: BaseException = exc
+
+                def _try_ip(ip_addr: str) -> tuple[int, dict[str, Any]] | None:
+                    nonlocal last_exc
+                    tried.add(ip_addr)
+                    try:
+                        st, body = self._http_json_via_ip(
+                            method, url, ip_addr, headers, data_bytes, req_timeout
+                        )
+                        self._resolved_ip_cache[host] = (ip_addr, time.time())
+                        return st, body
+                    except (OSError, TimeoutError, http.client.HTTPException) as ip_exc:
+                        last_exc = ip_exc
+                        return None
+
+                if cached and (now - cached[1]) < 300.0:
+                    res = _try_ip(cached[0])
+                    if res is not None:
+                        return res
+
+                doh_ip = self._resolve_host_via_doh(host, req_timeout)
+                if doh_ip and doh_ip not in tried:
+                    res = _try_ip(doh_ip)
+                    if res is not None:
+                        return res
+
+                if cached and cached[0] not in tried:
+                    res = _try_ip(cached[0])
+                    if res is not None:
+                        return res
+
+                return 0, {"ok": False, "error": self._format_network_error(last_exc)}
+
+            return 0, {"ok": False, "error": self._format_network_error(exc)}
 
     # -------------------- Public Auth & Status APIs --------------------
 
     def status(self) -> dict[str, Any]:
         with self._lock:
-            store = self._active_store()
+            is_enabled = bool(self.cfg.get("enabled"))
+            active_aid = str(getattr(self.emu, "active_account_id", "acct_1") or "acct_1")
+            active_uid, _ = self._account_user_id_and_display(active_aid)
+            bound_aid = self._bound_account_id() if is_enabled else active_aid
+            _, bound_display = self._account_user_id_and_display(bound_aid)
+            store = self._bound_store() if is_enabled else self._active_store()
             local_p = store.state.get("player", {}) if store else {}
             return {
                 "ok": True,
-                "enabled": bool(self.cfg.get("enabled")),
+                "enabled": is_enabled,
                 "server_url": str(self.cfg.get("server_url") or DEFAULT_SYNC_HUB_URL),
                 "username": str(self.cfg.get("username") or ""),
                 "account_id": str(self.cfg.get("account_id") or ""),
                 "player_id": str(self.cfg.get("player_id") or ""),
+                "bound_account_id": bound_aid,
+                "bound_display": bound_display,
+                "active_account_id": active_aid,
+                "active_user_id": active_uid,
                 "device_id": str(self.cfg.get("device_id") or ""),
                 "sync_rev": int(self.cfg.get("sync_rev") or 0),
                 "last_sync_at": int(self.cfg.get("last_sync_at") or 0),
@@ -552,11 +882,13 @@ class HybridSyncManager:
         if code not in (200, 201) or not body.get("ok"):
             return {"ok": False, "status": code, "error": str(body.get("error") or f"HTTP {code}")}
 
+        active_aid = str(getattr(self.emu, "active_account_id", "acct_1") or "acct_1")
         with self._lock:
             self.cfg["server_url"] = url
             self.cfg["enabled"] = True
             self.cfg["account_id"] = str(body["account_id"])
             self.cfg["player_id"] = str(body["player_id"])
+            self.cfg["local_account_id"] = active_aid
             self.cfg["username"] = str(body["username"])
             self.cfg["token"] = str(body["token"])
             self.cfg["sync_rev"] = int(body.get("sync_rev", 0))
@@ -566,7 +898,7 @@ class HybridSyncManager:
             self.cfg["last_error"] = ""
             if isinstance(body.get("sync_policy"), dict):
                 self.cfg["sync_policy"].update(body["sync_policy"])
-            self._bind_local_player_id(self.cfg["player_id"])
+            self._bind_local_player_id(self.cfg["player_id"], active_aid)
             self._save_cfg()
 
         # Immediately push initial snapshot + pull friends
@@ -600,14 +932,21 @@ class HybridSyncManager:
         if code != 200 or not body.get("ok"):
             return {"ok": False, "status": code, "error": str(body.get("error") or f"HTTP {code}")}
 
+        cloud_pid = str(body["player_id"])
         cloud_rev = int(body.get("sync_rev", 0))
         has_cloud_save = bool(body.get("has_cloud_save"))
+        switched_account = False
+        existing_aid = self._find_slot_by_player_id(cloud_pid)
+        cur_active_aid = str(getattr(self.emu, "active_account_id", "acct_1") or "acct_1")
+        target_aid = existing_aid or cur_active_aid
+
         with self._lock:
             same_acct = self.cfg.get("account_id") == str(body["account_id"])
             self.cfg["server_url"] = url
             self.cfg["enabled"] = True
             self.cfg["account_id"] = str(body["account_id"])
-            self.cfg["player_id"] = str(body["player_id"])
+            self.cfg["player_id"] = cloud_pid
+            self.cfg["local_account_id"] = target_aid
             self.cfg["username"] = str(body["username"])
             self.cfg["token"] = str(body["token"])
             if not same_acct:
@@ -618,16 +957,22 @@ class HybridSyncManager:
             self.cfg["last_error"] = ""
             if isinstance(body.get("sync_policy"), dict):
                 self.cfg["sync_policy"].update(body["sync_policy"])
-            self._bind_local_player_id(self.cfg["player_id"])
+            if not existing_aid:
+                self._bind_local_player_id(cloud_pid, target_aid)
             self._save_cfg()
 
-        store = self._active_store()
+        if existing_aid and cur_active_aid != target_aid and hasattr(self.emu, "switch_s1_account"):
+            self.emu.switch_s1_account(target_aid)
+            switched_account = True
+
+        store = self._bound_store()
         local_is_new = int(store.state.get("player", {}).get("IsNewPlayer", 1)) == 1 if store else True
         auto_pulled = False
         if has_cloud_save and local_is_new:
             pull_res = self.pull_cloud_save()
             auto_pulled = bool(pull_res.get("ok"))
 
+        bound_uid, bound_display = self._account_user_id_and_display(target_aid)
         return {
             "ok": True,
             "username": self.cfg["username"],
@@ -637,12 +982,17 @@ class HybridSyncManager:
             "cloud_summary": body.get("cloud_summary", {}),
             "auto_pulled": auto_pulled,
             "needs_choice": bool(has_cloud_save and not local_is_new and not auto_pulled and self.cfg["sync_rev"] < cloud_rev),
+            "bound_account_id": target_aid,
+            "bound_user_id": bound_uid,
+            "bound_display": bound_display,
+            "switched_account": switched_account,
         }
 
     def logout(self) -> dict[str, Any]:
         with self._lock:
             self.cfg["enabled"] = False
             self.cfg["token"] = ""
+            self.cfg["local_account_id"] = ""
             self.cfg["conflict"] = None
             self.cfg["last_error"] = ""
             self._save_cfg()
@@ -706,7 +1056,7 @@ class HybridSyncManager:
                 self._sync_in_flight = False
 
     def _do_sync_locked_flow(self, *, force_push: bool) -> dict[str, Any]:
-        store = self._active_store()
+        store = self._bound_store()
         if store is None:
             return {"ok": False, "error": "Không tìm thấy hồ sơ cục bộ"}
 
@@ -861,7 +1211,7 @@ class HybridSyncManager:
         except Exception as exc:
             return {"ok": False, "error": f"Giải nén bản lưu Cloud thất bại: {exc}"}
 
-        store = self._active_store()
+        store = self._bound_store()
         if store is None:
             return {"ok": False, "error": "Không tìm thấy hồ sơ cục bộ"}
 
@@ -898,10 +1248,14 @@ class HybridSyncManager:
 
         # Also pull peers right away
         self.sync_now(ignore_cooldown=True, reason="post_pull")
+        bound_aid = self._bound_account_id()
+        bound_uid, _ = self._account_user_id_and_display(bound_aid)
         return {
             "ok": True,
             "sync_rev": int(resp.get("sync_rev", 0)),
             "summary": resp.get("summary", {}),
+            "active_account_id": bound_aid,
+            "active_user_id": bound_uid,
         }
 
     # -------------------- Inbox Event Application --------------------
@@ -1018,6 +1372,9 @@ class HybridSyncManager:
         now_m = time.monotonic()
         with self._lock:
             if not self.cfg.get("enabled") or not self.cfg.get("token"):
+                return False
+            bound_aid = str(self.cfg.get("local_account_id") or "").strip()
+            if bound_aid and str(getattr(self.emu, "active_account_id", "") or "") != bound_aid:
                 return False
             if self._sync_in_flight or self.cfg.get("conflict"):
                 return False

@@ -8,7 +8,7 @@
 
 # annotations
 .annotation system Ldalvik/annotation/EnclosingMethod;
-    value = Lcom/cmn/inuyasha/standalone/LocalBackendManager;->onActivityPause(Landroid/content/Context;)V
+    value = Lcom/cmn/inuyasha/standalone/LocalBackendManager;->onActivityResume(Landroid/content/Context;)V
 .end annotation
 
 .annotation system Ldalvik/annotation/InnerClass;
@@ -30,7 +30,7 @@
         }
     .end annotation
 
-    .line 158
+    .line 235
     iput-object p1, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;->val$appCtx:Landroid/content/Context;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -41,13 +41,15 @@
 
 # virtual methods
 .method public run()V
-    .locals 1
+    .locals 3
 
-    .line 161
+    .line 238
     iget-object v0, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;->val$appCtx:Landroid/content/Context;
 
-    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->mirrorSaves(Landroid/content/Context;)V
+    const-wide/16 v1, 0x2ee0
 
-    .line 162
+    invoke-static {v0, v1, v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->ensureStarted(Landroid/content/Context;J)V
+
+    .line 239
     return-void
 .end method

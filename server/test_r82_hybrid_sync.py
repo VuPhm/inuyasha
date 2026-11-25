@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import secrets
 import sys
 import tempfile
+import threading
 import time
 import unittest
+from unittest.mock import patch
 import urllib.request
 import uuid
 
@@ -481,6 +484,411 @@ class HybridSyncE2ETests(unittest.TestCase):
             finally:
                 srv.shutdown()
                 srv.server_close()
+
+    def test_05_android_fuse_chmod_eperm_does_not_abort_startup(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            def _raise_eperm(_path, _mode):
+                raise PermissionError(1, "Operation not permitted")
+
+            with patch.object(os, "chmod", side_effect=_raise_eperm):
+                srv = ThreadingEmulatorServer(
+                    ("127.0.0.1", 0),
+                    persist=True,
+                    quiet=True,
+                    env="dev",
+                    data_dir=Path(td),
+                )
+            port = srv.server_address[1]
+            t = threading.Thread(target=srv.serve_forever, daemon=True)
+            t.start()
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as r:
+                    self.assertEqual(r.status, 200)
+                    health = json.loads(r.read().decode())
+                self.assertTrue(health.get("ok"))
+
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/hybrid/status", timeout=5) as r:
+                    self.assertEqual(r.status, 200)
+                    st = json.loads(r.read().decode())
+                self.assertTrue(st["ok"])
+            finally:
+                srv.shutdown()
+                srv.server_close()
+
+    def test_06_client_aspx_accepts_raw_crlf_in_apperror_json(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            srv = ThreadingEmulatorServer(
+                ("127.0.0.1", 0),
+                persist=True,
+                quiet=True,
+                env="dev",
+                data_dir=Path(td),
+            )
+            port = srv.server_address[1]
+            t = threading.Thread(target=srv.serve_forever, daemon=True)
+            t.start()
+            try:
+                raw_json = (
+                    '{"ModuleName":"Player","MethodName":"Login","ServerId":1,'
+                    '"Data":["samsung","SM-A515F",123456,"abc","{}","100001"],'
+                    '"ExtensionString":{"APPError":["line1base64chunk\r\nline2base64chunk"],"GuideInfo":[]}}'
+                ).encode("utf-8")
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/client.aspx",
+                    data=raw_json,
+                    headers={"Content-Type": "application/json", "X-Plain-Json": "1"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=5) as r:
+                    self.assertEqual(r.status, 200)
+                    resp = json.loads(r.read().decode("utf-8"))
+                self.assertEqual(resp.get("Status"), 0)
+            finally:
+                srv.shutdown()
+                srv.server_close()
+
+    def test_07_logout_switch_to_tk1_relogin_reattaches_tk2_without_corrupting_tk1(self) -> None:
+        hub = _MockCloudflareSyncHub(invite_code="INU-999")
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            emu = self._make_device(root, "multi_slot_relogin", hub)
+            emu.ensure_s1_account_slots(3)
+
+            s1 = emu.s1_accounts["acct_1"]
+            s1.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["JesizLyly", 1]})
+            s1.state["player"]["Lv"] = 2
+            s1.state["player"]["PlayerId"] = "200001"
+            s1.save()
+
+            s2 = emu.s1_accounts["acct_2"]
+            s2.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["vũ khoai to", 1]})
+            s2.state["player"]["Lv"] = 29
+            s2.state["player"]["FAP"] = 114460
+            s2.save()
+
+            # Register Cloud Sync while TK2 is active
+            emu.switch_s1_account("acct_2")
+            reg = emu.hybrid_sync.register("kkk", "pw123", invite_code="INU-999")
+            self.assertTrue(reg["ok"])
+            cloud_pid = emu.hybrid_sync.cfg["player_id"]
+            self.assertEqual(emu.hybrid_sync.cfg["local_account_id"], "acct_2")
+            self.assertEqual(s2.state["player"]["PlayerId"], cloud_pid)
+            self.assertEqual(s1.state["player"]["PlayerId"], "200001")
+
+            # Logout Cloud -> switch to TK1 -> log back into kkk
+            self.assertTrue(emu.hybrid_sync.logout()["ok"])
+            emu.switch_s1_account("acct_1")
+            relog = emu.hybrid_sync.login("kkk", "pw123")
+            self.assertTrue(relog["ok"])
+            self.assertTrue(relog["switched_account"])
+            self.assertEqual(relog["bound_account_id"], "acct_2")
+            self.assertEqual(relog["bound_user_id"], "100002")
+            self.assertEqual(emu.active_account_id, "acct_2")
+            self.assertEqual(emu.hybrid_sync.cfg["local_account_id"], "acct_2")
+            self.assertEqual(s1.state["player"]["PlayerId"], "200001")
+            self.assertEqual(s2.state["player"]["PlayerId"], cloud_pid)
+
+            # Verify switching TK1 <-> TK2 resolves each profile cleanly
+            emu.switch_s1_account("acct_1")
+            av1 = emu.handle_rpc({
+                "ModuleName": "Player",
+                "MethodName": "AvatarInfo",
+                "ServerId": 1,
+                "PlayerId": "200001",
+                "Data": [],
+            })
+            self.assertEqual(av1["Value"]["PlayerName"], "JesizLyly")
+
+            emu.switch_s1_account("acct_2")
+            av2 = emu.handle_rpc({
+                "ModuleName": "Player",
+                "MethodName": "AvatarInfo",
+                "ServerId": 1,
+                "PlayerId": cloud_pid,
+                "Data": [],
+            })
+            self.assertEqual(av2["Value"]["PlayerName"], "vũ khoai to")
+            self.assertEqual(int(av2["Value"]["Lv"]), 29)
+
+    def test_08_startup_deduplicates_corrupted_duplicate_player_id_preserving_higher_lv_slot(self) -> None:
+        dup_pid = "54879eb4-d4a5-48ec-9971-bbf26d5ef61a"
+        with tempfile.TemporaryDirectory() as td:
+            d = Path(td)
+            emu0 = GameEmulatorState(persist=True, data_dir=d)
+            emu0.ensure_s1_account_slots(3)
+
+            s1 = emu0.s1_accounts["acct_1"]
+            s1.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["JesizLyly", 1]})
+            s1.state["player"]["Lv"] = 2
+            s1.state["player"]["FAP"] = 500
+            s1.state["player"]["PlayerId"] = dup_pid
+            s1.save()
+
+            s2 = emu0.s1_accounts["acct_2"]
+            s2.handle_rpc({"ModuleName": "Player", "MethodName": "NewPlayer", "Data": ["vũ khoai to", 1]})
+            s2.state["player"]["Lv"] = 29
+            s2.state["player"]["FAP"] = 114460
+            s2.state["player"]["PlayerId"] = dup_pid
+            s2.save()
+            emu0.switch_s1_account("acct_1")
+
+            # Restart emulator cleanly -> must auto-heal duplicate PlayerId and keep higher-Lv acct_2 intact
+            emu1 = GameEmulatorState(persist=True, data_dir=d)
+            pid1 = emu1.s1_accounts["acct_1"].state["player"]["PlayerId"]
+            pid2 = emu1.s1_accounts["acct_2"].state["player"]["PlayerId"]
+            self.assertEqual(pid2, dup_pid)
+            self.assertNotEqual(pid1, dup_pid)
+            self.assertEqual(pid1, "200001")
+
+            # Switch to acct_2 and verify login + RPC hit vũ khoai to
+            emu1.switch_s1_account("acct_2")
+            emu1.handle_rpc({
+                "ModuleName": "Player",
+                "MethodName": "Login",
+                "ServerId": 1,
+                "Data": ["samsung", "SM-A515F", 123, "t", "{}", "100002"],
+            })
+            av2 = emu1.handle_rpc({
+                "ModuleName": "Player",
+                "MethodName": "AvatarInfo",
+                "ServerId": 1,
+                "PlayerId": pid2,
+                "Data": [],
+            })
+            self.assertEqual(av2["Value"]["PlayerName"], "vũ khoai to")
+            self.assertEqual(int(av2["Value"]["Lv"]), 29)
+
+    def test_09_server_py_files_below_ide_diff_limit_and_fresh_bundle_boots(self) -> None:
+        import importlib.util
+        import socket
+        import subprocess
+        import urllib.error
+        import zipfile
+
+        max_bytes = 450 * 1024
+        for py_path in sorted(SERVER_DIR.glob("*.py")):
+            raw = py_path.read_bytes()
+            self.assertLess(
+                len(raw),
+                max_bytes,
+                f"{py_path.name} is {len(raw)} bytes (>= {max_bytes}); keep under IDE 512 KiB cutoff",
+            )
+            txt = raw.decode("utf-8")
+            trunc_marker = "truncated for " + "diff preview"
+            self.assertNotIn(trunc_marker, txt, f"Corrupted marker in {py_path.name}")
+            compile(txt, str(py_path), "exec")
+
+        build_script = SERVER_DIR.parent / "poc" / "build_standalone_apk.py"
+        poc_dir = str(build_script.parent)
+        added_poc = poc_dir not in sys.path
+        if added_poc:
+            sys.path.insert(0, poc_dir)
+        try:
+            spec = importlib.util.spec_from_file_location("build_standalone_apk", build_script)
+            assert spec is not None and spec.loader is not None
+            build_mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(build_mod)
+        finally:
+            if added_poc and poc_dir in sys.path:
+                sys.path.remove(poc_dir)
+
+        with tempfile.TemporaryDirectory() as td:
+            tdp = Path(td)
+            bundle_zip = tdp / "server_bundle.zip"
+            srv_dir = tdp / "srv"
+            sav_dir = tdp / "saves"
+            srv_dir.mkdir(parents=True)
+            sav_dir.mkdir(parents=True)
+
+            build_mod.build_server_bundle_zip(bundle_zip, server_dir=SERVER_DIR)
+            with zipfile.ZipFile(bundle_zip, "r") as zf:
+                names = set(zf.namelist())
+                for req_name in (
+                    "emulator.py",
+                    "emulator_common.py",
+                    "pvp_boss_handlers.py",
+                    "treasure_rebirth_handlers.py",
+                    "progression_handlers.py",
+                ):
+                    self.assertIn(req_name, names)
+                zf.extractall(srv_dir)
+
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(("127.0.0.1", 0))
+                port = sock.getsockname()[1]
+
+            proc = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(srv_dir / "emulator.py"),
+                    "--env",
+                    "dev",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    str(port),
+                    "--data-dir",
+                    str(sav_dir),
+                    "--trace-path",
+                    str(sav_dir / "rpc_trace.log"),
+                ],
+                cwd=str(srv_dir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            try:
+                health = None
+                for _ in range(150):
+                    if proc.poll() is not None:
+                        out, _ = proc.communicate(timeout=2)
+                        self.fail(f"Bundled server exited early (rc={proc.returncode}): {out}")
+                    try:
+                        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=0.5) as r:
+                            if r.status == 200:
+                                health = json.loads(r.read().decode("utf-8"))
+                                break
+                    except (OSError, urllib.error.URLError, ValueError):
+                        time.sleep(0.05)
+                self.assertIsNotNone(health, "Bundled backend failed to respond on /health")
+                self.assertTrue(health.get("ok"))
+
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/hybrid/status", timeout=2) as r:
+                    self.assertEqual(r.status, 200)
+                    st = json.loads(r.read().decode("utf-8"))
+                self.assertTrue(st.get("ok"))
+            finally:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=2)
+                if proc.stdout is not None:
+                    proc.stdout.close()
+
+    def test_10_endgame_snapshot_compaction_under_28kb_preserves_peer_formation(self) -> None:
+        from hybrid_sync import ReadOnlyPeerProxy, build_public_snapshot
+
+        with tempfile.TemporaryDirectory() as td:
+            emu = GameEmulatorState(persist=True, data_dir=Path(td))
+            _prepare_player(emu, "EndgameCap", lv=80)
+            store = emu.s1_accounts["acct_1"]
+
+            # Populate 6 heavy endgame slots so raw _own_slot_formations_view exceeds 36 KB
+            base_slot = dict(store.state["slots"][0])
+            heavy_props = {f"PadZero{i}": 0 for i in range(60)}
+            heavy_props.update({"HP": 500000, "AP": 85000, "DEF": 32000, "SPD": 450, "FSP": 900, "FAP": 450000})
+            heavy_eq = {f"ExtraStat{i}": i * 10 for i in range(25)}
+            heavy_eq.update({"Id": str(uuid.uuid4()), "ModelId": 13010001, "Lv": 160, "Step": 12, "Quality": 18})
+            heavy_slots = []
+            for idx in range(1, 7):
+                sl = dict(base_slot)
+                sl["SlotId"] = idx
+                sl["HeroId"] = store.state["heroes"][0]["Id"]
+                sl["HeroModelId"] = 12011002 + idx
+                sl["Lv"] = 80
+                sl["Step"] = 10
+                sl["FAP"] = 450000
+                sl["Property"] = dict(heavy_props)
+                for k in ("Weapon", "Helmet", "Clothes", "Necklace", "Book", "Badge", "Pet"):
+                    eq = dict(heavy_eq)
+                    eq["Id"] = str(uuid.uuid4())
+                    sl[k] = eq
+                sl["Gem"] = [{"Slot": g, "ModelId": 14010001 + g, "Extra": "x" * 60} for g in range(6)]
+                sl["Warfarespirit"] = [{"Pos": w, "ModelId": 81010001 + w, "Extra": "y" * 60} for w in range(4)]
+                heavy_slots.append(sl)
+            store.state["slots"] = heavy_slots
+
+            raw_sf_bytes = len(
+                json.dumps(store._own_slot_formations_view(), separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            )
+            self.assertGreater(raw_sf_bytes, 36 * 1024)
+
+            snap = build_public_snapshot(store)
+            snap_bytes = len(json.dumps(snap, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+            self.assertLessEqual(snap_bytes, 28 * 1024, f"Compacted snapshot too large: {snap_bytes} bytes")
+
+            pid = str(store.state["player"]["PlayerId"])
+            proxy = ReadOnlyPeerProxy({"player_id": pid, "name": "EndgameCap", "lv": 80, "fap": 999999, "snapshot": snap})
+            sf_view = proxy._own_slot_formations_view()
+            self.assertEqual(len(sf_view.get("SlotInfos", [])), 6)
+            self.assertEqual(len(sf_view.get("SlotInfo", [])), 6)
+            self.assertIsInstance(proxy._build_ally_fight_objs(), list)
+
+    def test_11_android_dns_errno7_uses_cache_and_doh_fallback(self) -> None:
+        import io
+        import socket
+        from unittest import mock
+        import urllib.error
+        from hybrid_sync import HybridSyncManager
+
+        with tempfile.TemporaryDirectory() as td:
+            emu = GameEmulatorState(persist=False, data_dir=Path(td))
+            mgr = HybridSyncManager(Path(td), emu, persist=False)
+
+            doh_payload = json.dumps({
+                "Status": 0,
+                "Answer": [{"name": "inuyasha-sync-hub.vuphamletruong.workers.dev", "type": 1, "TTL": 300, "data": "104.21.70.143"}],
+            }).encode("utf-8")
+
+            class _FakeResp:
+                def __init__(self, status: int, body: bytes) -> None:
+                    self.status = status
+                    self._bio = io.BytesIO(body)
+
+                def read(self) -> bytes:
+                    return self._bio.read()
+
+                def __enter__(self) -> "_FakeResp":
+                    return self
+
+                def __exit__(self, *_args: object) -> None:
+                    return None
+
+            gai_err = urllib.error.URLError(socket.gaierror(7, "No address associated with hostname"))
+            seen_urls: list[str] = []
+
+            def fake_urlopen(req: Any, **_kwargs: Any) -> _FakeResp:
+                u = req.full_url if hasattr(req, "full_url") else str(req)
+                seen_urls.append(u)
+                if u.startswith("https://1.1.1.1/dns-query"):
+                    return _FakeResp(200, doh_payload)
+                raise gai_err
+
+            via_ip_calls: list[tuple[str, str, str]] = []
+
+            def fake_via_ip(method: str, url: str, target_ip: str, _headers: dict[str, str], _data: bytes | None, _timeout: float) -> tuple[int, dict[str, Any]]:
+                via_ip_calls.append((method, url, target_ip))
+                return 200, {"ok": True, "service": "inuyasha-sync-hub"}
+
+            with mock.patch("urllib.request.urlopen", side_effect=fake_urlopen), mock.patch.object(
+                mgr, "_http_json_via_ip", side_effect=fake_via_ip
+            ):
+                # 1. Cold cache + Errno 7 -> DoH resolves 104.21.70.143 -> _http_json_via_ip succeeds
+                code, body = mgr._http_json("GET", "https://inuyasha-sync-hub.vuphamletruong.workers.dev/health")
+                self.assertEqual(code, 200)
+                self.assertTrue(body.get("ok"))
+                self.assertEqual(via_ip_calls[-1][2], "104.21.70.143")
+                self.assertTrue(any(u.startswith("https://1.1.1.1/dns-query") for u in seen_urls))
+
+                # 2. Warm cache + Errno 7 -> uses cached IP directly without another DoH query
+                seen_urls.clear()
+                code2, body2 = mgr._http_json("GET", "https://inuyasha-sync-hub.vuphamletruong.workers.dev/health")
+                self.assertEqual(code2, 200)
+                self.assertTrue(body2.get("ok"))
+                self.assertFalse(any("dns-query" in u for u in seen_urls))
+
+            # 3. Truly offline (urlopen + DoH + direct IP all fail) -> clean Vietnamese error, no raw Errno 7
+            mgr._resolved_ip_cache.clear()
+            with mock.patch("urllib.request.urlopen", side_effect=gai_err):
+                code3, body3 = mgr._http_json("GET", "https://inuyasha-sync-hub.vuphamletruong.workers.dev/health")
+                self.assertEqual(code3, 0)
+                self.assertFalse(body3.get("ok"))
+                err_msg = str(body3.get("error") or "")
+                self.assertIn("Không kết nối được Sync Hub:", err_msg)
+                self.assertNotIn("Errno 7", err_msg)
+                self.assertNotIn("urlopen error", err_msg)
 
 
 if __name__ == "__main__":

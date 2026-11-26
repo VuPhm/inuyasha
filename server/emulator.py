@@ -61,6 +61,7 @@ from gddh_handlers import GddhHandlersMixin
 from ggzj_handlers import GgzjHandlersMixin
 from guild_handlers import GuildHandlersMixin
 from hybrid_sync import HybridSyncManager
+from ota_updater import OtaUpdateManager
 from nightmare_handlers import (
     _CAMPAIGN_FAP_ANCHORS,
     NightmareHandlersMixin,
@@ -2923,9 +2924,14 @@ class ProfileStore(
         elif key == "Player.GetInitData":
             dashi_step = self._compute_lianti_dashi_step()
             self.state["lianti_dashi_step"] = dashi_step
+            init_red_dots = (
+                value["RedDotInfo"]
+                if isinstance(value, dict) and isinstance(value.get("RedDotInfo"), dict)
+                else self._compute_red_dot_info(_sync_already_done=True)
+            )
             avatar = {
                 "TimedActivityOpenInfo": timed_open,
-                "RedDotInfo": self._compute_red_dot_info(),
+                "RedDotInfo": init_red_dots,
                 "EquipArtifactInfo": copy.deepcopy(self._compute_equip_artifact_state()[0]),
                 "LiantiDashiStep": dashi_step,
             }
@@ -2956,7 +2962,7 @@ class ProfileStore(
             if self._last_rpc_context.get("equip_artifacts_changed") is not None:
                 avatar["EquipArtifactInfo"] = self._last_rpc_context["equip_artifacts_changed"]
             avatar["TimedActivityOpenInfo"] = timed_open
-            avatar["RedDotInfo"] = self._compute_red_dot_info()
+            avatar["RedDotInfo"] = self._compute_red_dot_info(_sync_already_done=True)
 
         resp: dict[str, Any] = {
             "Status": status,
@@ -6576,8 +6582,18 @@ class ProfileStore(
     # R6 Systems: RedDot, BossBattle, Arena (PVP/PVPShop), Daydayfund, StartWorkReward, Fashion
     # ------------------------------------------------------------------
 
-    def _compute_red_dot_info(self) -> dict[str, int]:
+    def _compute_red_dot_info(self, *, _sync_already_done: bool = False) -> dict[str, int]:
         """Compute module red-dot flags (including StartWork 2718 and R7.5–R7.9 events)."""
+        if not _sync_already_done:
+            self._sync_events()
+        prev_suppressed = bool(getattr(self, "_sync_events_suppressed", False))
+        self._sync_events_suppressed = True
+        try:
+            return self._compute_red_dot_info_inner()
+        finally:
+            self._sync_events_suppressed = prev_suppressed
+
+    def _compute_red_dot_info_inner(self) -> dict[str, int]:
         lv = int(self.state.get("player", {}).get("Lv", 1))
         now = self.now_ts()
         boss_state = self.state.get("boss_battle", {})
@@ -6866,6 +6882,7 @@ class GameEmulatorState:
         self._explicit_s1_slots: bool = False
         self._init_s1_accounts()
         self.hybrid_sync = HybridSyncManager(self.data_dir, self, persist=persist)
+        self.ota_updater = None if self.private_mode else OtaUpdateManager(self.data_dir, self, persist=persist)
         self._deduplicate_s1_player_ids()
 
     def _init_s1_accounts(self) -> None:
@@ -7724,6 +7741,12 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                 return
             self._send_json(200, self.server.emu.hybrid_sync.status())
             return
+        if path == "/ota/status":
+            if self.server.emu.private_mode or self.server.emu.ota_updater is None:
+                self._send_json(404, {"ok": False, "error": "OTA updater unavailable in private mode"})
+                return
+            self._send_json(200, self.server.emu.ota_updater.status())
+            return
         if path == "/health":
             if self.server.emu.private_mode and self.server.emu.auth is not None:
                 cfg = self.server.emu.private_config
@@ -8037,6 +8060,27 @@ class EmulatorHandler(http.server.BaseHTTPRequestHandler):
                     res = hs.logout()
                 else:
                     self._send_json(404, {"ok": False, "error": f"Unknown hybrid path: {path}"})
+                    return
+                self._send_json(200, res)
+            except (ValueError, KeyError, json.JSONDecodeError) as exc:
+                self._send_json(400, {"ok": False, "error": str(exc)})
+            return
+
+        if path.startswith("/ota/"):
+            if self.server.emu.private_mode or self.server.emu.ota_updater is None:
+                self._send_json(404, {"ok": False, "error": "OTA updater unavailable in private mode"})
+                return
+            ota = self.server.emu.ota_updater
+            try:
+                payload = json.loads(body.decode("utf-8") or "{}", strict=False) if body else {}
+                if path == "/ota/check":
+                    res = ota.check_now(server_url=payload.get("server_url"))
+                elif path == "/ota/apply":
+                    res = ota.start_apply(server_url=payload.get("server_url"))
+                elif path == "/ota/restart":
+                    res = ota.schedule_backend_restart()
+                else:
+                    self._send_json(404, {"ok": False, "error": f"Unknown ota path: {path}"})
                     return
                 self._send_json(200, res)
             except (ValueError, KeyError, json.JSONDecodeError) as exc:

@@ -32,25 +32,29 @@ def read_apk_lua(apk: Path, asset_path: str) -> str:
 
 
 class R82HybridApkTest(unittest.TestCase):
-    apk = Path("analysis/vn/patched/com.cmn.inuyasha.revival_r8_14_873_hybrid.apk")
+    apk = Path("analysis/vn/patched/com.cmn.inuyasha.revival_r8_16_875_hybrid.apk")
 
     def test_01_packaging_signature_and_embedded_hybrid_backend(self) -> None:
         self.assertTrue(self.apk.is_file(), f"Missing built APK: {self.apk}")
         smali_txt = Path("android/smali/com/cmn/inuyasha/standalone/LocalBackendManager.smali").read_text(encoding="utf-8")
         self.assertIn("isLoopbackHealthyDirect", smali_txt)
         self.assertIn("Looper;->getMainLooper", smali_txt)
+        self.assertIn("INUYASHA_APK_VERSION_CODE", smali_txt)
+        self.assertIn("INUYASHA_CLIENT_OTA_DIR", smali_txt)
         with ZipFile(self.apk) as zf:
             names = set(zf.namelist())
             self.assertIn("lib/armeabi/libinubackend.so", names)
             self.assertIn("assets/inubackend/server_bundle.zip", names)
             self.assertIn("assets/inubackend/stdlib.zip", names)
             self.assertIn("assets/src/System/HybridSyncLayer.luac", names)
+            self.assertIn("assets/src/System/OtaUpdateLayer.luac", names)
 
             bundle_bytes = zf.read("assets/inubackend/server_bundle.zip")
             with ZipFile(io.BytesIO(bundle_bytes)) as bzf:
                 bnames = set(bzf.namelist())
                 for req_py in (
                     "hybrid_sync.py",
+                    "ota_updater.py",
                     "emulator.py",
                     "emulator_common.py",
                     "pvp_boss_handlers.py",
@@ -79,8 +83,8 @@ class R82HybridApkTest(unittest.TestCase):
                 errors="replace",
             )
             self.assertIn("name='com.cmn.inuyasha.revival'", badging)
-            self.assertIn("versionCode='873'", badging)
-            self.assertIn("versionName='5.0.4.98-r8.14-hybrid'", badging)
+            self.assertIn("versionCode='875'", badging)
+            self.assertIn("versionName='5.0.4.98-r8.16-hybrid'", badging)
             self.assertIn("application-label:'InuYasha Hybrid'", badging)
             self.assertIn("targetSdkVersion:'30'", badging)
 
@@ -118,6 +122,20 @@ class R82HybridApkTest(unittest.TestCase):
         self.assertIn('require("System.HybridSyncLayer").new()', sg)
         self.assertIn("Đồng Bộ Cloud", sg)
         self.assertIn("mLocalRetryCount", sg)
+        self.assertIn('require("System.OtaUpdateLayer").new', sg)
+        self.assertIn("Cập Nhật", sg)
+        self.assertIn("/ota/check", sg)
+
+        ota_lua = read_apk_lua(self.apk, "assets/src/System/OtaUpdateLayer.luac")
+        _validate_lua_source_quotes(ota_lua, "OtaUpdateLayer.luac")
+        for needle in ("/ota/check", "/ota/apply", "/ota/status", "/ota/restart", "Cập Nhật Ngay", "Tải APK Ngay", "IPlatform:getInstance():openUrl"):
+            self.assertIn(needle, ota_lua)
+
+        main_lua = read_apk_lua(self.apk, "assets/src/main.luac")
+        _validate_lua_source_quotes(main_lua, "main.luac")
+        self.assertIn('wp .. "Download/"', main_lua)
+        self.assertIn('dlRoot .. "src/"', main_lua)
+        self.assertIn('fu:setSearchPaths(nextPaths)', main_lua)
 
         asw = read_apk_lua(self.apk, "assets/src/System/AccountSwitchLayer.luac")
         _validate_lua_source_quotes(asw, "AccountSwitchLayer.luac")
@@ -159,14 +177,15 @@ class R82HybridApkTest(unittest.TestCase):
         csb = read_apk_lua(self.apk, "assets/src/Challenge/CrossServerBattleScene.luac")
         self.assertIn("eMostKing   = 8", csb)
 
-        # Battle speed x1 / x2 toggle independent of tuoguan.display / tuoguan.func
+        # Native speed/auto button in PVE; x1/x2 fallback toggle only when native button is hidden
         bui = read_apk_lua(self.apk, "assets/src/ComBattle/BattleUILayer.luac")
         _validate_lua_source_quotes(bui, "BattleUILayer.luac")
-        for needle in ("btnSpeedToggle", "BattleData.game.userSpeed", "Tốc: x2", "Tốc: x1"):
+        for needle in ("if not hasHostedBtn then", "btnSpeedToggle", "BattleData.game.userSpeed", "Tốc: x2", "Tốc: x1"):
             self.assertIn(needle, bui)
         bdata = read_apk_lua(self.apk, "assets/src/ComBattle/BattleData.luac")
         _validate_lua_source_quotes(bdata, "BattleData.luac")
         self.assertIn("BattleData.game.userSpeed", bdata)
+        self.assertIn("not _tuoguanDisp", bdata)
 
     def test_03_extracted_server_bundle_boots_and_serves_health_and_hybrid_status(self) -> None:
         self.assertTrue(self.apk.is_file(), f"Missing built APK: {self.apk}")
@@ -225,6 +244,12 @@ class R82HybridApkTest(unittest.TestCase):
                     self.assertEqual(r.status, 200)
                     st = json.loads(r.read().decode())
                 self.assertTrue(st["ok"])
+
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/ota/status", timeout=2) as r:
+                    self.assertEqual(r.status, 200)
+                    ota_st = json.loads(r.read().decode())
+                self.assertTrue(ota_st["ok"])
+                self.assertEqual(ota_st["update_kind"], "none")
             finally:
                 proc.terminate()
                 try:

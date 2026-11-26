@@ -19,6 +19,9 @@ const MAX_SAVE_B64_LEN = 384 * 1024;
 const MAX_SNAPSHOT_LEN = 128 * 1024;
 const MAX_EVENTS_PER_SYNC = 50;
 const MAX_EVENT_PAYLOAD_LEN = 2048;
+const OTA_VERSION_RE = /^[A-Za-z0-9._-]{1,64}$/;
+const OTA_MAX_CHUNKS = 64;
+const OTA_MAX_CHUNK_B64_LEN = 420_000;
 
 const ALLOWED_EVENT_TYPES = new Set([
   "friend_req",
@@ -74,6 +77,15 @@ function randomHex(byteLen = 24) {
   const bytes = new Uint8Array(byteLen);
   crypto.getRandomValues(bytes);
   return toHex(bytes);
+}
+
+function b64ToBytes(b64) {
+  const bin = atob(String(b64 || ""));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) {
+    out[i] = bin.charCodeAt(i);
+  }
+  return out;
 }
 
 async function sha256Hex(text) {
@@ -679,6 +691,231 @@ async function handleAdminBan(request, env) {
   return jsonResponse({ ok: true, account_id: acct.account_id, banned: Boolean(banned) });
 }
 
+async function handleOtaManifest(url, env) {
+  const channel = String(url.searchParams.get("channel") || "hybrid").trim() || "hybrid";
+  let row = null;
+  try {
+    row = await env.DB.prepare(
+      `SELECT channel, patch_version, min_apk_code, latest_apk_code, latest_apk_name,
+              apk_url, patch_url, patch_sha256, patch_size, changelog, force_update, published_at
+       FROM ota_releases WHERE channel = ?`
+    )
+      .bind(channel)
+      .first();
+  } catch (err) {
+    const msg = String(err && err.message ? err.message : err);
+    if (!msg.includes("no such table")) {
+      throw err;
+    }
+  }
+  if (!row) {
+    return jsonResponse({ ok: true, channel, release: null, server_time: nowSec() });
+  }
+  return jsonResponse({
+    ok: true,
+    channel,
+    release: {
+      channel: row.channel,
+      patch_version: row.patch_version,
+      min_apk_code: Number(row.min_apk_code || 0),
+      latest_apk_code: Number(row.latest_apk_code || 0),
+      latest_apk_name: String(row.latest_apk_name || ""),
+      apk_url: String(row.apk_url || ""),
+      patch_url: String(row.patch_url || ""),
+      patch_sha256: String(row.patch_sha256 || ""),
+      patch_size: Number(row.patch_size || 0),
+      changelog: String(row.changelog || ""),
+      force_update: Number(row.force_update || 0) !== 0,
+      published_at: Number(row.published_at || 0),
+    },
+    server_time: nowSec(),
+  });
+}
+
+async function handleOtaPatchDownload(versionRaw, env) {
+  let version = "";
+  try {
+    version = decodeURIComponent(String(versionRaw || "")).trim();
+  } catch {
+    return jsonResponse({ ok: false, error: "Phiên bản patch không hợp lệ" }, 400);
+  }
+  if (!OTA_VERSION_RE.test(version)) {
+    return jsonResponse({ ok: false, error: "Phiên bản patch không hợp lệ" }, 400);
+  }
+  let res;
+  try {
+    res = await env.DB.prepare(
+      `SELECT chunk_index, total_chunks, data_b64
+       FROM ota_chunks
+       WHERE patch_version = ?
+       ORDER BY chunk_index ASC`
+    )
+      .bind(version)
+      .all();
+  } catch (err) {
+    const msg = String(err && err.message ? err.message : err);
+    if (msg.includes("no such table")) {
+      return jsonResponse({ ok: false, error: "Không tìm thấy gói cập nhật" }, 404);
+    }
+    throw err;
+  }
+  const rows = res.results || [];
+  if (rows.length === 0) {
+    return jsonResponse({ ok: false, error: "Không tìm thấy gói cập nhật" }, 404);
+  }
+  const expectedTotal = Number(rows[0].total_chunks || 0);
+  if (expectedTotal < 1 || rows.length !== expectedTotal) {
+    return jsonResponse({ ok: false, error: "Gói cập nhật chưa đầy đủ mảnh dữ liệu" }, 404);
+  }
+  const decodedChunks = [];
+  let totalBytes = 0;
+  for (let i = 0; i < rows.length; i++) {
+    if (Number(rows[i].chunk_index) !== i || Number(rows[i].total_chunks) !== expectedTotal) {
+      return jsonResponse({ ok: false, error: "Gói cập nhật bị thiếu mảnh dữ liệu" }, 500);
+    }
+    const part = b64ToBytes(rows[i].data_b64);
+    decodedChunks.push(part);
+    totalBytes += part.byteLength;
+  }
+  const combined = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const part of decodedChunks) {
+    combined.set(part, offset);
+    offset += part.byteLength;
+  }
+  return new Response(combined, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/zip",
+      "Content-Length": String(combined.byteLength),
+      "Cache-Control": "public, max-age=3600",
+      ETag: `"${version}"`,
+    },
+  });
+}
+
+async function handleAdminOtaChunk(request, env) {
+  await verifyAdmin(request, env);
+  const body = await readBoundedJson(request);
+  const patchVersion = String(body.patch_version || "").trim();
+  const chunkIndex = Number(body.chunk_index);
+  const totalChunks = Number(body.total_chunks);
+  const dataB64 = String(body.data_b64 || "").trim();
+
+  if (!OTA_VERSION_RE.test(patchVersion)) {
+    return jsonResponse({ ok: false, error: "patch_version không hợp lệ" }, 400);
+  }
+  if (
+    !Number.isInteger(totalChunks) ||
+    totalChunks < 1 ||
+    totalChunks > OTA_MAX_CHUNKS ||
+    !Number.isInteger(chunkIndex) ||
+    chunkIndex < 0 ||
+    chunkIndex >= totalChunks
+  ) {
+    return jsonResponse({ ok: false, error: "chunk_index hoặc total_chunks không hợp lệ" }, 400);
+  }
+  if (!dataB64 || dataB64.length > OTA_MAX_CHUNK_B64_LEN) {
+    return jsonResponse({ ok: false, error: "data_b64 trống hoặc vượt giới hạn mảnh" }, 413);
+  }
+
+  await env.DB.prepare(
+    `INSERT INTO ota_chunks (patch_version, chunk_index, total_chunks, data_b64)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(patch_version, chunk_index) DO UPDATE SET
+       total_chunks = excluded.total_chunks,
+       data_b64 = excluded.data_b64`
+  )
+    .bind(patchVersion, chunkIndex, totalChunks, dataB64)
+    .run();
+
+  return jsonResponse({
+    ok: true,
+    patch_version: patchVersion,
+    chunk_index: chunkIndex,
+    total_chunks: totalChunks,
+  });
+}
+
+async function handleAdminOtaPublish(request, env) {
+  await verifyAdmin(request, env);
+  const body = await readBoundedJson(request);
+  const channel = String(body.channel || "hybrid").trim() || "hybrid";
+  const patchVersion = String(body.patch_version || "").trim();
+  if (!OTA_VERSION_RE.test(patchVersion)) {
+    return jsonResponse({ ok: false, error: "patch_version không hợp lệ" }, 400);
+  }
+  const minApkCode = Math.max(0, Math.floor(Number(body.min_apk_code || 0)));
+  const latestApkCode = Math.max(0, Math.floor(Number(body.latest_apk_code || 0)));
+  const latestApkName = String(body.latest_apk_name || "").trim();
+  const apkUrl = String(body.apk_url || "").trim();
+  const patchUrl = String(body.patch_url || "").trim();
+  const patchSha256 = String(body.patch_sha256 || "").trim().toLowerCase();
+  const patchSize = Math.max(0, Math.floor(Number(body.patch_size || 0)));
+  const changelog = String(body.changelog || "").trim();
+  const forceUpdate = body.force_update ? 1 : 0;
+  const pruneOldChunks = body.prune_old_chunks !== false;
+  const ts = nowSec();
+
+  const stmts = [
+    env.DB.prepare(
+      `INSERT INTO ota_releases (
+         channel, patch_version, min_apk_code, latest_apk_code, latest_apk_name,
+         apk_url, patch_url, patch_sha256, patch_size, changelog, force_update, published_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(channel) DO UPDATE SET
+         patch_version = excluded.patch_version,
+         min_apk_code = excluded.min_apk_code,
+         latest_apk_code = excluded.latest_apk_code,
+         latest_apk_name = excluded.latest_apk_name,
+         apk_url = excluded.apk_url,
+         patch_url = excluded.patch_url,
+         patch_sha256 = excluded.patch_sha256,
+         patch_size = excluded.patch_size,
+         changelog = excluded.changelog,
+         force_update = excluded.force_update,
+         published_at = excluded.published_at`
+    ).bind(
+      channel,
+      patchVersion,
+      minApkCode,
+      latestApkCode,
+      latestApkName,
+      apkUrl,
+      patchUrl,
+      patchSha256,
+      patchSize,
+      changelog,
+      forceUpdate,
+      ts
+    ),
+  ];
+  if (pruneOldChunks) {
+    stmts.push(
+      env.DB.prepare("DELETE FROM ota_chunks WHERE patch_version != ?").bind(patchVersion)
+    );
+  }
+  await env.DB.batch(stmts);
+
+  return jsonResponse({
+    ok: true,
+    release: {
+      channel,
+      patch_version: patchVersion,
+      min_apk_code: minApkCode,
+      latest_apk_code: latestApkCode,
+      latest_apk_name: latestApkName,
+      apk_url: apkUrl,
+      patch_url: patchUrl,
+      patch_sha256: patchSha256,
+      patch_size: patchSize,
+      changelog,
+      force_update: Boolean(forceUpdate),
+      published_at: ts,
+    },
+  });
+}
+
 export default {
   async fetch(request, env, _ctx) {
     const url = new URL(request.url);
@@ -688,6 +925,12 @@ export default {
     try {
       if (method === "GET" && (path === "/health" || path === "/auth/info")) {
         return await handleInfo(env);
+      }
+      if (method === "GET" && path === "/update/manifest") {
+        return await handleOtaManifest(url, env);
+      }
+      if (method === "GET" && path.startsWith("/update/patch/")) {
+        return await handleOtaPatchDownload(path.slice("/update/patch/".length), env);
       }
       if (method === "POST" && path === "/auth/register") {
         return await handleRegister(request, env);
@@ -709,6 +952,12 @@ export default {
       }
       if (method === "POST" && path === "/admin/ban") {
         return await handleAdminBan(request, env);
+      }
+      if (method === "POST" && path === "/admin/ota/chunk") {
+        return await handleAdminOtaChunk(request, env);
+      }
+      if (method === "POST" && path === "/admin/ota/publish") {
+        return await handleAdminOtaPublish(request, env);
       }
       return jsonResponse({ ok: false, error: "Not found" }, 404);
     } catch (err) {

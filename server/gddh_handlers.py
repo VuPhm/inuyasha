@@ -296,38 +296,59 @@ class GddhHandlersMixin:
         lv = int(self.state["player"].get("Lv", 1))
 
         if int(gddh.get("is_apply", 0)) == 1 and lv >= 35:
-            group_id = int(gddh.get("group_id", 1))
-            # Determine player's current rank within old_season BEFORE any season reset
-            groups = self._gddh_build_groups_for_season(gddh, old_season)
-            group_key = ("One", "Two", "Three", "Four")[max(0, min(3, group_id - 1))]
-            my_pid = str(self.state["player"]["PlayerId"])
-            rank = next((int(e["Rank"]) for e in groups[group_key] if e["PlayerId"] == my_pid), 0)
+            settled_days = set(str(x) for x in gddh.get("settled_days", []))
+            settled_seasons = set(str(x) for x in gddh.get("settled_seasons", []))
+            settled_guild = set(str(x) for x in gddh.get("settled_guild_seasons", []))
+            today_23h = self.clock.midnight_ts(now) + 23 * 3600
 
             if old_season == win["season_id"]:
-                # Same season: missed prior day daily reward
-                if prev_day and prev_day != today:
-                    if self._gddh_push_daily_settlement(prev_day, old_rtype, rank):
-                        changed = True
-                # Same season: current day >= 23:00
-                today_23h = self.clock.midnight_ts(now) + 23 * 3600
-                if today != win["end_date_str"]:
-                    if now >= today_23h and self._gddh_push_daily_settlement(today, old_rtype, rank):
-                        changed = True
-                elif now >= int(win["end_reward_date"]):
+                need_prev_daily = bool(prev_day and prev_day != today and prev_day not in settled_days)
+                need_today_daily = bool(
+                    today != win["end_date_str"] and now >= today_23h and today not in settled_days
+                )
+                need_season_end = bool(
+                    today == win["end_date_str"]
+                    and now >= int(win["end_reward_date"])
+                    and (old_season not in settled_seasons or old_season not in settled_guild)
+                )
+                need_settle = need_prev_daily or need_today_daily or need_season_end
+            else:
+                old_end_str = str(gddh.get("season_end_date_str", ""))
+                need_prev_daily = bool(prev_day and prev_day != old_end_str and prev_day not in settled_days)
+                need_season_end = bool(old_season not in settled_seasons or old_season not in settled_guild)
+                need_settle = need_prev_daily or need_season_end
+
+            if need_settle:
+                group_id = int(gddh.get("group_id", 1))
+                # Determine player's current rank within old_season BEFORE any season reset
+                groups = self._gddh_build_groups_for_season(gddh, old_season)
+                group_key = ("One", "Two", "Three", "Four")[max(0, min(3, group_id - 1))]
+                my_pid = str(self.state["player"]["PlayerId"])
+                rank = next((int(e["Rank"]) for e in groups[group_key] if e["PlayerId"] == my_pid), 0)
+
+                if old_season == win["season_id"]:
+                    # Same season: missed prior day daily reward
+                    if need_prev_daily:
+                        if self._gddh_push_daily_settlement(prev_day, old_rtype, rank):
+                            changed = True
+                    # Same season: current day >= 23:00
+                    if need_today_daily:
+                        if self._gddh_push_daily_settlement(today, old_rtype, rank):
+                            changed = True
+                    elif need_season_end:
+                        if self._gddh_push_season_settlement(old_season, old_rtype, rank):
+                            changed = True
+                        if self._gddh_push_guild_season_settlement(old_season, old_rtype, groups):
+                            changed = True
+                else:
+                    # Season rolled over cleanly -> settle prev_day if non-final, then settle old season
+                    if need_prev_daily:
+                        if self._gddh_push_daily_settlement(prev_day, old_rtype, rank):
+                            changed = True
                     if self._gddh_push_season_settlement(old_season, old_rtype, rank):
                         changed = True
                     if self._gddh_push_guild_season_settlement(old_season, old_rtype, groups):
                         changed = True
-            else:
-                # Season rolled over cleanly -> settle prev_day if non-final, then settle old season
-                old_end_str = str(gddh.get("season_end_date_str", ""))
-                if prev_day and prev_day != old_end_str:
-                    if self._gddh_push_daily_settlement(prev_day, old_rtype, rank):
-                        changed = True
-                if self._gddh_push_season_settlement(old_season, old_rtype, rank):
-                    changed = True
-                if self._gddh_push_guild_season_settlement(old_season, old_rtype, groups):
-                    changed = True
 
         # Rollover season state cleanly
         if old_season != win["season_id"]:
@@ -362,6 +383,15 @@ class GddhHandlersMixin:
         return gddh
 
     def _gddh_bot_profile(self, season_id: str, group_id: int, bot_idx: int, base_lv: int) -> dict[str, Any]:
+        cache_scope = (str(season_id), int(base_lv))
+        cache_key = (int(group_id), int(bot_idx))
+        if getattr(self, "_gddh_bot_cache_scope", None) != cache_scope:
+            self._gddh_bot_cache_scope = cache_scope
+            self._gddh_bot_cache: dict[tuple[int, int], dict[str, Any]] = {}
+        cached = self._gddh_bot_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         heroes_cfg = self.game_data.get("heroes", {})
         pool = [hm for hm in _GDDH_BOT_HEROS if str(hm) in heroes_cfg]
         if not pool:
@@ -435,7 +465,7 @@ class GddhHandlersMixin:
 
         base_integral = 2150 - bot_idx * 70  # spans 2150 down to 820
         name = f"{_GDDH_BOT_NAMES[bot_idx % len(_GDDH_BOT_NAMES)]}{group_id}{bot_idx + 1}"
-        return {
+        profile = {
             "PlayerId": bot_pid,
             "Lv": bot_lv,
             "Name": name,
@@ -449,6 +479,8 @@ class GddhHandlersMixin:
             "Embattle": embattle,
             "HeroesById": heroes_by_id,
         }
+        self._gddh_bot_cache[cache_key] = profile
+        return profile
 
     def _gddh_bot_slot_formations(self, target_id: str) -> dict[str, Any] | None:
         gddh = self._gddh_ensure_state_dict()

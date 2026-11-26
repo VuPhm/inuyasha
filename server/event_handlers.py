@@ -33,6 +33,8 @@ class EventHandlersMixin(R79EventHandlersMixin):
 
     def _sync_events(self) -> None:
         """Advance/archive ended timed events and settle end-of-period rewards once."""
+        if getattr(self, "_sync_events_suppressed", False):
+            return
         changed = bool(self.event_runtime.check_and_finalize_ended_timed(on_ended=self._on_timed_event_ended))
         if hasattr(self, "_sync_gddh_settlement") and self._sync_gddh_settlement():
             changed = True

@@ -8,7 +8,7 @@
 
 # annotations
 .annotation system Ldalvik/annotation/EnclosingMethod;
-    value = Lcom/cmn/inuyasha/standalone/LocalBackendManager;->onActivityResume(Landroid/content/Context;)V
+    value = Lcom/cmn/inuyasha/standalone/LocalBackendManager;->ensureStarted(Landroid/content/Context;J)V
 .end annotation
 
 .annotation system Ldalvik/annotation/InnerClass;
@@ -20,9 +20,11 @@
 # instance fields
 .field final synthetic val$appCtx:Landroid/content/Context;
 
+.field final synthetic val$watchedProc:Ljava/lang/Process;
+
 
 # direct methods
-.method constructor <init>(Landroid/content/Context;)V
+.method constructor <init>(Ljava/lang/Process;Landroid/content/Context;)V
     .locals 0
     .annotation system Ldalvik/annotation/Signature;
         value = {
@@ -30,8 +32,10 @@
         }
     .end annotation
 
-    .line 235
-    iput-object p1, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;->val$appCtx:Landroid/content/Context;
+    .line 194
+    iput-object p1, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;->val$watchedProc:Ljava/lang/Process;
+
+    iput-object p2, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;->val$appCtx:Landroid/content/Context;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
@@ -41,15 +45,95 @@
 
 # virtual methods
 .method public run()V
-    .locals 3
+    .locals 4
 
-    .line 238
-    iget-object v0, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;->val$appCtx:Landroid/content/Context;
+    .line 198
+    const-string v0, "InuStandalone"
 
-    const-wide/16 v1, 0x2ee0
+    :try_start_0
+    iget-object v1, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;->val$watchedProc:Ljava/lang/Process;
 
-    invoke-static {v0, v1, v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->ensureStarted(Landroid/content/Context;J)V
+    invoke-virtual {v1}, Ljava/lang/Process;->waitFor()I
 
-    .line 239
+    move-result v1
+
+    .line 199
+    const/16 v2, 0x2a
+
+    if-ne v1, v2, :cond_0
+
+    invoke-static {}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->access$000()Z
+
+    move-result v1
+
+    if-eqz v1, :cond_0
+
+    .line 200
+    const-string v1, "OTA restart requested (exit 42); respawning embedded backend"
+
+    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+
+    .line 201
+    const-wide/16 v1, 0x0
+
+    invoke-static {v1, v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->access$102(J)J
+
+    .line 202
+    iget-object v1, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;->val$appCtx:Landroid/content/Context;
+
+    const-wide/16 v2, 0x3a98
+
+    invoke-static {v1, v2, v3}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->ensureStarted(Landroid/content/Context;J)V
+    :try_end_0
+    .catch Ljava/lang/InterruptedException; {:try_start_0 .. :try_end_0} :catch_0
+    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+
+    goto :goto_0
+
+    .line 206
+    :catchall_0
+    move-exception v1
+
+    .line 207
+    new-instance v2, Ljava/lang/StringBuilder;
+
+    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v3, "Backend exit watcher warning: "
+
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v2
+
+    invoke-virtual {v2, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-static {v0, v1}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
+
+    goto :goto_1
+
+    .line 204
+    :catch_0
+    move-exception v0
+
+    .line 205
+    invoke-static {}, Ljava/lang/Thread;->currentThread()Ljava/lang/Thread;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Ljava/lang/Thread;->interrupt()V
+
+    .line 208
+    :cond_0
+    :goto_0
+    nop
+
+    .line 209
+    :goto_1
     return-void
 .end method

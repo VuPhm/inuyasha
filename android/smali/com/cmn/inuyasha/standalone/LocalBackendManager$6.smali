@@ -8,7 +8,7 @@
 
 # annotations
 .annotation system Ldalvik/annotation/EnclosingMethod;
-    value = Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isLoopbackHealthy(I)Z
+    value = Lcom/cmn/inuyasha/standalone/LocalBackendManager;->onActivityDestroy(Landroid/content/Context;)V
 .end annotation
 
 .annotation system Ldalvik/annotation/InnerClass;
@@ -18,13 +18,13 @@
 
 
 # instance fields
-.field final synthetic val$ok:[Z
+.field final synthetic val$appCtx:Landroid/content/Context;
 
-.field final synthetic val$timeoutMs:I
+.field final synthetic val$destroyStamp:J
 
 
 # direct methods
-.method constructor <init>([ZI)V
+.method constructor <init>(Landroid/content/Context;J)V
     .locals 0
     .annotation system Ldalvik/annotation/Signature;
         value = {
@@ -32,10 +32,10 @@
         }
     .end annotation
 
-    .line 332
-    iput-object p1, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;->val$ok:[Z
+    .line 293
+    iput-object p1, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;->val$appCtx:Landroid/content/Context;
 
-    iput p2, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;->val$timeoutMs:I
+    iput-wide p2, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;->val$destroyStamp:J
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
@@ -45,21 +45,61 @@
 
 # virtual methods
 .method public run()V
-    .locals 3
+    .locals 5
 
-    .line 335
-    iget-object v0, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;->val$ok:[Z
+    .line 296
+    iget-object v0, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;->val$appCtx:Landroid/content/Context;
 
-    iget v1, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;->val$timeoutMs:I
+    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->mirrorSaves(Landroid/content/Context;)V
 
-    invoke-static {v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->access$200(I)Z
+    .line 298
+    const-wide/16 v0, 0xdac
 
-    move-result v1
+    :try_start_0
+    invoke-static {v0, v1}, Ljava/lang/Thread;->sleep(J)V
+    :try_end_0
+    .catch Ljava/lang/InterruptedException; {:try_start_0 .. :try_end_0} :catch_0
 
-    const/4 v2, 0x0
+    .line 299
+    :goto_0
+    goto :goto_1
 
-    aput-boolean v1, v0, v2
+    :catch_0
+    move-exception v0
 
-    .line 336
+    goto :goto_0
+
+    .line 300
+    :goto_1
+    invoke-static {}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->access$000()Z
+
+    move-result v0
+
+    if-nez v0, :cond_0
+
+    invoke-static {}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->access$200()J
+
+    move-result-wide v0
+
+    iget-wide v2, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;->val$destroyStamp:J
+
+    cmp-long v4, v0, v2
+
+    if-nez v4, :cond_0
+
+    .line 301
+    const-string v0, "InuStandalone"
+
+    const-string v1, "Activity closed; stopping embedded backend cleanly"
+
+    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+
+    .line 302
+    iget-object v0, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;->val$appCtx:Landroid/content/Context;
+
+    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->stopBackend(Landroid/content/Context;)V
+
+    .line 304
+    :cond_0
     return-void
 .end method

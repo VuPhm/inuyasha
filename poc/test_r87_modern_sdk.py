@@ -33,10 +33,16 @@ class R87ModernSdkTest(unittest.TestCase):
 
             mf_txt = (work / "AndroidManifest.xml").read_text(encoding="utf-8")
             self.assertIn('android:requestLegacyExternalStorage="true"', mf_txt)
+            self.assertIn('android:resizeableActivity="false"', mf_txt)
+            self.assertIn('android:name="android.max_aspect" android:value="1.78"', mf_txt)
             self.assertRegex(
                 mf_txt,
                 r'<activity\b[^>]*android:name="com\.moqikaka\.sdk\.MQActivity"[^>]*android:exported="true"'
                 r'|<activity\b[^>]*android:exported="true"[^>]*android:name="com\.moqikaka\.sdk\.MQActivity"',
+            )
+            self.assertRegex(
+                mf_txt,
+                r'<activity\b[^>]*android:name="com\.moqikaka\.sdk\.MQActivity"[^>]*android:maxAspectRatio="1\.78"',
             )
 
             perms = re.findall(r'<uses-permission\b[^>]*android:name="([^"]+)"', mf_txt)

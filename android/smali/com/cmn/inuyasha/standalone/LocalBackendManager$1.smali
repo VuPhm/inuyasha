@@ -30,7 +30,7 @@
         }
     .end annotation
 
-    .line 42
+    .line 43
     iput-object p1, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$1;->val$appCtx:Landroid/content/Context;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -43,13 +43,13 @@
 .method public run()V
     .locals 3
 
-    .line 45
+    .line 46
     iget-object v0, p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager$1;->val$appCtx:Landroid/content/Context;
 
     const-wide/16 v1, 0x3a98
 
     invoke-static {v0, v1, v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->ensureStarted(Landroid/content/Context;J)V
 
-    .line 46
+    .line 47
     return-void
 .end method

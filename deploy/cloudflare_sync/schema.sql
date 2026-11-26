@@ -53,3 +53,26 @@ CREATE TABLE IF NOT EXISTS social_inbox (
 );
 
 CREATE INDEX IF NOT EXISTS idx_social_inbox_to ON social_inbox(to_player_id, consumed, id);
+
+CREATE TABLE IF NOT EXISTS ota_releases (
+  channel TEXT PRIMARY KEY,
+  patch_version TEXT NOT NULL,
+  min_apk_code INTEGER NOT NULL DEFAULT 0,
+  latest_apk_code INTEGER NOT NULL DEFAULT 0,
+  latest_apk_name TEXT NOT NULL DEFAULT '',
+  apk_url TEXT NOT NULL DEFAULT '',
+  patch_url TEXT NOT NULL DEFAULT '',
+  patch_sha256 TEXT NOT NULL DEFAULT '',
+  patch_size INTEGER NOT NULL DEFAULT 0,
+  changelog TEXT NOT NULL DEFAULT '',
+  force_update INTEGER NOT NULL DEFAULT 0,
+  published_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ota_chunks (
+  patch_version TEXT NOT NULL,
+  chunk_index INTEGER NOT NULL,
+  total_chunks INTEGER NOT NULL,
+  data_b64 TEXT NOT NULL,
+  PRIMARY KEY (patch_version, chunk_index)
+);

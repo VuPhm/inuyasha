@@ -2,6 +2,7 @@ package com.cmn.inuyasha.standalone;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.res.AssetManager;
 import android.os.Looper;
 import android.util.Log;
@@ -170,11 +171,45 @@ public final class LocalBackendManager {
                     env.put("PYTHONDONTWRITEBYTECODE", "1");
                     env.put("INUYASHA_SEED_DIR", new File(serverDir, "seeds").getAbsolutePath());
                     env.put("INUYASHA_PUBLIC_BACKUP_PATH", "/sdcard/Download/InuYasha_Save_Backup.json");
+                    env.put("INUYASHA_SERVER_DIR", serverDir.getAbsolutePath());
+                    env.put("INUYASHA_CLIENT_OTA_DIR", getClientOtaDir(appCtx).getAbsolutePath());
+                    int apkVerCode = 0;
+                    String apkVerName = "";
+                    try {
+                        PackageInfo pkgInfo = appCtx.getPackageManager().getPackageInfo(appCtx.getPackageName(), 0);
+                        if (pkgInfo != null) {
+                            apkVerCode = pkgInfo.versionCode;
+                            apkVerName = pkgInfo.versionName != null ? pkgInfo.versionName : "";
+                        }
+                    } catch (Throwable ignored) {}
+                    env.put("INUYASHA_APK_VERSION_CODE", String.valueOf(apkVerCode));
+                    env.put("INUYASHA_APK_VERSION_NAME", apkVerName);
 
                     startedProc = pb.start();
                     backendProcess = startedProc;
                     lastLaunchStartMs = System.currentTimeMillis();
                     lastHealthOkMs = 0L;
+
+                    final Process watchedProc = startedProc;
+                    Thread exitWatch = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                int rc = watchedProc.waitFor();
+                                if (rc == 42 && activityActive) {
+                                    Log.i(TAG, "OTA restart requested (exit 42); respawning embedded backend");
+                                    lastHealthOkMs = 0L;
+                                    ensureStarted(appCtx, 15000L);
+                                }
+                            } catch (InterruptedException ignored) {
+                                Thread.currentThread().interrupt();
+                            } catch (Throwable t) {
+                                Log.w(TAG, "Backend exit watcher warning: " + t);
+                            }
+                        }
+                    }, "InuBackendExitWatch");
+                    exitWatch.setDaemon(true);
+                    exitWatch.start();
                 } catch (Throwable t) {
                     Log.e(TAG, "Failed to start embedded backend", t);
                     return;
@@ -432,6 +467,36 @@ public final class LocalBackendManager {
         return internalSaves;
     }
 
+    public static File getClientOtaDir(Context ctx) {
+        File ext = ctx.getExternalFilesDir(null);
+        if (ext != null) {
+            File extOta = new File(new File(ext, "moqikaka"), "Download");
+            if (isDirWritable(extOta)) {
+                return extOta;
+            }
+        }
+        File internalOta = new File(new File(ctx.getFilesDir(), "moqikaka"), "Download");
+        if (!internalOta.exists()) {
+            internalOta.mkdirs();
+        }
+        return internalOta;
+    }
+
+    private static void deleteRecursive(File f) {
+        if (f == null || !f.exists()) {
+            return;
+        }
+        if (f.isDirectory()) {
+            File[] children = f.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteRecursive(child);
+                }
+            }
+        }
+        f.delete();
+    }
+
     public static File getMirrorDir(Context ctx) {
         File dir = new File(ctx.getFilesDir(), "saves_mirror");
         if (!dir.exists()) {
@@ -511,6 +576,9 @@ public final class LocalBackendManager {
             }
         }
         Log.i(TAG, "Unpacking embedded Python stdlib & emulator server bundle (" + bundledVersion + ")");
+        File otaDir = getClientOtaDir(ctx);
+        deleteRecursive(new File(otaDir, "src"));
+        deleteRecursive(new File(otaDir, "res"));
         pyDir.mkdirs();
         serverDir.mkdirs();
 

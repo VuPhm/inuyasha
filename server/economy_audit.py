@@ -12,6 +12,7 @@ Provides:
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 import uuid
@@ -69,6 +70,11 @@ class DuplicateTransactionError(ResourceTransactionError):
     """Raised when an idempotency_key has already been applied."""
 
 
+_LEDGER_KEYS_RE = re.compile(
+    r'"account_id"\s*:\s*"([^"\\]+)"[^\n]*?"idempotency_key"\s*:\s*"([^"\\]+)"'
+)
+
+
 class ResourceLedger:
     """Validates, applies, deduplicates, and audits economy transactions."""
 
@@ -80,15 +86,24 @@ class ResourceLedger:
         self._applied_keys: set[tuple[str, str]] = set()
         self._memory_log: list[dict[str, Any]] = []
         if self.audit_log_path and self.audit_log_path.exists():
-            for line in self.audit_log_path.read_text(encoding="utf-8").splitlines():
-                if not line.strip():
-                    continue
-                try:
-                    rec = json.loads(line)
-                    if rec.get("account_id") and rec.get("idempotency_key"):
-                        self._applied_keys.add((str(rec["account_id"]), rec["idempotency_key"]))
-                except json.JSONDecodeError:
-                    continue
+            with open(self.audit_log_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    m = _LEDGER_KEYS_RE.search(line)
+                    if m:
+                        idem = m.group(2)
+                        if not idem.startswith("auto:"):
+                            self._applied_keys.add((m.group(1), idem))
+                        continue
+                    try:
+                        rec = json.loads(line)
+                        acc = rec.get("account_id")
+                        idem = rec.get("idempotency_key")
+                        if acc and idem and not str(idem).startswith("auto:"):
+                            self._applied_keys.add((str(acc), str(idem)))
+                    except json.JSONDecodeError:
+                        continue
 
     @contextmanager
     def capture_diamond_debits(self):

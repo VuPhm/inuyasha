@@ -906,6 +906,423 @@ end
 return HybridSyncLayer
 """
 
+OTA_UPDATE_LAYER_LUA = """--[[
+    System.OtaUpdateLayer.lua — In-Game OTA Hot-Update & APK Notice Modal (R8.16)
+    Talks to local embedded backend (127.0.0.1:18082/ota/*).
+-- ]]
+
+local OtaUpdateLayer = class("OtaUpdateLayer", function()
+    local self
+    self = require("Common.ModalColorLayer").new({
+        color4B = cc.c4b(0, 0, 0, 175),
+        title = TR("Cập Nhật Game"),
+        bgImage = "c_43.png",
+        closeBtnImage = "c_15.png",
+        onCloseCallback = function()
+            if not self.mForceLocked and not self.mBusy then
+                self:removeFromParent()
+            end
+        end
+    })
+    return self
+end)
+
+local function requestOtaApi(method, path, payloadTable, cb)
+    local xhr = cc.XMLHttpRequest:new()
+    xhr:setUnzip(false)
+    xhr.responseType = cc.XMLHTTPREQUEST_RESPONSE_STRING
+    xhr:open(method, "http://127.0.0.1:18082" .. path)
+    xhr:registerScriptHandler(function(event)
+        local data = nil
+        if event == "SUCCESS" and xhr.response and xhr.response ~= "" then
+            local okDec, dec = pcall(cjson.decode, xhr.response)
+            if okDec and type(dec) == "table" then
+                data = dec
+            end
+        end
+        if cb then
+            cb(data, xhr.status)
+        end
+    end)
+    if method == "POST" then
+        xhr:send(cjson.encode(payloadTable or {}))
+    else
+        xhr:send()
+    end
+end
+
+local function formatBytes(n)
+    n = tonumber(n) or 0
+    if n <= 0 then
+        return "nhỏ gọn"
+    elseif n < 1024 then
+        return string.format("%d B", n)
+    elseif n < 1048576 then
+        return string.format("%.1f KB", n / 1024)
+    else
+        return string.format("%.2f MB", n / 1048576)
+    end
+end
+
+local function runClientHotReload()
+    cc.FileUtils:getInstance():purgeCachedEntries()
+    if NetworkResData and NetworkResData.clearPlayerCacheInfo then
+        NetworkResData:clearPlayerCacheInfo()
+    end
+    if skeletonCache_clear then
+        skeletonCache_clear()
+    end
+    cc.Director:getInstance():purgeCachedData()
+    clearRequireList()
+    require("main")
+end
+
+function OtaUpdateLayer:ctor(initialStatus)
+    self.mContentNode = cc.Node:create()
+    self.mBgSprite:addChild(self.mContentNode)
+    self.mBusy = false
+    self.mForceLocked = false
+    if type(initialStatus) == "table" then
+        self:renderStatus(initialStatus)
+    else
+        self:checkForUpdate()
+    end
+end
+
+function OtaUpdateLayer:setLocked(locked)
+    self.mBusy = locked and true or false
+    if self.mCloseButton and not tolua.isnull(self.mCloseButton) then
+        self.mCloseButton:setVisible(not (self.mBusy or self.mForceLocked))
+    end
+end
+
+function OtaUpdateLayer:checkForUpdate()
+    if tolua.isnull(self) then return end
+    self.mContentNode:removeAllChildren()
+    local w, h = self.mBgSize.width, self.mBgSize.height
+    local lbl = ui.newLabel({
+        text = "Đang kiểm tra bản cập nhật mới...",
+        size = 22,
+        color = ColorList.ccBlack,
+        align = cc.TEXT_ALIGNMENT_CENTER,
+    })
+    lbl:setPosition(cc.p(w * 0.5, h * 0.52))
+    self.mContentNode:addChild(lbl)
+
+    requestOtaApi("POST", "/ota/check", {}, function(st)
+        if tolua.isnull(self) then return end
+        if not st or not st.ok then
+            self:renderError("Không thể kiểm tra cập nhật từ dịch vụ nền cục bộ.")
+            return
+        end
+        self:renderStatus(st)
+    end)
+end
+
+function OtaUpdateLayer:renderError(msg)
+    self.mContentNode:removeAllChildren()
+    local w, h = self.mBgSize.width, self.mBgSize.height
+    local lbl = ui.newLabel({
+        text = tostring(msg or "Lỗi cập nhật"),
+        size = 20,
+        color = cc.c3b(0xb0, 0x10, 0x10),
+        align = cc.TEXT_ALIGNMENT_CENTER,
+        dimensions = cc.size(w * 0.86, 0),
+    })
+    lbl:setPosition(cc.p(w * 0.5, h * 0.56))
+    self.mContentNode:addChild(lbl)
+
+    local retryBtn = ui.newButton({
+        normalImage = "c_77.png",
+        text = "Thử Lại",
+        fontSize = 20,
+        scale = 0.9,
+        color = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        outlineSize = 2,
+        position = cc.p(w * 0.34, h * 0.19),
+        clickAction = function()
+            self:checkForUpdate()
+        end,
+    })
+    self.mContentNode:addChild(retryBtn)
+
+    local closeBtn = ui.newButton({
+        normalImage = "c_7.png",
+        text = "Đóng",
+        fontSize = 20,
+        scale = 0.9,
+        color = ColorList.ccWhite,
+        outlineColor = ColorList.ccOutline,
+        outlineSize = 2,
+        position = cc.p(w * 0.66, h * 0.19),
+        clickAction = function()
+            if not self.mForceLocked and not self.mBusy then
+                self:removeFromParent()
+            end
+        end,
+    })
+    self.mContentNode:addChild(closeBtn)
+end
+
+function OtaUpdateLayer:renderStatus(st)
+    self.mContentNode:removeAllChildren()
+    local w, h = self.mBgSize.width, self.mBgSize.height
+    local rel = type(st.release) == "table" and st.release or nil
+    local kind = tostring(st.update_kind or "none")
+    self.mForceLocked = (st.force_update == true) and (kind ~= "none")
+    if self.mCloseButton and not tolua.isnull(self.mCloseButton) then
+        self.mCloseButton:setVisible(not (self.mBusy or self.mForceLocked))
+    end
+
+    local function addRow(txt, yRatio, sz, col, dims)
+        local opts = {
+            text = txt,
+            size = sz,
+            color = col or ColorList.ccBlack,
+            align = cc.TEXT_ALIGNMENT_CENTER,
+        }
+        if dims then
+            opts.dimensions = dims
+        end
+        local lbl = ui.newLabel(opts)
+        lbl:setPosition(cc.p(w * 0.5, h * yRatio))
+        self.mContentNode:addChild(lbl)
+        return lbl
+    end
+
+    addRow(
+        string.format("Phiên bản hiện tại: %s  (APK #%s)", tostring(st.effective_version or "?"), tostring(st.apk_version_code or 0)),
+        0.80,
+        18
+    )
+
+    if kind == "hotfix" and rel then
+        addRow(
+            string.format("Có bản cập nhật mới: %s  (%s)", tostring(rel.patch_version or ""), formatBytes(rel.patch_size)),
+            0.70,
+            21,
+            cc.c3b(0x0b, 0x5d, 0x1e)
+        )
+        local notes = tostring(rel.changelog or "Sửa lỗi và tối ưu hiệu năng.")
+        if notes == "" then notes = "Sửa lỗi và tối ưu hiệu năng." end
+        addRow(notes, 0.53, 18, ColorList.ccBlack, cc.size(w * 0.86, 0))
+        self.mProgressLabel = addRow("Bấm Cập Nhật Ngay để tự động tải và áp dụng (giữ nguyên save).", 0.34, 17)
+
+        local btnPos = self.mForceLocked and cc.p(w * 0.5, h * 0.17) or cc.p(w * 0.33, h * 0.17)
+        local btnApply = ui.newButton({
+            normalImage = "c_77.png",
+            text = "Cập Nhật Ngay",
+            fontSize = 20,
+            scale = 0.92,
+            color = ColorList.ccWhite,
+            outlineColor = ColorList.ccOutline,
+            outlineSize = 2,
+            position = btnPos,
+            clickAction = function()
+                if not self.mBusy then
+                    self:startHotfixApply()
+                end
+            end,
+        })
+        self.mContentNode:addChild(btnApply)
+
+        if not self.mForceLocked then
+            local btnLater = ui.newButton({
+                normalImage = "c_7.png",
+                text = "Để Sau",
+                fontSize = 20,
+                scale = 0.90,
+                color = ColorList.ccWhite,
+                outlineColor = ColorList.ccOutline,
+                outlineSize = 2,
+                position = cc.p(w * 0.69, h * 0.17),
+                clickAction = function()
+                    if not self.mBusy then
+                        self:removeFromParent()
+                    end
+                end,
+            })
+            self.mContentNode:addChild(btnLater)
+        end
+    elseif kind == "apk" and rel then
+        addRow(
+            string.format("Cần cài đặt bản APK mới: %s (code %s)", tostring(rel.latest_apk_name or rel.patch_version or ""), tostring(rel.latest_apk_code or rel.min_apk_code or "")),
+            0.70,
+            20,
+            cc.c3b(0x9a, 0x20, 0x00),
+            cc.size(w * 0.88, 0)
+        )
+        local notes = tostring(rel.changelog or "Bản cập nhật này thay đổi phần Android gốc, cần tải APK cài đè (save vẫn giữ nguyên).")
+        if notes == "" then notes = "Cần tải APK cài đè (dữ liệu save vẫn giữ nguyên)." end
+        addRow(notes, 0.51, 18, ColorList.ccBlack, cc.size(w * 0.86, 0))
+        addRow("Dữ liệu tài khoản & nhân vật được giữ nguyên khi cài đè.", 0.34, 17)
+
+        local apkUrl = tostring(rel.apk_url or "")
+        local btnPos = self.mForceLocked and cc.p(w * 0.5, h * 0.17) or cc.p(w * 0.33, h * 0.17)
+        local btnDownload = ui.newButton({
+            normalImage = "c_77.png",
+            text = "Tải APK Ngay",
+            fontSize = 20,
+            scale = 0.92,
+            color = ColorList.ccWhite,
+            outlineColor = ColorList.ccOutline,
+            outlineSize = 2,
+            position = btnPos,
+            clickAction = function()
+                if apkUrl ~= "" then
+                    IPlatform:getInstance():openUrl(apkUrl)
+                else
+                    ui.showFlashView({parent = self, text = "Chưa có link tải APK trực tiếp, vui lòng nhận file từ chủ phòng."})
+                end
+            end,
+        })
+        self.mContentNode:addChild(btnDownload)
+
+        if not self.mForceLocked then
+            local btnLater = ui.newButton({
+                normalImage = "c_7.png",
+                text = "Để Sau",
+                fontSize = 20,
+                scale = 0.90,
+                color = ColorList.ccWhite,
+                outlineColor = ColorList.ccOutline,
+                outlineSize = 2,
+                position = cc.p(w * 0.69, h * 0.17),
+                clickAction = function()
+                    self:removeFromParent()
+                end,
+            })
+            self.mContentNode:addChild(btnLater)
+        end
+    else
+        local msg = "Bạn đang ở phiên bản mới nhất!"
+        local col = cc.c3b(0x0b, 0x5d, 0x1e)
+        if st.last_error and st.last_error ~= "" then
+            msg = "Không kiểm tra được máy chủ cập nhật:\\n" .. tostring(st.last_error)
+            col = cc.c3b(0xb0, 0x10, 0x10)
+        end
+        addRow(msg, 0.54, 19, col, cc.size(w * 0.86, 0))
+
+        local btnRecheck = ui.newButton({
+            normalImage = "c_77.png",
+            text = "Kiểm Tra Lại",
+            fontSize = 20,
+            scale = 0.90,
+            color = ColorList.ccWhite,
+            outlineColor = ColorList.ccOutline,
+            outlineSize = 2,
+            position = cc.p(w * 0.34, h * 0.19),
+            clickAction = function()
+                self:checkForUpdate()
+            end,
+        })
+        self.mContentNode:addChild(btnRecheck)
+
+        local btnClose = ui.newButton({
+            normalImage = "c_7.png",
+            text = "Đóng",
+            fontSize = 20,
+            scale = 0.90,
+            color = ColorList.ccWhite,
+            outlineColor = ColorList.ccOutline,
+            outlineSize = 2,
+            position = cc.p(w * 0.66, h * 0.19),
+            clickAction = function()
+                self:removeFromParent()
+            end,
+        })
+        self.mContentNode:addChild(btnClose)
+    end
+end
+
+function OtaUpdateLayer:waitForBackendAndReload(attempt)
+    attempt = attempt or 1
+    if tolua.isnull(self) then return end
+    if self.mProgressLabel and not tolua.isnull(self.mProgressLabel) then
+        self.mProgressLabel:setString(string.format("Đang khởi động lại dịch vụ nền... (%d/35)", attempt))
+    end
+    requestOtaApi("GET", "/health", nil, function(hd, code)
+        if tolua.isnull(self) then return end
+        if code == 200 and hd and hd.ok then
+            ui.showFlashView({parent = display.getRunningScene(), text = "Cập nhật thành công! Đang vào lại game..."})
+            runClientHotReload()
+        elseif attempt < 35 then
+            performWithDelay(self, function()
+                if not tolua.isnull(self) then
+                    self:waitForBackendAndReload(attempt + 1)
+                end
+            end, 0.4)
+        else
+            self:setLocked(false)
+            self:renderError("Dịch vụ nền mất quá lâu để khởi động lại. Vui lòng mở lại game.")
+        end
+    end)
+end
+
+function OtaUpdateLayer:pollApplyStatus()
+    if tolua.isnull(self) then return end
+    requestOtaApi("GET", "/ota/status", nil, function(st)
+        if tolua.isnull(self) then return end
+        local prog = (st and type(st.progress) == "table") and st.progress or {}
+        local phase = tostring(prog.phase or "")
+        local pct = tonumber(prog.progress_pct) or 0
+        if self.mProgressLabel and not tolua.isnull(self.mProgressLabel) then
+            local msg = tostring(prog.message or "Đang xử lý...")
+            self.mProgressLabel:setString(string.format("%s (%d%%)", msg, pct))
+        end
+
+        if phase == "done" then
+            if prog.needs_backend_restart then
+                requestOtaApi("POST", "/ota/restart", {}, function()
+                    if not tolua.isnull(self) then
+                        performWithDelay(self, function()
+                            self:waitForBackendAndReload(1)
+                        end, 0.5)
+                    end
+                end)
+            else
+                ui.showFlashView({parent = display.getRunningScene(), text = "Cập nhật thành công! Đang tải lại giao diện..."})
+                runClientHotReload()
+            end
+            return
+        elseif phase == "error" then
+            self:setLocked(false)
+            self:renderError(tostring(prog.error or st.last_error or "Cập nhật thất bại"))
+            return
+        end
+
+        performWithDelay(self, function()
+            if not tolua.isnull(self) then
+                self:pollApplyStatus()
+            end
+        end, 0.4)
+    end)
+end
+
+function OtaUpdateLayer:startHotfixApply()
+    self:setLocked(true)
+    if self.mProgressLabel and not tolua.isnull(self.mProgressLabel) then
+        self.mProgressLabel:setString("Đang bắt đầu tải gói cập nhật...")
+    end
+    requestOtaApi("POST", "/ota/apply", {}, function(res)
+        if tolua.isnull(self) then return end
+        if not res or not res.ok then
+            self:setLocked(false)
+            ui.showFlashView({parent = self, text = tostring((res and res.error) or "Không thể bắt đầu cập nhật")})
+            return
+        end
+        performWithDelay(self, function()
+            if not tolua.isnull(self) then
+                self:pollApplyStatus()
+            end
+        end, 0.35)
+    end)
+end
+
+return OtaUpdateLayer
+"""
+
 
 def _validate_lua_source_quotes(lua_source: str, label: str) -> None:
     """Catch unescaped newlines inside Lua '...' or "..." string literals at build time."""
@@ -1007,6 +1424,7 @@ def build_server_bundle_zip(dest_zip: Path, server_dir: Path | None = None) -> N
         "warfare_data.json",
         "private_auth.py",
         "hybrid_sync.py",
+        "ota_updater.py",
         "sync_ca_bundle.pem",
     ]
     dest_zip.parent.mkdir(parents=True, exist_ok=True)
@@ -1386,6 +1804,13 @@ def patch_standalone_workspace(
                 '                self:addChild(require("System.HybridSyncLayer").new(), 50)\n'
                 '            end,\n'
                 '        },\n'
+                '        {\n'
+                '            normalImage = "xt_16.png",\n'
+                '            title = "Cập Nhật Game",\n'
+                '            clickAction = function()\n'
+                '                self:addChild(require("System.OtaUpdateLayer").new(), 55)\n'
+                '            end,\n'
+                '        },\n'
                 '        \n'
                 '    }',
             ),
@@ -1435,7 +1860,40 @@ def patch_standalone_workspace(
                 '        end\n'
                 '    })\n'
                 '    btnCloudSync:setScale(Adapter.MinScale * 0.9)\n'
-                '    self:addChild(btnCloudSync)',
+                '    self:addChild(btnCloudSync)\n'
+                '    local btnOtaUpdate = ui.newButton({\n'
+                '        normalImage = "c_7.png",\n'
+                '        position = Adapter.AutoPos(960, 244),\n'
+                '        text = "Cập Nhật",\n'
+                '        fontSize = 20,\n'
+                '        textColor = ColorList.ccWhite,\n'
+                '        outlineColor = ColorList.ccOutline,\n'
+                '        clickAction = function()\n'
+                '            self:addChild(require("System.OtaUpdateLayer").new(), 210)\n'
+                '        end\n'
+                '    })\n'
+                '    btnOtaUpdate:setScale(Adapter.MinScale * 0.9)\n'
+                '    self:addChild(btnOtaUpdate)\n'
+                '    if not _G.__INU_OTA_CHECKED then\n'
+                '        _G.__INU_OTA_CHECKED = true\n'
+                '        performWithDelay(self, function()\n'
+                '            if tolua.isnull(self) then return end\n'
+                '            local xhr = cc.XMLHttpRequest:new()\n'
+                '            xhr:setUnzip(false)\n'
+                '            xhr.responseType = cc.XMLHTTPREQUEST_RESPONSE_STRING\n'
+                '            xhr:open("POST", "http://127.0.0.1:18082/ota/check")\n'
+                '            xhr:registerScriptHandler(function(event)\n'
+                '                if tolua.isnull(self) then return end\n'
+                '                if event == "SUCCESS" and xhr.status == 200 and xhr.response and xhr.response ~= "" then\n'
+                '                    local okDec, res = pcall(cjson.decode, xhr.response)\n'
+                '                    if okDec and type(res) == "table" and res.ok and (res.update_kind == "hotfix" or res.update_kind == "apk") then\n'
+                '                        self:addChild(require("System.OtaUpdateLayer").new(res), 210)\n'
+                '                    end\n'
+                '                end\n'
+                '            end)\n'
+                '            xhr:send("{}")\n'
+                '        end, 1.8)\n'
+                '    end',
             ),
             (
                 '        self:requestServerList(function(event)\n'
@@ -1507,6 +1965,11 @@ def patch_standalone_workspace(
         STANDALONE_WORK / "assets" / "src" / "System" / "HybridSyncLayer.luac",
         HYBRID_SYNC_LAYER_LUA,
     )
+    write_luac_text(
+        STANDALONE_WORK / "assets" / "src" / "System" / "OtaUpdateLayer.luac",
+        OTA_UPDATE_LAYER_LUA,
+    )
+    patch_ota_lua(STANDALONE_WORK / "assets" / "src")
 
     # 7. Bundle embedded 32-bit CPython 3.11 + server_bundle.zip + stdlib.zip
     bundle_embedded_python(STANDALONE_WORK, f"{version_name}-{version_code}", server_dir=server_dir)
@@ -6486,13 +6949,57 @@ def patch_battle_effect_fallbacks(src: Path) -> None:
     ])
 
 
-def patch_battle_speed_toggle_lua(src: Path) -> None:
-    """Allow explicit x1 / x2 battle speed switching in ALL battle modes.
+def patch_ota_lua(src: Path) -> None:
+    """Prepend WritablePath/Download/{src,res} to Cocos2d-x search paths & Lua package.path."""
+    patch_luac_text(
+        src / "main.luac",
+        [
+            (
+                '    require("game").new():run()',
+                '    local fu = cc.FileUtils:getInstance()\n'
+                '    local wp = fu:getWritablePath()\n'
+                '    if wp and wp ~= "" then\n'
+                '        local dlRoot = wp .. "Download/"\n'
+                '        local dlSrc = dlRoot .. "src/"\n'
+                '        local dlRes = dlRoot .. "res/"\n'
+                '        local cur = fu:getSearchPaths() or {}\n'
+                '        local seen = {}\n'
+                '        local nextPaths = {}\n'
+                '        for _, p in ipairs({dlSrc, dlRes, dlRoot}) do\n'
+                '            if not seen[p] then\n'
+                '                table.insert(nextPaths, p)\n'
+                '                seen[p] = true\n'
+                '            end\n'
+                '        end\n'
+                '        for _, p in ipairs(cur) do\n'
+                '            if not seen[p] then\n'
+                '                table.insert(nextPaths, p)\n'
+                '                seen[p] = true\n'
+                '            end\n'
+                '        end\n'
+                '        fu:setSearchPaths(nextPaths)\n'
+                '        fu:purgeCachedEntries()\n'
+                '        if type(package.path) == "string" then\n'
+                '            local p1 = dlSrc .. "?.luac;"\n'
+                '            local p2 = dlSrc .. "?.lua;"\n'
+                '            if not string.find(package.path, p1, 1, true) then\n'
+                '                package.path = p1 .. p2 .. package.path\n'
+                '            end\n'
+                '        end\n'
+                '    end\n'
+                '    require("game").new():run()',
+            ),
+        ],
+    )
 
-    Separates speed control from tuoguan.display / tuoguan.func so players can
-    always toggle between x1 and x2 (even in Arena, Grab, Wrestle, Team,
-    CrossServer, PetBattle, CheckBattle, Friend Duel, etc.) and persists their
-    last chosen speed across battles via BattleData.game.userSpeed.
+
+def patch_battle_speed_toggle_lua(src: Path) -> None:
+    """Use native speed/auto button (zd_31/zd_22/zd_11) when present, and add x1/x2 toggle only in auto-only modes.
+
+    PVE modes already expose the built-in btnHosted cycle button (TĂNG TỐC / ỦY THÁC / HỦY ỦY THÁC)
+    which controls x1/x2 speed natively. In forced-auto modes where tuoguan.display is false
+    (Arena, Grab, Wrestle/GDDH, Team, CrossServer, PetBattle, Friend Duel), provide a compact
+    x1/x2 toggle at the same position and remember the choice via BattleData.game.userSpeed.
     """
     patch_luac_text(src / "ComBattle" / "BattleData.luac", [
         (
@@ -6508,36 +7015,14 @@ def patch_battle_speed_toggle_lua(src: Path) -> None:
             "\telse\n"
             "\t\tBattleData.game.speed = bd.BattleSpeedOriginal\n"
             "\tend\n"
-            "\tif BattleData.game.userSpeed == bd.BattleSpeedOriginal or BattleData.game.userSpeed == bd.BattleSpeedTuoguan then\n"
+            "\tlocal _tuoguanDisp = BattleData.battle and BattleData.battle.params and BattleData.battle.params.tuoguan and BattleData.battle.params.tuoguan.display\n"
+            "\tif (not _tuoguanDisp) and (BattleData.game.userSpeed == bd.BattleSpeedOriginal or BattleData.game.userSpeed == bd.BattleSpeedTuoguan) then\n"
             "\t\tBattleData.game.speed = BattleData.game.userSpeed\n"
             "\tend\n",
         ),
     ])
 
     patch_luac_text(src / "ComBattle" / "BattleUILayer.luac", [
-        (
-            "    local function changeSpeed()\n"
-            "        if BattleData.game.tuoguan ~= BattleTuoguanState.eNormal then\n"
-            "            --托管状态下加速\n"
-            "            BattleData.game.speed = bd.BattleSpeedTuoguan\n"
-            "        else\n"
-            "            BattleData.game.speed = bd.BattleSpeedOriginal\n"
-            "        end\n"
-            "        --更新速度\n"
-            "        BattleData:updateSpeed()\n"
-            "    end\n",
-            "    local refreshSpeedToggleBtn\n"
-            "    local function changeSpeed()\n"
-            "        if BattleData.game.tuoguan ~= BattleTuoguanState.eNormal then\n"
-            "            BattleData.game.speed = bd.BattleSpeedTuoguan\n"
-            "        else\n"
-            "            BattleData.game.speed = bd.BattleSpeedOriginal\n"
-            "        end\n"
-            "        BattleData.game.userSpeed = BattleData.game.speed\n"
-            "        BattleData:updateSpeed()\n"
-            "        if refreshSpeedToggleBtn then refreshSpeedToggleBtn() end\n"
-            "    end\n",
-        ),
         (
             "        self:addChild(btnHosted)\n"
             "    end\n"
@@ -6547,38 +7032,40 @@ def patch_battle_speed_toggle_lua(src: Path) -> None:
             "    end\n"
             "\n"
             "    local hasHostedBtn = BattleData.battle.params.tuoguan.display and getSpeedBtnPic()\n"
-            "    local speedPos = hasHostedBtn and bd.AutoPos(260, 581) or bd.AutoPos(123, 581)\n"
-            "    local function getSpeedLabel()\n"
-            "        return (BattleData.game.speed == bd.BattleSpeedTuoguan) and \"Tốc: x2\" or \"Tốc: x1\"\n"
-            "    end\n"
-            "    local btnSpeedToggle = ui.newButton({\n"
-            "        normalImage = \"c_7.png\",\n"
-            "        text = getSpeedLabel(),\n"
-            "        fontSize = 18,\n"
-            "        textColor = (BattleData.game.speed == bd.BattleSpeedTuoguan) and cc.c3b(255, 230, 100) or ColorList.ccWhite,\n"
-            "        outlineColor = ColorList.ccOutline,\n"
-            "        position = speedPos,\n"
-            "        scale = bd.MinScale,\n"
-            "        clickAction = function()\n"
-            "            if BattleData.game.speed == bd.BattleSpeedTuoguan then\n"
-            "                BattleData.game.speed = bd.BattleSpeedOriginal\n"
-            "            else\n"
-            "                BattleData.game.speed = bd.BattleSpeedTuoguan\n"
-            "            end\n"
-            "            BattleData.game.userSpeed = BattleData.game.speed\n"
-            "            BattleData:updateSpeed()\n"
-            "            refreshSpeedToggleBtn()\n"
-            "        end,\n"
-            "    })\n"
-            "    refreshSpeedToggleBtn = function()\n"
-            "        if not btnSpeedToggle or tolua.isnull(btnSpeedToggle) then return end\n"
-            "        if btnSpeedToggle.mTitleLabel then\n"
-            "            btnSpeedToggle.mTitleLabel:setString(getSpeedLabel())\n"
-            "            btnSpeedToggle.mTitleLabel:setColor((BattleData.game.speed == bd.BattleSpeedTuoguan) and cc.c3b(255, 230, 100) or ColorList.ccWhite)\n"
+            "    if not hasHostedBtn then\n"
+            "        local function getSpeedLabel()\n"
+            "            return (BattleData.game.speed == bd.BattleSpeedTuoguan) and \"Tốc: x2\" or \"Tốc: x1\"\n"
             "        end\n"
+            "        local btnSpeedToggle\n"
+            "        local function refreshSpeedToggleBtn()\n"
+            "            if not btnSpeedToggle or tolua.isnull(btnSpeedToggle) then return end\n"
+            "            if btnSpeedToggle.mTitleLabel then\n"
+            "                btnSpeedToggle.mTitleLabel:setString(getSpeedLabel())\n"
+            "                btnSpeedToggle.mTitleLabel:setColor((BattleData.game.speed == bd.BattleSpeedTuoguan) and cc.c3b(255, 230, 100) or ColorList.ccWhite)\n"
+            "            end\n"
+            "        end\n"
+            "        btnSpeedToggle = ui.newButton({\n"
+            "            normalImage = \"c_7.png\",\n"
+            "            text = getSpeedLabel(),\n"
+            "            fontSize = 18,\n"
+            "            textColor = (BattleData.game.speed == bd.BattleSpeedTuoguan) and cc.c3b(255, 230, 100) or ColorList.ccWhite,\n"
+            "            outlineColor = ColorList.ccOutline,\n"
+            "            position = bd.AutoPos(123, 581),\n"
+            "            scale = bd.MinScale,\n"
+            "            clickAction = function()\n"
+            "                if BattleData.game.speed == bd.BattleSpeedTuoguan then\n"
+            "                    BattleData.game.speed = bd.BattleSpeedOriginal\n"
+            "                else\n"
+            "                    BattleData.game.speed = bd.BattleSpeedTuoguan\n"
+            "                end\n"
+            "                BattleData.game.userSpeed = BattleData.game.speed\n"
+            "                BattleData:updateSpeed()\n"
+            "                refreshSpeedToggleBtn()\n"
+            "            end,\n"
+            "        })\n"
+            "        self.btnSpeedToggle = btnSpeedToggle\n"
+            "        self:addChild(btnSpeedToggle, 20)\n"
             "    end\n"
-            "    self.btnSpeedToggle = btnSpeedToggle\n"
-            "    self:addChild(btnSpeedToggle, 20)\n"
             "\n"
             "    local posSkip = bd.AutoPos(1047, 581)\n",
         ),
@@ -6969,7 +7456,9 @@ def patch_modern_android_sdk(work_dir: Path, min_sdk: int = 21, target_sdk: int 
         dedup_lines.append(line)
     manifest = "".join(dedup_lines)
 
-    # 2. Ensure requestLegacyExternalStorage="true" on <application>
+    # 2. Ensure requestLegacyExternalStorage="true" and resizeableActivity="false" on <application>
+    #    (targetSdk >= 24 implicitly enables resizeableActivity=true, which removes the legacy 16:9
+    #    letterbox cap on 20:9 displays and horizontally stretches Cocos2d-x 1136x640 layouts).
     if "android:requestLegacyExternalStorage=" not in manifest:
         manifest, n_app = re.subn(
             r"<application\s+",
@@ -6979,8 +7468,28 @@ def patch_modern_android_sdk(work_dir: Path, min_sdk: int = 21, target_sdk: int 
         )
         if n_app != 1:
             raise RuntimeError("Failed to find <application> tag in AndroidManifest.xml")
+    if "android:resizeableActivity=" not in manifest:
+        manifest, n_res = re.subn(
+            r"<application\s+",
+            '<application android:resizeableActivity="false" ',
+            manifest,
+            count=1,
+        )
+        if n_res != 1:
+            raise RuntimeError("Failed to set android:resizeableActivity on <application>")
+    if 'android:name="android.max_aspect"' not in manifest:
+        manifest, n_meta = re.subn(
+            r"</application>",
+            '    <meta-data android:name="android.max_aspect" android:value="1.78"/>\n    </application>',
+            manifest,
+            count=1,
+        )
+        if n_meta != 1:
+            raise RuntimeError("Failed to add android.max_aspect meta-data in AndroidManifest.xml")
 
-    # 3. Ensure MQActivity has android:exported="true" and every <intent-filter> component declares android:exported
+    # 3. Ensure MQActivity has android:exported="true", android:resizeableActivity="false",
+    #    android:maxAspectRatio="1.78" (1136/640 = 1.775 native 16:9), and every <intent-filter>
+    #    component declares android:exported.
     manifest, n_main = re.subn(
         r'(<activity\b(?![^>]*\bandroid:exported=)[^>]*android:name="com\.moqikaka\.sdk\.MQActivity")',
         r'\1 android:exported="true"',
@@ -6989,6 +7498,18 @@ def patch_modern_android_sdk(work_dir: Path, min_sdk: int = 21, target_sdk: int 
     )
     if n_main == 0 and 'android:name="com.moqikaka.sdk.MQActivity"' not in manifest:
         raise RuntimeError("MQActivity not found in AndroidManifest.xml")
+    manifest, _ = re.subn(
+        r'(<activity\b(?![^>]*\bandroid:resizeableActivity=)[^>]*android:name="com\.moqikaka\.sdk\.MQActivity")',
+        r'\1 android:resizeableActivity="false"',
+        manifest,
+        count=1,
+    )
+    manifest, _ = re.subn(
+        r'(<activity\b(?![^>]*\bandroid:maxAspectRatio=)[^>]*android:name="com\.moqikaka\.sdk\.MQActivity")',
+        r'\1 android:maxAspectRatio="1.78"',
+        manifest,
+        count=1,
+    )
 
     def _add_exported_default(match: re.Match[str]) -> str:
         tag, attrs, body = match.group(1), match.group(2), match.group(3)

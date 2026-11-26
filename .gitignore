@@ -18,11 +18,16 @@ analysis/
 
 # OS / IDE / Build
 .DS_Store
+.vscode/
 __pycache__/
 *.pyc
 node_modules/
 .venv/
 *.log
+*.jks
+*.keystore
+.secrets.local
+**/.secrets.local
 server/save_state.json
 server/saves/
 server/dev_saves/

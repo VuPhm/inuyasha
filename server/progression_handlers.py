@@ -682,12 +682,18 @@ class ProgressionHandlersMixin:
         return int(self.game_data.get("lianti_lv", {}).get(str(int(lv)), {}).get("lvExp", 0))
 
     def _lianti_max_lv(self) -> int:
+        cached = getattr(self, "_cached_lianti_max_lv", None)
+        if cached is not None:
+            return cached
         tbl = self.game_data.get("lianti_lv", {})
         if not tbl:
+            self._cached_lianti_max_lv = 81
             return 81
         max_tbl = max((int(k) for k in tbl if str(k).isdigit()), default=81)
         highest_upgradable = max((int(k) for k, v in tbl.items() if str(k).isdigit() and int(v.get("lvExp", 0)) > 0), default=-1)
-        return min(max_tbl, highest_upgradable + 1) if highest_upgradable >= 0 else 0
+        val = min(max_tbl, highest_upgradable + 1) if highest_upgradable >= 0 else 0
+        self._cached_lianti_max_lv = val
+        return val
 
     def _ensure_hero_lianti_fields(self, hero: dict[str, Any]) -> None:
         max_lv = self._lianti_max_lv()

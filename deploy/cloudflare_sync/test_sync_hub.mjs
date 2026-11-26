@@ -401,3 +401,85 @@ test("5. Change password revokes other sessions, Admin ban blocks access, and 41
   assert.equal(over128Res.status, 413);
   assert.equal(over128Res.json.error, "Snapshot quá lớn");
 });
+
+test("6. OTA manifest, chunked patch upload/download, and admin auth", async () => {
+  const env = makeEnv();
+
+  // Empty manifest initially
+  const m0 = await req(env, "GET", "/update/manifest");
+  assert.equal(m0.status, 200);
+  assert.equal(m0.json.ok, true);
+  assert.equal(m0.json.release, null);
+
+  // Missing/wrong admin token rejected
+  const unauthChunk = await req(env, "POST", "/admin/ota/chunk", {
+    headers: { "X-Admin-Token": "wrong" },
+    body: { patch_version: "r8.16.1", chunk_index: 0, total_chunks: 1, data_b64: "QQ==" },
+  });
+  assert.equal(unauthChunk.status, 403);
+
+  const unauthPub = await req(env, "POST", "/admin/ota/publish", {
+    body: { patch_version: "r8.16.1" },
+  });
+  assert.equal(unauthPub.status, 403);
+
+  // Upload 2-chunk binary payload
+  const payloadBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  const part1 = Buffer.from(payloadBytes.slice(0, 6)).toString("base64");
+  const part2 = Buffer.from(payloadBytes.slice(6)).toString("base64");
+
+  const c1 = await req(env, "POST", "/admin/ota/chunk", {
+    headers: { "X-Admin-Token": "super-secret-admin-token" },
+    body: { patch_version: "r8.16.1", chunk_index: 0, total_chunks: 2, data_b64: part1 },
+  });
+  assert.equal(c1.status, 200);
+
+  const c2 = await req(env, "POST", "/admin/ota/chunk", {
+    headers: { "X-Admin-Token": "super-secret-admin-token" },
+    body: { patch_version: "r8.16.1", chunk_index: 1, total_chunks: 2, data_b64: part2 },
+  });
+  assert.equal(c2.status, 200);
+
+  // Publish release
+  const pub = await req(env, "POST", "/admin/ota/publish", {
+    headers: { "X-Admin-Token": "super-secret-admin-token" },
+    body: {
+      channel: "hybrid",
+      patch_version: "r8.16.1",
+      min_apk_code: 875,
+      latest_apk_code: 875,
+      latest_apk_name: "5.0.4.98-r8.16-hybrid",
+      apk_url: "https://example.com/app.apk",
+      patch_url: "/update/patch/r8.16.1",
+      patch_sha256: "deadbeef",
+      patch_size: payloadBytes.byteLength,
+      changelog: "Fix GDDH lag",
+      force_update: false,
+    },
+  });
+  assert.equal(pub.status, 200);
+  assert.equal(pub.json.release.patch_version, "r8.16.1");
+
+  // Manifest returns published release
+  const m1 = await req(env, "GET", "/update/manifest?channel=hybrid");
+  assert.equal(m1.status, 200);
+  assert.equal(m1.json.release.patch_version, "r8.16.1");
+  assert.equal(m1.json.release.min_apk_code, 875);
+  assert.equal(m1.json.release.patch_url, "/update/patch/r8.16.1");
+  assert.equal(m1.json.release.changelog, "Fix GDDH lag");
+
+  // Raw binary patch download reassembles chunks accurately
+  const dlRes = await worker.fetch(
+    new Request("https://sync.example.workers.dev/update/patch/r8.16.1", { method: "GET" }),
+    env,
+    {}
+  );
+  assert.equal(dlRes.status, 200);
+  assert.equal(dlRes.headers.get("content-type"), "application/zip");
+  const gotBytes = new Uint8Array(await dlRes.arrayBuffer());
+  assert.deepEqual(gotBytes, payloadBytes);
+
+  // Missing patch returns 404
+  const miss = await req(env, "GET", "/update/patch/r9.99.9");
+  assert.equal(miss.status, 404);
+});

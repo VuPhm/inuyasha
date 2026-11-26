@@ -29,32 +29,32 @@
 .method static constructor <clinit>()V
     .locals 2
 
-    .line 30
+    .line 31
     new-instance v0, Ljava/lang/Object;
 
     invoke-direct {v0}, Ljava/lang/Object;-><init>()V
 
     sput-object v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->LOCK:Ljava/lang/Object;
 
-    .line 31
+    .line 32
     const/4 v0, 0x0
 
     sput-object v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
 
-    .line 32
+    .line 33
     const/4 v0, 0x0
 
     sput-boolean v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->activityActive:Z
 
-    .line 33
+    .line 34
     const-wide/16 v0, 0x0
 
     sput-wide v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastDestroyAtMs:J
 
-    .line 34
+    .line 35
     sput-wide v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
 
-    .line 35
+    .line 36
     sput-wide v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
 
     return-void
@@ -63,7 +63,7 @@
 .method private constructor <init>()V
     .locals 0
 
-    .line 37
+    .line 38
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
     return-void
@@ -72,25 +72,34 @@
 .method static synthetic access$000()Z
     .locals 1
 
-    .line 24
+    .line 25
     sget-boolean v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->activityActive:Z
 
     return v0
 .end method
 
-.method static synthetic access$100()J
+.method static synthetic access$102(J)J
+    .locals 0
+
+    .line 25
+    sput-wide p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
+
+    return-wide p0
+.end method
+
+.method static synthetic access$200()J
     .locals 2
 
-    .line 24
+    .line 25
     sget-wide v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastDestroyAtMs:J
 
     return-wide v0
 .end method
 
-.method static synthetic access$200(I)Z
+.method static synthetic access$300(I)Z
     .locals 0
 
-    .line 24
+    .line 25
     invoke-static {p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isLoopbackHealthyDirect(I)Z
 
     move-result p0
@@ -106,12 +115,12 @@
         }
     .end annotation
 
-    .line 559
+    .line 627
     invoke-virtual {p2}, Ljava/io/File;->getParentFile()Ljava/io/File;
 
     move-result-object v0
 
-    .line 560
+    .line 628
     if-eqz v0, :cond_0
 
     invoke-virtual {v0}, Ljava/io/File;->exists()Z
@@ -120,10 +129,10 @@
 
     if-nez v1, :cond_0
 
-    .line 561
+    .line 629
     invoke-virtual {v0}, Ljava/io/File;->mkdirs()Z
 
-    .line 563
+    .line 631
     :cond_0
     new-instance v1, Ljava/io/File;
 
@@ -157,12 +166,12 @@
 
     invoke-direct {v1, v0, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 564
+    .line 632
     invoke-virtual {p0, p1}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
 
     move-result-object p0
 
-    .line 565
+    .line 633
     :try_start_0
     new-instance p1, Ljava/io/FileOutputStream;
 
@@ -170,13 +179,13 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_2
 
-    .line 566
+    .line 634
     const v0, 0x8000
 
     :try_start_1
     new-array v0, v0, [B
 
-    .line 568
+    .line 636
     :goto_0
     invoke-virtual {p0, v0}, Ljava/io/InputStream;->read([B)I
 
@@ -184,7 +193,7 @@
 
     if-lez v2, :cond_1
 
-    .line 569
+    .line 637
     const/4 v3, 0x0
 
     invoke-virtual {p1, v0, v3, v2}, Ljava/io/FileOutputStream;->write([BII)V
@@ -193,7 +202,7 @@
 
     goto :goto_0
 
-    .line 571
+    .line 639
     :cond_1
     :try_start_2
     invoke-virtual {p1}, Ljava/io/FileOutputStream;->close()V
@@ -204,14 +213,14 @@
 
     invoke-virtual {p0}, Ljava/io/InputStream;->close()V
 
-    .line 572
+    .line 640
     :cond_2
     invoke-virtual {v1, p2}, Ljava/io/File;->renameTo(Ljava/io/File;)Z
 
-    .line 573
+    .line 641
     return-void
 
-    .line 564
+    .line 632
     :catchall_0
     move-exception p2
 
@@ -263,17 +272,17 @@
         }
     .end annotation
 
-    .line 469
+    .line 534
     invoke-virtual {p0}, Ljava/io/File;->exists()Z
 
     move-result v0
 
     if-nez v0, :cond_0
 
-    .line 470
+    .line 535
     return-void
 
-    .line 472
+    .line 537
     :cond_0
     invoke-virtual {p1}, Ljava/io/File;->exists()Z
 
@@ -281,22 +290,22 @@
 
     if-nez v0, :cond_1
 
-    .line 473
+    .line 538
     invoke-virtual {p1}, Ljava/io/File;->mkdirs()Z
 
-    .line 475
+    .line 540
     :cond_1
     invoke-virtual {p0}, Ljava/io/File;->listFiles()[Ljava/io/File;
 
     move-result-object p0
 
-    .line 476
+    .line 541
     if-nez p0, :cond_2
 
-    .line 477
+    .line 542
     return-void
 
-    .line 479
+    .line 544
     :cond_2
     array-length v0, p0
 
@@ -307,19 +316,19 @@
 
     aget-object v2, p0, v1
 
-    .line 480
+    .line 545
     invoke-virtual {v2}, Ljava/io/File;->getName()Ljava/lang/String;
 
     move-result-object v3
 
-    .line 481
+    .line 546
     invoke-virtual {v2}, Ljava/io/File;->isDirectory()Z
 
     move-result v4
 
     if-eqz v4, :cond_3
 
-    .line 482
+    .line 547
     const-string v4, "backups"
 
     invoke-virtual {v4, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -328,7 +337,7 @@
 
     if-eqz v4, :cond_7
 
-    .line 483
+    .line 548
     new-instance v4, Ljava/io/File;
 
     invoke-direct {v4, p1, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
@@ -337,7 +346,7 @@
 
     goto :goto_1
 
-    .line 487
+    .line 552
     :cond_3
     const-string v4, "."
 
@@ -347,10 +356,10 @@
 
     if-eqz v5, :cond_4
 
-    .line 488
+    .line 553
     goto :goto_1
 
-    .line 490
+    .line 555
     :cond_4
     const-string v5, ".json"
 
@@ -368,13 +377,13 @@
 
     if-eqz v5, :cond_7
 
-    .line 491
+    .line 556
     :cond_5
     new-instance v5, Ljava/io/File;
 
     invoke-direct {v5, p1, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 492
+    .line 557
     invoke-virtual {v5}, Ljava/io/File;->exists()Z
 
     move-result v6
@@ -405,7 +414,7 @@
 
     if-gez v10, :cond_7
 
-    .line 493
+    .line 558
     :cond_6
     new-instance v6, Ljava/io/File;
 
@@ -433,20 +442,20 @@
 
     invoke-direct {v6, p1, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 494
+    .line 559
     invoke-static {v2, v6}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->copyFile(Ljava/io/File;Ljava/io/File;)V
 
-    .line 495
+    .line 560
     invoke-virtual {v6, v5}, Ljava/io/File;->renameTo(Ljava/io/File;)Z
 
-    .line 479
+    .line 544
     :cond_7
     :goto_1
     add-int/lit8 v1, v1, 0x1
 
     goto :goto_0
 
-    .line 499
+    .line 564
     :cond_8
     return-void
 .end method
@@ -459,12 +468,12 @@
         }
     .end annotation
 
-    .line 576
+    .line 644
     new-instance v0, Ljava/io/FileInputStream;
 
     invoke-direct {v0, p0}, Ljava/io/FileInputStream;-><init>(Ljava/io/File;)V
 
-    .line 577
+    .line 645
     :try_start_0
     new-instance p0, Ljava/io/FileOutputStream;
 
@@ -472,13 +481,13 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_2
 
-    .line 578
+    .line 646
     const p1, 0x8000
 
     :try_start_1
     new-array p1, p1, [B
 
-    .line 580
+    .line 648
     :goto_0
     invoke-virtual {v0, p1}, Ljava/io/FileInputStream;->read([B)I
 
@@ -486,7 +495,7 @@
 
     if-lez v1, :cond_0
 
-    .line 581
+    .line 649
     const/4 v2, 0x0
 
     invoke-virtual {p0, p1, v2, v1}, Ljava/io/FileOutputStream;->write([BII)V
@@ -495,7 +504,7 @@
 
     goto :goto_0
 
-    .line 583
+    .line 651
     :cond_0
     :try_start_2
     invoke-virtual {p0}, Ljava/io/FileOutputStream;->close()V
@@ -504,10 +513,10 @@
 
     invoke-virtual {v0}, Ljava/io/FileInputStream;->close()V
 
-    .line 584
+    .line 652
     return-void
 
-    .line 576
+    .line 644
     :catchall_0
     move-exception p1
 
@@ -548,15 +557,76 @@
     throw p0
 .end method
 
+.method private static deleteRecursive(Ljava/io/File;)V
+    .locals 4
+
+    .line 486
+    if-eqz p0, :cond_2
+
+    invoke-virtual {p0}, Ljava/io/File;->exists()Z
+
+    move-result v0
+
+    if-nez v0, :cond_0
+
+    goto :goto_1
+
+    .line 489
+    :cond_0
+    invoke-virtual {p0}, Ljava/io/File;->isDirectory()Z
+
+    move-result v0
+
+    if-eqz v0, :cond_1
+
+    .line 490
+    invoke-virtual {p0}, Ljava/io/File;->listFiles()[Ljava/io/File;
+
+    move-result-object v0
+
+    .line 491
+    if-eqz v0, :cond_1
+
+    .line 492
+    array-length v1, v0
+
+    const/4 v2, 0x0
+
+    :goto_0
+    if-ge v2, v1, :cond_1
+
+    aget-object v3, v0, v2
+
+    .line 493
+    invoke-static {v3}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->deleteRecursive(Ljava/io/File;)V
+
+    .line 492
+    add-int/lit8 v2, v2, 0x1
+
+    goto :goto_0
+
+    .line 497
+    :cond_1
+    invoke-virtual {p0}, Ljava/io/File;->delete()Z
+
+    .line 498
+    return-void
+
+    .line 487
+    :cond_2
+    :goto_1
+    return-void
+.end method
+
 .method public static ensureStarted(Landroid/content/Context;)V
     .locals 10
 
-    .line 56
+    .line 57
     invoke-virtual {p0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
 
     move-result-object p0
 
-    .line 57
+    .line 58
     invoke-static {}, Landroid/os/Looper;->myLooper()Landroid/os/Looper;
 
     move-result-object v0
@@ -567,17 +637,17 @@
 
     if-ne v0, v1, :cond_4
 
-    .line 58
+    .line 59
     const/4 v0, 0x1
 
     sput-boolean v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->activityActive:Z
 
-    .line 59
+    .line 60
     const-wide/16 v1, 0x0
 
     sput-wide v1, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastDestroyAtMs:J
 
-    .line 60
+    .line 61
     sget-object v3, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
 
     invoke-static {v3}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
@@ -606,10 +676,10 @@
 
     if-gez v7, :cond_0
 
-    .line 61
+    .line 62
     return-void
 
-    .line 63
+    .line 64
     :cond_0
     new-instance v3, Ljava/lang/Thread;
 
@@ -621,18 +691,18 @@
 
     invoke-direct {v3, v4, p0}, Ljava/lang/Thread;-><init>(Ljava/lang/Runnable;Ljava/lang/String;)V
 
-    .line 69
+    .line 70
     invoke-virtual {v3, v0}, Ljava/lang/Thread;->setDaemon(Z)V
 
-    .line 70
+    .line 71
     invoke-virtual {v3}, Ljava/lang/Thread;->start()V
 
-    .line 71
+    .line 72
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
     move-result-wide v4
 
-    .line 73
+    .line 74
     :goto_0
     :try_start_0
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
@@ -647,7 +717,7 @@
 
     if-gez p0, :cond_3
 
-    .line 74
+    .line 75
     sget-wide v6, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
 
     cmp-long p0, v6, v1
@@ -670,10 +740,10 @@
 
     if-eqz p0, :cond_1
 
-    .line 75
+    .line 76
     goto :goto_1
 
-    .line 77
+    .line 78
     :cond_1
     invoke-virtual {v3}, Ljava/lang/Thread;->isAlive()Z
 
@@ -681,10 +751,10 @@
 
     if-nez p0, :cond_2
 
-    .line 78
+    .line 79
     goto :goto_1
 
-    .line 80
+    .line 81
     :cond_2
     const-wide/16 v6, 0x28
 
@@ -694,98 +764,98 @@
 
     goto :goto_0
 
-    .line 84
+    .line 85
     :cond_3
     :goto_1
     goto :goto_2
 
-    .line 82
+    .line 83
     :catch_0
     move-exception p0
 
-    .line 83
+    .line 84
     invoke-static {}, Ljava/lang/Thread;->currentThread()Ljava/lang/Thread;
 
     move-result-object p0
 
     invoke-virtual {p0}, Ljava/lang/Thread;->interrupt()V
 
-    .line 85
+    .line 86
     :goto_2
     return-void
 
-    .line 87
+    .line 88
     :cond_4
     const-wide/16 v0, 0x2ee0
 
     invoke-static {p0, v0, v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->ensureStarted(Landroid/content/Context;J)V
 
-    .line 88
+    .line 89
     return-void
 .end method
 
 .method public static ensureStarted(Landroid/content/Context;J)V
-    .locals 26
-
-    .line 91
-    invoke-virtual/range {p0 .. p0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
-
-    move-result-object v0
+    .locals 20
 
     .line 92
-    const/4 v1, 0x1
+    invoke-virtual/range {p0 .. p0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
 
-    sput-boolean v1, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->activityActive:Z
+    move-result-object v1
 
     .line 93
-    const-wide/16 v2, 0x0
+    const/4 v2, 0x1
 
-    sput-wide v2, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastDestroyAtMs:J
+    sput-boolean v2, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->activityActive:Z
 
     .line 94
+    const-wide/16 v3, 0x0
+
+    sput-wide v3, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastDestroyAtMs:J
+
+    .line 95
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
-    move-result-wide v4
-
-    .line 101
-    sget-object v6, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->LOCK:Ljava/lang/Object;
-
-    monitor-enter v6
+    move-result-wide v5
 
     .line 102
+    sget-object v7, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->LOCK:Ljava/lang/Object;
+
+    monitor-enter v7
+
+    .line 103
     :try_start_0
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
-    move-result-wide v7
-
-    .line 103
-    sget-object v9, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
-
-    invoke-static {v9}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
-
-    move-result v9
-
-    if-eqz v9, :cond_1
-
-    sget-wide v9, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
-
-    sub-long v9, v7, v9
-
-    const-wide/16 v11, 0x9c4
-
-    cmp-long v13, v9, v11
-
-    if-ltz v13, :cond_0
-
-    const/16 v9, 0x15e
-
-    invoke-static {v9}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isLoopbackHealthy(I)Z
-
-    move-result v9
-
-    if-eqz v9, :cond_1
+    move-result-wide v8
 
     .line 104
+    sget-object v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
+
+    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_1
+
+    sget-wide v10, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
+
+    sub-long v10, v8, v10
+
+    const-wide/16 v12, 0x9c4
+
+    cmp-long v0, v10, v12
+
+    if-ltz v0, :cond_0
+
+    const/16 v0, 0x15e
+
+    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isLoopbackHealthy(I)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_1
+
+    .line 105
     :cond_0
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
@@ -793,118 +863,125 @@
 
     sput-wide v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
 
-    .line 105
-    monitor-exit v6
+    .line 106
+    monitor-exit v7
 
     return-void
 
-    .line 107
-    :cond_1
-    sget-object v9, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
-
-    invoke-static {v9}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
-
-    move-result v9
-
-    if-nez v9, :cond_2
-
-    const/16 v9, 0xfa
-
-    invoke-static {v9}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isLoopbackHealthy(I)Z
-
-    move-result v9
-
-    if-eqz v9, :cond_2
-
     .line 108
+    :cond_1
+    sget-object v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
+
+    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
+
+    move-result v0
+
+    if-nez v0, :cond_2
+
+    const/16 v0, 0xfa
+
+    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isLoopbackHealthy(I)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_2
+
+    .line 109
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
     move-result-wide v0
 
     sput-wide v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
 
-    .line 109
+    .line 110
     const-string v0, "InuStandalone"
 
     const-string v1, "Reusing existing healthy loopback backend on 127.0.0.1:18082"
 
     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 110
-    monitor-exit v6
+    .line 111
+    monitor-exit v7
 
     return-void
 
-    .line 112
-    :cond_2
-    sget-object v9, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
-
-    invoke-static {v9}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
-
-    move-result v9
-
-    if-eqz v9, :cond_3
-
-    sget-wide v9, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
-
-    cmp-long v11, v9, v2
-
-    if-lez v11, :cond_3
-
-    sget-wide v9, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
-
-    sub-long/2addr v7, v9
-
-    const-wide/16 v9, 0x61a8
-
-    cmp-long v11, v7, v9
-
-    if-gez v11, :cond_3
-
     .line 113
-    sget-object v7, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
+    :cond_2
+    sget-object v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
+
+    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_3
+
+    sget-wide v11, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
+
+    cmp-long v0, v11, v3
+
+    if-lez v0, :cond_3
+
+    sget-wide v11, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
+
+    sub-long/2addr v8, v11
+
+    const-wide/16 v11, 0x61a8
+
+    cmp-long v0, v8, v11
+
+    if-gez v0, :cond_3
 
     .line 114
-    sget-wide v8, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
+    sget-object v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
 
     .line 115
-    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->getSaveDir(Landroid/content/Context;)Ljava/io/File;
-
-    move-result-object v10
+    sget-wide v8, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
 
     .line 116
-    new-instance v11, Ljava/io/File;
+    invoke-static {v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->getSaveDir(Landroid/content/Context;)Ljava/io/File;
 
-    const-string v12, "backend_stdout.log"
-
-    invoke-direct {v11, v10, v12}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+    move-result-object v11
 
     .line 117
-    invoke-virtual {v10}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+    new-instance v12, Ljava/io/File;
 
-    move-result-object v10
+    const-string v13, "backend_stdout.log"
+
+    invoke-direct {v12, v11, v13}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
     .line 118
-    invoke-virtual {v0}, Landroid/content/Context;->getApplicationInfo()Landroid/content/pm/ApplicationInfo;
+    invoke-virtual {v11}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
 
-    move-result-object v0
-
-    iget-object v0, v0, Landroid/content/pm/ApplicationInfo;->nativeLibraryDir:Ljava/lang/String;
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_2
+    move-result-object v11
 
     .line 119
-    move-wide/from16 v24, v2
+    invoke-virtual {v1}, Landroid/content/Context;->getApplicationInfo()Landroid/content/pm/ApplicationInfo;
+
+    move-result-object v1
+
+    iget-object v1, v1, Landroid/content/pm/ApplicationInfo;->nativeLibraryDir:Ljava/lang/String;
+    :try_end_0
+    .catchall {:try_start_0 .. :try_end_0} :catchall_5
+
+    .line 120
+    move-wide/from16 v16, v3
+
+    move-wide v13, v8
+
+    move-object v3, v12
+
+    const/4 v9, 0x0
+
+    move-object v12, v1
+
+    const/4 v1, 0x1
 
     move-object v2, v0
 
-    goto/16 :goto_0
-
-    .line 120
-    :cond_3
-    nop
+    goto/16 :goto_3
 
     .line 121
+    :cond_3
     nop
 
     .line 122
@@ -913,504 +990,672 @@
     .line 123
     nop
 
-    .line 125
-    :try_start_1
-    new-instance v7, Ljava/io/File;
+    .line 124
+    nop
 
-    invoke-virtual {v0}, Landroid/content/Context;->getFilesDir()Ljava/io/File;
+    .line 126
+    :try_start_1
+    new-instance v0, Ljava/io/File;
+
+    invoke-virtual {v1}, Landroid/content/Context;->getFilesDir()Ljava/io/File;
 
     move-result-object v8
 
     const-string v9, "inubackend"
 
-    invoke-direct {v7, v8, v9}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+    invoke-direct {v0, v8, v9}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 126
+    .line 127
     new-instance v8, Ljava/io/File;
 
     const-string v9, "py"
 
-    invoke-direct {v8, v7, v9}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
-
-    .line 127
-    new-instance v9, Ljava/io/File;
-
-    const-string v10, "server"
-
-    invoke-direct {v9, v7, v10}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+    invoke-direct {v8, v0, v9}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
     .line 128
-    invoke-static {v0, v7, v8, v9}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->unpackAssetsIfNeeded(Landroid/content/Context;Ljava/io/File;Ljava/io/File;Ljava/io/File;)V
+    new-instance v9, Ljava/io/File;
 
-    .line 130
-    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->getSaveDir(Landroid/content/Context;)Ljava/io/File;
+    const-string v11, "server"
 
-    move-result-object v7
+    invoke-direct {v9, v0, v11}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    .line 129
+    invoke-static {v1, v0, v8, v9}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->unpackAssetsIfNeeded(Landroid/content/Context;Ljava/io/File;Ljava/io/File;Ljava/io/File;)V
 
     .line 131
-    invoke-virtual {v7}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
-
-    move-result-object v19
-
-    .line 132
-    invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->getMirrorDir(Landroid/content/Context;)Ljava/io/File;
-
-    move-result-object v10
-
-    .line 133
-    invoke-static {v7, v10}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->restoreFromMirrorIfEmpty(Ljava/io/File;Ljava/io/File;)V
-
-    .line 135
-    invoke-static {}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->stopProcessLocked()V
-
-    .line 137
-    invoke-virtual {v0}, Landroid/content/Context;->getApplicationInfo()Landroid/content/pm/ApplicationInfo;
+    invoke-static {v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->getSaveDir(Landroid/content/Context;)Ljava/io/File;
 
     move-result-object v0
 
-    iget-object v0, v0, Landroid/content/pm/ApplicationInfo;->nativeLibraryDir:Ljava/lang/String;
-
-    .line 138
-    new-instance v10, Ljava/io/File;
-
-    const-string v11, "libinubackend.so"
-
-    invoke-direct {v10, v0, v11}, Ljava/io/File;-><init>(Ljava/lang/String;Ljava/lang/String;)V
-
-    .line 139
-    new-instance v11, Ljava/io/File;
-
-    const-string v12, "emulator.py"
-
-    invoke-direct {v11, v9, v12}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
-
-    .line 140
-    new-instance v12, Ljava/io/File;
-
-    const-string v13, "rpc_trace.log"
-
-    invoke-direct {v12, v7, v13}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
-
-    .line 141
-    new-instance v13, Ljava/io/File;
-
-    const-string v14, "backend_stdout.log"
-
-    invoke-direct {v13, v7, v14}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
-
-    .line 142
-    new-instance v7, Ljava/io/File;
-
-    const-string v14, "lib-dynload"
-
-    invoke-direct {v7, v8, v14}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
-
-    .line 143
-    invoke-virtual {v7}, Ljava/io/File;->mkdirs()Z
-
-    .line 145
-    new-instance v14, Ljava/lang/ProcessBuilder;
-
-    .line 146
-    invoke-virtual {v10}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
-
-    move-result-object v10
-
-    .line 147
-    invoke-virtual {v11}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+    .line 132
+    invoke-virtual {v0}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
 
     move-result-object v11
 
-    move-object v15, v12
+    .line 133
+    invoke-static {v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->getMirrorDir(Landroid/content/Context;)Ljava/io/File;
 
-    const-string v12, "--env"
+    move-result-object v12
 
-    move-object/from16 v16, v13
+    .line 134
+    invoke-static {v0, v12}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->restoreFromMirrorIfEmpty(Ljava/io/File;Ljava/io/File;)V
+
+    .line 136
+    invoke-static {}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->stopProcessLocked()V
+
+    .line 138
+    invoke-virtual {v1}, Landroid/content/Context;->getApplicationInfo()Landroid/content/pm/ApplicationInfo;
+
+    move-result-object v12
+
+    iget-object v12, v12, Landroid/content/pm/ApplicationInfo;->nativeLibraryDir:Ljava/lang/String;
+
+    .line 139
+    new-instance v13, Ljava/io/File;
+
+    const-string v14, "libinubackend.so"
+
+    invoke-direct {v13, v12, v14}, Ljava/io/File;-><init>(Ljava/lang/String;Ljava/lang/String;)V
+
+    .line 140
+    new-instance v14, Ljava/io/File;
+
+    const-string v15, "emulator.py"
+
+    invoke-direct {v14, v9, v15}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    .line 141
+    new-instance v15, Ljava/io/File;
+
+    move-wide/from16 v16, v3
+
+    const-string v3, "rpc_trace.log"
+
+    invoke-direct {v15, v0, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    .line 142
+    new-instance v3, Ljava/io/File;
+
+    const-string v4, "backend_stdout.log"
+
+    invoke-direct {v3, v0, v4}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    .line 143
+    new-instance v0, Ljava/io/File;
+
+    const-string v4, "lib-dynload"
+
+    invoke-direct {v0, v8, v4}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    .line 144
+    invoke-virtual {v0}, Ljava/io/File;->mkdirs()Z
+
+    .line 146
+    new-instance v4, Ljava/lang/ProcessBuilder;
+
+    const/16 p0, 0x0
+
+    const/16 v10, 0xc
+
+    new-array v10, v10, [Ljava/lang/String;
+
+    .line 147
+    invoke-virtual {v13}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+
+    move-result-object v13
+
+    aput-object v13, v10, p0
+
+    .line 148
+    invoke-virtual {v14}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+
+    move-result-object v13
+
+    aput-object v13, v10, v2
+
+    const-string v13, "--env"
+
+    const/4 v14, 0x2
+
+    aput-object v13, v10, v14
 
     const-string v13, "dev"
 
-    move-object/from16 v17, v14
+    const/4 v14, 0x3
 
-    const-string v14, "--host"
+    aput-object v13, v10, v14
 
-    move-object/from16 v18, v15
+    const-string v13, "--host"
 
-    const-string v15, "127.0.0.1"
+    const/4 v14, 0x4
 
-    move-object/from16 v20, v16
+    aput-object v13, v10, v14
 
-    const-string v16, "--port"
+    const-string v13, "127.0.0.1"
 
-    .line 150
-    const/16 v21, 0x46a2
+    const/4 v14, 0x5
 
-    invoke-static/range {v21 .. v21}, Ljava/lang/String;->valueOf(I)Ljava/lang/String;
+    aput-object v13, v10, v14
 
-    move-result-object v21
+    const-string v13, "--port"
 
-    move-object/from16 v22, v18
+    const/4 v14, 0x6
 
-    const-string v18, "--data-dir"
+    aput-object v13, v10, v14
 
-    move-object/from16 v23, v20
+    .line 151
+    const/16 v13, 0x46a2
 
-    const-string v20, "--trace-path"
+    invoke-static {v13}, Ljava/lang/String;->valueOf(I)Ljava/lang/String;
 
-    .line 152
-    invoke-virtual/range {v22 .. v22}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+    move-result-object v13
 
-    move-result-object v22
+    const/4 v14, 0x7
 
-    move-wide/from16 v24, v2
+    aput-object v13, v10, v14
 
-    move-object/from16 v2, v17
+    const-string v13, "--data-dir"
 
-    move-object/from16 v17, v21
+    const/16 v14, 0x8
 
-    move-object/from16 v21, v22
+    aput-object v13, v10, v14
 
-    filled-new-array/range {v10 .. v21}, [Ljava/lang/String;
+    const/16 v13, 0x9
 
-    move-result-object v3
+    aput-object v11, v10, v13
 
-    invoke-direct {v2, v3}, Ljava/lang/ProcessBuilder;-><init>([Ljava/lang/String;)V
+    const-string v13, "--trace-path"
 
-    .line 154
-    invoke-virtual {v2, v9}, Ljava/lang/ProcessBuilder;->directory(Ljava/io/File;)Ljava/lang/ProcessBuilder;
+    const/16 v14, 0xa
+
+    aput-object v13, v10, v14
+
+    .line 153
+    invoke-virtual {v15}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+
+    move-result-object v13
+
+    const/16 v14, 0xb
+
+    aput-object v13, v10, v14
+
+    invoke-direct {v4, v10}, Ljava/lang/ProcessBuilder;-><init>([Ljava/lang/String;)V
 
     .line 155
-    invoke-virtual {v2, v1}, Ljava/lang/ProcessBuilder;->redirectErrorStream(Z)Ljava/lang/ProcessBuilder;
+    invoke-virtual {v4, v9}, Ljava/lang/ProcessBuilder;->directory(Ljava/io/File;)Ljava/lang/ProcessBuilder;
 
     .line 156
-    invoke-static/range {v23 .. v23}, Ljava/lang/ProcessBuilder$Redirect;->appendTo(Ljava/io/File;)Ljava/lang/ProcessBuilder$Redirect;
+    invoke-virtual {v4, v2}, Ljava/lang/ProcessBuilder;->redirectErrorStream(Z)Ljava/lang/ProcessBuilder;
 
-    move-result-object v3
+    .line 157
+    invoke-static {v3}, Ljava/lang/ProcessBuilder$Redirect;->appendTo(Ljava/io/File;)Ljava/lang/ProcessBuilder$Redirect;
 
-    invoke-virtual {v2, v3}, Ljava/lang/ProcessBuilder;->redirectOutput(Ljava/lang/ProcessBuilder$Redirect;)Ljava/lang/ProcessBuilder;
+    move-result-object v10
 
-    .line 158
-    invoke-virtual {v2}, Ljava/lang/ProcessBuilder;->environment()Ljava/util/Map;
-
-    move-result-object v3
+    invoke-virtual {v4, v10}, Ljava/lang/ProcessBuilder;->redirectOutput(Ljava/lang/ProcessBuilder$Redirect;)Ljava/lang/ProcessBuilder;
 
     .line 159
-    const-string v10, "LD_LIBRARY_PATH"
+    invoke-virtual {v4}, Ljava/lang/ProcessBuilder;->environment()Ljava/util/Map;
 
-    invoke-interface {v3, v10, v0}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    move-result-object v10
 
     .line 160
-    const-string v10, "INUYASHA_NATIVE_LIB_DIR"
+    const-string v13, "LD_LIBRARY_PATH"
 
-    invoke-interface {v3, v10, v0}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    invoke-interface {v10, v13, v12}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 161
-    const-string v10, "INUYASHA_DYNLOAD_DIR"
+    const-string v13, "INUYASHA_NATIVE_LIB_DIR"
 
-    invoke-virtual {v7}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
-
-    move-result-object v11
-
-    invoke-interface {v3, v10, v11}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    invoke-interface {v10, v13, v12}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 162
-    const-string v10, "PYTHONHOME"
+    const-string v13, "INUYASHA_DYNLOAD_DIR"
+
+    invoke-virtual {v0}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+
+    move-result-object v14
+
+    invoke-interface {v10, v13, v14}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    .line 163
+    const-string v13, "PYTHONHOME"
 
     invoke-virtual {v8}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
 
-    move-result-object v11
+    move-result-object v14
 
-    invoke-interface {v3, v10, v11}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    invoke-interface {v10, v13, v14}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
-    .line 163
-    const-string v10, "PYTHONPATH"
+    .line 164
+    const-string v13, "PYTHONPATH"
 
-    new-instance v11, Ljava/lang/StringBuilder;
+    new-instance v14, Ljava/lang/StringBuilder;
 
-    invoke-direct {v11}, Ljava/lang/StringBuilder;-><init>()V
+    invoke-direct {v14}, Ljava/lang/StringBuilder;-><init>()V
 
-    new-instance v12, Ljava/io/File;
+    new-instance v15, Ljava/io/File;
 
-    const-string v13, "stdlib.zip"
+    const-string v2, "stdlib.zip"
 
-    invoke-direct {v12, v8, v13}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
-
-    .line 165
-    invoke-virtual {v12}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
-
-    move-result-object v8
-
-    invoke-virtual {v11, v8}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v8
-
-    const-string v11, ":"
-
-    invoke-virtual {v8, v11}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v8
+    invoke-direct {v15, v8, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
     .line 166
-    invoke-virtual {v7}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+    invoke-virtual {v15}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
 
-    move-result-object v7
+    move-result-object v2
 
-    invoke-virtual {v8, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v14, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    move-result-object v7
+    move-result-object v2
 
     const-string v8, ":"
 
-    invoke-virtual {v7, v8}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v2, v8}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    move-result-object v7
+    move-result-object v2
 
     .line 167
+    invoke-virtual {v0}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+
+    move-result-object v0
+
+    invoke-virtual {v2, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    const-string v2, ":"
+
+    invoke-virtual {v0, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    .line 168
     invoke-virtual {v9}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
 
-    move-result-object v8
+    move-result-object v2
 
-    invoke-virtual {v7, v8}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    move-result-object v7
+    move-result-object v0
 
-    invoke-virtual {v7}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
 
-    move-result-object v7
+    move-result-object v0
 
-    .line 163
-    invoke-interface {v3, v10, v7}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
-
-    .line 169
-    const-string v7, "PYTHONNOUSERSITE"
-
-    const-string v8, "1"
-
-    invoke-interface {v3, v7, v8}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    .line 164
+    invoke-interface {v10, v13, v0}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 170
-    const-string v7, "PYTHONDONTWRITEBYTECODE"
+    const-string v0, "PYTHONNOUSERSITE"
 
-    const-string v8, "1"
+    const-string v2, "1"
 
-    invoke-interface {v3, v7, v8}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    invoke-interface {v10, v0, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 171
-    const-string v7, "INUYASHA_SEED_DIR"
+    const-string v0, "PYTHONDONTWRITEBYTECODE"
 
-    new-instance v8, Ljava/io/File;
+    const-string v2, "1"
 
-    const-string v10, "seeds"
-
-    invoke-direct {v8, v9, v10}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
-
-    invoke-virtual {v8}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
-
-    move-result-object v8
-
-    invoke-interface {v3, v7, v8}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    invoke-interface {v10, v0, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 172
-    const-string v7, "INUYASHA_PUBLIC_BACKUP_PATH"
+    const-string v0, "INUYASHA_SEED_DIR"
 
-    const-string v8, "/sdcard/Download/InuYasha_Save_Backup.json"
+    new-instance v2, Ljava/io/File;
 
-    invoke-interface {v3, v7, v8}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    const-string v8, "seeds"
+
+    invoke-direct {v2, v9, v8}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    invoke-virtual {v2}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+
+    move-result-object v2
+
+    invoke-interface {v10, v0, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    .line 173
+    const-string v0, "INUYASHA_PUBLIC_BACKUP_PATH"
+
+    const-string v2, "/sdcard/Download/InuYasha_Save_Backup.json"
+
+    invoke-interface {v10, v0, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 174
-    invoke-virtual {v2}, Ljava/lang/ProcessBuilder;->start()Ljava/lang/Process;
+    const-string v0, "INUYASHA_SERVER_DIR"
 
-    move-result-object v7
+    invoke-virtual {v9}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+
+    move-result-object v2
+
+    invoke-interface {v10, v0, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 175
-    sput-object v7, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
+    const-string v0, "INUYASHA_CLIENT_OTA_DIR"
+
+    invoke-static {v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->getClientOtaDir(Landroid/content/Context;)Ljava/io/File;
+
+    move-result-object v2
+
+    invoke-virtual {v2}, Ljava/io/File;->getAbsolutePath()Ljava/lang/String;
+
+    move-result-object v2
+
+    invoke-interface {v10, v0, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 176
-    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
-
-    move-result-wide v2
-
-    sput-wide v2, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
+    nop
 
     .line 177
-    sput-wide v24, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
+    const-string v2, ""
     :try_end_1
-    .catchall {:try_start_1 .. :try_end_1} :catchall_1
+    .catchall {:try_start_1 .. :try_end_1} :catchall_4
 
-    .line 181
-    nop
-
-    .line 182
-    nop
-
-    .line 183
+    .line 179
     :try_start_2
-    sget-wide v8, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
+    invoke-virtual {v1}, Landroid/content/Context;->getPackageManager()Landroid/content/pm/PackageManager;
 
-    .line 184
-    nop
+    move-result-object v0
 
-    .line 185
-    nop
+    invoke-virtual {v1}, Landroid/content/Context;->getPackageName()Ljava/lang/String;
 
-    .line 186
-    move-object/from16 v10, v19
-
-    move-object/from16 v11, v23
-
-    move-object v2, v0
-
-    .line 188
-    :goto_0
-    monitor-exit v6
+    move-result-object v8
     :try_end_2
     .catchall {:try_start_2 .. :try_end_2} :catchall_2
 
-    .line 190
-    nop
-
-    .line 191
-    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
-
-    move-result-wide v12
-
-    .line 193
-    :goto_1
-    const/4 v3, 0x0
+    const/4 v9, 0x0
 
     :try_start_3
+    invoke-virtual {v0, v8, v9}, Landroid/content/pm/PackageManager;->getPackageInfo(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;
+
+    move-result-object v0
+
+    .line 180
+    if-eqz v0, :cond_5
+
+    .line 181
+    iget v8, v0, Landroid/content/pm/PackageInfo;->versionCode:I
+    :try_end_3
+    .catchall {:try_start_3 .. :try_end_3} :catchall_1
+
+    .line 182
+    :try_start_4
+    iget-object v13, v0, Landroid/content/pm/PackageInfo;->versionName:Ljava/lang/String;
+
+    if-eqz v13, :cond_4
+
+    iget-object v0, v0, Landroid/content/pm/PackageInfo;->versionName:Ljava/lang/String;
+
+    goto :goto_0
+
+    :cond_4
+    const-string v0, ""
+    :try_end_4
+    .catchall {:try_start_4 .. :try_end_4} :catchall_0
+
+    :goto_0
+    move-object v2, v0
+
+    goto :goto_2
+
+    .line 184
+    :catchall_0
+    move-exception v0
+
+    goto :goto_2
+
+    .line 180
+    :cond_5
+    const/4 v8, 0x0
+
+    goto :goto_2
+
+    .line 184
+    :catchall_1
+    move-exception v0
+
+    goto :goto_1
+
+    :catchall_2
+    move-exception v0
+
+    const/4 v9, 0x0
+
+    :goto_1
+    const/4 v8, 0x0
+
+    :goto_2
+    nop
+
+    .line 185
+    :try_start_5
+    const-string v0, "INUYASHA_APK_VERSION_CODE"
+
+    invoke-static {v8}, Ljava/lang/String;->valueOf(I)Ljava/lang/String;
+
+    move-result-object v8
+
+    invoke-interface {v10, v0, v8}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    .line 186
+    const-string v0, "INUYASHA_APK_VERSION_NAME"
+
+    invoke-interface {v10, v0, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    .line 188
+    invoke-virtual {v4}, Ljava/lang/ProcessBuilder;->start()Ljava/lang/Process;
+
+    move-result-object v0
+
+    .line 189
+    sput-object v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
+
+    .line 190
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
-    move-result-wide v14
+    move-result-wide v13
 
-    sub-long/2addr v14, v12
+    sput-wide v13, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
 
-    cmp-long v0, v14, p1
+    .line 191
+    sput-wide v16, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
 
-    if-gez v0, :cond_8
+    .line 193
+    nop
 
     .line 194
-    sget-wide v14, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
+    new-instance v2, Ljava/lang/Thread;
 
-    .line 195
-    cmp-long v0, v14, v24
+    new-instance v4, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;
 
-    if-lez v0, :cond_4
+    invoke-direct {v4, v0, v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;-><init>(Ljava/lang/Process;Landroid/content/Context;)V
 
-    cmp-long v0, v14, v8
+    const-string v1, "InuBackendExitWatch"
 
-    if-ltz v0, :cond_4
+    invoke-direct {v2, v4, v1}, Ljava/lang/Thread;-><init>(Ljava/lang/Runnable;Ljava/lang/String;)V
 
-    invoke-static {v7}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
+    .line 211
+    const/4 v1, 0x1
+
+    invoke-virtual {v2, v1}, Ljava/lang/Thread;->setDaemon(Z)V
+
+    .line 212
+    invoke-virtual {v2}, Ljava/lang/Thread;->start()V
+    :try_end_5
+    .catchall {:try_start_5 .. :try_end_5} :catchall_4
+
+    .line 216
+    nop
+
+    .line 217
+    nop
+
+    .line 218
+    :try_start_6
+    sget-wide v13, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastLaunchStartMs:J
+
+    .line 219
+    nop
+
+    .line 220
+    nop
+
+    .line 221
+    move-object v2, v0
+
+    .line 223
+    :goto_3
+    monitor-exit v7
+    :try_end_6
+    .catchall {:try_start_6 .. :try_end_6} :catchall_5
+
+    .line 225
+    nop
+
+    .line 226
+    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
+
+    move-result-wide v7
+
+    .line 228
+    :goto_4
+    :try_start_7
+    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
+
+    move-result-wide v18
+
+    sub-long v18, v18, v7
+
+    cmp-long v0, v18, p1
+
+    if-gez v0, :cond_a
+
+    .line 229
+    sget-wide v18, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
+
+    .line 230
+    cmp-long v0, v18, v16
+
+    if-lez v0, :cond_6
+
+    cmp-long v0, v18, v13
+
+    if-ltz v0, :cond_6
+
+    invoke-static {v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
 
     move-result v0
 
-    if-eqz v0, :cond_4
+    if-eqz v0, :cond_6
 
-    .line 196
+    .line 231
     nop
 
-    .line 197
-    goto :goto_4
+    .line 232
+    goto :goto_7
 
-    .line 199
-    :cond_4
+    .line 234
+    :cond_6
     const/16 v0, 0x12c
 
     invoke-static {v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isLoopbackHealthy(I)Z
 
     move-result v0
-    :try_end_3
-    .catch Ljava/lang/InterruptedException; {:try_start_3 .. :try_end_3} :catch_1
+    :try_end_7
+    .catch Ljava/lang/InterruptedException; {:try_start_7 .. :try_end_7} :catch_1
 
-    if-eqz v0, :cond_5
+    if-eqz v0, :cond_7
 
-    .line 200
+    .line 235
     nop
 
-    .line 201
-    :try_start_4
+    .line 236
+    :try_start_8
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
-    move-result-wide v8
+    move-result-wide v3
 
-    sput-wide v8, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
-    :try_end_4
-    .catch Ljava/lang/InterruptedException; {:try_start_4 .. :try_end_4} :catch_0
+    sput-wide v3, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastHealthOkMs:J
+    :try_end_8
+    .catch Ljava/lang/InterruptedException; {:try_start_8 .. :try_end_8} :catch_0
 
-    .line 202
-    goto :goto_4
+    .line 237
+    goto :goto_7
 
-    .line 217
+    .line 252
     :catch_0
     move-exception v0
 
-    goto :goto_5
+    const/4 v9, 0x1
 
-    .line 204
-    :cond_5
-    :try_start_5
-    invoke-static {v7}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
+    goto :goto_8
+
+    .line 239
+    :cond_7
+    :try_start_9
+    invoke-static {v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
 
     move-result v0
-    :try_end_5
-    .catch Ljava/lang/InterruptedException; {:try_start_5 .. :try_end_5} :catch_1
+    :try_end_9
+    .catch Ljava/lang/InterruptedException; {:try_start_9 .. :try_end_9} :catch_1
 
-    if-nez v0, :cond_7
+    if-nez v0, :cond_9
 
-    .line 205
+    .line 240
     nop
 
-    .line 207
+    .line 242
     const/4 v1, -0x1
 
-    if-eqz v7, :cond_6
+    if-eqz v2, :cond_8
 
-    .line 208
-    :try_start_6
-    invoke-virtual {v7}, Ljava/lang/Process;->exitValue()I
+    .line 243
+    :try_start_a
+    invoke-virtual {v2}, Ljava/lang/Process;->exitValue()I
 
     move-result v1
-    :try_end_6
-    .catchall {:try_start_6 .. :try_end_6} :catchall_0
+    :try_end_a
+    .catchall {:try_start_a .. :try_end_a} :catchall_3
 
-    goto :goto_2
+    goto :goto_5
 
-    .line 210
-    :catchall_0
+    .line 245
+    :catchall_3
     move-exception v0
 
-    :cond_6
-    :goto_2
+    :cond_8
+    :goto_5
     nop
 
-    .line 211
+    .line 246
     const/16 v0, 0x320
 
-    :try_start_7
-    invoke-static {v11, v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->readFileTail(Ljava/io/File;I)Ljava/lang/String;
+    :try_start_b
+    invoke-static {v3, v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->readFileTail(Ljava/io/File;I)Ljava/lang/String;
 
     move-result-object v0
 
-    .line 212
-    const-string v6, "InuStandalone"
+    .line 247
+    const-string v3, "InuStandalone"
 
-    new-instance v8, Ljava/lang/StringBuilder;
+    new-instance v4, Ljava/lang/StringBuilder;
 
-    invoke-direct {v8}, Ljava/lang/StringBuilder;-><init>()V
+    invoke-direct {v4}, Ljava/lang/StringBuilder;-><init>()V
 
-    const-string v9, "BACKEND_EXITED_EARLY exit="
+    const-string v7, "BACKEND_EXITED_EARLY exit="
 
-    invoke-virtual {v8, v9}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v4, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    move-result-object v8
+    move-result-object v4
 
-    invoke-virtual {v8, v1}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    invoke-virtual {v4, v1}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
-    const-string v8, " tail="
+    const-string v4, " tail="
 
-    invoke-virtual {v1, v8}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v1, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
@@ -1422,111 +1667,111 @@
 
     move-result-object v0
 
-    invoke-static {v6, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v3, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 213
-    goto :goto_3
-
-    .line 215
-    :cond_7
-    const-wide/16 v14, 0x3c
-
-    invoke-static {v14, v15}, Ljava/lang/Thread;->sleep(J)V
-    :try_end_7
-    .catch Ljava/lang/InterruptedException; {:try_start_7 .. :try_end_7} :catch_1
-
-    .line 216
-    goto :goto_1
-
-    .line 219
-    :cond_8
-    :goto_3
-    const/4 v1, 0x0
-
-    :goto_4
+    .line 248
     goto :goto_6
 
-    .line 217
+    .line 250
+    :cond_9
+    const-wide/16 v18, 0x3c
+
+    invoke-static/range {v18 .. v19}, Ljava/lang/Thread;->sleep(J)V
+    :try_end_b
+    .catch Ljava/lang/InterruptedException; {:try_start_b .. :try_end_b} :catch_1
+
+    .line 251
+    goto :goto_4
+
+    .line 254
+    :cond_a
+    :goto_6
+    const/4 v1, 0x0
+
+    :goto_7
+    goto :goto_9
+
+    .line 252
     :catch_1
     move-exception v0
 
-    const/4 v1, 0x0
-
-    .line 218
-    :goto_5
+    .line 253
+    :goto_8
     invoke-static {}, Ljava/lang/Thread;->currentThread()Ljava/lang/Thread;
 
     move-result-object v0
 
     invoke-virtual {v0}, Ljava/lang/Thread;->interrupt()V
 
-    .line 220
-    :goto_6
+    move v1, v9
+
+    .line 255
+    :goto_9
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
-    move-result-wide v8
+    move-result-wide v3
 
-    sub-long/2addr v8, v4
+    sub-long/2addr v3, v5
 
-    .line 221
+    .line 256
     const-string v0, "InuStandalone"
 
-    new-instance v3, Ljava/lang/StringBuilder;
+    new-instance v5, Ljava/lang/StringBuilder;
 
-    invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
+    invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
 
-    const-string v4, "BACKEND_START ready="
+    const-string v6, "BACKEND_START ready="
 
-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    move-result-object v3
+    move-result-object v5
 
-    invoke-virtual {v3, v1}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    const-string v3, " alive="
-
-    invoke-virtual {v1, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v5, v1}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
-    .line 224
-    invoke-static {v7}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
+    const-string v5, " alive="
 
-    move-result v3
-
-    invoke-virtual {v1, v3}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
+    invoke-virtual {v1, v5}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
-    const-string v3, " elapsed_ms="
+    .line 259
+    invoke-static {v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
 
-    invoke-virtual {v1, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result v2
 
-    move-result-object v1
-
-    invoke-virtual {v1, v8, v9}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    const-string v3, " save_dir="
-
-    invoke-virtual {v1, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
-    invoke-virtual {v1, v10}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    const-string v3, " native_lib="
-
-    invoke-virtual {v1, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
+    const-string v2, " elapsed_ms="
 
     invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    invoke-virtual {v1, v3, v4}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    const-string v2, " save_dir="
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    invoke-virtual {v1, v11}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    const-string v2, " native_lib="
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    invoke-virtual {v1, v12}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
@@ -1534,44 +1779,109 @@
 
     move-result-object v1
 
-    .line 221
+    .line 256
     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 229
+    .line 264
     return-void
 
-    .line 178
-    :catchall_1
+    .line 213
+    :catchall_4
     move-exception v0
 
-    .line 179
-    :try_start_8
+    .line 214
+    :try_start_c
     const-string v1, "InuStandalone"
 
     const-string v2, "Failed to start embedded backend"
 
     invoke-static {v1, v2, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
 
-    .line 180
-    monitor-exit v6
+    .line 215
+    monitor-exit v7
 
     return-void
 
-    .line 188
-    :catchall_2
+    .line 223
+    :catchall_5
     move-exception v0
 
-    monitor-exit v6
-    :try_end_8
-    .catchall {:try_start_8 .. :try_end_8} :catchall_2
+    monitor-exit v7
+    :try_end_c
+    .catchall {:try_start_c .. :try_end_c} :catchall_5
 
     throw v0
+.end method
+
+.method public static getClientOtaDir(Landroid/content/Context;)Ljava/io/File;
+    .locals 5
+
+    .line 471
+    const/4 v0, 0x0
+
+    invoke-virtual {p0, v0}, Landroid/content/Context;->getExternalFilesDir(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object v0
+
+    .line 472
+    const-string v1, "Download"
+
+    const-string v2, "moqikaka"
+
+    if-eqz v0, :cond_0
+
+    .line 473
+    new-instance v3, Ljava/io/File;
+
+    new-instance v4, Ljava/io/File;
+
+    invoke-direct {v4, v0, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    invoke-direct {v3, v4, v1}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    .line 474
+    invoke-static {v3}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isDirWritable(Ljava/io/File;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_0
+
+    .line 475
+    return-object v3
+
+    .line 478
+    :cond_0
+    new-instance v0, Ljava/io/File;
+
+    new-instance v3, Ljava/io/File;
+
+    invoke-virtual {p0}, Landroid/content/Context;->getFilesDir()Ljava/io/File;
+
+    move-result-object p0
+
+    invoke-direct {v3, p0, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    invoke-direct {v0, v3, v1}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    .line 479
+    invoke-virtual {v0}, Ljava/io/File;->exists()Z
+
+    move-result p0
+
+    if-nez p0, :cond_1
+
+    .line 480
+    invoke-virtual {v0}, Ljava/io/File;->mkdirs()Z
+
+    .line 482
+    :cond_1
+    return-object v0
 .end method
 
 .method public static getMirrorDir(Landroid/content/Context;)Ljava/io/File;
     .locals 2
 
-    .line 436
+    .line 501
     new-instance v0, Ljava/io/File;
 
     invoke-virtual {p0}, Landroid/content/Context;->getFilesDir()Ljava/io/File;
@@ -1582,17 +1892,17 @@
 
     invoke-direct {v0, p0, v1}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 437
+    .line 502
     invoke-virtual {v0}, Ljava/io/File;->exists()Z
 
     move-result p0
 
     if-nez p0, :cond_0
 
-    .line 438
+    .line 503
     invoke-virtual {v0}, Ljava/io/File;->mkdirs()Z
 
-    .line 440
+    .line 505
     :cond_0
     return-object v0
 .end method
@@ -1600,34 +1910,34 @@
 .method public static getSaveDir(Landroid/content/Context;)Ljava/io/File;
     .locals 4
 
-    .line 420
+    .line 455
     const/4 v0, 0x0
 
     invoke-virtual {p0, v0}, Landroid/content/Context;->getExternalFilesDir(Ljava/lang/String;)Ljava/io/File;
 
     move-result-object v0
 
-    .line 421
+    .line 456
     const-string v1, "saves"
 
     if-eqz v0, :cond_1
 
-    .line 422
+    .line 457
     new-instance v2, Ljava/io/File;
 
     invoke-direct {v2, v0, v1}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 423
+    .line 458
     invoke-static {v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isDirWritable(Ljava/io/File;)Z
 
     move-result v0
 
     if-eqz v0, :cond_0
 
-    .line 424
+    .line 459
     return-object v2
 
-    .line 426
+    .line 461
     :cond_0
     new-instance v0, Ljava/lang/StringBuilder;
 
@@ -1655,7 +1965,7 @@
 
     invoke-static {v2, v0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 428
+    .line 463
     :cond_1
     new-instance v0, Ljava/io/File;
 
@@ -1665,17 +1975,17 @@
 
     invoke-direct {v0, p0, v1}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 429
+    .line 464
     invoke-virtual {v0}, Ljava/io/File;->exists()Z
 
     move-result p0
 
     if-nez p0, :cond_2
 
-    .line 430
+    .line 465
     invoke-virtual {v0}, Ljava/io/File;->mkdirs()Z
 
-    .line 432
+    .line 467
     :cond_2
     return-object v0
 .end method
@@ -1683,7 +1993,7 @@
 .method private static isDirWritable(Ljava/io/File;)Z
     .locals 5
 
-    .line 375
+    .line 410
     const/4 v0, 0x0
 
     :try_start_0
@@ -1699,10 +2009,10 @@
 
     if-nez v1, :cond_0
 
-    .line 376
+    .line 411
     return v0
 
-    .line 378
+    .line 413
     :cond_0
     invoke-virtual {p0}, Ljava/io/File;->isDirectory()Z
 
@@ -1710,10 +2020,10 @@
 
     if-nez v1, :cond_1
 
-    .line 379
+    .line 414
     return v0
 
-    .line 381
+    .line 416
     :cond_1
     new-instance v1, Ljava/io/File;
 
@@ -1745,14 +2055,14 @@
 
     invoke-direct {v1, p0, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 382
+    .line 417
     new-instance p0, Ljava/io/FileOutputStream;
 
     invoke-direct {p0, v1}, Ljava/io/FileOutputStream;-><init>(Ljava/io/File;)V
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_2
 
-    .line 383
+    .line 418
     const/16 v2, 0x20
 
     :try_start_1
@@ -1760,21 +2070,21 @@
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_0
 
-    .line 384
+    .line 419
     :try_start_2
     invoke-virtual {p0}, Ljava/io/FileOutputStream;->close()V
 
-    .line 385
+    .line 420
     invoke-virtual {v1}, Ljava/io/File;->delete()Z
     :try_end_2
     .catchall {:try_start_2 .. :try_end_2} :catchall_2
 
-    .line 386
+    .line 421
     const/4 p0, 0x1
 
     return p0
 
-    .line 382
+    .line 417
     :catchall_0
     move-exception v1
 
@@ -1796,18 +2106,18 @@
     :try_end_4
     .catchall {:try_start_4 .. :try_end_4} :catchall_2
 
-    .line 387
+    .line 422
     :catchall_2
     move-exception p0
 
-    .line 388
+    .line 423
     return v0
 .end method
 
 .method public static isLoopbackHealthy(I)Z
     .locals 7
 
-    .line 330
+    .line 365
     invoke-static {}, Landroid/os/Looper;->myLooper()Landroid/os/Looper;
 
     move-result-object v0
@@ -1818,29 +2128,29 @@
 
     if-ne v0, v1, :cond_0
 
-    .line 331
+    .line 366
     const/4 v0, 0x1
 
     new-array v1, v0, [Z
 
-    .line 332
+    .line 367
     new-instance v2, Ljava/lang/Thread;
 
-    new-instance v3, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;
+    new-instance v3, Lcom/cmn/inuyasha/standalone/LocalBackendManager$7;
 
-    invoke-direct {v3, v1, p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;-><init>([ZI)V
+    invoke-direct {v3, v1, p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager$7;-><init>([ZI)V
 
     const-string v4, "InuHealthProbe"
 
     invoke-direct {v2, v3, v4}, Ljava/lang/Thread;-><init>(Ljava/lang/Runnable;Ljava/lang/String;)V
 
-    .line 338
+    .line 373
     invoke-virtual {v2, v0}, Ljava/lang/Thread;->setDaemon(Z)V
 
-    .line 339
+    .line 374
     invoke-virtual {v2}, Ljava/lang/Thread;->start()V
 
-    .line 341
+    .line 376
     int-to-long v3, p0
 
     const-wide/16 v5, 0xfa
@@ -1852,21 +2162,21 @@
     :try_end_0
     .catch Ljava/lang/InterruptedException; {:try_start_0 .. :try_end_0} :catch_0
 
-    .line 344
+    .line 379
     goto :goto_0
 
-    .line 342
+    .line 377
     :catch_0
     move-exception p0
 
-    .line 343
+    .line 378
     invoke-static {}, Ljava/lang/Thread;->currentThread()Ljava/lang/Thread;
 
     move-result-object p0
 
     invoke-virtual {p0}, Ljava/lang/Thread;->interrupt()V
 
-    .line 345
+    .line 380
     :goto_0
     const/4 p0, 0x0
 
@@ -1874,7 +2184,7 @@
 
     return p0
 
-    .line 347
+    .line 382
     :cond_0
     invoke-static {p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isLoopbackHealthyDirect(I)Z
 
@@ -1886,10 +2196,10 @@
 .method private static isLoopbackHealthyDirect(I)Z
     .locals 5
 
-    .line 351
+    .line 386
     nop
 
-    .line 353
+    .line 388
     const/4 v0, 0x0
 
     const/4 v1, 0x0
@@ -1909,29 +2219,29 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_3
 
-    .line 354
+    .line 389
     :try_start_1
     invoke-virtual {v2, p0}, Ljava/net/HttpURLConnection;->setConnectTimeout(I)V
 
-    .line 355
+    .line 390
     invoke-virtual {v2, p0}, Ljava/net/HttpURLConnection;->setReadTimeout(I)V
 
-    .line 356
+    .line 391
     const-string p0, "GET"
 
     invoke-virtual {v2, p0}, Ljava/net/HttpURLConnection;->setRequestMethod(Ljava/lang/String;)V
 
-    .line 357
+    .line 392
     invoke-virtual {v2}, Ljava/net/HttpURLConnection;->getResponseCode()I
 
     move-result p0
 
-    .line 358
+    .line 393
     const/16 v1, 0xc8
 
     if-ne p0, v1, :cond_2
 
-    .line 359
+    .line 394
     new-instance p0, Ljava/io/BufferedReader;
 
     new-instance v1, Ljava/io/InputStreamReader;
@@ -1948,13 +2258,13 @@
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_2
 
-    .line 360
+    .line 395
     :try_start_2
     invoke-virtual {p0}, Ljava/io/BufferedReader;->readLine()Ljava/lang/String;
 
     move-result-object v1
 
-    .line 361
+    .line 396
     if-eqz v1, :cond_0
 
     const-string v3, "\"ok\""
@@ -1974,24 +2284,24 @@
     :cond_0
     const/4 v1, 0x0
 
-    .line 362
+    .line 397
     :goto_0
     :try_start_3
     invoke-virtual {p0}, Ljava/io/BufferedReader;->close()V
     :try_end_3
     .catchall {:try_start_3 .. :try_end_3} :catchall_2
 
-    .line 366
+    .line 401
     if-eqz v2, :cond_1
 
-    .line 367
+    .line 402
     invoke-virtual {v2}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 361
+    .line 396
     :cond_1
     return v1
 
-    .line 359
+    .line 394
     :catchall_0
     move-exception v1
 
@@ -2013,16 +2323,16 @@
     :try_end_5
     .catchall {:try_start_5 .. :try_end_5} :catchall_2
 
-    .line 366
+    .line 401
     :cond_2
     if-eqz v2, :cond_3
 
-    .line 367
+    .line 402
     invoke-virtual {v2}, Ljava/net/HttpURLConnection;->disconnect()V
 
     goto :goto_3
 
-    .line 364
+    .line 399
     :catchall_2
     move-exception p0
 
@@ -2033,14 +2343,14 @@
     :catchall_3
     move-exception p0
 
-    .line 366
+    .line 401
     :goto_2
     if-eqz v1, :cond_3
 
-    .line 367
+    .line 402
     invoke-virtual {v1}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 370
+    .line 405
     :cond_3
     :goto_3
     return v0
@@ -2049,29 +2359,29 @@
 .method private static isProcessAlive(Ljava/lang/Process;)Z
     .locals 1
 
-    .line 318
+    .line 353
     const/4 v0, 0x0
 
     if-nez p0, :cond_0
 
-    .line 319
+    .line 354
     return v0
 
-    .line 322
+    .line 357
     :cond_0
     :try_start_0
     invoke-virtual {p0}, Ljava/lang/Process;->exitValue()I
     :try_end_0
     .catch Ljava/lang/IllegalThreadStateException; {:try_start_0 .. :try_end_0} :catch_0
 
-    .line 323
+    .line 358
     return v0
 
-    .line 324
+    .line 359
     :catch_0
     move-exception p0
 
-    .line 325
+    .line 360
     const/4 p0, 0x1
 
     return p0
@@ -2080,18 +2390,18 @@
 .method public static mirrorSaves(Landroid/content/Context;)V
     .locals 3
 
-    .line 458
+    .line 523
     :try_start_0
     invoke-static {p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->getSaveDir(Landroid/content/Context;)Ljava/io/File;
 
     move-result-object v0
 
-    .line 459
+    .line 524
     invoke-static {p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->getMirrorDir(Landroid/content/Context;)Ljava/io/File;
 
     move-result-object p0
 
-    .line 460
+    .line 525
     new-instance v1, Ljava/io/File;
 
     const-string v2, "normal_profile.json"
@@ -2104,20 +2414,20 @@
 
     if-eqz v1, :cond_0
 
-    .line 461
+    .line 526
     invoke-static {v0, p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->copyDirSaves(Ljava/io/File;Ljava/io/File;)V
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 465
+    .line 530
     :cond_0
     goto :goto_0
 
-    .line 463
+    .line 528
     :catchall_0
     move-exception p0
 
-    .line 464
+    .line 529
     new-instance v0, Ljava/lang/StringBuilder;
 
     invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
@@ -2140,7 +2450,7 @@
 
     invoke-static {v0, p0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 466
+    .line 531
     :goto_0
     return-void
 .end method
@@ -2148,118 +2458,118 @@
 .method public static onActivityDestroy(Landroid/content/Context;)V
     .locals 4
 
-    .line 254
+    .line 289
     invoke-virtual {p0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
 
     move-result-object p0
 
-    .line 255
+    .line 290
     const/4 v0, 0x0
 
     sput-boolean v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->activityActive:Z
 
-    .line 256
+    .line 291
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
     move-result-wide v0
 
-    .line 257
+    .line 292
     sput-wide v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastDestroyAtMs:J
 
-    .line 258
+    .line 293
     new-instance v2, Ljava/lang/Thread;
 
-    new-instance v3, Lcom/cmn/inuyasha/standalone/LocalBackendManager$5;
+    new-instance v3, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;
 
-    invoke-direct {v3, p0, v0, v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager$5;-><init>(Landroid/content/Context;J)V
+    invoke-direct {v3, p0, v0, v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager$6;-><init>(Landroid/content/Context;J)V
 
     const-string p0, "InuBackendShutdownGrace"
 
     invoke-direct {v2, v3, p0}, Ljava/lang/Thread;-><init>(Ljava/lang/Runnable;Ljava/lang/String;)V
 
-    .line 270
+    .line 305
     invoke-virtual {v2}, Ljava/lang/Thread;->start()V
 
-    .line 271
+    .line 306
     return-void
 .end method
 
 .method public static onActivityPause(Landroid/content/Context;)V
     .locals 2
 
-    .line 244
+    .line 279
     invoke-virtual {p0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
 
     move-result-object p0
 
-    .line 245
+    .line 280
     new-instance v0, Ljava/lang/Thread;
 
-    new-instance v1, Lcom/cmn/inuyasha/standalone/LocalBackendManager$4;
+    new-instance v1, Lcom/cmn/inuyasha/standalone/LocalBackendManager$5;
 
-    invoke-direct {v1, p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager$4;-><init>(Landroid/content/Context;)V
+    invoke-direct {v1, p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager$5;-><init>(Landroid/content/Context;)V
 
     const-string p0, "InuSaveMirrorPause"
 
     invoke-direct {v0, v1, p0}, Ljava/lang/Thread;-><init>(Ljava/lang/Runnable;Ljava/lang/String;)V
 
-    .line 250
+    .line 285
     invoke-virtual {v0}, Ljava/lang/Thread;->start()V
 
-    .line 251
+    .line 286
     return-void
 .end method
 
 .method public static onActivityResume(Landroid/content/Context;)V
     .locals 2
 
-    .line 232
+    .line 267
     invoke-virtual {p0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
 
     move-result-object p0
 
-    .line 233
+    .line 268
     const/4 v0, 0x1
 
     sput-boolean v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->activityActive:Z
 
-    .line 234
+    .line 269
     const-wide/16 v0, 0x0
 
     sput-wide v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->lastDestroyAtMs:J
 
-    .line 235
+    .line 270
     new-instance v0, Ljava/lang/Thread;
 
-    new-instance v1, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;
+    new-instance v1, Lcom/cmn/inuyasha/standalone/LocalBackendManager$4;
 
-    invoke-direct {v1, p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager$3;-><init>(Landroid/content/Context;)V
+    invoke-direct {v1, p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager$4;-><init>(Landroid/content/Context;)V
 
     const-string p0, "InuBackendResumeCheck"
 
     invoke-direct {v0, v1, p0}, Ljava/lang/Thread;-><init>(Ljava/lang/Runnable;Ljava/lang/String;)V
 
-    .line 240
+    .line 275
     invoke-virtual {v0}, Ljava/lang/Thread;->start()V
 
-    .line 241
+    .line 276
     return-void
 .end method
 
 .method public static onAppCreate(Landroid/content/Context;)V
     .locals 3
 
-    .line 40
+    .line 41
     invoke-virtual {p0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
 
     move-result-object p0
 
-    .line 41
+    .line 42
     const/4 v0, 0x1
 
     sput-boolean v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->activityActive:Z
 
-    .line 42
+    .line 43
     new-instance v0, Ljava/lang/Thread;
 
     new-instance v1, Lcom/cmn/inuyasha/standalone/LocalBackendManager$1;
@@ -2270,10 +2580,10 @@
 
     invoke-direct {v0, v1, v2}, Ljava/lang/Thread;-><init>(Ljava/lang/Runnable;Ljava/lang/String;)V
 
-    .line 47
+    .line 48
     invoke-virtual {v0}, Ljava/lang/Thread;->start()V
 
-    .line 49
+    .line 50
     :try_start_0
     new-instance v0, Landroid/content/Intent;
 
@@ -2285,14 +2595,14 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 52
+    .line 53
     goto :goto_0
 
-    .line 50
+    .line 51
     :catchall_0
     move-exception p0
 
-    .line 51
+    .line 52
     new-instance v0, Ljava/lang/StringBuilder;
 
     invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
@@ -2315,7 +2625,7 @@
 
     invoke-static {v0, p0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 53
+    .line 54
     :goto_0
     return-void
 .end method
@@ -2328,23 +2638,23 @@
         }
     .end annotation
 
-    .line 547
+    .line 615
     invoke-virtual {p0, p1}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
 
     move-result-object p0
 
-    .line 548
+    .line 616
     :try_start_0
     new-instance p1, Ljava/io/ByteArrayOutputStream;
 
     invoke-direct {p1}, Ljava/io/ByteArrayOutputStream;-><init>()V
 
-    .line 549
+    .line 617
     const/16 v0, 0x1000
 
     new-array v0, v0, [B
 
-    .line 551
+    .line 619
     :goto_0
     invoke-virtual {p0, v0}, Ljava/io/InputStream;->read([B)I
 
@@ -2352,14 +2662,14 @@
 
     if-lez v1, :cond_0
 
-    .line 552
+    .line 620
     const/4 v2, 0x0
 
     invoke-virtual {p1, v0, v2, v1}, Ljava/io/ByteArrayOutputStream;->write([BII)V
 
     goto :goto_0
 
-    .line 554
+    .line 622
     :cond_0
     new-instance v0, Ljava/lang/String;
 
@@ -2373,16 +2683,16 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 555
+    .line 623
     if-eqz p0, :cond_1
 
     invoke-virtual {p0}, Ljava/io/InputStream;->close()V
 
-    .line 554
+    .line 622
     :cond_1
     return-object v0
 
-    .line 547
+    .line 615
     :catchall_0
     move-exception p1
 
@@ -2408,7 +2718,7 @@
 .method private static readFileTail(Ljava/io/File;I)Ljava/lang/String;
     .locals 6
 
-    .line 393
+    .line 428
     const-string v0, ""
 
     if-eqz p0, :cond_4
@@ -2423,7 +2733,7 @@
 
     goto :goto_3
 
-    .line 396
+    .line 431
     :cond_0
     :try_start_0
     new-instance v1, Ljava/io/RandomAccessFile;
@@ -2434,7 +2744,7 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_2
 
-    .line 397
+    .line 432
     :try_start_1
     invoke-virtual {v1}, Ljava/io/RandomAccessFile;->length()J
 
@@ -2442,26 +2752,26 @@
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_0
 
-    .line 398
+    .line 433
     const-wide/16 v4, 0x0
 
     cmp-long p0, v2, v4
 
     if-gtz p0, :cond_1
 
-    .line 399
+    .line 434
     nop
 
-    .line 414
+    .line 449
     :try_start_2
     invoke-virtual {v1}, Ljava/io/RandomAccessFile;->close()V
     :try_end_2
     .catchall {:try_start_2 .. :try_end_2} :catchall_2
 
-    .line 399
+    .line 434
     return-object v0
 
-    .line 401
+    .line 436
     :cond_1
     int-to-long p0, p1
 
@@ -2472,47 +2782,47 @@
 
     move-result-wide p0
 
-    .line 402
+    .line 437
     sub-long/2addr v2, p0
 
     long-to-int v3, v2
 
-    .line 403
+    .line 438
     invoke-virtual {v1, p0, p1}, Ljava/io/RandomAccessFile;->seek(J)V
 
-    .line 404
+    .line 439
     new-array p0, v3, [B
 
-    .line 405
+    .line 440
     const/4 p1, 0x0
 
     const/4 v2, 0x0
 
-    .line 406
+    .line 441
     :goto_0
     if-ge v2, v3, :cond_3
 
-    .line 407
+    .line 442
     sub-int v4, v3, v2
 
     invoke-virtual {v1, p0, v2, v4}, Ljava/io/RandomAccessFile;->read([BII)I
 
     move-result v4
 
-    .line 408
+    .line 443
     if-gez v4, :cond_2
 
-    .line 409
+    .line 444
     goto :goto_1
 
-    .line 411
+    .line 446
     :cond_2
     add-int/2addr v2, v4
 
-    .line 412
+    .line 447
     goto :goto_0
 
-    .line 413
+    .line 448
     :cond_3
     :goto_1
     new-instance v3, Ljava/lang/String;
@@ -2523,16 +2833,16 @@
     :try_end_3
     .catchall {:try_start_3 .. :try_end_3} :catchall_0
 
-    .line 414
+    .line 449
     :try_start_4
     invoke-virtual {v1}, Ljava/io/RandomAccessFile;->close()V
     :try_end_4
     .catchall {:try_start_4 .. :try_end_4} :catchall_2
 
-    .line 413
+    .line 448
     return-object v3
 
-    .line 396
+    .line 431
     :catchall_0
     move-exception p0
 
@@ -2554,14 +2864,14 @@
     :try_end_6
     .catchall {:try_start_6 .. :try_end_6} :catchall_2
 
-    .line 414
+    .line 449
     :catchall_2
     move-exception p0
 
-    .line 415
+    .line 450
     return-object v0
 
-    .line 394
+    .line 429
     :cond_4
     :goto_3
     return-object v0
@@ -2575,23 +2885,23 @@
         }
     .end annotation
 
-    .line 587
+    .line 655
     new-instance v0, Ljava/io/FileInputStream;
 
     invoke-direct {v0, p0}, Ljava/io/FileInputStream;-><init>(Ljava/io/File;)V
 
-    .line 588
+    .line 656
     :try_start_0
     new-instance p0, Ljava/io/ByteArrayOutputStream;
 
     invoke-direct {p0}, Ljava/io/ByteArrayOutputStream;-><init>()V
 
-    .line 589
+    .line 657
     const/16 v1, 0x1000
 
     new-array v1, v1, [B
 
-    .line 591
+    .line 659
     :goto_0
     invoke-virtual {v0, v1}, Ljava/io/FileInputStream;->read([B)I
 
@@ -2599,14 +2909,14 @@
 
     if-lez v2, :cond_0
 
-    .line 592
+    .line 660
     const/4 v3, 0x0
 
     invoke-virtual {p0, v1, v3, v2}, Ljava/io/ByteArrayOutputStream;->write([BII)V
 
     goto :goto_0
 
-    .line 594
+    .line 662
     :cond_0
     new-instance v1, Ljava/lang/String;
 
@@ -2620,13 +2930,13 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 595
+    .line 663
     invoke-virtual {v0}, Ljava/io/FileInputStream;->close()V
 
-    .line 594
+    .line 662
     return-object v1
 
-    .line 587
+    .line 655
     :catchall_0
     move-exception p0
 
@@ -2649,7 +2959,7 @@
 .method private static restoreFromMirrorIfEmpty(Ljava/io/File;Ljava/io/File;)V
     .locals 4
 
-    .line 445
+    .line 510
     const-string v0, "InuStandalone"
 
     const-string v1, "normal_profile.json"
@@ -2659,12 +2969,12 @@
 
     invoke-direct {v2, p0, v1}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 446
+    .line 511
     new-instance v3, Ljava/io/File;
 
     invoke-direct {v3, p1, v1}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 447
+    .line 512
     invoke-virtual {v2}, Ljava/io/File;->exists()Z
 
     move-result v1
@@ -2677,7 +2987,7 @@
 
     if-eqz v1, :cond_0
 
-    .line 448
+    .line 513
     new-instance v1, Ljava/lang/StringBuilder;
 
     invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
@@ -2702,20 +3012,20 @@
 
     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 449
+    .line 514
     invoke-static {p1, p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->copyDirSaves(Ljava/io/File;Ljava/io/File;)V
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 453
+    .line 518
     :cond_0
     goto :goto_0
 
-    .line 451
+    .line 516
     :catchall_0
     move-exception p0
 
-    .line 452
+    .line 517
     new-instance p1, Ljava/lang/StringBuilder;
 
     invoke-direct {p1}, Ljava/lang/StringBuilder;-><init>()V
@@ -2736,7 +3046,7 @@
 
     invoke-static {v0, p0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 454
+    .line 519
     :goto_0
     return-void
 .end method
@@ -2744,33 +3054,33 @@
 .method public static stopBackend(Landroid/content/Context;)V
     .locals 1
 
-    .line 289
+    .line 324
     if-eqz p0, :cond_0
 
-    .line 290
+    .line 325
     invoke-virtual {p0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
 
     move-result-object p0
 
     invoke-static {p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->mirrorSaves(Landroid/content/Context;)V
 
-    .line 292
+    .line 327
     :cond_0
     sget-object p0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->LOCK:Ljava/lang/Object;
 
     monitor-enter p0
 
-    .line 293
+    .line 328
     :try_start_0
     invoke-static {}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->stopProcessLocked()V
 
-    .line 294
+    .line 329
     monitor-exit p0
 
-    .line 295
+    .line 330
     return-void
 
-    .line 294
+    .line 329
     :catchall_0
     move-exception v0
 
@@ -2784,12 +3094,12 @@
 .method private static stopProcessLocked()V
     .locals 4
 
-    .line 298
+    .line 333
     sget-object v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
 
     if-eqz v0, :cond_3
 
-    .line 300
+    .line 335
     const/4 v0, 0x0
 
     :try_start_0
@@ -2797,7 +3107,7 @@
 
     invoke-virtual {v1}, Ljava/lang/Process;->destroy()V
 
-    .line 301
+    .line 336
     const/4 v1, 0x0
 
     :goto_0
@@ -2805,7 +3115,7 @@
 
     if-ge v1, v2, :cond_1
 
-    .line 302
+    .line 337
     sget-object v2, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
 
     invoke-static {v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->isProcessAlive(Ljava/lang/Process;)Z
@@ -2814,21 +3124,21 @@
 
     if-nez v2, :cond_0
 
-    .line 303
+    .line 338
     goto :goto_1
 
-    .line 305
+    .line 340
     :cond_0
     const-wide/16 v2, 0x1e
 
     invoke-static {v2, v3}, Ljava/lang/Thread;->sleep(J)V
 
-    .line 301
+    .line 336
     add-int/lit8 v1, v1, 0x1
 
     goto :goto_0
 
-    .line 307
+    .line 342
     :cond_1
     :goto_1
     sget-object v1, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
@@ -2839,7 +3149,7 @@
 
     if-eqz v1, :cond_2
 
-    .line 308
+    .line 343
     sget-object v1, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
 
     invoke-virtual {v1}, Ljava/lang/Process;->destroyForcibly()Ljava/lang/Process;
@@ -2848,19 +3158,19 @@
 
     goto :goto_2
 
-    .line 310
+    .line 345
     :catchall_0
     move-exception v1
 
-    .line 312
+    .line 347
     :cond_2
     :goto_2
     sput-object v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
 
-    .line 313
+    .line 348
     nop
 
-    .line 315
+    .line 350
     :cond_3
     return-void
 .end method
@@ -2873,49 +3183,49 @@
         }
     .end annotation
 
-    .line 502
+    .line 567
     invoke-virtual {p0}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
 
-    move-result-object p0
-
-    .line 503
-    const-string v0, "inubackend/version.txt"
-
-    invoke-static {p0, v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->readAssetText(Landroid/content/res/AssetManager;Ljava/lang/String;)Ljava/lang/String;
-
     move-result-object v0
 
-    invoke-virtual {v0}, Ljava/lang/String;->trim()Ljava/lang/String;
+    .line 568
+    const-string v1, "inubackend/version.txt"
 
-    move-result-object v0
+    invoke-static {v0, v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->readAssetText(Landroid/content/res/AssetManager;Ljava/lang/String;)Ljava/lang/String;
 
-    .line 504
-    new-instance v1, Ljava/io/File;
+    move-result-object v1
 
-    const-string v2, "version.txt"
+    invoke-virtual {v1}, Ljava/lang/String;->trim()Ljava/lang/String;
 
-    invoke-direct {v1, p1, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+    move-result-object v1
 
-    .line 505
-    new-instance p1, Ljava/io/File;
-
-    const-string v2, "emulator.py"
-
-    invoke-direct {p1, p3, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
-
-    .line 506
+    .line 569
     new-instance v2, Ljava/io/File;
 
-    const-string v3, "stdlib.zip"
+    const-string v3, "version.txt"
 
-    invoke-direct {v2, p2, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+    invoke-direct {v2, p1, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 507
-    invoke-virtual {v1}, Ljava/io/File;->exists()Z
+    .line 570
+    new-instance p1, Ljava/io/File;
 
-    move-result v3
+    const-string v3, "emulator.py"
 
-    if-eqz v3, :cond_0
+    invoke-direct {p1, p3, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    .line 571
+    new-instance v3, Ljava/io/File;
+
+    const-string v4, "stdlib.zip"
+
+    invoke-direct {v3, p2, v4}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    .line 572
+    invoke-virtual {v2}, Ljava/io/File;->exists()Z
+
+    move-result v4
+
+    if-eqz v4, :cond_0
 
     invoke-virtual {p1}, Ljava/io/File;->exists()Z
 
@@ -2923,14 +3233,14 @@
 
     if-eqz p1, :cond_0
 
-    invoke-virtual {v2}, Ljava/io/File;->exists()Z
+    invoke-virtual {v3}, Ljava/io/File;->exists()Z
 
     move-result p1
 
     if-eqz p1, :cond_0
 
-    .line 508
-    invoke-static {v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->readFileText(Ljava/io/File;)Ljava/lang/String;
+    .line 573
+    invoke-static {v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->readFileText(Ljava/io/File;)Ljava/lang/String;
 
     move-result-object p1
 
@@ -2938,35 +3248,35 @@
 
     move-result-object p1
 
-    .line 509
-    invoke-virtual {v0, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    .line 574
+    invoke-virtual {v1, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result p1
 
     if-eqz p1, :cond_0
 
-    .line 510
+    .line 575
     return-void
 
-    .line 513
+    .line 578
     :cond_0
     new-instance p1, Ljava/lang/StringBuilder;
 
     invoke-direct {p1}, Ljava/lang/StringBuilder;-><init>()V
 
-    const-string v3, "Unpacking embedded Python stdlib & emulator server bundle ("
+    const-string v4, "Unpacking embedded Python stdlib & emulator server bundle ("
 
-    invoke-virtual {p1, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object p1
-
-    invoke-virtual {p1, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {p1, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object p1
 
-    const-string v3, ")"
+    invoke-virtual {p1, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    invoke-virtual {p1, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object p1
+
+    const-string v4, ")"
+
+    invoke-virtual {p1, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object p1
 
@@ -2974,29 +3284,52 @@
 
     move-result-object p1
 
-    const-string v3, "InuStandalone"
+    const-string v4, "InuStandalone"
 
-    invoke-static {v3, p1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v4, p1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 514
-    invoke-virtual {p2}, Ljava/io/File;->mkdirs()Z
-
-    .line 515
-    invoke-virtual {p3}, Ljava/io/File;->mkdirs()Z
-
-    .line 517
-    const-string p1, "inubackend/stdlib.zip"
-
-    invoke-static {p0, p1, v2}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->copyAssetToFile(Landroid/content/res/AssetManager;Ljava/lang/String;Ljava/io/File;)V
-
-    .line 518
-    const-string p1, "inubackend/server_bundle.zip"
-
-    invoke-virtual {p0, p1}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
+    .line 579
+    invoke-static {p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->getClientOtaDir(Landroid/content/Context;)Ljava/io/File;
 
     move-result-object p0
 
-    .line 519
+    .line 580
+    new-instance p1, Ljava/io/File;
+
+    const-string v4, "src"
+
+    invoke-direct {p1, p0, v4}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    invoke-static {p1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->deleteRecursive(Ljava/io/File;)V
+
+    .line 581
+    new-instance p1, Ljava/io/File;
+
+    const-string v4, "res"
+
+    invoke-direct {p1, p0, v4}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    invoke-static {p1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->deleteRecursive(Ljava/io/File;)V
+
+    .line 582
+    invoke-virtual {p2}, Ljava/io/File;->mkdirs()Z
+
+    .line 583
+    invoke-virtual {p3}, Ljava/io/File;->mkdirs()Z
+
+    .line 585
+    const-string p0, "inubackend/stdlib.zip"
+
+    invoke-static {v0, p0, v3}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->copyAssetToFile(Landroid/content/res/AssetManager;Ljava/lang/String;Ljava/io/File;)V
+
+    .line 586
+    const-string p0, "inubackend/server_bundle.zip"
+
+    invoke-virtual {v0, p0}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
+
+    move-result-object p0
+
+    .line 587
     :try_start_0
     new-instance p1, Ljava/util/zip/ZipInputStream;
 
@@ -3004,62 +3337,62 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_4
 
-    .line 521
+    .line 589
     const p2, 0x8000
 
     :try_start_1
     new-array p2, p2, [B
 
-    .line 522
+    .line 590
     :goto_0
     invoke-virtual {p1}, Ljava/util/zip/ZipInputStream;->getNextEntry()Ljava/util/zip/ZipEntry;
 
-    move-result-object v2
+    move-result-object v0
 
-    if-eqz v2, :cond_4
+    if-eqz v0, :cond_4
 
-    .line 523
+    .line 591
     new-instance v3, Ljava/io/File;
 
-    invoke-virtual {v2}, Ljava/util/zip/ZipEntry;->getName()Ljava/lang/String;
+    invoke-virtual {v0}, Ljava/util/zip/ZipEntry;->getName()Ljava/lang/String;
 
     move-result-object v4
 
     invoke-direct {v3, p3, v4}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 524
-    invoke-virtual {v2}, Ljava/util/zip/ZipEntry;->isDirectory()Z
+    .line 592
+    invoke-virtual {v0}, Ljava/util/zip/ZipEntry;->isDirectory()Z
 
-    move-result v2
+    move-result v0
 
-    if-eqz v2, :cond_1
+    if-eqz v0, :cond_1
 
-    .line 525
+    .line 593
     invoke-virtual {v3}, Ljava/io/File;->mkdirs()Z
 
     goto :goto_2
 
-    .line 527
+    .line 595
     :cond_1
     invoke-virtual {v3}, Ljava/io/File;->getParentFile()Ljava/io/File;
 
-    move-result-object v2
+    move-result-object v0
 
-    .line 528
-    if-eqz v2, :cond_2
+    .line 596
+    if-eqz v0, :cond_2
 
-    invoke-virtual {v2}, Ljava/io/File;->exists()Z
+    invoke-virtual {v0}, Ljava/io/File;->exists()Z
 
     move-result v4
 
     if-nez v4, :cond_2
 
-    .line 529
-    invoke-virtual {v2}, Ljava/io/File;->mkdirs()Z
+    .line 597
+    invoke-virtual {v0}, Ljava/io/File;->mkdirs()Z
 
-    .line 531
+    .line 599
     :cond_2
-    new-instance v2, Ljava/io/File;
+    new-instance v0, Ljava/io/File;
 
     invoke-virtual {v3}, Ljava/io/File;->getParentFile()Ljava/io/File;
 
@@ -3093,16 +3426,16 @@
 
     move-result-object v5
 
-    invoke-direct {v2, v4, v5}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+    invoke-direct {v0, v4, v5}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 532
+    .line 600
     new-instance v4, Ljava/io/FileOutputStream;
 
-    invoke-direct {v4, v2}, Ljava/io/FileOutputStream;-><init>(Ljava/io/File;)V
+    invoke-direct {v4, v0}, Ljava/io/FileOutputStream;-><init>(Ljava/io/File;)V
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_2
 
-    .line 534
+    .line 602
     :goto_1
     :try_start_2
     invoke-virtual {p1, p2}, Ljava/util/zip/ZipInputStream;->read([B)I
@@ -3111,7 +3444,7 @@
 
     if-lez v5, :cond_3
 
-    .line 535
+    .line 603
     const/4 v6, 0x0
 
     invoke-virtual {v4, p2, v6, v5}, Ljava/io/FileOutputStream;->write([BII)V
@@ -3120,24 +3453,24 @@
 
     goto :goto_1
 
-    .line 537
+    .line 605
     :cond_3
     :try_start_3
     invoke-virtual {v4}, Ljava/io/FileOutputStream;->close()V
 
-    .line 538
-    invoke-virtual {v2, v3}, Ljava/io/File;->renameTo(Ljava/io/File;)Z
+    .line 606
+    invoke-virtual {v0, v3}, Ljava/io/File;->renameTo(Ljava/io/File;)Z
 
-    .line 540
+    .line 608
     :goto_2
     invoke-virtual {p1}, Ljava/util/zip/ZipInputStream;->closeEntry()V
     :try_end_3
     .catchall {:try_start_3 .. :try_end_3} :catchall_2
 
-    .line 541
+    .line 609
     goto :goto_0
 
-    .line 532
+    .line 600
     :catchall_0
     move-exception p2
 
@@ -3159,7 +3492,7 @@
     :try_end_5
     .catchall {:try_start_5 .. :try_end_5} :catchall_2
 
-    .line 542
+    .line 610
     :cond_4
     :try_start_6
     invoke-virtual {p1}, Ljava/util/zip/ZipInputStream;->close()V
@@ -3170,14 +3503,14 @@
 
     invoke-virtual {p0}, Ljava/io/InputStream;->close()V
 
-    .line 543
+    .line 611
     :cond_5
-    invoke-static {v1, v0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->writeFileText(Ljava/io/File;Ljava/lang/String;)V
+    invoke-static {v2, v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->writeFileText(Ljava/io/File;Ljava/lang/String;)V
 
-    .line 544
+    .line 612
     return-void
 
-    .line 518
+    .line 586
     :catchall_2
     move-exception p2
 
@@ -3224,22 +3557,22 @@
 .method public static watchdogTick(Landroid/content/Context;)V
     .locals 2
 
-    .line 274
+    .line 309
     invoke-virtual {p0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
 
     move-result-object p0
 
-    .line 275
+    .line 310
     sget-boolean v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->activityActive:Z
 
     if-eqz v0, :cond_0
 
-    .line 277
+    .line 312
     sget-object v0, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->LOCK:Ljava/lang/Object;
 
     monitor-enter v0
 
-    .line 278
+    .line 313
     :try_start_0
     sget-object v1, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->backendProcess:Ljava/lang/Process;
 
@@ -3247,12 +3580,12 @@
 
     move-result v1
 
-    .line 279
+    .line 314
     monitor-exit v0
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 280
+    .line 315
     if-nez v1, :cond_0
 
     const/16 v0, 0x12c
@@ -3263,21 +3596,21 @@
 
     if-nez v0, :cond_0
 
-    .line 281
+    .line 316
     const-string v0, "InuStandalone"
 
     const-string v1, "Watchdog detected stopped backend while game active; restarting"
 
     invoke-static {v0, v1}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 282
+    .line 317
     const-wide/16 v0, 0x3a98
 
     invoke-static {p0, v0, v1}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->ensureStarted(Landroid/content/Context;J)V
 
     goto :goto_0
 
-    .line 279
+    .line 314
     :catchall_0
     move-exception p0
 
@@ -3288,12 +3621,12 @@
 
     throw p0
 
-    .line 285
+    .line 320
     :cond_0
     :goto_0
     invoke-static {p0}, Lcom/cmn/inuyasha/standalone/LocalBackendManager;->mirrorSaves(Landroid/content/Context;)V
 
-    .line 286
+    .line 321
     return-void
 .end method
 
@@ -3305,12 +3638,12 @@
         }
     .end annotation
 
-    .line 599
+    .line 667
     invoke-virtual {p0}, Ljava/io/File;->getParentFile()Ljava/io/File;
 
     move-result-object v0
 
-    .line 600
+    .line 668
     if-eqz v0, :cond_0
 
     invoke-virtual {v0}, Ljava/io/File;->exists()Z
@@ -3319,16 +3652,16 @@
 
     if-nez v1, :cond_0
 
-    .line 601
+    .line 669
     invoke-virtual {v0}, Ljava/io/File;->mkdirs()Z
 
-    .line 603
+    .line 671
     :cond_0
     new-instance v0, Ljava/io/FileOutputStream;
 
     invoke-direct {v0, p0}, Ljava/io/FileOutputStream;-><init>(Ljava/io/File;)V
 
-    .line 604
+    .line 672
     :try_start_0
     sget-object p0, Ljava/nio/charset/StandardCharsets;->UTF_8:Ljava/nio/charset/Charset;
 
@@ -3340,13 +3673,13 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 605
+    .line 673
     invoke-virtual {v0}, Ljava/io/FileOutputStream;->close()V
 
-    .line 606
+    .line 674
     return-void
 
-    .line 603
+    .line 671
     :catchall_0
     move-exception p0
 
